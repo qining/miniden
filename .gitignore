@@ -5,3 +5,4 @@ work/*.out
 work/*.json
 !work/clean_plan.jpg
 !work/furniture_specs.json
+!work/furniture_models.json
