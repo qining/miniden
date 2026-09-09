@@ -1,0 +1,6 @@
+# 校准/审查/测试的中间产物（都能由 planner.html + 底图重新生成）
+work/*.png
+work/*.html
+work/*.out
+work/*.json
+!work/clean_plan.jpg
