@@ -6,3 +6,5 @@ work/*.json
 !work/clean_plan.jpg
 !work/furniture_specs.json
 !work/furniture_models.json
+# 交互测试台：AGENTS.md 的核心流程依赖它，必须入库
+!work/t_walledit.html
