@@ -92,8 +92,13 @@ open('/tmp/planner_check.js','w').write(m.group(1))
 
 | 文件 | 覆盖 | 断言 | 输出 `<pre id>` | 抽取锚点 | 窗口 / virtual-time |
 |---|---|---|---|---|---|
-| `work/t_walledit.html` | 2D：墙/柱/门编辑、门垛联动、单位切换、拖动中删除、搜索字母折叠 | 65 | `wetest` | `window.__ERRS` | 1700x1100 / 55000 |
-| `work/t_3d.html` | 3D：家具射线拾取、拖动、Shift 原地旋转、全局开关灯 | 13 | `t3d` | `window.__E3` | 1400x950 / 50000 |
+| `work/t_walledit.html` | 2D：墙/柱/门编辑、门垛联动、单位切换、拖动中删除、搜索字母折叠 | 65 | `wetest` | `window.__ERRS` | 1700x1100 / 60000 |
+| `work/t_3d.html` | 3D：射线拾取/拖动/旋转、开关灯、**全目录建模+贴图体检**、缩略图 | 23 | `t3d` | `window.__E3` | 1400x950 / 120000 |
+| `work/t_pt.html` | 光追：BVH 的 CPU 独立校验、着色器编译、进度、降噪效果 | 20 | `tpt` | `window.__EPT` | 1200x850 / 300000 |
+
+`t_3d.html` 里那组 `catalog-*` 断言是**最省事的整体体检**：把 CATALOG 每一条都跑一遍
+`furn3D()`，断言（a）不抛错（b）材质都有 `map`（c）都有 `normalMap`（d）三角形数不失控。
+加家具、改材质之后先看这四条，比逐个截图快得多。
 
 **两个测试台不能合并**：2D 全套跑完再构建 3D 场景会超出单次 `--virtual-time-budget`，
 页面根本不输出结果（症状是 `NO TEST OUTPUT`，很容易误判成页面崩溃）。
@@ -232,6 +237,81 @@ sips -z 高 宽 /tmp/x.png --out /tmp/x_big.png               # 放大
 - **夹取区间必须包含 0**：`range()` 返回反向区间时会把门推向相反方向。
 
 ---
+
+## 5.4 材质与贴图（2026-09 补齐）
+
+`planner.html` 里所有贴图都是**程序化生成的 CanvasTexture**（离线可用、可确定性复现）：
+
+| 函数 | 用途 | 备注 |
+|---|---|---|
+| `woodTexture()` | 地板：深冷灰褐宽板 | 对照 704/705 实拍 |
+| `woodSpecies(name)` | 家具木纹：pine/beech/birch/oak/walnut | 按 `spec.wood` 选 |
+| `grayOakTexture()` / `quartzTexture()` | 橱柜灰褐木纹 / 白石英台面 | |
+| `fabricTexture()` | 织物 | 沙发/椅/灯罩 |
+| `laminateTexture()` | 三聚氰胺/烤漆板 | 白色柜体的默认贴图 |
+| `carpetTexture()` | 地毯绒面 | 法线强度要大（1.6）才有毛绒感 |
+| `powderCoatTexture()` | 金属烤漆细橘皮 | 铁床架/推车 |
+| `plasticTexture()` | 注塑件橘皮 | QUADRO 管件等 |
+| `leatherTexture()` | 素皮/皮革毛孔 | 爬行垫的硅胶涂层面 |
+| `brushedSteelTexture()` | 拉丝不锈钢 | 冰箱/五金 |
+| `cityPanorama(night)` | 窗外全景 | 同时当光追的环境光 |
+
+三条铁律：
+
+1. **CanvasTexture 必须设 `t.encoding = THREE.sRGBEncoding`**，否则在 `outputEncoding=sRGB`
+   下被当线性图，渲染发白。
+2. **纯色材质一律不合格**。近景和光追里一眼假。曾经泛型建模的 25 个 kind 全是无贴图纯色板，
+   现在有三道保障：
+   - `furnMats(spec, col)`：泛型建模按 kind 统一发材质（贴图/粗糙度/金属度/envI）
+   - `C.M(color, opts)`：专属模型的材质工厂，没显式指定贴图时按金属度自动兜底
+   - `ensureTextured(root)`：建完模再扫一遍，补掉分支里就地 `new` 出来的漏网材质
+   要显式退出，给材质挂 `userData.noTex` / `noNrm`。
+3. **`envMapIntensity` 默认是 1，对彩色材质是灾难**。clearcoat + 高 env 会给彩色塑料罩一层白，
+   饱和的红黄蓝绿直接变粉彩色（QUADRO 就栽过）。塑料 0.22-0.35、木头 0.6、金属 0.8-0.95。
+
+贴图密度要随家具尺寸变，否则 40cm 床头柜和 200cm 沙发纹理一样大。用 `texScaled(base, ft, per)`：
+把缩放吸附到固定几档再缓存——**每 clone 一次纹理都会多一次 GPU 上传，绝对不能按件克隆**。
+
+## 5.5 GPU 路径追踪（`ptRender`）
+
+浏览器里**拿不到显卡的 RT core**：WebGPU 至今没有 ray query / ray tracing pipeline，
+WebGL2 更没有。所以这是「用 GPU 的通用计算单元跑软件光追」——
+自建 BVH → 打包进 RGBA32F 纹理 → 片元着色器栈式遍历 → 逐帧累积。
+
+管线：`ptCollect()` 收集全场景三角形 → `ptBuildBVH()` 分箱 SAH → `ptBuild()` 打包纹理
+→ G-buffer 两趟（albedo / 法线+深度）→ 分块累积 → À-Trous 降噪 → ACES + sRGB。
+
+踩过的坑：
+
+- **每帧 `renderer.setSize()` 会重建默认帧缓冲**，进度看起来完全不动。只在开头设一次。
+- **`visibility()` 用「找最近交点」循环等于跑好几遍完整遍历**。阴影光线要写成 any-hit：
+  撞到不透明面立刻返回，遇玻璃衰减后继续。
+- **GPU 是异步的**，CPU 光按 `performance.now()` 判断会把命令队列排爆、界面失去响应。
+  每帧的分块数要有硬上限。
+- **降噪是画质的分水岭**。室内场景天光只能从窗户进来，弹射一次就逃出去的概率很低，
+  低采样必然噪。À-Trous 按法线/深度/颜色差加权，**输入必须先除掉 albedo、滤完再乘回**，
+  否则贴图细节被一起抹平。实测同样 8 spp 下噪点降 63%。
+- **`--virtual-time-budget` 下 0ms 定时器链会饿死长间隔定时器**，`setInterval` 测不到进度。
+  测 UI 文案变化要用 `MutationObserver`。
+
+## 5.6 目录缩略图
+
+侧边栏每件家具是用**独立的小 WebGLRenderer** 渲的 3/4 视角图（`furnThumb`），
+不是色块。按需渲染（`IntersectionObserver` 滚到可视区才画）+ `_thumbCache` 缓存，
+所以开局不卡、搜索重建列表时直接命中缓存。灯具单独处理成**仰视**——
+吸顶灯俯视只能看到一个盘子。
+
+取景分两遍：先按包围盒八角投影迭代贴合，再**渲一遍读 alpha 通道按真实剪影收紧并居中**。
+只按包围盒取景会白留三四成画面——开放式框架（爬爬架）和平面旋转过的矩形（爬行垫）
+的包围盒角全是空气。扁平件（`size.y < 0.22*max(x,z)`）要换成俯视，25° 仰角看地毯就是一条线。
+
+**`physicallyCorrectLights = false` 时 three 会把光照乘 π 作补偿**，按物理直觉给的强度
+会高出三倍多，浅色件直接推成纯白——沙色和石灰色两个配色的缩略图看起来一模一样。
+缩略图渲染器这组光照值（amb .22 / hemi .28 / key .55 / fill .18）是实测调出来的，
+`t_3d.html` 里有条 `thumb-color-variants-differ` 断言专门守着这个回归。
+
+判断缩略图是否有内容要**解码后数不透明像素**，不能看 PNG 字节数：简单形状压得极小，
+1.9KB 也可能是张正常的图。
 
 ## 6. LLM Agent 审查与验证方法论
 
