@@ -9,3 +9,4 @@ work/*.json
 # 交互测试台：AGENTS.md 的核心流程依赖它，必须入库
 !work/t_walledit.html
 !work/t_3d.html
+!work/t_pt.html
