@@ -26,3 +26,4 @@ work/_*.py
 # check-item.py 生成的体检图（可随时重跑）
 work/ref/check_*.png
 work/_check_item_*.html
+__pycache__/
