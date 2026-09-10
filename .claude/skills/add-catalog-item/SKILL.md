@@ -161,3 +161,5 @@ python3 .claude/skills/add-catalog-item/check-item.py --regress
 | 抓到的价格离谱 | 命中系列落地页而非商品页 |
 | 两次渲染结果不一致 | 新贴图用了 `Math.random()` |
 | 手摆相机后画布是空的 | `OrbitControls.update()` 把相机拉回去了 → 先同步 `controls.target` 再 `update()` |
+| 成品比 spec 大一圈 | `C.ext(..., bevel)` 的 `bevelSize` 是**向外扩**的：轮廓要先减掉倒角量。深度它已经补偿了，截面没有 |
+| 折线管件像一串香肠 | `C.tube` 的胶囊端帽收在端点上，首尾相接会在每个折点掐出腰 → 每段 `C.tube(L + 2r, ...)` 让相邻段搭接 |
