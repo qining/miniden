@@ -20,3 +20,9 @@ work/ref/sidebar.png
 !work/ref/q2*.png
 # 一次性补丁脚本，不入库
 work/_*.py
+
+# Claude Code agent 的临时 worktree
+.claude/worktrees/
+# check-item.py 生成的体检图（可随时重跑）
+work/ref/check_*.png
+work/_check_item_*.html
