@@ -87,8 +87,17 @@ open('/tmp/planner_check.js','w').write(m.group(1))
 
 ## 3. 自动化交互测试台（最重要的资产）
 
-`work/t_walledit.html` 是从 `planner.html` 生成的测试副本，注入了一段测试脚本，用
-**真实命中测试 + 合成 PointerEvent** 驱动 UI，目前 **46 条断言**。
+从 `planner.html` 生成的测试副本，注入一段测试脚本，用
+**真实命中测试 + 合成 PointerEvent** 驱动 UI。**两个测试台，改完都要跑**：
+
+| 文件 | 覆盖 | 断言 | 输出 `<pre id>` | 抽取锚点 | 窗口 / virtual-time |
+|---|---|---|---|---|---|
+| `work/t_walledit.html` | 2D：墙/柱/门编辑、门垛联动、单位切换、拖动中删除 | 46 | `wetest` | `window.__ERRS` | 1700x1100 / 55000 |
+| `work/t_3d.html` | 3D：家具射线拾取、拖动、Shift 原地旋转、全局开关灯 | 13 | `t3d` | `window.__E3` | 1400x950 / 50000 |
+
+**两个测试台不能合并**：2D 全套跑完再构建 3D 场景会超出单次 `--virtual-time-budget`，
+页面根本不输出结果（症状是 `NO TEST OUTPUT`，很容易误判成页面崩溃）。
+每次跑之前先 `pkill -f headless`，否则上一轮的 swiftshader 僵尸进程抢 CPU 把本轮拖超时。
 
 ### 重新生成（改了 planner.html 之后必做）
 
@@ -96,13 +105,12 @@ open('/tmp/planner_check.js','w').write(m.group(1))
 python3 - <<'PYEOF'
 import re
 s = open('planner.html').read()
-old = open('work/t_walledit.html').read()
-m = re.search(r"(\n<script>\nwindow\.__ERRS.*?</script>\n</body>)", old, re.S)   # 抽出测试脚本
-out = s.replace('</body>', m.group(1), 1)
-open('work/t_walledit.html','w').write(out
-  .replace("'work/clean_plan.jpg'","'clean_plan.jpg'")     # 测试页在 work/ 下，改相对路径
-  .replace("lib/three.min.js","../lib/three.min.js")
-  .replace("lib/OrbitControls.js","../lib/OrbitControls.js"))
+for f, mark in [('work/t_walledit.html', r'window\.__ERRS'), ('work/t_3d.html', r'window\.__E3')]:
+    m = re.search(r"(\n<script>\n" + mark + r".*?</script>\n</body>)", open(f).read(), re.S)  # 抽出测试脚本
+    open(f, 'w').write(s.replace('</body>', m.group(1), 1)
+      .replace("'work/clean_plan.jpg'", "'clean_plan.jpg'")   # 测试页在 work/ 下，改相对路径
+      .replace("lib/three.min.js", "../lib/three.min.js")
+      .replace("lib/OrbitControls.js", "../lib/OrbitControls.js"))
 PYEOF
 ```
 
@@ -120,6 +128,8 @@ print('tests:',len([l for l in lines if l.startswith(('PASS','FAIL'))]),'| fails
 for f in fails: print(f)
 print(lines[-1])"
 ```
+
+3D 测试台同理，换文件名、`<pre id=t3d>` 和窗口大小 `1400,950`、预算 `50000` 即可。
 
 ### 写测试的关键手法
 
@@ -207,6 +217,8 @@ sips -z 高 宽 /tmp/x.png --out /tmp/x_big.png               # 放大
 | `physicallyCorrectLights` 下强度是坎德拉 | 灯几乎不亮 | 点光 `I=lm/(4π)`；聚光 `I=lm/(2π(1-cosθ))` |
 | 工具条高度变化（控件出现/文字换行） | 画布跳动、缓存的屏幕坐标失效 | 编辑类工具条固定单行高度（`nowrap`+`ellipsis`+定高），控件用 `visibility` 占位切换 |
 | 工具模式的早退分支 | "加门模式下拖端点"完全失效 | 手柄/拖拽检测必须在工具分支**之前**；move 的早退要加 `&& !drag` |
+| **Raycaster 不刷新 `matrixWorld`（r147）** | 刚移动完家具再点，射线打空或打到旧位置；按需渲染下尤其明显 | 射线前显式 `group.updateMatrixWorld(true)`（相机也要），不能指望 `renderer.render()` 已经跑过 |
+| 俯视时吸顶灯永远挡在射线最前 | 娃娃屋视角点不中灯下方的沙发 | `pickFurniture` 命中链里优先取非灯具，全是灯才回退取灯 |
 | **本机 3D 截图** | 黑屏 | 用 `--use-angle=swiftshader`（不带 `-webgl` 后缀），`--virtual-time-budget` 20000-30000；大 budget 会留下 400% CPU 僵尸进程，必要时 `pkill -f headless` |
 
 ### 5.3 几何/建模类
