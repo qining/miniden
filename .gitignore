@@ -18,3 +18,5 @@ work/ref/pg*.png
 work/ref/sidebar.png
 !work/ref/q1*.png
 !work/ref/q2*.png
+# 一次性补丁脚本，不入库
+work/_*.py
