@@ -540,27 +540,323 @@ for line in open('$J'):
 
 ## 8. 如何扩展
 
-### 8.1 加家具
+### 8.1 加家具（完整流程 —— 照着做，别跳步）
 
-1. **采集真实数据**（不要凭印象编尺寸）：开 workflow 抓官网商品页，拿宽/深/高、价格、**全部配色**
-2. **写目录条目**：同款不同色 → **每个配色一个独立条目**（用户明确要求要能挑选），共用一个 `model` 键
-   ```js
-   {id:'xxx-0', cat:'沙发 / 单椅', name:'名称 · 配色', w:,d:,h:, price:,
-    color:'#主色', color2:'#辅色', model:'xxx', kind:'sofa', wood:'pine', url:'...', note:'...'}
-   ```
-3. **逐件建模**：`MODELS['xxx'] = (C) => {...}`，见 §6.5。未注册的会回退到通用 `kind` 造型
-4. **2D 图例**：在 `furnShape` 里加对应 `kind` 的俯视符号
-5. **验证**：包围盒与官方尺寸对比（`work/t_models.html` 那套），再隔离渲染目检
+这一节是被返工逼出来的。**每一步都有一道验收关，过不去就别往下走**；
+最后那份「常见翻车清单」里每一条都真的发生过。
 
-分类目前有：沙发/单椅、餐桌椅/吧凳、床/床头柜、收纳/电视柜、书桌/办公椅、
-灯具/照明、地毯/爬行垫、茶几/边几。**不要把性质不同的东西合并成一类**（用户为此提过意见）。
+---
 
-**商品名照写瑞典语原拼写**（POÄNG / RÅSKOG / SÖDERHAMN），不要为了好搜就写成 ASCII。
-`buildCatalog()` 用 `foldText()` 把查询词和商品名两边都折成 ASCII 再比对，所以
-`poang` / `POÄNG` / `poäng` 都能搜到，而列表显示的是正确拼写。折叠规则：
-`normalize('NFD')` 去变音符（管 å ä ö é ü），加一张 `FOLD_EXTRA` 表处理不可分解的
-`ø æ ß œ đ ł ð þ`（目录里 `Ø` 其实是直径符号，顺带也能用 `o70` 搜到 `Ø70`）。
-新增别的语种商品时若出现新字母，往 `FOLD_EXTRA` 里补即可。
+#### 第 0 步：先把实物看清楚
+
+**绝对不要凭印象建模。** 拿到商品链接后第一件事是把官方图抓下来**用眼睛看**
+（Read 工具能直接渲染图片，看就是了）。
+
+```bash
+mkdir -p work/ref
+UA='Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0 Safari/537.36'
+curl -sL -A "$UA" --max-time 40 "<图片URL>?width=1200" -o /tmp/x.webp
+sips -s format png /tmp/x.webp --out work/ref/<名字>.png >/dev/null
+```
+
+商品页多是 JS 渲染的，`curl` 抓不到图片 URL，用 Chrome 渲染后再抓：
+
+```bash
+"$CHROME" --headless --disable-gpu --virtual-time-budget=20000 --dump-dom "<商品页>" > /tmp/pg.html
+grep -o '"hiRes":"https://[^"]*"' /tmp/pg.html | head          # Amazon
+grep -oE 'cdn\.shopify\.com/s/files/[^"]+\.(jpg|png|webp)' /tmp/pg.html | head   # Shopify
+```
+
+**要看的不只是主图**：找那张「零件分解图 / 尺寸标注图」，它会告诉你
+一共几块、每块什么形状、关键尺寸标在哪。Lunix 沙发的 14 块海绵、
+Avenlur 爬爬架的 8 个功能件，都是从这类图里读出来的。
+
+参考图存进 `work/ref/`（已入库），后面复核和以后改模型都要拿它对照。
+
+> 验收关：你能用一句话说清「这东西由哪几个部件组成、各自什么形状」。说不清就再找图。
+
+---
+
+#### 第 1 步：抓真实数据（尺寸 / 价格 / 全部配色）
+
+**不要凭印象编尺寸。** 各站点的实测手法：
+
+| 站点 | 手法 |
+|---|---|
+| IKEA 美/加 | Chrome 渲染后从埋点里取：`grep -o '"product_prices":\["[0-9.]*"\]'`。**`curl` 会被反爬把价格字段掐掉**，标题却是对的，很容易误判 |
+| IKEA 加拿大 slug 不存在 | 走站内搜索 API：`https://sik.search.blue.cdtapps.com/ca/en/search-result-page?q=<词>&size=12`（返回 JSON，含 `salesPrice.numeral` 和 `pipUrl`） |
+| Amazon | `id="productTitle"`、`"priceAmount":`、`"public_title"`（配色/规格变体）、`prodDetails` 表里的 `Item Dimensions D x W x H` |
+| Shopify 独立站 | `"public_title"` 取变体，`dimensionValuesDisplayData` 取配色全集 |
+| 页面根本不写尺寸 | 用 WebSearch 查零售商列表页（Best Buy / Amazon 常有），**查到什么写什么，查不到就说查不到，不要编** |
+
+尺寸一律记 **cm**（`w`/`d`/`h`），坐具另记 `seatH`（座高）。
+
+> 验收关：宽/深/高、价格、**全部配色**三样齐了。缺哪样就明确写在交付说明里。
+
+---
+
+#### 第 2 步：写目录条目
+
+```js
+{id:'xxx-0', cat:'沙发 / 单椅', name:'名称 · 配色', w:139.7, d:69.9, h:53.8,
+ price:275.57, priceCA:274.97, color:'#主色', color2:'#辅色', seatH:23.9,
+ model:'xxx', kind:'playCouch', wood:'pine', url:'...', note:'...'}
+```
+
+| 字段 | 说明 |
+|---|---|
+| `w/d/h` | cm。**必须是「整件东西的实际占地」**，包括散在旁边的配件（见第 3 步） |
+| `price` / `priceCA` | 美国 / 加拿大**当地实际标价**，不是汇率折算（见 §5.4.1） |
+| `caVar` | 有加元价，但那是同型号的另一个面料/配置，界面上会提示 |
+| `caNA` | 加拿大不售，加元视图显示「加拿大无售」 |
+| `color` / `color2` | 主色 / 辅色，模型里用 `C.col` / `C.col2` |
+| `model` | 指向 `MODELS[...]`。**同款不同色共用一个 `model`**，靠 `color` 区分 |
+| `kind` | 决定 2D 图例、通用建模回退、材质选择、碰撞高度区间 |
+| `wood` | `pine`/`beech`/`birch`/`oak`/`walnut`，选木纹贴图 |
+| `seatH` | 坐具座高（cm） |
+| `dimmable` | 可调光的落地灯：**要花钱买**但需要色温/亮度控件（见 §5.4.2） |
+| `note` | 材质、功能、特殊说明。尺寸口径特殊时**一定要在这里写清楚** |
+
+**同款不同色 = 每个配色一个独立条目**（用户明确要求要能挑选）。
+
+现有分类（截至 v3.4）：沙发 / 单椅、餐桌椅 / 吧凳、床 / 床头柜、收纳 / 电视柜、
+书桌 / 办公椅、灯具 / 照明、地毯 / 爬行垫、茶几 / 边几、儿童 / 爬爬架。
+**不要把性质不同的东西合并成一类**（用户为此提过意见：地毯和茶几和灯具本来就不是一类）。
+
+现有 `kind`：`armchair bed bedMetal bookcase cart ceilingLight chair climber coffeeTable
+crib desk deskSitStand downlight dresser lamp nightstand officeChair pendant playCouch
+playMat rug shelf shoeCab sideTable sofa sofaL stool swivelChair tableDrawer tableFold
+tableRect tableRound tvBench vanityLight`。加新 `kind` 要同时管三处：
+`furnMats()` 的材质分类、`furnShape()` 的 2D 图例、`vSpan()` 的高度区间。
+
+**商品名照写原文拼写**（POÄNG / RÅSKOG / SÖDERHAMN / IDÅSEN），不要为了好搜写成 ASCII。
+搜索层用 `foldText()` 把查询词和商品名两边都折成 ASCII 再比对，
+`poang` / `POÄNG` / `poäng` 都能搜到。出现新语种字母就往 `FOLD_EXTRA` 里补一行。
+
+---
+
+#### 第 3 步：建模
+
+`MODELS['xxx'] = (C) => {...}`。没注册的会回退到 `kind` 的通用造型（能用，但细节差一档）。
+
+`C` 提供的工具（`modelCtx`）：
+
+| 方法 | 用途 |
+|---|---|
+| `C.w/d/h` | 已换算成**英尺**的尺寸（`C.cm(x)` 把 cm 转英尺） |
+| `C.col` / `C.col2` / `C.seatH` | 配色与座高 |
+| `C.it` / `C.cct` / `C.lum` | 当前实例（灯具模型读色温/亮度用） |
+| `C.M(color, opts)` | 材质工厂，见第 4 步 |
+| `C.box/rb/cyl/tube/sph/torus` | 方盒 / 圆角盒 / 圆柱 / 胶囊管 / 球 / 环 |
+| `C.ext(pts, depth, mat, x,y,z, plane, bevel)` | 任意多边形挤出，`plane` 取 `'xy'`(默认,沿+z) / `'xz'`(平放,**沿 -y**) / `'zy'` |
+| `C.lathe` / `C.cushion` / `C.legT` / `C.bar` / `C.knob` / `C.caster` | 旋转体 / 软包坐垫 / 锥形腿 / 长条拉手 / 球形拉手 / 脚轮 |
+| `C.rep(n, fn)` | 阵列 |
+| `C.m.{wood,fab,chrome,steel,black,white,plastic,leather,glass}` | 常用材质库 |
+
+细节要求：**「几个方块拼一下」不算建模**。用户明确要求过「每个家具都需要单独建模，
+从商品图片对着建」。参考量级：一件家具 2000–15000 三角形，
+桌椅这类简单件也该有倒角、腿部收分、把手、缝线一类的细节。
+
+**两条硬约束（详见 §5.4.7，这里只列结论）**：
+
+1. **占地必须诚实**：包围盒对 `spec.w/d/h` 的填充率要落在 **92%~102%**。
+   既不能超出（2D 图例和碰撞会错），也不能虚报（声明个大盒子糊弄断言）。
+   本来就带散件的（Lunix 14 块海绵摆成沙发只用 8 块）——
+   **把散件也建出来散放在旁边，然后把它们算进占地**，不是不建。
+2. **所有部件贴地**：`bbox.min.y > -0.02`。
+
+配套两条：
+- 散件位置**不能从 `spec.w/d` 反推**（改 spec 又会改包围盒，来回收敛不了），
+  用相对主体的固定偏移摆
+- 模型末尾做一次水平重心归零：
+
+```js
+C.g.updateMatrixWorld(true);
+const bb = new C.THREE.Box3().setFromObject(C.g);
+const off = new C.THREE.Vector3(); bb.getCenter(off);
+for(const ch of C.g.children){ ch.position.x -= off.x; ch.position.z -= off.z; }
+```
+
+**最容易翻车的是复合欧拉角**：给一个 mesh 同时设 `rotation.x` 和 `rotation.y/z`，
+three 按 XYZ 序复合（`R = Rx·Ry·Rz`），块会被转翻、沉到地板以下。正确姿势：
+- **旋转和落地分开**：mesh 只负责「形状 + 抬到地面」，外面套一个 `Group` 只负责绕竖轴转向
+- **能用形状表达就别用旋转**：半圆柱直接拿半圆 `Shape` 挤出（直边落在 y=0），
+  比拿 `CylinderGeometry` 转两下可靠得多
+
+---
+
+#### 第 4 步：材质与贴图（**不能跳过**）
+
+有三道保障，但**别指望兜底**——兜底只保证「不是纯色平板」，好看要自己给：
+
+1. `furnMats(spec, col)`：通用建模按 `kind` 统一发材质
+2. `C.M(color, opts)`：没显式指定贴图时按金属度自动兜底
+3. `ensureTextured(root)`：建完模再扫一遍，补掉分支里就地 `new` 的漏网材质
+
+`C.M(color, opts)` 的 `opts`：
+
+| opt | 效果 |
+|---|---|
+| `wood:'pine'` | 木纹贴图 + 法线 + 清漆 |
+| `fabric:true` | 织物贴图 |
+| `leather:true` | 素皮/皮革毛孔 |
+| `plastic:true` | 注塑件橘皮 |
+| `rough` / `metal` | 粗糙度 / 金属度 |
+| `clear` / `clearRough` | 清漆层 |
+| `sheen` / `sheenColor` | 丝绒/绒面高光 |
+| `envI` | **环境反射强度** |
+| `flat:true` | 显式退出贴图兜底 |
+
+现成贴图：`woodSpecies(name)`（pine/beech/birch/oak/walnut）、`fabricTexture`、
+`laminateTexture`（三聚氰胺板）、`carpetTexture`（地毯绒面）、`powderCoatTexture`（金属烤漆）、
+`plasticTexture`、`leatherTexture`、`brushedSteelTexture`、`grayOakTexture`、`quartzTexture`、
+`woodTexture`（地板）。
+
+**该加新贴图就加，不要凑合。** 现有的凑不出实物质感（藤编、大理石、亚麻粗织、
+磨砂玻璃、拉丝黄铜……）就新写一个：
+
+```js
+let _xxxTex = null;
+function xxxTexture(){
+  if(_xxxTex) return _xxxTex;
+  srand(1016);                          // 固定种子！否则渲染不确定，回归测试失效（见 §11）
+                                        // 已占用 1001~1015、2000+；挑个没用过的
+  const N = 512, c = document.createElement('canvas'); c.width = c.height = N;
+  const g = c.getContext('2d');
+  g.fillStyle = '#fdfcfa'; g.fillRect(0, 0, N, N);   // 基调接近白：靠 material.color 上色
+  /* …用 rnd01() 画纹理… */
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.repeat.set(2, 2);
+  t.encoding = THREE.sRGBEncoding;       // 必须！否则被当线性图，渲染发白
+  t.anisotropy = 8;
+  _xxxTex = t; return t;
+}
+```
+
+四条铁律：
+1. **必须 `srand(种子)` 起头**，用 `rnd01()` 而不是 `Math.random()`——渲染确定性是回归测试的前提
+2. **必须设 `t.encoding = THREE.sRGBEncoding`**，否则在 `outputEncoding=sRGB` 下渲染发白
+3. **基调接近白**，颜色靠 `material.color` 相乘上色，这样一张贴图能服务所有配色
+4. 法线贴图用 `normalFromTexture(tex, strength)`（有缓存，直接调）
+
+**`envMapIntensity` 默认是 1，对彩色材质是灾难**。clearcoat + 高 env 会给彩色塑料罩一层白，
+饱和的红黄蓝绿直接变粉彩色（QUADRO 就栽过）。参考值：塑料 0.22–0.35、织物 0.12–0.20、
+木头 0.6、金属 0.8–0.95。
+
+**贴图密度要随家具尺寸变**（40cm 床头柜和 200cm 沙发纹理不能一样大），
+用 `texScaled(base, ftSize, per)`——它把缩放吸附到固定几档再缓存，
+**绝对不能按件 clone 纹理**，每 clone 一次就多一次 GPU 上传。
+
+同理，`sheen` 给大了整块会被冲成白的（Lunix 第一版 `.55` 就白了，`.22` 才对）。
+
+---
+
+#### 第 5 步：2D 图例
+
+在 `furnShape()` 里给新 `kind` 加俯视符号。没加会落到通用圆角矩形——能用但读不出是什么。
+参考 `climber` 那条：外框 + 横档示意 + 对角线。
+
+---
+
+#### 第 6 步：验证（四道关，全过才算完）
+
+**关 1 —— 语法 + 全目录体检**（最省事，先跑这个）
+
+```bash
+python3 -c "
+import re
+h=open('planner.html').read(); m=re.search(r'<script>\n(.*?)</script>', h, re.S)
+open('/tmp/p.js','w').write(m.group(1))" && node --check /tmp/p.js
+```
+
+然后跑 `work/t_3d.html`，看这几条：
+
+| 断言 | 守的是什么 |
+|---|---|
+| `catalog-all-build` | 每个目录条目都能建出模型，不抛错 |
+| `catalog-all-textured` | 每件家具的材质都有 `map` |
+| `catalog-all-normalmapped` | 都有 `normalMap` |
+| `catalog-tri-avg` / `catalog-tri-max` | 三角形数没失控 |
+| `thumb-renders` | 缩略图渲得出来、取景贴合 |
+
+**关 2 —— 包围盒 / 填充率**（新家具一定要单独量）
+
+```js
+const g = furn3D({uid:-1, ref:sp.id, x:0, y:0, rot:0}, sp);
+g.updateMatrixWorld(true);
+const b = new THREE.Box3().setFromObject(g);
+const sz = new THREE.Vector3(), ct = new THREE.Vector3();
+b.getSize(sz); b.getCenter(ct);
+// 填充率 sz.x/cm2ft(sp.w) 等三项要在 0.92~1.02
+// 重心 ct.x, ct.z 要 ≈ 0；b.min.y 要 > -0.02
+```
+
+出问题时**逐 child 打 y 范围并按 max 排序**，一眼能看出是哪块沉下去了。
+
+**关 3 —— 隔离渲染目检**（这一关最容易被跳过，但最有用）
+
+```js
+three.staticGroup.visible = false;                       // 别被墙挡住
+three.scene.background = new THREE.Color(0x1b1f26); three.scene.fog = null;
+const g0 = three.furnMap.values().next().value.g; g0.updateMatrixWorld(true);
+const bb = new THREE.Box3().setFromObject(g0), sz = new THREE.Vector3(), ct = new THREE.Vector3();
+bb.getSize(sz); bb.getCenter(ct);
+const dir = new THREE.Vector3(0.5, 0.42, 1).normalize();
+let dist = sz.length() * 0.5 / Math.tan(34 * Math.PI / 360) * 1.05;
+const cs = []; for(let i = 0; i < 8; i++) cs.push(new THREE.Vector3(
+  (i&1)?bb.max.x:bb.min.x, (i&2)?bb.max.y:bb.min.y, (i&4)?bb.max.z:bb.min.z));
+three.cam.fov = 34;
+for(let k = 0; k < 4; k++){                              // 按包围盒八角迭代贴合
+  three.cam.position.copy(ct).addScaledVector(dir, dist); three.cam.lookAt(ct);
+  three.cam.updateMatrixWorld(true);
+  three.cam.matrixWorldInverse.copy(three.cam.matrixWorld).invert();
+  three.cam.updateProjectionMatrix();
+  let mx = 0; for(const c of cs){ const q = c.clone().project(three.cam);
+    mx = Math.max(mx, Math.abs(q.x), Math.abs(q.y)); }
+  dist *= mx / 0.86;
+}
+three.cam.position.copy(ct).addScaledVector(dir, dist); three.cam.lookAt(ct);
+three.controls.target.copy(ct); three.controls.enabled = true; three.controls.update();
+requestRender();
+```
+
+**两个必踩的坑**：
+- 手摆完相机**必须同步 `controls.target` 再 `controls.update()`**。
+  `OrbitControls.update()` 每帧会按它自己的内部状态把相机拉回去，画布会是空的
+  （`controls.enabled=false` 也拦不住）
+- 测试里给场景加光要克制：`physicallyCorrectLights=false` 时 three 会把光照乘 π 补偿，
+  按物理直觉给的强度会高出三倍多，浅色件直接推成纯白，配色全看不出差别
+
+**关 4 —— 和实拍图逐项比对**（对着 `work/ref/` 里的图看）
+
+- [ ] 部件数量对不对？（14 块就得是 14 块）
+- [ ] 各部件的**形状**对不对？（方 / 圆 / 楔形 / 带孔）
+- [ ] 各部件的**相对位置和朝向**对不对？
+- [ ] 比例对不对？（拿图上标注的尺寸比一比，别只看整体高度）
+- [ ] 颜色对不对？（渲染出来发白就是 sheen / envMapIntensity 给大了）
+- [ ] 材质像不像？（木纹 / 织物 / 塑料 / 金属，纹理密度合不合理）
+- [ ] 特征细节在不在？（把手、缝线、螺丝、logo、脚垫）
+
+**最后照 §2 走完整回归**：重新生成三个测试台 → 全跑 → `#calib` md5 核对 → 目检 → 提交。
+
+---
+
+#### 常见翻车清单（每条都真的发生过）
+
+| 症状 | 原因 |
+|---|---|
+| 家具在 2D 图上比 3D 里小一圈 | 建模超出了 `spec.w/d`，或者散件没算进占地 |
+| 家具半截埋进地板 | 复合欧拉角把块转翻了；`C.ext(...,'xz')` 忘了抬一个厚度（挤出方向是 -y） |
+| 家具偏在格子一角 | 模型末尾没做水平重心归零 |
+| 近看像塑料板 / 一眼假 | 材质没贴图。跑 `catalog-all-textured` 一查便知 |
+| 彩色件全变粉彩色 | `envMapIntensity` 默认 1 + clearcoat，白光罩糊了颜色 |
+| 贴图发白 | `CanvasTexture` 忘了 `encoding = sRGBEncoding` |
+| 两个配色的缩略图长一样 | 光照过曝（`physicallyCorrectLights=false` 下 three 会乘 π） |
+| 改了尺寸后包围盒也跟着变，怎么调都对不上 | 散件位置从 `spec.w/d` 反推了，形成循环 |
+| 缩略图只看得见一个角 | 取景第二遍缩得过头；`furnThumb` 有剪影贴合保护，别绕过它 |
+| 抓到的价格离谱（King 床架 $25） | 命中了系列落地页不是商品页。抓完做 CA/US 比值异常值体检 |
+| 渲染两次结果不一致 | 新贴图用了 `Math.random()`，没走 `srand()` + `rnd01()` |
 
 ### 8.2 加可编辑性
 
