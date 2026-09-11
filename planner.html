@@ -672,8 +672,8 @@ const CATALOG = [
  {id:'bed-metal-q', cat:'床 / 床头柜', name:'铁架床 Queen + 床垫', w:152,d:203,h:60, price:420, color:'#26282c', kind:'bedMetal', note:'Queen 60″×80″；铁架与床垫同宽同长（无外框外扩）'},
  {id:'bed-metal-f', cat:'床 / 床头柜', name:'铁架床 Full + 床垫', w:137,d:191,h:60, price:380, color:'#26282c', kind:'bedMetal', note:'Full 54″×75″；铁架与床垫同宽同长'},
  // —— 沙发/单椅 ——
- {id:'kivik3', cat:'沙发 / 单椅', name:'KIVIK 三人沙发', w:228,d:95,h:83, price:899, priceCA:849, caVar:'加拿大无 Tresund 深灰，价为同系列 Tresund 浅米色', color:'#8d8579', kind:'sofa', url:'https://www.ikea.com/us/en/p/kivik-sofa-tresund-anthracite-s39482837/', note:'可拆洗，多色 $849-999'},
- {id:'kivik2', cat:'沙发 / 单椅', name:'KIVIK 双人沙发', w:190,d:95,h:83, price:849, priceCA:749, color:'#8d8579', kind:'sofa', url:'https://www.ikea.com/us/en/p/kivik-loveseat-tresund-light-beige-s29482828/'},
+ {id:'kivik3', cat:'沙发 / 单椅', name:'KIVIK 三人沙发', w:228,d:95,h:83, price:899, priceCA:849, caVar:'加拿大无 Tresund 深灰，价为同系列 Tresund 浅米色', color:'#8d8579', kind:'sofa', model:'kivik', url:'https://www.ikea.com/us/en/p/kivik-sofa-tresund-anthracite-s39482837/', note:'可拆洗，多色 $849-999'},
+ {id:'kivik2', cat:'沙发 / 单椅', name:'KIVIK 双人沙发', w:190,d:95,h:83, price:849, priceCA:749, color:'#8d8579', kind:'sofa', model:'kivik', url:'https://www.ikea.com/us/en/p/kivik-loveseat-tresund-light-beige-s29482828/'},
  {id:'soderhamn3', cat:'沙发 / 单椅', name:'SÖDERHAMN 三人沙发', w:198,d:99,h:83, price:819, priceCA:850, caVar:'加拿大无 Tonerud 面料，价为同尺寸 Fridtuna 浅米色', color:'#7d8577', kind:'sofa', url:'https://www.ikea.com/us/en/p/soederhamn-sofa-tonerud-gray-s19452105/', note:'低坐深座'},
  {id:'friheten', cat:'沙发 / 单椅', name:'FRIHETEN 转角沙发床', w:230,d:151,h:86, price:999, priceCA:1099, color:'#5a5f6b', kind:'sofaL', url:'https://www.ikea.com/us/en/p/friheten-sleeper-sectional-3-seat-w-storage-skiftebo-dark-gray-s69216757/', note:'带储物，床面140×204'},
  {id:'morabo3', cat:'沙发 / 单椅', name:'MORABO 三人沙发', w:206,d:92,h:81, price:799, priceCA:799, color:'#6e7276', kind:'sofa', url:'https://www.ikea.com/us/en/p/morabo-sofa-gunnared-dark-gray-metal-s09318320/', note:'LANDSKRONA继任款'},
@@ -6914,6 +6914,89 @@ MODELS['lisabo_ch'] = (C) => {
 
   C.g.updateMatrixWorld(true);
   const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3(); bb.getCenter(off);
+  for(const ch of C.g.children){ ch.position.x-=off.x; ch.position.z-=off.z; }
+};
+
+/* KIVIK（Tresund 面料）：实拍是细密不规则的杂色织纹（羊毛混纺感），
+   通用网格 fabricTexture 替代不了，专做一张。 */
+let _kivikWeaveTex = null;
+function kivikWeaveTexture(){
+  if(_kivikWeaveTex) return _kivikWeaveTex;
+  srand(1007);
+  const N=512, c=document.createElement('canvas'); c.width=c.height=N;
+  const g=c.getContext('2d');
+  g.fillStyle='#f7f6f3'; g.fillRect(0,0,N,N);
+  for(let y=0;y<N;y+=2){
+    g.fillStyle=`rgba(72,66,58,${(0.05+rnd01()*0.11).toFixed(3)})`; g.fillRect(0,y,N,1);
+    g.fillStyle=`rgba(255,255,255,${(0.03+rnd01()*0.05).toFixed(3)})`; g.fillRect(0,y+1,N,1);
+  }
+  for(let x=0;x<N;x+=2){ g.fillStyle=`rgba(58,54,48,${(0.04+rnd01()*0.09).toFixed(3)})`; g.fillRect(x,0,1,N); }
+  for(let i=0;i<9000;i++){
+    g.fillStyle = rnd01()<0.5 ? `rgba(255,255,255,${(0.04+rnd01()*0.10).toFixed(3)})`
+                               : `rgba(40,36,32,${(0.03+rnd01()*0.09).toFixed(3)})`;
+    g.fillRect(rnd01()*N, rnd01()*N, 1+rnd01(), 1);
+  }
+  const t=new THREE.CanvasTexture(c); t.wrapS=t.wrapT=THREE.RepeatWrapping;
+  t.repeat.set(14,14); t.encoding=THREE.sRGBEncoding; t.anisotropy=8;
+  _kivikWeaveTex=t; return t;
+}
+
+/* KIVIK 三人(228cm)/双人(190cm) 共用此模型：
+   官方 228cm 尺寸图明确画 2+2 超大坐垫（KIVIK 特深座的标志），双人款同为 2+2 只是更窄，
+   坐垫数不随宽度变；全部尺寸由 C.w/C.d/C.h 导出，不写死单条目数值。 */
+MODELS['kivik'] = (C) => {
+  const cm=C.cm, T=C.THREE;
+  const W=C.w, D=C.d, H=C.h;
+  // 织物：密集杂色织纹；背框略深一档，与坐垫区分
+  const fab  = C.M(C.col, {fabric:true, rough:.94, sheen:.20, envI:.15});
+  fab.map = kivikWeaveTexture();
+  const fabD = C.M(new T.Color(C.col).multiplyScalar(.9), {fabric:true, rough:.95, sheen:.14, envI:.12});
+  fabD.map = kivikWeaveTexture();
+  const footM = C.M(0x151412, {plastic:true, envI:.22});
+
+  const ARM=cm(24);           // 扶手宽（尺寸图 24cm）
+  const innerW = W - 2*ARM;   // 两扶手之间的内开口
+  const BASE_TOP=cm(30);      // 箱体底座顶面；坐垫顶面落在 45（尺寸图座高）
+
+  // 四条黑色小脚：分解图见四角黑色垫块，箱体坐在上面
+  for(const sx of [-1,1]) for(const sz of [-1,1])
+    C.box(cm(9), cm(2), cm(9), footM, sx*(W/2-cm(10.5)), 0, sz*(D/2-cm(10.5)));
+
+  // 箱体底座：满宽落地
+  C.rb(W, BASE_TOP-cm(2), D, cm(3), fab, 0, cm(2));
+
+  // 坐垫 ×2：厚、前缘圆角、顶面微鼓；C.cushion 顶面恰好落在 45cm 座高
+  const seatD=cm(63), cw=(innerW-cm(1.5))/2;
+  for(const sx of [-1,1])
+    C.cushion(cw, cm(13.2), seatD, fab, sx*(cw/2+cm(0.75)), BASE_TOP, D/2-seatD/2-cm(0.5));
+
+  // 背框：两扶手之间，顶面到 H，靠背垫后露出约 5cm 一条
+  C.rb(innerW, H-BASE_TOP, cm(17), cm(2.5), fabD, 0, BASE_TOP, -(D/2-cm(8.5)));
+
+  // 靠背垫 ×2：深 60cm（尺寸图），顶向后仰 ~4°。
+  // mesh 只管形状+抬升，后仰交外层 Group 做（不给 mesh 叠 rotation.x+rotation.y）。
+  const bw=(innerW-cm(2))/2, bcH=cm(33.5), bcTh=cm(13),
+        bcZ=-(D/2-cm(14))+cm(30);   // 背面在底座背面内 14cm
+  for(const sx of [-1,1]){
+    const bc=C.rb(bw, bcH, bcTh, cm(4.5), fab, 0, 0, 0);
+    const holder=new T.Group();
+    C.g.remove(bc); holder.add(bc);
+    holder.position.set(sx*(bw/2+cm(1)), BASE_TOP+cm(14.5), bcZ);
+    holder.rotation.x=-0.07;
+    C.g.add(holder);
+  }
+
+  // 扶手 ×2：低箱体 + 独立圆角顶板（分解图里顶 pad 坐在框上），
+  // 外侧与底座齐平，顶板前沿微突 ~0.6cm
+  for(const sx of [-1,1]){
+    C.rb(ARM, cm(54), D, cm(2.5), fab, sx*(W/2-ARM/2), cm(2));
+    C.rb(ARM+cm(1.2), cm(6.5), D+cm(0.8), cm(3), fab, sx*(W/2-(ARM+cm(1.2))/2), cm(56), cm(0.2));
+  }
+
+  // 水平重心归零（2D 图例与碰撞都假定原点 = 占地中心）
+  C.g.updateMatrixWorld(true);
+  const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3();
+  bb.getCenter(off);
   for(const ch of C.g.children){ ch.position.x-=off.x; ch.position.z-=off.z; }
 };
 
