@@ -23,6 +23,8 @@ work/_*.py
 
 # Claude Code agent 的临时 worktree
 .claude/worktrees/
+# pi 的运行产物（.agents/skills 那个软链要入库，别一起挡掉）
+.pi/
 # check-item.py 生成的体检图（可随时重跑）
 work/ref/check_*.png
 work/_check_item_*.html

@@ -121,6 +121,9 @@ function xxxTexture(){
 
 ## 验证（四关全过才算完）
 
+以下命令**都从仓库根执行**。`check-item.py` 就在本 skill 目录里，
+下面写的是仓库根视角的路径（pi 从 `.agents/skills/` 软链加载时指向同一个文件）。
+
 ```bash
 # 关 1：语法
 python3 -c "

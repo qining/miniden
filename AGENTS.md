@@ -20,12 +20,23 @@
 
 | 路径 | 是什么 |
 |---|---|
-| `.claude/skills/add-catalog-item/SKILL.md` | **加家具/灯具/地毯/游具入库的作业指导书**。Claude Code 会自动加载成 `/add-catalog-item`；别的 agent 直接当文档读。详细版是本文 §8.1，冲突以 §8.1 为准 |
+| `.claude/skills/add-catalog-item/SKILL.md` | **加家具/灯具/地毯/游具入库的作业指导书**（唯一一份，下面两个 agent 都读它）。详细版是本文 §8.1，冲突以 §8.1 为准 |
 | `.claude/skills/add-catalog-item/check-item.py` | 单件体检 + 全量回归：`python3 .claude/skills/add-catalog-item/check-item.py <条目id>` / `--regress` |
-| `.claude/settings.json` | 项目级设置。**subagent 并发上限锁成 1**（`CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS`） |
+| `.agents/skills` → `../.claude/skills` | **给 pi coding agent 用的软链**（git 存 mode 120000）。pi 只扫 `.agents/skills`，不认 `.claude/`；Claude Code 反过来不认 `.agents/`。软链让两边共用同一份文件，改一处两边同时生效 |
+| `.claude/settings.json` | 项目级设置。Claude Code 的 **subagent 并发上限锁成 1**（`CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS`） |
 | `work/t_walledit.html` `work/t_3d.html` `work/t_pt.html` | 三个自动化测试台（§3） |
 | `work/headful_test.py` | 真显卡光追验证（§5.5） |
 | `work/layouts/*.json` | 4 套压力测试布局 |
+
+**两个 agent 的差异**（实测自 pi 0.85.1 / Claude Code 2.1.233 的安装源码）：
+
+| | Claude Code | pi |
+|---|---|---|
+| 读哪个指令文件 | `CLAUDE.md` | `AGENTS.md`（候选序 `AGENTS.override.md → AGENTS.md → AGENTS.MD → CLAUDE.md`，同目录只取**第一个**命中）|
+| skill 目录 | `.claude/skills/` | `.agents/skills/`（从 cwd 逐级上溯**到 git root 为止**）或 `.pi/skills/`（只认 cwd 那一层）|
+| 首次加载 | 直接可用 | **要先信任项目**：交互模式跑一次 `/trust` 然后重启；非交互（`-p` / `--mode json` / `--mode rpc`）不弹框，必须显式加 `--approve`，否则**静默不加载、不报错** |
+
+所以给 pi 看的约束必须写进 `AGENTS.md`（本文），写进 `CLAUDE.md` 它看不到。
 
 ---
 
@@ -412,11 +423,25 @@ three 按 XYZ 序复合（`R = Rx·Ry·Rz`），块会被转翻。两个实测�
 
 ## 5.4.8 subagent 重做建模（v3.6 实践）
 
-> **现在 subagent 并发上限是 1**（`.claude/settings.json` 里锁的）。
+> **现在 subagent 并发上限是 1（硬约束，两个 agent 都适用）。**
 > 下面记的是当时 3 个并行跑出来的经验，结论依旧成立，只是现在会串行执行：
-> 派活时**一次派一个**，别一口气开三个——超了会被直接拒掉，不是排队。
+> 派活时**一次派一个**，别一口气开三个。
 > 串行之后 worktree 隔离不再是防并发覆盖的刚需，但仍然建议保留：
 > 隔离出来的分支便于单件回滚，也保证主线随时可跑回归。
+>
+> | agent | 闸门在哪 | 跟随 git？ |
+> |---|---|---|
+> | Claude Code | `.claude/settings.json` → `CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS=1`。超限是**直接拒绝**，不是排队 | ✅ 在仓库里 |
+> | pi-subagents | `~/.pi/agent/extensions/subagent/config.json` → `globalConcurrencyLimit: 1` + `maxActiveAsyncRunsPerSession: 1`（默认 20）。改完**要重启 pi**，扩展激活时只 `loadConfig()` 一次 | ❌ **在用户 home，不在仓库内**，clone 到新机器要手工建 |
+>
+> pi 这边**没有**项目级并发配置：`getConfigPath()`（`pi-subagents/src/extension/config.ts:186`）
+> 只拼 `~/.pi/agent/extensions/subagent/config.json`，无 projectRoot 分支、无合并、无回退；
+> `.pi/settings.json` 的 `subagents.*` 白名单里一个并发键都没有；也没有对应环境变量。
+> 文档里的 `parallel.{maxTasks,concurrency}` 在 0.67.0 是**死配置**（类型还在，无读取点），别用。
+>
+> 仓库内能做的第二道防线（跟随 git，但属"劝导"不是闸门）：
+> 用 pi 的 workflowScript 时在**顶层**显式传 `globalConcurrencyLimit: 1`
+> （只允许出现在顶层调用，且不会转发给子调用）。
 
 9 件座椅（4 餐椅 / 3 吧凳 / 2 办公椅）原来全在吃 `kind` 通用回退——实测只有
 **120 面 / 2 个网格**，就是两个盒子摞起来。用 3 个 subagent 各带一个 git worktree
