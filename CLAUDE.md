@@ -16,4 +16,10 @@
 4. 性能相关改动看 AGENTS.md §11：几何合并/按需渲染/增量同步已经做了，
    测量时注意 `--virtual-time-budget` 会冻结页面内计时器（必须用进程墙钟 + 完成标记）。
 
+**加家具/灯具/地毯/游具入库，用仓库自带的 skill**：`.claude/skills/add-catalog-item/`
+（打 `/add-catalog-item`；非 Claude Code 的 agent 直接读里面的 `SKILL.md`）。
+详细版是 AGENTS.md §8.1。
+
+subagent 并发上限锁成 1（`.claude/settings.json`）——**派活一次派一个**，超了会被拒。
+
 回复用中文；提到文件/页面给完整 `file://` URL。

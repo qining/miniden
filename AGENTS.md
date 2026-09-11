@@ -16,6 +16,17 @@
 
 依赖只有 `lib/three.min.js` 和 `lib/OrbitControls.js`（已本地化）。没有构建步骤，直接用浏览器打开。
 
+### 0.1 仓库自带的 agent 资产（都随 git 走）
+
+| 路径 | 是什么 |
+|---|---|
+| `.claude/skills/add-catalog-item/SKILL.md` | **加家具/灯具/地毯/游具入库的作业指导书**。Claude Code 会自动加载成 `/add-catalog-item`；别的 agent 直接当文档读。详细版是本文 §8.1，冲突以 §8.1 为准 |
+| `.claude/skills/add-catalog-item/check-item.py` | 单件体检 + 全量回归：`python3 .claude/skills/add-catalog-item/check-item.py <条目id>` / `--regress` |
+| `.claude/settings.json` | 项目级设置。**subagent 并发上限锁成 1**（`CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS`） |
+| `work/t_walledit.html` `work/t_3d.html` `work/t_pt.html` | 三个自动化测试台（§3） |
+| `work/headful_test.py` | 真显卡光追验证（§5.5） |
+| `work/layouts/*.json` | 4 套压力测试布局 |
+
 ---
 
 ## 1. 铁律（违反会造成不可逆损失）
@@ -399,7 +410,13 @@ three 按 XYZ 序复合（`R = Rx·Ry·Rz`），块会被转翻。两个实测�
 
 排查手法：逐 child 打 `Box3` 的 y 范围并按 max 排序，一眼能看出是谁
 
-## 5.4.8 并行 subagent 重做建模（v3.6 实践）
+## 5.4.8 subagent 重做建模（v3.6 实践）
+
+> **现在 subagent 并发上限是 1**（`.claude/settings.json` 里锁的）。
+> 下面记的是当时 3 个并行跑出来的经验，结论依旧成立，只是现在会串行执行：
+> 派活时**一次派一个**，别一口气开三个——超了会被直接拒掉，不是排队。
+> 串行之后 worktree 隔离不再是防并发覆盖的刚需，但仍然建议保留：
+> 隔离出来的分支便于单件回滚，也保证主线随时可跑回归。
 
 9 件座椅（4 餐椅 / 3 吧凳 / 2 办公椅）原来全在吃 `kind` 通用回退——实测只有
 **120 面 / 2 个网格**，就是两个盒子摞起来。用 3 个 subagent 各带一个 git worktree
@@ -643,6 +660,11 @@ for line in open('$J'):
 ## 8. 如何扩展
 
 ### 8.1 加家具（完整流程 —— 照着做，别跳步）
+
+> **先看有没有现成的 skill**：`.claude/skills/add-catalog-item/`（随 repo 版本控制）。
+> Claude Code 里打 `/add-catalog-item`、或者说「加个 XX 进去」会自动加载；
+> 别的 agent 把 `SKILL.md` 当作业指导书读就行。
+> 那是精简可执行版，**本节是详细版，两边冲突以本节为准**。
 
 这一节是被返工逼出来的。**每一步都有一道验收关，过不去就别往下走**；
 最后那份「常见翻车清单」里每一条都真的发生过。
