@@ -6941,57 +6941,68 @@ function kivikWeaveTexture(){
   _kivikWeaveTex=t; return t;
 }
 
-/* KIVIK 三人(228cm)/双人(190cm) 共用此模型：
-   官方 228cm 尺寸图明确画 2+2 超大坐垫（KIVIK 特深座的标志），双人款同为 2+2 只是更窄，
-   坐垫数不随宽度变；全部尺寸由 C.w/C.d/C.h 导出，不写死单条目数值。 */
+/* KIVIK 三人(228cm)/双人(190cm) 共用此模型。
+   v2（对照实拍像素比例重做）：照片无细节标注的尺寸用已知尺寸做锚点按比例反推——
+   锚点：整宽 228/190、整深 95、整高 83、扶手宽 24（尺寸图）、座高 45（尺寸图）。
+   比例反推（工作室正面图 48×32 亮度网格 + 垂直剖面）：
+   · 坐垫顶 45 / 整高 83 ≈ 0.54  ✓ 与照片一致
+   · 扶手顶 ≈ 62（整高的 0.75）；扶手是**一体箱体**，无两段式接缝（照片正面看扶手是一块整板）
+   · 底座箱顶 ≈ 14（45 的 0.31，照片坐垫前沿与箱体分缝位置）→ 坐垫厚 ≈ 31cm，
+     KIVIK 的座就是一个巨厚整块软垫坐在矮箱体上，不是薄垫
+   · 靠背垫是**整件最高的元素**：顶面 = 整高 83（照片顶部轮廓就是垫顶），底落到座面附近，
+     厚 ≈ 42；深 60 用尺寸图标注；背面贴底座背板，略后仰
+   · 背框顶 ≈ 73（比垫顶低 ~10，照片正面完全被垫遮住，取「高不少」的合理估计）
+   坐垫数不随宽度变（2+2，228cm 尺寸图明确）；全部尺寸由 C.w/C.d/C.h 导出。 */
 MODELS['kivik'] = (C) => {
   const cm=C.cm, T=C.THREE;
   const W=C.w, D=C.d, H=C.h;
   // 织物：密集杂色织纹；背框略深一档，与坐垫区分
   const fab  = C.M(C.col, {fabric:true, rough:.94, sheen:.20, envI:.15});
   fab.map = kivikWeaveTexture();
-  const fabD = C.M(new T.Color(C.col).multiplyScalar(.9), {fabric:true, rough:.95, sheen:.14, envI:.12});
+  const fabD = C.M(new T.Color(C.col).multiplyScalar(.88), {fabric:true, rough:.95, sheen:.14, envI:.12});
   fabD.map = kivikWeaveTexture();
   const footM = C.M(0x151412, {plastic:true, envI:.22});
 
   const ARM=cm(24);           // 扶手宽（尺寸图 24cm）
   const innerW = W - 2*ARM;   // 两扶手之间的内开口
-  const BASE_TOP=cm(30);      // 箱体底座顶面；坐垫顶面落在 45（尺寸图座高）
+  const BASE_TOP=cm(14);      // 箱体底座顶面（比例反推 14）；坐垫顶面落在 45（尺寸图座高）
 
   // 四条黑色小脚：分解图见四角黑色垫块，箱体坐在上面
   for(const sx of [-1,1]) for(const sz of [-1,1])
     C.box(cm(9), cm(2), cm(9), footM, sx*(W/2-cm(10.5)), 0, sz*(D/2-cm(10.5)));
 
-  // 箱体底座：满宽落地
+  // 箱体底座：满宽落地，矮箱
   C.rb(W, BASE_TOP-cm(2), D, cm(3), fab, 0, cm(2));
 
-  // 坐垫 ×2：厚、前缘圆角、顶面微鼓；C.cushion 顶面恰好落在 45cm 座高
-  const seatD=cm(63), cw=(innerW-cm(1.5))/2;
-  for(const sx of [-1,1])
-    C.cushion(cw, cm(13.2), seatD, fab, sx*(cw/2+cm(0.75)), BASE_TOP, D/2-seatD/2-cm(0.5));
-
-  // 背框：两扶手之间，顶面到 H，靠背垫后露出约 5cm 一条
-  C.rb(innerW, H-BASE_TOP, cm(17), cm(2.5), fabD, 0, BASE_TOP, -(D/2-cm(8.5)));
-
-  // 靠背垫 ×2：深 60cm（尺寸图），顶向后仰 ~4°。
-  // mesh 只管形状+抬升，后仰交外层 Group 做（不给 mesh 叠 rotation.x+rotation.y）。
-  const bw=(innerW-cm(2))/2, bcH=cm(33.5), bcTh=cm(13),
-        bcZ=-(D/2-cm(14))+cm(30);   // 背面在底座背面内 14cm
+  // 坐垫 ×2：巨厚整块软垫，顶面落在 45（座高）。手动建而不走 C.cushion：
+  // cushion 的顶枕会探出 h*0.41，31cm 厚垫会冲到 57cm。底座 14→43 + 顶枕 33→45 + 包边缝
+  const seatD=cm(63), cw=(innerW-cm(1.5))/2, sz=D/2-seatD/2-cm(0.5);
   for(const sx of [-1,1]){
-    const bc=C.rb(bw, bcH, bcTh, cm(4.5), fab, 0, 0, 0);
+    const x=sx*(cw/2+cm(0.75));
+    C.rb(cw, cm(29), seatD, cm(4.5), fab, x, BASE_TOP, sz);
+    C.rb(cw*0.94, cm(12), seatD*0.94, cm(4), fab, x, BASE_TOP+cm(19), sz);
+    C.rb(cw+cm(0.3), cm(1.1), seatD+cm(0.3), cm(0.5), fab, x, BASE_TOP+cm(10), sz);
+  }
+
+  // 背框：两扶手之间，顶面 73（比靠背垫顶低 ~10，正面视角被垫遮住）
+  C.rb(innerW, cm(59), cm(17), cm(2.5), fabD, 0, BASE_TOP, -(D/2-cm(8.5)));
+
+  // 靠背垫 ×2：厚 42、深 60（尺寸图），整件最高的元素，顶面 ~83 略后仰
+  // （后仰绕底面中心，后上角升到 83）。mesh 只管形状+抬升，后仰交外层 Group。
+  const bw=(innerW-cm(2))/2, bcH=cm(42), bcTh=cm(60),
+        bcZ=-D/2+bcTh/2+cm(0.5);   // 背面贴沙发后背，前缘伸到座区
+  for(const sx of [-1,1]){
+    const bc=C.rb(bw, bcH, bcTh, cm(5), fab, 0, 0, 0);
     const holder=new T.Group();
     C.g.remove(bc); holder.add(bc);
-    holder.position.set(sx*(bw/2+cm(1)), BASE_TOP+cm(14.5), bcZ);
-    holder.rotation.x=-0.07;
+    holder.position.set(sx*(bw/2+cm(1)), BASE_TOP+cm(25), bcZ);   // 底 39，顶 81，后上角 ≈83
+    holder.rotation.x=-0.05;
     C.g.add(holder);
   }
 
-  // 扶手 ×2：低箱体 + 独立圆角顶板（分解图里顶 pad 坐在框上），
-  // 外侧与底座齐平，顶板前沿微突 ~0.6cm
-  for(const sx of [-1,1]){
-    C.rb(ARM, cm(54), D, cm(2.5), fab, sx*(W/2-ARM/2), cm(2));
-    C.rb(ARM+cm(1.2), cm(6.5), D+cm(0.8), cm(3), fab, sx*(W/2-(ARM+cm(1.2))/2), cm(56), cm(0.2));
-  }
+  // 扶手 ×2：一体低箱体，落地→顶面 62，外侧与底座齐平
+  for(const sx of [-1,1])
+    C.rb(ARM, cm(60), D, cm(3), fab, sx*(W/2-ARM/2), cm(2));
 
   // 水平重心归零（2D 图例与碰撞都假定原点 = 占地中心）
   C.g.updateMatrixWorld(true);
