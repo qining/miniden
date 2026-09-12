@@ -699,7 +699,7 @@ const CATALOG = [
  {id:'gullaberg_q', cat:'床 / 床头柜', name:'GULLABERG 床架 Queen', w:163,d:210,h:113, price:299, priceCA:349, color:'#d9d4ca', kind:'bed', model:'gullaberg', url:'https://www.ikea.com/us/en/p/gullaberg-bed-frame-gray-20608931/', note:'实木，HEMNES继任款'},
  {id:'songesand_q', cat:'床 / 床头柜', name:'SONGESAND 床架 Queen', w:165,d:208,h:95, price:249, priceCA:289, color:'#8b6f52', kind:'bed', model:'songesand', url:'https://www.ikea.com/us/en/p/songesand-bed-frame-brown-s89241044/'},
  {id:'idanas_q', cat:'床 / 床头柜', name:'IDANÄS 软包床 Queen', w:159,d:224,h:121, price:549, priceCA:599, color:'#8f96a3', kind:'bed', model:'idanas', url:'https://www.ikea.com/us/en/p/idanaes-upholstered-bed-frame-gunnared-dark-gray-60458958/', note:'最长，注意进深224'},
- {id:'storklinta_ns', cat:'床 / 床头柜', name:'STORKLINTA 床头柜', w:50,d:48,h:53, price:79.99, priceCA:79.99, color:'#f0ece4', kind:'nightstand', url:'https://www.ikea.com/us/en/p/storklinta-2-drawer-chest-white-with-2-drawers-90559296/', note:'MALM床头柜继任款'},
+ {id:'storklinta_ns', cat:'床 / 床头柜', name:'STORKLINTA 床头柜', w:50,d:48,h:53, price:79.99, priceCA:79.99, color:'#f0ece4', kind:'nightstand', model:'storklinta', url:'https://www.ikea.com/us/en/p/storklinta-2-drawer-chest-white-with-2-drawers-90559296/', note:'MALM床头柜继任款'},
  {id:'nordli_ns', cat:'床 / 床头柜', name:'NORDLI 床头柜(窄40)', w:40,d:47,h:54, price:99.99, priceCA:149, color:'#f0ece4', kind:'nightstand', url:'https://www.ikea.com/us/en/p/nordli-2-drawer-chest-white-30589079/', note:'适合窄位'},
  {id:'vikhammer', cat:'床 / 床头柜', name:'VIKHAMMER 床头柜', w:60,d:39,h:65, price:99.99, priceCA:129, color:'#3e4249', kind:'nightstand', url:'https://www.ikea.com/us/en/p/vikhammer-nightstand-black-90388978/'},
  // —— 收纳 / 电视柜 ——
@@ -7566,6 +7566,29 @@ MODELS['idanas'] = (C) => {
   // 菱形拉扣 9 粒（v05）
   for(const [bx,by] of [[-48,95],[-24,95],[0,95],[24,95],[48,95],[-36,72],[-12,72],[12,72],[36,72]])
     C.sph(cm(1.2), M1, cm(bx), cm(by), -D/2+cm(20.5), 10);
+  C.g.updateMatrixWorld(true);
+  const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3();
+  bb.getCenter(off);
+  for(const ch of C.g.children){ ch.position.x-=off.x; ch.position.z-=off.z; }
+};
+
+/* STORKLINTA 床头柜 50×48×53：尺寸图 v03（双抽 41×16×40）+ v02/v04/v05 实拍
+   （MALM 继任：台面微外挑、双深拉抽、小方脚）（brief: storklinta.md）。 */
+MODELS['storklinta'] = (C) => {
+  const cm=C.cm, T=C.THREE;
+  const M1 = C.M(C.col, {rough:.4, envI:.3});
+  const gapM = C.M('#8a8a86', {flat:true, rough:.8});
+  // 小方脚 ×4，0→3.5
+  for(const [fx,fz] of [[-1,-1],[1,-1],[-1,1],[1,1]])
+    C.rb(cm(3.5), cm(3.5), cm(3.5), cm(0.5), M1, fx*cm(19.5), 0, fz*cm(19.5), 3);
+  // 柜体 48 宽×46 深（前脸退到 z23，给抽板凸出量），3.5→49
+  C.rb(cm(48), cm(45.5), cm(46), cm(1), M1, 0, cm(3.5), -cm(1), 3);
+  // 台面 50×4×48，49→53（图标总高）
+  C.rb(cm(50), cm(4), cm(48), cm(1.5), M1, 0, cm(49), 0, 4);
+  // 暗色背板 11.2→46.8（抽板四周露 0.8 缝线）+ 双抽前板 46×16（凸出柜体 1.7）
+  C.box(cm(47.6), cm(35.6), cm(0.4), gapM, 0, cm(11.2), cm(23.1));
+  for(const y0 of [12,30])
+    C.rb(cm(46), cm(16), cm(1.8), cm(1), M1, 0, cm(y0), cm(23.9), 3);
   C.g.updateMatrixWorld(true);
   const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3();
   bb.getCenter(off);
