@@ -700,8 +700,8 @@ const CATALOG = [
  {id:'songesand_q', cat:'床 / 床头柜', name:'SONGESAND 床架 Queen', w:165,d:208,h:95, price:249, priceCA:289, color:'#8b6f52', kind:'bed', model:'songesand', url:'https://www.ikea.com/us/en/p/songesand-bed-frame-brown-s89241044/'},
  {id:'idanas_q', cat:'床 / 床头柜', name:'IDANÄS 软包床 Queen', w:159,d:224,h:121, price:549, priceCA:599, color:'#8f96a3', kind:'bed', model:'idanas', url:'https://www.ikea.com/us/en/p/idanaes-upholstered-bed-frame-gunnared-dark-gray-60458958/', note:'最长，注意进深224'},
  {id:'storklinta_ns', cat:'床 / 床头柜', name:'STORKLINTA 床头柜', w:50,d:48,h:53, price:79.99, priceCA:79.99, color:'#f0ece4', kind:'nightstand', model:'storklinta', url:'https://www.ikea.com/us/en/p/storklinta-2-drawer-chest-white-with-2-drawers-90559296/', note:'MALM床头柜继任款'},
- {id:'nordli_ns', cat:'床 / 床头柜', name:'NORDLI 床头柜(窄40)', w:40,d:47,h:54, price:99.99, priceCA:149, color:'#f0ece4', kind:'nightstand', url:'https://www.ikea.com/us/en/p/nordli-2-drawer-chest-white-30589079/', note:'适合窄位'},
- {id:'vikhammer', cat:'床 / 床头柜', name:'VIKHAMMER 床头柜', w:60,d:39,h:65, price:99.99, priceCA:129, color:'#3e4249', kind:'nightstand', url:'https://www.ikea.com/us/en/p/vikhammer-nightstand-black-90388978/'},
+ {id:'nordli_ns', cat:'床 / 床头柜', name:'NORDLI 床头柜(窄40)', w:40,d:47,h:54, price:99.99, priceCA:149, color:'#f0ece4', kind:'nightstand', model:'nordli', url:'https://www.ikea.com/us/en/p/nordli-2-drawer-chest-white-30589079/', note:'适合窄位'},
+ {id:'vikhammer', cat:'床 / 床头柜', name:'VIKHAMMER 床头柜', w:60,d:39,h:65, price:99.99, priceCA:129, color:'#3e4249', kind:'nightstand', model:'vikhammer', url:'https://www.ikea.com/us/en/p/vikhammer-nightstand-black-90388978/'},
  // —— 收纳 / 电视柜 ——
  {id:'besta180', cat:'收纳 / 电视柜', name:'BESTÅ 电视柜 180(带门)', w:180,d:42,h:38, price:225, priceCA:255, color:'#e8e4dc', kind:'tvBench', url:'https://www.ikea.com/us/en/p/besta-tv-bench-with-doors-black-brown-lappviken-brown-walnut-effect-s49612174/', note:'含65"电视示意'},
  {id:'besta120', cat:'收纳 / 电视柜', name:'BESTÅ 电视柜 120(带门)', w:120,d:42,h:48, price:200, priceCA:205, color:'#e8e4dc', kind:'tvBench', url:'https://www.ikea.com/us/en/p/besta-tv-bench-with-doors-black-brown-lappviken-stubbarp-brown-walnut-effect-s19612104/'},
@@ -7589,6 +7589,56 @@ MODELS['storklinta'] = (C) => {
   C.box(cm(47.6), cm(35.6), cm(0.4), gapM, 0, cm(11.2), cm(23.1));
   for(const y0 of [12,30])
     C.rb(cm(46), cm(16), cm(1.8), cm(1), M1, 0, cm(y0), cm(23.9), 3);
+  C.g.updateMatrixWorld(true);
+  const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3();
+  bb.getCenter(off);
+  for(const ch of C.g.children){ ch.position.x-=off.x; ch.position.z-=off.z; }
+};
+
+/* NORDLI 床头柜 40×47×54：尺寸图 v04（底 5/抽 32×27×12.5）+ v01/v02 实拍
+   （双抽上中凹槽拉手、台面微外挑）（brief: nordli.md）。 */
+MODELS['nordli'] = (C) => {
+  const cm=C.cm, T=C.THREE;
+  const M1 = C.M(C.col, {rough:.4, envI:.3});
+  const gapM = C.M('#55554f', {flat:true, rough:.8});
+  // 底座踢脚 0→5（内缩 1）
+  C.rb(cm(38), cm(4), cm(45), cm(0.5), M1, 0, 0, 0, 3);
+  // 柜体 5→52（前脸退到 z22 给抽板凸出）
+  C.rb(cm(40), cm(47), cm(45), cm(0.8), M1, 0, cm(5), -cm(1), 3);
+  // 台面 40.5×2×47.5，52→54（微外挑）
+  C.rb(cm(40.5), cm(2), cm(47.5), cm(1), M1, 0, cm(52), 0, 4);
+  // 双抽前板 38×17×1.8 + 上中凹槽拉手（v01/v02 比例）
+  for(const y0 of [8.5,35]){
+    C.rb(cm(38), cm(17), cm(1.8), cm(0.8), M1, 0, cm(y0), cm(22.9), 3);
+    C.box(cm(22), cm(3), cm(0.6), gapM, 0, cm(y0+13), cm(23.7));
+  }
+  // 抽箱 ×2（32×27×12.5 图标，藏于柜体内）
+  const boxM = C.M('#c9c7c0', {flat:true, rough:.7});
+  for(const y0 of [18,36])
+    C.box(cm(32), cm(12.5), cm(27), boxM, 0, cm(y0+1.5), -cm(3));
+  C.g.updateMatrixWorld(true);
+  const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3();
+  bb.getCenter(off);
+  for(const ch of C.g.children){ ch.position.x-=off.x; ch.position.z-=off.z; }
+};
+
+/* VIKHAMMER 床头柜 60×39×65：尺寸图 v01（下搁板顶 35.5/抽高 16.5/开放区 23.4）+ v00/v06 实拍
+   （开放框架：方柱腿+下搁板+单抽+台面）（brief: vikhammer.md）。 */
+MODELS['vikhammer'] = (C) => {
+  const cm=C.cm, T=C.THREE;
+  const M1 = C.M(C.col, {rough:.5, envI:.3});
+  // 4 通高方柱腿 3×3，0→61（v00：立柱从地板通到台面，开放区 23.4 在搁板下）
+  for(const [lx,lz] of [[-27,-15],[27,-15],[-27,15],[27,15]])
+    C.rb(cm(3), cm(61), cm(3), cm(0.5), M1, cm(lx), 0, cm(lz), 4);
+  // 下搁板 58×2×36，23→25
+  C.rb(cm(58), cm(2), cm(36), cm(0.4), M1, 0, cm(23), 0, 3);
+  // 单抽 52.6×16.5×34，44.5→61（图标抽高）
+  C.rb(cm(52.6), cm(16.5), cm(34), cm(0.6), M1, 0, cm(44.5), 0, 3);
+  // 抽箱内衬（v04 拉出可见）
+  const boxM = C.M('#2a2d31', {flat:true, rough:.8});
+  C.box(cm(48), cm(12), cm(30), boxM, 0, cm(46), -cm(2));
+  // 台面 60×4×38.5，61→65（图标总高）
+  C.rb(cm(60), cm(4), cm(38.5), cm(0.8), M1, 0, cm(61), 0, 4);
   C.g.updateMatrixWorld(true);
   const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3();
   bb.getCenter(off);
