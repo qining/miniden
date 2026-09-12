@@ -679,7 +679,7 @@ const CATALOG = [
  {id:'morabo3', cat:'沙发 / 单椅', name:'MORABO 三人沙发', w:206,d:92,h:81, price:799, priceCA:799, color:'#6e7276', kind:'sofa', model:'morabo', url:'https://www.ikea.com/us/en/p/morabo-sofa-gunnared-dark-gray-metal-s09318320/', note:'LANDSKRONA继任款'},
  {id:'uppland3', cat:'沙发 / 单椅', name:'UPPLAND 三人沙发', w:224,d:92,h:92, price:899, priceCA:649, color:'#c8bfae', kind:'sofa', model:'uppland', url:'https://www.ikea.com/us/en/p/uppland-sofa-blekinge-white-s19384116/', note:'EKTORP继任款，可拆洗'},
  {id:'ekholma3', cat:'沙发 / 单椅', name:'EKHOLMA 三人沙发', w:207,d:85,h:94, price:799, priceCA:599, color:'#b3a794', kind:'sofa', model:'ekholma', url:'https://www.ikea.com/us/en/p/ekholma-sofa-hakebo-beige-s29537411/'},
- {id:'poang', cat:'沙发 / 单椅', name:'POÄNG 扶手椅', w:68,d:82,h:100, price:149, priceCA:149, caVar:'加拿大无 Hillared 面料，价为同档 Kelinge', color:'#a5906e', kind:'armchair', url:'https://www.ikea.com/us/en/p/poaeng-armchair-brown-hillared-anthracite-s19336026/', note:'面料不同 $149-249'},
+ {id:'poang', cat:'沙发 / 单椅', name:'POÄNG 扶手椅', w:68,d:82,h:100, price:149, priceCA:149, model:'poang', caVar:'加拿大无 Hillared 面料，价为同档 Kelinge', color:'#a5906e', kind:'armchair', url:'https://www.ikea.com/us/en/p/poaeng-armchair-brown-hillared-anthracite-s19336026/', note:'面料不同 $149-249'},
  {id:'strandmon', cat:'沙发 / 单椅', name:'STRANDMON 高背椅', w:82,d:96,h:101, price:299, priceCA:349, color:'#4a5d52', kind:'armchair', url:'https://www.ikea.com/us/en/p/strandmon-wing-chair-nordvalla-dark-gray-90359829/'},
  // —— 餐桌椅 / 吧凳 ——
  {id:'docksta', cat:'餐桌椅 / 吧凳', name:'DOCKSTA 圆桌 Ø103', w:103,d:103,h:75, price:279.99, priceCA:249, color:'#e8e4dc', kind:'tableRound', url:'https://www.ikea.com/us/en/p/docksta-table-white-white-s19324995/', note:'独腿，坐4人'},
@@ -7319,6 +7319,45 @@ MODELS['ekholma'] = (C) => {
     g.position.set(sx*cm(38.75), cm(49), -cm(23.5)); g.rotation.x=0.07;
     g.add(c); C.g.add(g);
   }
+  C.g.updateMatrixWorld(true);
+  const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3();
+  bb.getCenter(off);
+  for(const ch of C.g.children){ ch.position.x-=off.x; ch.position.z-=off.z; }
+};
+
+/* POÄNG 扶手椅 68×82×100：尺寸图（座深 50/座高 42）+ 无垫框架图 v19 实测结构：
+   前件=前腿+扶手一体弯木，后件=后腿+背侧柱，背框后仰 6°，弹簧钢板 77-80（brief: poang.md）。 */
+MODELS['poang'] = (C) => {
+  const cm=C.cm, T=C.THREE;
+  const M1 = C.M(C.col, {fabric:true, sheen:.10, envI:.15});
+  const frameM = C.M('#4a3325', {wood:'walnut', rough:.45, clear:.3, envI:.5});
+  const steelM = C.M('#9a9da3', {metal:.9, rough:.35});
+  const webM = C.M('#c9b189', {wood:'birch', rough:.6});
+  const F=(w,h,d,x,y,z,m)=>C.box(w,h,d,m||frameM,x,y,z);
+  // 前件：前腿 0→50 + 扶手 46→52（前伸到 z+36，端头下勾）；侧件外展到 ±31.5（宽 68）
+  for(const sx of [-1,1]){
+    F(cm(5), cm(50), cm(5), sx*cm(31.5), 0, cm(30));
+    F(cm(5), cm(6), cm(56), sx*cm(31.5), cm(46), cm(8));     // 扶手 -20→+36
+    F(cm(5), cm(12), cm(5), sx*cm(31.5), cm(40), cm(33.5)); // 端头下勾
+  }
+  // 地脚横梁 + 座下横梁
+  for(const sx of [-1,1]) F(cm(5), cm(5), cm(60), sx*cm(31.5), 0, 0);
+  for(const zz of [28,-28]) F(cm(58), cm(5), cm(5), 0, cm(25), cm(zz));
+  // 座面绷板 30→32 + 座垫 60×10×50（图标座深）32→42（图标座高）
+  C.box(cm(56), cm(2), cm(50), webM, 0, cm(30), -cm(5));
+  C.rb(cm(60), cm(10), cm(50), cm(4), M1, 0, cm(32), -cm(5));
+  // 背框总成：Group 后仰 0.10 rad（顶 z-40 仍在占地内）
+  const back = new T.Group(); back.position.set(0,0,-cm(30)); back.rotation.x=-0.10;
+  const BF=(w,h,d,x,y,z,m)=>{ const mm=C.box(w,h,d,m||frameM,x,y,z); C.g.remove(mm); back.add(mm); return mm; };
+  for(const sx of [-1,1]) BF(cm(5), cm(100), cm(5), sx*cm(31.5), 0, 0);
+  BF(cm(58), cm(5), cm(5), 0, cm(94), 0);                    // 顶档
+  BF(cm(58), cm(5), cm(5), 0, cm(58), 0);                    // 中档
+  BF(cm(54), cm(3), cm(2), 0, cm(77), 0, steelM);            // 弹簧钢板（v12 后视可见）
+  const lp = C.rb(cm(60), cm(34), cm(14), cm(5), M1, 0, cm(44), cm(5), 3);   // 下背垫 44→78
+  C.g.remove(lp); back.add(lp);
+  const hr = C.rb(cm(60), cm(22), cm(12), cm(5), M1, 0, cm(78), cm(4), 3);   // 头枕 78→100
+  C.g.remove(hr); back.add(hr);
+  C.g.add(back);
   C.g.updateMatrixWorld(true);
   const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3();
   bb.getCenter(off);
