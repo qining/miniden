@@ -680,7 +680,7 @@ const CATALOG = [
  {id:'uppland3', cat:'沙发 / 单椅', name:'UPPLAND 三人沙发', w:224,d:92,h:92, price:899, priceCA:649, color:'#c8bfae', kind:'sofa', model:'uppland', url:'https://www.ikea.com/us/en/p/uppland-sofa-blekinge-white-s19384116/', note:'EKTORP继任款，可拆洗'},
  {id:'ekholma3', cat:'沙发 / 单椅', name:'EKHOLMA 三人沙发', w:207,d:85,h:94, price:799, priceCA:599, color:'#b3a794', kind:'sofa', model:'ekholma', url:'https://www.ikea.com/us/en/p/ekholma-sofa-hakebo-beige-s29537411/'},
  {id:'poang', cat:'沙发 / 单椅', name:'POÄNG 扶手椅', w:68,d:82,h:100, price:149, priceCA:149, model:'poang', caVar:'加拿大无 Hillared 面料，价为同档 Kelinge', color:'#a5906e', kind:'armchair', url:'https://www.ikea.com/us/en/p/poaeng-armchair-brown-hillared-anthracite-s19336026/', note:'面料不同 $149-249'},
- {id:'strandmon', cat:'沙发 / 单椅', name:'STRANDMON 高背椅', w:82,d:96,h:101, price:299, priceCA:349, color:'#4a5d52', kind:'armchair', url:'https://www.ikea.com/us/en/p/strandmon-wing-chair-nordvalla-dark-gray-90359829/'},
+ {id:'strandmon', cat:'沙发 / 单椅', name:'STRANDMON 高背椅', w:82,d:96,h:101, price:299, priceCA:349, color:'#4a5d52', kind:'armchair', model:'strandmon', url:'https://www.ikea.com/us/en/p/strandmon-wing-chair-nordvalla-dark-gray-90359829/'},
  // —— 餐桌椅 / 吧凳 ——
  {id:'docksta', cat:'餐桌椅 / 吧凳', name:'DOCKSTA 圆桌 Ø103', w:103,d:103,h:75, price:279.99, priceCA:249, color:'#e8e4dc', kind:'tableRound', url:'https://www.ikea.com/us/en/p/docksta-table-white-white-s19324995/', note:'独腿，坐4人'},
  {id:'vihals', cat:'餐桌椅 / 吧凳', name:'VIHALS 伸缩桌 120→180', w:120,d:74,h:75, price:149.99, priceCA:179, color:'#e8e4dc', kind:'tableRect', url:'https://www.ikea.com/us/en/p/vihals-extendable-table-white-20589777/', note:'EKEDALEN继任款'},
@@ -7357,6 +7357,40 @@ MODELS['poang'] = (C) => {
   C.g.remove(lp); back.add(lp);
   const hr = C.rb(cm(60), cm(22), cm(12), cm(5), M1, 0, cm(78), cm(4), 3);   // 头枕 78→100
   C.g.remove(hr); back.add(hr);
+  C.g.add(back);
+  C.g.updateMatrixWorld(true);
+  const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3();
+  bb.getCenter(off);
+  for(const ch of C.g.children){ ch.position.x-=off.x; ch.position.z-=off.z; }
+};
+
+/* STRANDMON 高背翼椅 82×96×101：尺寸图 v06（座高 43/座宽 50→扶手 16×2/背框内宽 54）；
+   翼板/拉扣 V 排/腿锥度/扶手顶 55 为实拍比例估计（brief: strandmon.md）。 */
+MODELS['strandmon'] = (C) => {
+  const cm=C.cm, T=C.THREE;
+  const W=C.w, D=C.d, H=C.h;
+  const M1 = C.M(C.col, {fabric:true, sheen:.12, envI:.15});
+  const legM = C.M('#3a2f28', {wood:'walnut', rough:.5});
+  // 腿 ×4：锥形圆腿 0→12（v00 深褐）
+  for(const [lx,lz] of [[-30,-36],[30,-36],[-30,36],[30,36]])
+    C.cyl(cm(3), cm(1.5), cm(12), legM, cm(lx), 0, cm(lz), 12);
+  // 底座 12→33，深 89（后缘齐占地，前缘齐座垫，v00 裙包到座前）
+  C.rb(W, cm(21), cm(89), cm(6), M1, 0, cm(12), -cm(3.5));
+  // 扶手 16 宽（(82−50)/2）12→48 + 顶卷 r7（顶 55 比例），深 80（端头齐座前）
+  for(const sx of [-1,1]){
+    C.rb(cm(16), cm(36), cm(80), cm(7), M1, sx*cm(33), cm(12), -cm(8));
+    C.tube(cm(76), cm(7), M1, sx*cm(33), cm(48), -cm(8), 'z');
+  }
+  // 座垫 54×10×58（图标座宽）33→43（图标座高），前缘齐裙边
+  C.rb(cm(54), cm(10), cm(58), cm(5), M1, 0, cm(33), cm(11));
+  // 背框总成：Group 后仰 0.08（背在 z-30）
+  const back = new T.Group(); back.position.set(0,0,-cm(30)); back.rotation.x=-0.08;
+  const B=(mm)=>{ C.g.remove(mm); back.add(mm); return mm; };
+  B(C.rb(cm(54), cm(58), cm(14), cm(5), M1, 0, cm(43), 0, 3));       // 背板 43→101（图标内宽 54）
+  for(const sx of [-1,1])                                            // 翼板 58→92，与背板一体（v04 前卷）
+    B(C.rb(cm(16), cm(34), cm(20), cm(5), M1, sx*cm(22), cm(58), 0, 3));
+  for(const [bx,by] of [[-20,67],[-10,69],[0,70],[10,69],[20,67]])   // 拉扣 5 粒浅 V
+    B(C.sph(cm(0.9), M1, cm(bx), cm(by), cm(8.5), 10));
   C.g.add(back);
   C.g.updateMatrixWorld(true);
   const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3();
