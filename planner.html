@@ -682,7 +682,7 @@ const CATALOG = [
  {id:'poang', cat:'沙发 / 单椅', name:'POÄNG 扶手椅', w:68,d:82,h:100, price:149, priceCA:149, model:'poang', caVar:'加拿大无 Hillared 面料，价为同档 Kelinge', color:'#a5906e', kind:'armchair', url:'https://www.ikea.com/us/en/p/poaeng-armchair-brown-hillared-anthracite-s19336026/', note:'面料不同 $149-249'},
  {id:'strandmon', cat:'沙发 / 单椅', name:'STRANDMON 高背椅', w:82,d:96,h:101, price:299, priceCA:349, color:'#4a5d52', kind:'armchair', model:'strandmon', url:'https://www.ikea.com/us/en/p/strandmon-wing-chair-nordvalla-dark-gray-90359829/'},
  // —— 餐桌椅 / 吧凳 ——
- {id:'docksta', cat:'餐桌椅 / 吧凳', name:'DOCKSTA 圆桌 Ø103', w:103,d:103,h:75, price:279.99, priceCA:249, color:'#e8e4dc', kind:'tableRound', url:'https://www.ikea.com/us/en/p/docksta-table-white-white-s19324995/', note:'独腿，坐4人'},
+ {id:'docksta', cat:'餐桌椅 / 吧凳', name:'DOCKSTA 圆桌 Ø103', w:103,d:103,h:75, price:279.99, priceCA:249, color:'#e8e4dc', kind:'tableRound', model:'docksta', url:'https://www.ikea.com/us/en/p/docksta-table-white-white-s19324995/', note:'独腿，坐4人'},
  {id:'vihals', cat:'餐桌椅 / 吧凳', name:'VIHALS 伸缩桌 120→180', w:120,d:74,h:75, price:149.99, priceCA:179, color:'#e8e4dc', kind:'tableRect', url:'https://www.ikea.com/us/en/p/vihals-extendable-table-white-20589777/', note:'EKEDALEN继任款'},
  {id:'lisabo140', cat:'餐桌椅 / 吧凳', name:'LISABO 餐桌 140×78', w:140,d:78,h:74, price:299.99, priceCA:229, color:'#c9a877', kind:'tableRect', url:'https://www.ikea.com/us/en/p/lisabo-table-ash-veneer-70294339/'},
  {id:'pinntorp', cat:'餐桌椅 / 吧凳', name:'PINNTORP 餐桌 125×75', w:125,d:75,h:75, price:199.99, priceCA:149, color:'#c9b287', kind:'tableRect', model:'pinntorp', url:'https://www.ikea.com/us/en/p/pinntorp-table-light-brown-stained-white-stained-pine-30529467/'},
@@ -7394,6 +7394,25 @@ MODELS['strandmon'] = (C) => {
   C.g.add(back);
   C.g.updateMatrixWorld(true);
   const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3();
+  bb.getCenter(off);
+  for(const ch of C.g.children){ ch.position.x-=off.x; ch.position.z-=off.z; }
+};
+
+/* DOCKSTA 独腿圆桌 Ø103×75：尺寸图 v03（总高 75/台面顶 73/底盘 Ø60）；
+   Eames 式独腿柱身锥度与喇叭口为 v02 特写比例（brief: docksta.md）。 */
+MODELS['docksta'] = (C) => {
+  const cm=C.cm;
+  const M1 = C.M('#f7f6f2', {rough:.35, clear:.5, envI:.4});
+  // 底盘 Ø60×2.5（图标）
+  C.cyl(cm(30), cm(30), cm(2.5), M1, 0, 0, 0, 72);
+  // 独腿柱：实体旋转体（底 r5.2 → 中腰 r2.2 → 台下喇叭 r7.5），2.5→72.8
+  C.lathe([[cm(0.1),cm(2.5)],[cm(5.2),cm(2.5)],[cm(3.4),cm(7)],[cm(2.5),cm(20)],
+           [cm(2.2),cm(38)],[cm(2.6),cm(54)],[cm(3.8),cm(64)],[cm(7.2),cm(71.5)],[cm(7.5),cm(72.8)],[cm(0.1),cm(72.8)]],
+          M1, 0, 0, 0, 72);
+  // 台面 Ø103×2.2，72.8→75（图标）
+  C.cyl(cm(51.5), cm(51.5), cm(2.2), M1, 0, cm(72.8), 0, 88);
+  C.g.updateMatrixWorld(true);
+  const T=C.THREE, bb=new T.Box3().setFromObject(C.g), off=new T.Vector3();
   bb.getCenter(off);
   for(const ch of C.g.children){ ch.position.x-=off.x; ch.position.z-=off.z; }
 };
