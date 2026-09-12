@@ -669,8 +669,8 @@ const CATALOG = [
   {id:'hw-02e-pro', cat:'灯具 / 照明', name:'Honeywell 02E PRO 护眼落地灯 10400lm', w:61,d:30,h:196.6, price:599.99, color:'#f2f3f5', kind:'lamp', model:'hw02e', dimmable:true, cct:4000, lum:10400, url:'https://honeywellsmartlighting.com/products/02e', note:'100W'},
   {id:'hw-02e-max', cat:'灯具 / 照明', name:'Honeywell 02E MAX 护眼落地灯 16000lm', w:61,d:30,h:196.6, price:799.99, color:'#f2f3f5', kind:'lamp', model:'hw02e', dimmable:true, cct:4000, lum:16000, url:'https://honeywellsmartlighting.com/products/02e', note:'155W·16″配重底座·适合大客厅'},
  // —— 床（铁架床，床架与床垫同尺寸）——
- {id:'bed-metal-q', cat:'床 / 床头柜', name:'铁架床 Queen + 床垫', w:152,d:203,h:60, price:420, color:'#26282c', kind:'bedMetal', note:'Queen 60″×80″；铁架与床垫同宽同长（无外框外扩）'},
- {id:'bed-metal-f', cat:'床 / 床头柜', name:'铁架床 Full + 床垫', w:137,d:191,h:60, price:380, color:'#26282c', kind:'bedMetal', note:'Full 54″×75″；铁架与床垫同宽同长'},
+ {id:'bed-metal-q', cat:'床 / 床头柜', name:'铁架床 Queen + 床垫', w:152,d:203,h:60, price:420, color:'#26282c', kind:'bedMetal', model:'bedmetal', note:'Queen 60″×80″；铁架与床垫同宽同长（无外框外扩）'},
+ {id:'bed-metal-f', cat:'床 / 床头柜', name:'铁架床 Full + 床垫', w:137,d:191,h:60, price:380, color:'#26282c', kind:'bedMetal', model:'bedmetal', note:'Full 54″×75″；铁架与床垫同宽同长'},
  // —— 沙发/单椅 ——
  {id:'kivik3', cat:'沙发 / 单椅', name:'KIVIK 三人沙发', w:228,d:95,h:83, price:899, priceCA:849, caVar:'加拿大无 Tresund 深灰，价为同系列 Tresund 浅米色', color:'#8d8579', kind:'sofa', model:'kivik', url:'https://www.ikea.com/us/en/p/kivik-sofa-tresund-anthracite-s39482837/', note:'可拆洗，多色 $849-999'},
  {id:'kivik2', cat:'沙发 / 单椅', name:'KIVIK 双人沙发', w:190,d:95,h:83, price:849, priceCA:749, color:'#8d8579', kind:'sofa', model:'kivik', url:'https://www.ikea.com/us/en/p/kivik-loveseat-tresund-light-beige-s29482828/'},
@@ -7453,6 +7453,36 @@ MODELS['lisabo'] = (C) => {
     const leg = C.cyl(cm(3.2), cm(2.2), cm(72.9), M1, 0, -cm(72.9), 0, 18);
     C.g.remove(leg); g.add(leg); C.g.add(g);
   }
+  C.g.updateMatrixWorld(true);
+  const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3();
+  bb.getCenter(off);
+  for(const ch of C.g.children){ ch.position.x-=off.x; ch.position.z-=off.z; }
+};
+
+/* 铁架床 + 床垫（bed-metal-q/f 共用，尺寸走 spec）：目录自定通用款，无商品页（brief: bedmetal.md）。 */
+MODELS['bedmetal'] = (C) => {
+  const cm=C.cm, T=C.THREE;
+  const W=C.w, D=C.d;
+  const M1 = C.M('#26282c', {metal:.6, rough:.4, envI:.7});
+  const M2 = C.M('#e8e6e2', {fabric:true, rough:.9, envI:.12});
+  const M3 = C.M('#f2f0ec', {fabric:true, rough:.9, envI:.12});
+  // 围框：4 根管 5 宽×12 高，3→15 + 4 角脚
+  C.box(cm(5), cm(12), D-cm(6), M1, -(W/2-cm(2.5)), cm(3), 0);
+  C.box(cm(5), cm(12), D-cm(6), M1,  (W/2-cm(2.5)), cm(3), 0);
+  C.box(W-cm(16), cm(12), cm(5), M1, 0, cm(3), -(D/2-cm(2.5)));
+  C.box(W-cm(16), cm(12), cm(5), M1, 0, cm(3),  (D/2-cm(2.5)));
+  for(const [fx,fz] of [[-1,-1],[1,-1],[-1,1],[1,1]])
+    C.box(cm(7), cm(3), cm(7), M1, fx*(W/2-cm(3.5)), 0, fz*(D/2-cm(3.5)));
+  // 排骨架 ×8，15→17
+  for(let i=0;i<8;i++){
+    const zz = -D/2+cm(14) + i*(D-cm(28))/7;
+    C.box(W-cm(20), cm(2), cm(4), M1, 0, cm(15), zz);
+  }
+  // 床垫 (W-8)×27×(D-8)，17→44
+  C.rb(W-cm(8), cm(27), D-cm(8), cm(4), M2, 0, cm(17), 0, 4);
+  // 双枕 44→57（顶 57 ≈ 95% 高填充），床头 -z
+  for(const sx of [-1,1])
+    C.rb(W/2-cm(12), cm(13), cm(38), cm(4), M3, sx*(W/4-cm(3)), cm(44), -(D/2-cm(27)), 4);
   C.g.updateMatrixWorld(true);
   const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3();
   bb.getCenter(off);
