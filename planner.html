@@ -678,7 +678,7 @@ const CATALOG = [
  {id:'friheten', cat:'沙发 / 单椅', name:'FRIHETEN 转角沙发床', w:230,d:151,h:86, price:999, priceCA:1099, color:'#5a5f6b', kind:'sofaL', model:'friheten', url:'https://www.ikea.com/us/en/p/friheten-sleeper-sectional-3-seat-w-storage-skiftebo-dark-gray-s69216757/', note:'带储物，床面140×204'},
  {id:'morabo3', cat:'沙发 / 单椅', name:'MORABO 三人沙发', w:206,d:92,h:81, price:799, priceCA:799, color:'#6e7276', kind:'sofa', model:'morabo', url:'https://www.ikea.com/us/en/p/morabo-sofa-gunnared-dark-gray-metal-s09318320/', note:'LANDSKRONA继任款'},
  {id:'uppland3', cat:'沙发 / 单椅', name:'UPPLAND 三人沙发', w:224,d:92,h:92, price:899, priceCA:649, color:'#c8bfae', kind:'sofa', model:'uppland', url:'https://www.ikea.com/us/en/p/uppland-sofa-blekinge-white-s19384116/', note:'EKTORP继任款，可拆洗'},
- {id:'ekholma3', cat:'沙发 / 单椅', name:'EKHOLMA 三人沙发', w:207,d:85,h:94, price:799, priceCA:599, color:'#b3a794', kind:'sofa', url:'https://www.ikea.com/us/en/p/ekholma-sofa-hakebo-beige-s29537411/'},
+ {id:'ekholma3', cat:'沙发 / 单椅', name:'EKHOLMA 三人沙发', w:207,d:85,h:94, price:799, priceCA:599, color:'#b3a794', kind:'sofa', model:'ekholma', url:'https://www.ikea.com/us/en/p/ekholma-sofa-hakebo-beige-s29537411/'},
  {id:'poang', cat:'沙发 / 单椅', name:'POÄNG 扶手椅', w:68,d:82,h:100, price:149, priceCA:149, caVar:'加拿大无 Hillared 面料，价为同档 Kelinge', color:'#a5906e', kind:'armchair', url:'https://www.ikea.com/us/en/p/poaeng-armchair-brown-hillared-anthracite-s19336026/', note:'面料不同 $149-249'},
  {id:'strandmon', cat:'沙发 / 单椅', name:'STRANDMON 高背椅', w:82,d:96,h:101, price:299, priceCA:349, color:'#4a5d52', kind:'armchair', url:'https://www.ikea.com/us/en/p/strandmon-wing-chair-nordvalla-dark-gray-90359829/'},
  // —— 餐桌椅 / 吧凳 ——
@@ -7281,6 +7281,42 @@ MODELS['uppland'] = (C) => {
     const g = new T.Group();
     g.position.set(cm(cx), cm(47), -cm(31)); g.rotation.x=0.07;
     c.position.set(0, cm(22.5), 0);
+    g.add(c); C.g.add(g);
+  }
+  C.g.updateMatrixWorld(true);
+  const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3();
+  bb.getCenter(off);
+  for(const ch of C.g.children){ ch.position.x-=off.x; ch.position.z-=off.z; }
+};
+
+/* EKHOLMA 三人沙发 207×85×94：尺寸图 v06（座高 49/扶手 70/座深 55/腿 15，49+45=94 自洽）；
+   扶手宽 26/背框深 28/木腿收分方形为实拍比例估计（brief: ekholma.md）。 */
+MODELS['ekholma'] = (C) => {
+  const cm=C.cm, T=C.THREE;
+  const W=C.w, D=C.d, H=C.h;
+  const M1 = C.M(C.col, {fabric:true, sheen:.10, envI:.15});
+  const legM = C.M('#3a2f28', {wood:'walnut', rough:.55});
+  // 腿 ×4：4 棱收分柱（方形锥），0→15（图标腿高）
+  for(const [lx,lz] of [[-89.5,-30.5],[89.5,-30.5],[-89.5,30.5],[89.5,30.5]])
+    C.cyl(cm(5.6), cm(2.8), cm(15), legM, cm(lx), 0, cm(lz), 4);
+  // 底座 15→36（坐垫厚 13，顶 49 图标座高）
+  C.rb(W, cm(21), D, cm(4), M1, 0, cm(15), 0);
+  // 扶手 26 宽（比例）15→64 + 顶卷 r6（顶 70 图标）
+  for(const sx of [-1,1]){
+    C.rb(cm(26), cm(49), D, cm(5), M1, sx*(W/2-cm(13)), cm(15), 0);
+    C.tube(D, cm(6), M1, sx*(W/2-cm(13)), cm(64), 0, 'z');
+  }
+  // 背框 155 宽×28 深（85−55−前缘），36→88
+  C.rb(cm(155), cm(52), cm(28), cm(4), M1, 0, cm(36), -(D/2-cm(14)));
+  // 座垫 ×2：77.5 宽×13 厚×55 深（图标座深），36→49
+  for(const sx of [-1,1])
+    C.rb(cm(77.5), cm(13), cm(55), cm(5), M1, sx*cm(38.75), cm(36), cm(13));
+  // 背垫 ×2：77.5×20×45（49→94 自洽），微前倾
+  for(const sx of [-1,1]){
+    const c = C.rb(cm(77.5), cm(45), cm(20), cm(6), M1, 0, 0, 0, 3);
+    C.g.remove(c);
+    const g = new T.Group();
+    g.position.set(sx*cm(38.75), cm(49), -cm(23.5)); g.rotation.x=0.07;
     g.add(c); C.g.add(g);
   }
   C.g.updateMatrixWorld(true);
