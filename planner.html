@@ -697,7 +697,7 @@ const CATALOG = [
  {id:'malm_q', cat:'床 / 床头柜', name:'MALM 床架 Queen', w:168,d:211,h:100, price:249, priceCA:249, color:'#f0ece4', kind:'bed', model:'malm', url:'https://www.ikea.com/us/en/p/malm-bed-frame-white-s19931605/', note:'外框168×211，排骨架另购'},
  {id:'malm_k', cat:'床 / 床头柜', name:'MALM 床架 King', w:209,d:211,h:100, price:339, priceCA:399, caVar:'加拿大为高床架 King', color:'#f0ece4', kind:'bed', model:'malm', url:'https://www.ikea.com/us/en/p/malm-bed-frame-white-s49931604/'},
  {id:'gullaberg_q', cat:'床 / 床头柜', name:'GULLABERG 床架 Queen', w:163,d:210,h:113, price:299, priceCA:349, color:'#d9d4ca', kind:'bed', model:'gullaberg', url:'https://www.ikea.com/us/en/p/gullaberg-bed-frame-gray-20608931/', note:'实木，HEMNES继任款'},
- {id:'songesand_q', cat:'床 / 床头柜', name:'SONGESAND 床架 Queen', w:165,d:208,h:95, price:249, priceCA:289, color:'#8b6f52', kind:'bed', url:'https://www.ikea.com/us/en/p/songesand-bed-frame-brown-s89241044/'},
+ {id:'songesand_q', cat:'床 / 床头柜', name:'SONGESAND 床架 Queen', w:165,d:208,h:95, price:249, priceCA:289, color:'#8b6f52', kind:'bed', model:'songesand', url:'https://www.ikea.com/us/en/p/songesand-bed-frame-brown-s89241044/'},
  {id:'idanas_q', cat:'床 / 床头柜', name:'IDANÄS 软包床 Queen', w:159,d:224,h:121, price:549, priceCA:599, color:'#8f96a3', kind:'bed', url:'https://www.ikea.com/us/en/p/idanaes-upholstered-bed-frame-gunnared-dark-gray-60458958/', note:'最长，注意进深224'},
  {id:'storklinta_ns', cat:'床 / 床头柜', name:'STORKLINTA 床头柜', w:50,d:48,h:53, price:79.99, priceCA:79.99, color:'#f0ece4', kind:'nightstand', url:'https://www.ikea.com/us/en/p/storklinta-2-drawer-chest-white-with-2-drawers-90559296/', note:'MALM床头柜继任款'},
  {id:'nordli_ns', cat:'床 / 床头柜', name:'NORDLI 床头柜(窄40)', w:40,d:47,h:54, price:99.99, priceCA:149, color:'#f0ece4', kind:'nightstand', url:'https://www.ikea.com/us/en/p/nordli-2-drawer-chest-white-30589079/', note:'适合窄位'},
@@ -7509,6 +7509,36 @@ MODELS['gullaberg'] = (C) => {
   // 排骨 ×8，12→16（图标排骨区 18）
   for(let i=0;i<8;i++)
     C.box(cm(150), cm(4), cm(8), M1, 0, cm(12), -cm(90)+i*cm(180/7));
+  C.g.updateMatrixWorld(true);
+  const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3();
+  bb.getCenter(off);
+  for(const ch of C.g.children){ ch.position.x-=off.x; ch.position.z-=off.z; }
+};
+
+/* SONGESAND 床架 Queen 165×208×95：尺寸图 v01（床头 95/侧梁 41/排骨 20）+ v00/v03/v05 实拍
+   （深胡桃：冠顶轨+双嵌板床头、低嵌板尾板、裙板）（brief: songesand.md）。 */
+MODELS['songesand'] = (C) => {
+  const cm=C.cm, T=C.THREE;
+  const W=C.w, D=C.d;
+  const M1 = C.M('#7a5c3e', {wood:'walnut', rough:.5, envI:.45});
+  // 床头板：柱 8×95 + 冠顶轨 + 双嵌板 + 中分条（v03）
+  for(const sx of [-1,1]) C.rb(cm(8), cm(95), cm(8), cm(1), M1, sx*cm(78.5), 0, -D/2+cm(4), 3);
+  C.rb(W, cm(8), cm(10), cm(1.5), M1, 0, cm(87), -D/2+cm(4), 3);          // 冠顶轨（微外挑）
+  for(const sx of [-1,1]) C.rb(cm(56), cm(72), cm(4), cm(1), M1, sx*cm(39), cm(9), -D/2+cm(4), 3);
+  C.rb(cm(4), cm(72), cm(3), cm(0.8), M1, 0, cm(9), -D/2+cm(4), 3);       // 中分条
+  // 尾板（低 41，同语汇）
+  for(const sx of [-1,1]) C.rb(cm(8), cm(41), cm(8), cm(1), M1, sx*cm(78.5), 0, D/2-cm(4), 3);
+  C.rb(W, cm(6), cm(8), cm(1), M1, 0, cm(35), D/2-cm(4), 3);
+  for(const sx of [-1,1]) C.rb(cm(56), cm(24), cm(4), cm(1), M1, sx*cm(39), cm(7), D/2-cm(4), 3);
+  C.rb(cm(4), cm(24), cm(3), cm(0.8), M1, 0, cm(7), D/2-cm(4), 3);
+  // 侧梁 0→41（图标）+ 裙板 5→35
+  for(const sx of [-1,1]){
+    C.box(cm(8), cm(41), cm(192), M1, sx*cm(78.5), 0, 0);
+    C.box(cm(4), cm(30), cm(184), M1, sx*cm(78.5), cm(5), 0);
+  }
+  // 排骨 ×8，12→16（图标排骨区 20）
+  for(let i=0;i<8;i++)
+    C.rb(cm(150), cm(4), cm(8), cm(1), M1, 0, cm(12), -cm(88)+i*cm(176/7), 3);
   C.g.updateMatrixWorld(true);
   const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3();
   bb.getCenter(off);
