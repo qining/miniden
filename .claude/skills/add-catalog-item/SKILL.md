@@ -133,7 +133,8 @@ open('/tmp/p.js','w').write(m.group(1))" && node --check /tmp/p.js
 
 # 关 2+3：单件体检（包围盒/填充率/重心/贴地/材质/缩略图）+ 隔离渲染出图
 python3 .claude/skills/add-catalog-item/check-item.py <条目id>
-# → 看它输出的 PNG，对照 work/ref/ 里的实拍图
+# → 输出两张 PNG：主 3/4 前视角 + 侧视角（check_<id>.png / check_<id>_side.png）
+#   两张都要 Read，对照 work/ref/ 实拍图比
 
 # 关 4：全量回归
 python3 .claude/skills/add-catalog-item/check-item.py --regress
@@ -143,8 +144,10 @@ python3 .claude/skills/add-catalog-item/check-item.py --regress
 `catalog-all-build` / `catalog-all-textured` / `catalog-all-normalmapped` /
 `catalog-tri-avg` / `catalog-tri-max` / `thumb-renders`。
 
-**对着实拍图逐项比**：部件数量 → 形状 → 相对位置朝向 → 比例 → 颜色 → 材质 → 特征细节
-（把手/缝线/螺丝/logo/脚垫）。
+**对着实拍图逐项比（至少两个角度，硬条件）**：部件数量 → 形状 → 相对位置朝向 → 比例 → 颜色 → 材质 → 特征细节（把手/缝线/螺丝/logo/脚垫）。
+- 主视角图对**正面实拍**；侧视角图对**侧面/3-4 实拍**。两视角都要过，只对一个角度不算完。
+- 侧面轮廓（腿距、悬挑、背部结构、深度比例）只有侧视角才露馅，单角度最容易在这栽。
+- 参考图不够两个角度时，先补抓一张侧面/剖切实拍再对照。
 
 给新家具补一条常驻断言进 `work/t_3d.html`（参考现有的 `lunix-*` 那组），
 然后按 `AGENTS.md` §3 重新生成三个测试台。
