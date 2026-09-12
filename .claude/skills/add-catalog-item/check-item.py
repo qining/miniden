@@ -157,7 +157,7 @@ window.addEventListener('load', ()=>{ setTimeout(async ()=>{
     const g0=three.furnMap.values().next().value.g; g0.updateMatrixWorld(true);
     const bb2=new THREE.Box3().setFromObject(g0);
     const s2=new THREE.Vector3(), c2=new THREE.Vector3(); bb2.getSize(s2); bb2.getCenter(c2);
-    const dir=new THREE.Vector3(0.5,0.42,1).normalize();
+    const dir=new THREE.Vector3(__DIR__).normalize();   // __DIR__ 由 check_one 注入（主视角/侧视角）
     let dist=s2.length()*0.5/Math.tan(34*Math.PI/360)*1.05;
     const cs=[]; for(let i=0;i<8;i++) cs.push(new THREE.Vector3(
       (i&1)?bb2.max.x:bb2.min.x,(i&2)?bb2.max.y:bb2.min.y,(i&4)?bb2.max.z:bb2.min.z));
@@ -186,27 +186,40 @@ window.addEventListener('load', ()=>{ setTimeout(async ()=>{
 </script>'''
 
 
+# 两个视角都要对照实拍（硬条件）：主 3/4 前视角 + 侧视角。
+# 单角度可能恰好「看起来对」而比例/朝向错误；侧面轮廓（腿距、悬挑、背部结构）
+# 只有侧视角才露馅。两张图都要和实拍至少两个角度的照片逐项比。
+VIEWS = [('', '0.5,0.42,1'), ('_side', '1,0.35,0.45')]
+
+
 def check_one(item_id):
     src = syntax_check()
-    page = os.path.join(WORK, f'_check_item_{TAG}.html')
-    open(page, 'w', encoding='utf-8').write(make_page(src, PROBE.replace('__ITEM__', item_id)))
-    shot = os.path.join(WORK, 'ref', f'check_{item_id}.png')
-    os.makedirs(os.path.dirname(shot), exist_ok=True)
-    out = run_chrome(page, 60000, '1500,1000', ['--screenshot=' + shot])
-    print(re.sub(r'^CANVAS .*$', '', out, flags=re.M).rstrip())
-    if os.path.exists(shot):
-        m = re.search(r'CANVAS (\d+) (\d+) (\d+) (\d+)', out)
-        if m:                                    # 裁掉侧栏，只留 3D 画布
-            x, y, w, h = (int(v) for v in m.groups())
-            subprocess.run(['sips', '-c', str(h), str(w), '--cropOffset', str(y), str(x),
-                            shot, '--out', shot], capture_output=True)
-        subprocess.run(['sips', '-Z', '900', shot, '--out', shot], capture_output=True)
-        print(f'\n渲染图 → {shot}')
-        print('用 Read 工具打开它，对照 work/ref/ 里的实拍图逐项比：')
+    shots = []
+    for tag, dstr in VIEWS:
+        page = os.path.join(WORK, f'_check_item_{TAG}{tag}.html')
+        open(page, 'w', encoding='utf-8').write(
+            make_page(src, PROBE.replace('__ITEM__', item_id).replace('__DIR__', dstr)))
+        shot = os.path.join(WORK, 'ref', f'check_{item_id}{tag}.png')
+        os.makedirs(os.path.dirname(shot), exist_ok=True)
+        out = run_chrome(page, 60000, '1500,1000', ['--screenshot=' + shot])
+        if tag == '':                            # 断言只在主视角打印一次
+            print(re.sub(r'^CANVAS .*$', '', out, flags=re.M).rstrip())
+        if os.path.exists(shot):
+            m = re.search(r'CANVAS (\d+) (\d+) (\d+) (\d+)', out)
+            if m:                                # 裁掉侧栏，只留 3D 画布
+                x, y, w, h = (int(v) for v in m.groups())
+                subprocess.run(['sips', '-c', str(h), str(w), '--cropOffset', str(y), str(x),
+                                shot, '--out', shot], capture_output=True)
+            subprocess.run(['sips', '-Z', '900', shot, '--out', shot], capture_output=True)
+            shots.append(shot)
+        os.unlink(page)
+        if 'FAIL' in out or 'EXC' in out:
+            sys.exit(1)
+    if shots:
+        print(f'\n渲染图（两个视角）→ ' + '  '.join(shots))
+        print('用 Read 工具打开两张图，对照 work/ref/ 实拍图至少两个角度逐项比：')
         print('  部件数量 → 形状 → 相对位置朝向 → 比例 → 颜色 → 材质 → 特征细节')
-    os.unlink(page)
-    if 'FAIL' in out or 'EXC' in out:
-        sys.exit(1)
+        print('  主视角验正面，侧视角验侧面轮廓/腿距/背部结构；两视角都要过')
 
 
 HARNESS = [('t_walledit.html', 80000, '1700,1100', 'wetest'),

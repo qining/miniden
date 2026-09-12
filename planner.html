@@ -703,7 +703,7 @@ const CATALOG = [
  {id:'nordli_ns', cat:'床 / 床头柜', name:'NORDLI 床头柜(窄40)', w:40,d:47,h:54, price:99.99, priceCA:149, color:'#f0ece4', kind:'nightstand', model:'nordli', url:'https://www.ikea.com/us/en/p/nordli-2-drawer-chest-white-30589079/', note:'适合窄位'},
  {id:'vikhammer', cat:'床 / 床头柜', name:'VIKHAMMER 床头柜', w:60,d:39,h:65, price:99.99, priceCA:129, color:'#3e4249', kind:'nightstand', model:'vikhammer', url:'https://www.ikea.com/us/en/p/vikhammer-nightstand-black-90388978/'},
  // —— 收纳 / 电视柜 ——
- {id:'besta180', cat:'收纳 / 电视柜', name:'BESTÅ 电视柜 180(带门)', w:180,d:42,h:38, price:225, priceCA:255, color:'#e8e4dc', kind:'tvBench', url:'https://www.ikea.com/us/en/p/besta-tv-bench-with-doors-black-brown-lappviken-brown-walnut-effect-s49612174/', note:'含65"电视示意'},
+ {id:'besta180', cat:'收纳 / 电视柜', name:'BESTÅ 电视柜 180(带门)', w:180,d:42,h:38, price:225, priceCA:255, color:'#e8e4dc', kind:'tvBench', model:'besta180', url:'https://www.ikea.com/us/en/p/besta-tv-bench-with-doors-black-brown-lappviken-brown-walnut-effect-s49612174/', note:'含65"电视示意'},
  {id:'besta120', cat:'收纳 / 电视柜', name:'BESTÅ 电视柜 120(带门)', w:120,d:42,h:48, price:200, priceCA:205, color:'#e8e4dc', kind:'tvBench', url:'https://www.ikea.com/us/en/p/besta-tv-bench-with-doors-black-brown-lappviken-stubbarp-brown-walnut-effect-s19612104/'},
  {id:'lack_tv', cat:'收纳 / 电视柜', name:'LACK 电视柜 120', w:120,d:35,h:36, price:54.99, priceCA:89.99, color:'#2e3138', kind:'tvBench', url:'https://www.ikea.com/us/en/p/lack-tv-unit-black-brown-00566060/', note:'另有160cm款~$59'},
  {id:'radmanso6', cat:'收纳 / 电视柜', name:'RÅDMANSÖ 六屉柜 159', w:159,d:48,h:81, price:349.99, priceCA:399, color:'#6e5843', kind:'dresser', url:'https://www.ikea.com/us/en/p/radmansoe-6-drawer-dresser-brown-walnut-effect-40593839/', note:'MALM宽柜继任款'},
@@ -7639,6 +7639,35 @@ MODELS['vikhammer'] = (C) => {
   C.box(cm(48), cm(12), cm(30), boxM, 0, cm(46), -cm(2));
   // 台面 60×4×38.5，61→65（图标总高）
   C.rb(cm(60), cm(4), cm(38.5), cm(0.8), M1, 0, cm(61), 0, 4);
+  C.g.updateMatrixWorld(true);
+  const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3();
+  bb.getCenter(off);
+  for(const ch of C.g.children){ ch.position.x-=off.x; ch.position.z-=off.z; }
+};
+
+/* BESTÅ 180 电视柜 180×42×38：尺寸图 v02（门区 32/内腔深 36/每格 56）+ v03 正脸（brief: besta180.md）
+   三门+深色端板+浅灰顶+穿线孔。 */
+MODELS['besta180'] = (C) => {
+  const cm=C.cm, T=C.THREE;
+  const M1 = C.M(C.col, {rough:.5, envI:.3});
+  const darkM = C.M('#23211e', {flat:true, rough:.7, envI:.2});
+  const inM = C.M('#cfcac0', {flat:true, rough:.8});
+  // 门板胡桃木饰面（产品 lappviken 棕胡桃纹，与浅灰框体分色才可读出三门）
+  const doorM = C.M('#9c7a52', {wood:'walnut', rough:.55, envI:.6});
+  // 柜体 180×35.5×42 (0→35.5)，顶板 2.5 (35.5→38)
+  C.rb(cm(180), cm(35.5), cm(42), cm(0.8), M1, 0, 0, 0, 3);
+  C.rb(cm(180.6), cm(2.5), cm(42.6), cm(0.8), M1, 0, cm(35.5), 0, 4);
+  // 深色端板（产品黑棕端板），外伸 0.3 避免与柜体侧面共面 Z-fight
+  for(const sx of [-1,1])
+    C.rb(cm(4), cm(35.5), cm(42), cm(0.6), darkM, sx*cm(88.3), 0, 0, 3);
+  // 三门 55.5×33×1.5 (1.5→34.5)，微凸柜体前脸 0.3（v03 门有出缝），门缝 1
+  for(const dx of [-56.5,0,56.5])
+    C.rb(cm(55.5), cm(33), cm(1.5), cm(0.7), doorM, cm(dx), cm(1.5), cm(20.55), 3);
+  // 内衬（开柜可见）：背板+底板+侧板
+  C.box(cm(168), cm(32), cm(0.8), inM, 0, cm(2), -cm(17.5));
+  C.box(cm(168), cm(1), cm(36), inM, 0, cm(1.5), 0);
+  // 顶部后侧穿线孔 Ø5 暗圈（v01）
+  C.cyl(cm(2.5), cm(2.5), cm(0.4), darkM, 0, cm(37.5), -cm(14), 24);
   C.g.updateMatrixWorld(true);
   const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3();
   bb.getCenter(off);
