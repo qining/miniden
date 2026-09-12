@@ -685,7 +685,7 @@ const CATALOG = [
  {id:'docksta', cat:'餐桌椅 / 吧凳', name:'DOCKSTA 圆桌 Ø103', w:103,d:103,h:75, price:279.99, priceCA:249, color:'#e8e4dc', kind:'tableRound', url:'https://www.ikea.com/us/en/p/docksta-table-white-white-s19324995/', note:'独腿，坐4人'},
  {id:'vihals', cat:'餐桌椅 / 吧凳', name:'VIHALS 伸缩桌 120→180', w:120,d:74,h:75, price:149.99, priceCA:179, color:'#e8e4dc', kind:'tableRect', url:'https://www.ikea.com/us/en/p/vihals-extendable-table-white-20589777/', note:'EKEDALEN继任款'},
  {id:'lisabo140', cat:'餐桌椅 / 吧凳', name:'LISABO 餐桌 140×78', w:140,d:78,h:74, price:299.99, priceCA:229, color:'#c9a877', kind:'tableRect', url:'https://www.ikea.com/us/en/p/lisabo-table-ash-veneer-70294339/'},
- {id:'pinntorp', cat:'餐桌椅 / 吧凳', name:'PINNTORP 餐桌 125×75', w:125,d:75,h:75, price:199.99, priceCA:149, color:'#c9b287', kind:'tableRect', url:'https://www.ikea.com/us/en/p/pinntorp-table-light-brown-stained-white-stained-pine-30529467/'},
+ {id:'pinntorp', cat:'餐桌椅 / 吧凳', name:'PINNTORP 餐桌 125×75', w:125,d:75,h:75, price:199.99, priceCA:149, color:'#c9b287', kind:'tableRect', model:'pinntorp', url:'https://www.ikea.com/us/en/p/pinntorp-table-light-brown-stained-white-stained-pine-30529467/'},
  {id:'teodores', cat:'餐桌椅 / 吧凳', name:'TEODORES 餐椅', w:46,d:54,h:80, seatH:45, price:55, priceCA:45, color:'#e8e4dc', kind:'chair', model:'teodores', url:'https://www.ikea.com/us/en/p/teodores-chair-white-30486156/', note:'一体注塑座面+独立靠背板，实木染白腿；座宽40 座深37'},
  {id:'odger', cat:'餐桌椅 / 吧凳', name:'ODGER 餐椅', w:45,d:51,h:81, seatH:43, price:125, priceCA:120, color:'#5c5f66', kind:'chair', model:'odger', url:'https://www.ikea.com/us/en/p/odger-chair-anthracite-50457313/', note:'再生木纤维+塑料一体壳，四条锥形腿；座宽45 座深41'},
  {id:'tobias', cat:'餐桌椅 / 吧凳', name:'TOBIAS 餐椅(透明)', w:55,d:56,h:82, seatH:44, price:115, priceCA:100, color:'#aeb6bf', kind:'chair', model:'tobias', url:'https://www.ikea.com/us/en/p/tobias-chair-clear-chrome-plated-80349671/', note:'透明亚克力一体壳+镀铬钢管悬臂架；座48×46 靠背顶宽42 高35；宽55为底架跨距'},
@@ -694,8 +694,8 @@ const CATALOG = [
  {id:'skogsta_st', cat:'餐桌椅 / 吧凳', name:'SKOGSTA 吧凳(座高62)', w:41,d:46,h:91, seat:62, seatH:62, price:95, priceCA:95, caVar:'加拿大为黑色款（美国为相思木色）', color:'#9a7c52', model:'skogsta-stool', kind:'stool', wood:'birch', url:'https://www.ikea.com/us/en/p/skogsta-bar-stool-with-backrest-counter-height-acacia-50620677/', note:'全实木相思木，温莎式半圆背弓+3根背档，座宽41/座深37'},
  {id:'franklin', cat:'餐桌椅 / 吧凳', name:'FRANKLIN 折叠吧凳(63)', w:50,d:44,h:95, seat:63, seatH:63, price:45, priceCA:50, color:'#e8e4dc', model:'franklin-fold', kind:'stool', url:'https://www.ikea.com/us/en/p/franklin-bar-stool-with-backrest-foldable-counter-height-white-white-70404875/', note:'可折叠，钢管交叉框+覆膜胶合板座背，踏脚杆带灰色护套，座面34×34'},
  // —— 床 / 床头柜 ——
- {id:'malm_q', cat:'床 / 床头柜', name:'MALM 床架 Queen', w:168,d:211,h:100, price:249, priceCA:249, color:'#f0ece4', kind:'bed', url:'https://www.ikea.com/us/en/p/malm-bed-frame-white-s19931605/', note:'外框168×211，排骨架另购'},
- {id:'malm_k', cat:'床 / 床头柜', name:'MALM 床架 King', w:209,d:211,h:100, price:339, priceCA:399, caVar:'加拿大为高床架 King', color:'#f0ece4', kind:'bed', url:'https://www.ikea.com/us/en/p/malm-bed-frame-white-s49931604/'},
+ {id:'malm_q', cat:'床 / 床头柜', name:'MALM 床架 Queen', w:168,d:211,h:100, price:249, priceCA:249, color:'#f0ece4', kind:'bed', model:'malm', url:'https://www.ikea.com/us/en/p/malm-bed-frame-white-s19931605/', note:'外框168×211，排骨架另购'},
+ {id:'malm_k', cat:'床 / 床头柜', name:'MALM 床架 King', w:209,d:211,h:100, price:339, priceCA:399, caVar:'加拿大为高床架 King', color:'#f0ece4', kind:'bed', model:'malm', url:'https://www.ikea.com/us/en/p/malm-bed-frame-white-s49931604/'},
  {id:'gullaberg_q', cat:'床 / 床头柜', name:'GULLABERG 床架 Queen', w:163,d:210,h:113, price:299, priceCA:349, color:'#d9d4ca', kind:'bed', url:'https://www.ikea.com/us/en/p/gullaberg-bed-frame-gray-20608931/', note:'实木，HEMNES继任款'},
  {id:'songesand_q', cat:'床 / 床头柜', name:'SONGESAND 床架 Queen', w:165,d:208,h:95, price:249, priceCA:289, color:'#8b6f52', kind:'bed', url:'https://www.ikea.com/us/en/p/songesand-bed-frame-brown-s89241044/'},
  {id:'idanas_q', cat:'床 / 床头柜', name:'IDANÄS 软包床 Queen', w:159,d:224,h:121, price:549, priceCA:599, color:'#8f96a3', kind:'bed', url:'https://www.ikea.com/us/en/p/idanaes-upholstered-bed-frame-gunnared-dark-gray-60458958/', note:'最长，注意进深224'},
@@ -711,7 +711,7 @@ const CATALOG = [
  {id:'storklinta4', cat:'收纳 / 电视柜', name:'STORKLINTA 四屉柜', w:70,d:48,h:98, price:179.99, priceCA:199, color:'#f0ece4', kind:'dresser', url:'https://www.ikea.com/us/en/p/storklinta-4-drawer-dresser-white-anchor-unlock-function-40559289/'},
  {id:'hemnes_d8', cat:'收纳 / 电视柜', name:'HEMNES 八屉柜 160', w:160,d:50,h:96, price:449.99, priceCA:369, color:'#e8e4dc', kind:'dresser', url:'https://www.ikea.com/us/en/p/hemnes-8-drawer-dresser-white-stain-10576191/'},
  {id:'hauga6', cat:'收纳 / 电视柜', name:'HAUGA 六屉柜 138', w:138,d:46,h:84, price:279.99, priceCA:399, color:'#f0ece4', kind:'dresser', url:'https://www.ikea.com/us/en/p/hauga-6-drawer-dresser-white-60581538/'},
- {id:'billy', cat:'收纳 / 电视柜', name:'BILLY 书柜 80', w:80,d:28,h:202, price:79, priceCA:90, color:'#e8e4dc', kind:'bookcase', url:'https://www.ikea.com/us/en/p/billy-bookcase-white-20522046/'},
+ {id:'billy', cat:'收纳 / 电视柜', name:'BILLY 书柜 80', w:80,d:28,h:202, price:79, priceCA:90, color:'#e8e4dc', kind:'bookcase', model:'billy', url:'https://www.ikea.com/us/en/p/billy-bookcase-white-20522046/'},
  {id:'kallax24', cat:'收纳 / 电视柜', name:'KALLAX 2×4 格架', w:76.5,d:39,h:146.5, price:79.99, priceCA:99, color:'#e8e4dc', kind:'shelf', url:'https://www.ikea.com/us/en/p/kallax-shelf-unit-white-20631663/', note:'可横放当电视柜'},
  {id:'vittsjo_sh', cat:'收纳 / 电视柜', name:'VITTSJÖ 玻璃格架 100', w:100,d:36,h:175, price:129, priceCA:129, color:'#3a3d43', kind:'bookcase', glassShelf:true, url:'https://www.ikea.com/us/en/p/vittsjoe-shelf-unit-black-brown-glass-20213312/'},
  {id:'stall', cat:'收纳 / 电视柜', name:'STÄLL 鞋柜(超薄17)', w:96,d:17,h:90, price:149.99, priceCA:159, color:'#e8e4dc', kind:'shoeCab', url:'https://www.ikea.com/us/en/p/staell-shoe-cabinet-with-4-compartments-white-60530266/'},
@@ -735,7 +735,7 @@ const CATALOG = [
  {id:'borgeby', cat:'茶几 / 边几', name:'BORGEBY 圆茶几 Ø70', w:70,d:70,h:42, price:199.99, priceCA:169, color:'#c9a877', kind:'sideTable', url:'https://www.ikea.com/us/en/p/borgeby-coffee-table-birch-veneer-70389356/'},
  {id:'vittsjo_nest', cat:'茶几 / 边几', name:'VITTSJÖ 套几 90×50', w:90,d:50,h:50, price:149.99, priceCA:89, color:'#3a3d43', kind:'coffeeTable', url:'https://www.ikea.com/us/en/p/vittsjoe-nesting-tables-set-of-2-black-brown-glass-80215332/'},
  {id:'lack_side', cat:'茶几 / 边几', name:'LACK 边桌 55×55', w:55,d:55,h:45, price:16.99, priceCA:18.99, color:'#e8e4dc', kind:'sideTable', url:'https://www.ikea.com/us/en/p/lack-side-table-white-30449908/'},
- {id:'gladom', cat:'茶几 / 边几', name:'GLADOM 托盘桌 Ø45', w:45,d:45,h:53, price:19.99, priceCA:24.99, color:'#3e4249', kind:'sideTable', url:'https://www.ikea.com/us/en/p/gladom-tray-table-black-50411990/'},
+ {id:'gladom', cat:'茶几 / 边几', name:'GLADOM 托盘桌 Ø45', w:45,d:45,h:53, price:19.99, priceCA:24.99, color:'#3e4249', kind:'sideTable', model:'gladom', url:'https://www.ikea.com/us/en/p/gladom-tray-table-black-50411990/'},
  {id:'vidja', cat:'灯具 / 照明', name:'VIDJA 落地灯', w:26,d:26,h:138, price:69.99, priceCA:59.99, color:'#e8e4dc', kind:'lamp', url:'https://www.ikea.com/us/en/p/vidja-floor-lamp-white-10309206/'},
  {id:'ranarp_f', cat:'灯具 / 照明', name:'RANARP 落地阅读灯', w:28,d:28,h:153, price:69.99, priceCA:79.99, color:'#2e3138', kind:'lamp', url:'https://www.ikea.com/us/en/p/ranarp-floor-reading-lamp-black-00331383/'},
  {id:'hektar_f', cat:'茶几 / 边几', name:'HEKTAR 落地灯', w:33,d:33,h:180, price:89.99, priceCA:89, color:'#4a4d53', kind:'lamp', url:'https://www.ikea.com/us/en/p/hektar-floor-lamp-dark-gray-70216544/'},
@@ -7064,6 +7064,108 @@ MODELS['soderhamn'] = (C) => {
   }
 
   // 水平重心归零
+  C.g.updateMatrixWorld(true);
+  const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3();
+  bb.getCenter(off);
+  for(const ch of C.g.children){ ch.position.x-=off.x; ch.position.z-=off.z; }
+};
+
+/* MALM 床架 Queen(168)/King(209) 共用：尺寸图 work/ref/malm_39.png——前横档 21→38（图标 21/38），
+   床头板 0→100；排骨架高/中梁/壁厚无标注，比例估计。 */
+MODELS['malm'] = (C) => {
+  const cm=C.cm, T=C.THREE;
+  const W=C.w, D=C.d, H=C.h;
+  const M1 = C.M(C.col, {rough:.55});
+  const slatM = C.M('#d8cbb4', {wood:'pine', envI:.5});
+  const RAIL_B=cm(21), RAIL_T=cm(38), TH=cm(4.5);
+  for(const sx of [-1,1]) for(const sz of [-1,1])
+    C.box(TH, RAIL_B, TH, M1, sx*(W/2-TH/2-cm(1)), 0, sz>0? D/2-TH/2-cm(1) : -(D/2-TH/2-cm(1)));
+  for(const sz of [-1,1])
+    C.box(W-2*TH, cm(17), TH, M1, 0, RAIL_B, sz*(D/2-TH/2));
+  for(const sx of [-1,1])
+    C.box(TH, RAIL_T, D, M1, sx*(W/2-TH/2), 0, 0);
+  C.box(W, H, TH, M1, 0, 0, -(D/2-TH/2));
+  C.box(W-2*TH, cm(11), cm(3.5), M1, 0, RAIL_B, 0);
+  const n=12, sw=(W-2*TH-cm(8))/n;
+  for(let i=0;i<n;i++)
+    C.rb(sw*0.72, cm(2), D-cm(20), cm(0.5), slatM, -((n-1)*sw)/2+i*sw, cm(26), 0, 2);
+  C.g.updateMatrixWorld(true);
+  const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3();
+  bb.getCenter(off);
+  for(const ch of C.g.children){ ch.position.x-=off.x; ch.position.z-=off.z; }
+};
+
+/* BILLY 书柜 80×28×202：尺寸图 work/ref/billy_35.png——内宽 76、前脚 9、基座 8、
+   中板距顶 94、顶层距顶 13（图标）；板厚 1.6/隔板 1.9（BILLY 标准）；另两块层板位置比例估计。 */
+MODELS['billy'] = (C) => {
+  const cm=C.cm, T=C.THREE;
+  const W=C.w, D=C.d, H=C.h;
+  const M1 = C.M(C.col, {rough:.6});
+  const bt=cm(1.6);
+  C.rb(W, cm(8), D, cm(0.3), M1, 0, 0, 0);
+  for(const sx of [-1,1])
+    C.box(cm(5), cm(9), cm(4), M1, sx*(W/2-cm(2.5)), 0, D/2-cm(3));
+  for(const sx of [-1,1])
+    C.rb(bt, H-cm(8), D, cm(0.3), M1, sx*(W/2-bt/2), cm(8), 0);
+  C.rb(W-2*bt, bt, D, cm(0.3), M1, 0, H-bt, 0);
+  C.rb(W-2*bt, bt, D, cm(0.3), M1, 0, cm(8), 0);
+  C.box(W-2*bt, H-cm(8)-2*bt, cm(0.5), M1, 0, cm(8)+bt, -(D/2-cm(1)));
+  const st=cm(1.9);
+  for(const y of [H-bt-cm(94), H-bt-cm(13), cm(134), cm(161)])
+    C.rb(W-2*bt, st, D-cm(1.5), cm(0.2), M1, 0, y, 0);
+  // 侧板内侧层板托条（BILLY 实际结构：隔板卡在竖槽里），每侧 4 条
+  for(const sx of [-1,1]) for(const y of [H-bt-cm(94), H-bt-cm(13), cm(134), cm(161)])
+    C.box(cm(0.8), cm(1.9)+cm(6), cm(1.9), M1, sx*(W/2-bt-cm(0.5)), y+cm(3.9), -(D/2-cm(2)));
+  C.g.updateMatrixWorld(true);
+  const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3();
+  bb.getCenter(off);
+  for(const ch of C.g.children){ ch.position.x-=off.x; ch.position.z-=off.z; }
+};
+
+/* PINNTORP 餐桌 125×75×75：尺寸图 work/ref/pinntorp_33.png——腿距 110（宽向）/58（深向）
+   → 四周缩进 7.5/8.5；桌面高 75；桌厚/腿截面 4.5 比例估计（图里为方腿）。 */
+MODELS['pinntorp'] = (C) => {
+  const cm=C.cm, T=C.THREE;
+  const W=C.w, D=C.d, H=C.h;
+  const M1 = C.M(C.col, {wood:'pine', envI:.55});
+  const TT=cm(4.5), LW=cm(4.5);
+  C.rb(W, TT, D, cm(0.8), M1, 0, H-TT, 0);
+  const ix=W/2-cm(7.5)-LW/2, iz=D/2-cm(8.5)-LW/2;
+  for(const sx of [-1,1]) for(const sz of [-1,1])
+    C.box(LW, H-TT+cm(0.5), LW, M1, sx*ix, 0, sz*iz);
+  C.g.updateMatrixWorld(true);
+  const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3();
+  bb.getCenter(off);
+  for(const ch of C.g.children){ ch.position.x-=off.x; ch.position.z-=off.z; }
+};
+
+/* GLADOM 托盘桌 Ø45×53：尺寸图 work/ref/gladom_33.png——圆盘带盘沿、5 根细圆腿、
+   离地 ~10 五角星交叉横撑（图里可见）；腿径/撑径/盘沿高比例估计。 */
+MODELS['gladom'] = (C) => {
+  const cm=C.cm, T=C.THREE;
+  const W=C.w, D=C.d, H=C.h;
+  const M1 = C.M(C.col, {metal:.85, rough:.4, envI:.85});
+  const R=W/2, TOP_T=cm(2.5), legR=cm(1.25), brR=cm(0.7), lr=R-cm(3);
+  C.cyl(R, R, TOP_T, M1, 0, H-TOP_T, 0, 40);
+  C.torus(R-cm(1), cm(1.2), M1, 0, H-cm(0.8), 0, Math.PI/2);   // 水平盘沿（不转是竖环！）
+  const n=5, ang=i=>-Math.PI/2+i*2*Math.PI/n;
+  for(let i=0;i<n;i++){
+    // 外层 Group 只转竖轴定方位，mesh 只单轴外撇（不叠欧拉角）
+    const g=new T.Group(); g.rotation.y=-ang(i);   // 局部 +x 对准该腿的外撇方向
+    const m=new T.Mesh(new T.CylinderGeometry(legR, legR*1.15, H-TOP_T-cm(0.5), 10), M1);
+    m.position.set(lr, (H-TOP_T-cm(0.5))/2, 0); m.rotation.z=-0.03;
+    m.castShadow=m.receiveShadow=true; g.add(m); C.g.add(g);
+  }
+  for(let i=0;i<n;i++){   // 五角星横撑：连隔一根的腿（Group 转竖轴定向，mesh 单轴倒平）
+    const a=ang(i), b=ang((i+2)%n), y=cm(10);
+    const ax=Math.cos(a)*lr, az=Math.sin(a)*lr, bx=Math.cos(b)*lr, bz=Math.sin(b)*lr;
+    const dx=bx-ax, dz=bz-az, len=Math.sqrt(dx*dx+dz*dz);
+    const gg=new T.Group();
+    gg.position.set((ax+bx)/2, y, (az+bz)/2); gg.rotation.y=Math.atan2(dx, dz);
+    const m=new T.Mesh(new T.CapsuleGeometry(brR, Math.max(0.005, len-2*brR), 4, 10), M1);
+    m.rotation.x=Math.PI/2; m.castShadow=m.receiveShadow=true;
+    gg.add(m); C.g.add(gg);
+  }
   C.g.updateMatrixWorld(true);
   const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3();
   bb.getCenter(off);
