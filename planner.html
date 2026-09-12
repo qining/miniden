@@ -677,7 +677,7 @@ const CATALOG = [
  {id:'soderhamn3', cat:'沙发 / 单椅', name:'SÖDERHAMN 三人沙发', w:198,d:99,h:83, price:819, priceCA:850, caVar:'加拿大无 Tonerud 面料，价为同尺寸 Fridtuna 浅米色', color:'#7d8577', kind:'sofa', model:'soderhamn', url:'https://www.ikea.com/us/en/p/soederhamn-sofa-tonerud-gray-s19452105/', note:'低坐深座'},
  {id:'friheten', cat:'沙发 / 单椅', name:'FRIHETEN 转角沙发床', w:230,d:151,h:86, price:999, priceCA:1099, color:'#5a5f6b', kind:'sofaL', model:'friheten', url:'https://www.ikea.com/us/en/p/friheten-sleeper-sectional-3-seat-w-storage-skiftebo-dark-gray-s69216757/', note:'带储物，床面140×204'},
  {id:'morabo3', cat:'沙发 / 单椅', name:'MORABO 三人沙发', w:206,d:92,h:81, price:799, priceCA:799, color:'#6e7276', kind:'sofa', model:'morabo', url:'https://www.ikea.com/us/en/p/morabo-sofa-gunnared-dark-gray-metal-s09318320/', note:'LANDSKRONA继任款'},
- {id:'uppland3', cat:'沙发 / 单椅', name:'UPPLAND 三人沙发', w:224,d:92,h:92, price:899, priceCA:649, color:'#c8bfae', kind:'sofa', url:'https://www.ikea.com/us/en/p/uppland-sofa-blekinge-white-s19384116/', note:'EKTORP继任款，可拆洗'},
+ {id:'uppland3', cat:'沙发 / 单椅', name:'UPPLAND 三人沙发', w:224,d:92,h:92, price:899, priceCA:649, color:'#c8bfae', kind:'sofa', model:'uppland', url:'https://www.ikea.com/us/en/p/uppland-sofa-blekinge-white-s19384116/', note:'EKTORP继任款，可拆洗'},
  {id:'ekholma3', cat:'沙发 / 单椅', name:'EKHOLMA 三人沙发', w:207,d:85,h:94, price:799, priceCA:599, color:'#b3a794', kind:'sofa', url:'https://www.ikea.com/us/en/p/ekholma-sofa-hakebo-beige-s29537411/'},
  {id:'poang', cat:'沙发 / 单椅', name:'POÄNG 扶手椅', w:68,d:82,h:100, price:149, priceCA:149, caVar:'加拿大无 Hillared 面料，价为同档 Kelinge', color:'#a5906e', kind:'armchair', url:'https://www.ikea.com/us/en/p/poaeng-armchair-brown-hillared-anthracite-s19336026/', note:'面料不同 $149-249'},
  {id:'strandmon', cat:'沙发 / 单椅', name:'STRANDMON 高背椅', w:82,d:96,h:101, price:299, priceCA:349, color:'#4a5d52', kind:'armchair', url:'https://www.ikea.com/us/en/p/strandmon-wing-chair-nordvalla-dark-gray-90359829/'},
@@ -7249,6 +7249,40 @@ MODELS['friheten'] = (C) => {
   // 腿：暗色小圆柱 φ5 高 6（v03）
   for(const [lx,lz] of [[-103,4],[12,4],[30,67],[103,67],[103,-67],[-103,-67]])
     C.cyl(cm(2.5), cm(2.5), cm(6), legM, cm(lx), 0, cm(lz), 10);
+  C.g.updateMatrixWorld(true);
+  const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3();
+  bb.getCenter(off);
+  for(const ch of C.g.children){ ch.position.x-=off.x; ch.position.z-=off.z; }
+};
+
+/* UPPLAND 三人沙发 224×92×92（EKTORP 继任款）：尺寸图 v12（扶手 25/背垫 58×3/座高 47/背垫 45/裙 17，
+   47+45=92 自洽）；裙摆落地无腿、卷臂为实拍特征，扶手顶 63 比例估计（brief: uppland.md）。 */
+MODELS['uppland'] = (C) => {
+  const cm=C.cm, T=C.THREE;
+  const W=C.w, D=C.d, H=C.h;
+  const M1 = C.M(C.col, {fabric:true, sheen:.10, envI:.15});
+  // 裙摆箱体 0→35（图标裙高 17 可见带 + 座框），落地无腿
+  C.rb(W, cm(35), D, cm(3), M1, 0, 0, 0);
+  // 扶手 25 宽（图标）0→53 + 顶卷 r10 横贯全深（顶 63 比例估计）
+  for(const sx of [-1,1]){
+    C.rb(cm(25), cm(53), D, cm(4), M1, sx*(W/2-cm(12.5)), 0, 0);
+    // 顶卷：胶囊沿 z 横贯全深（中心定位，端帽正好齐前后缘），顶 63
+    C.tube(D, cm(10), M1, sx*(W/2-cm(12.5)), cm(53), 0, 'z');
+  }
+  // 背框 174 宽×24 深，35→92（图标总高）
+  C.rb(cm(174), cm(57), cm(24), cm(4), M1, 0, cm(35), -(D/2-cm(12)));
+  // 座垫 ×3：58 宽（图标），35→47（座高图标），深 68
+  for(const cx of [-58,0,58])
+    C.rb(cm(58), cm(12), cm(68), cm(5), M1, cm(cx), cm(35), cm(12));
+  // 背垫 ×3：58×20×45（图标），47→92，松散微前倾
+  for(const cx of [-58,0,58]){
+    const c = C.rb(cm(58), cm(45), cm(20), cm(6), M1, 0, 0, 0, 3);
+    C.g.remove(c);
+    const g = new T.Group();
+    g.position.set(cm(cx), cm(47), -cm(31)); g.rotation.x=0.07;
+    c.position.set(0, cm(22.5), 0);
+    g.add(c); C.g.add(g);
+  }
   C.g.updateMatrixWorld(true);
   const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3();
   bb.getCenter(off);
