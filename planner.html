@@ -698,7 +698,7 @@ const CATALOG = [
  {id:'malm_k', cat:'床 / 床头柜', name:'MALM 床架 King', w:209,d:211,h:100, price:339, priceCA:399, caVar:'加拿大为高床架 King', color:'#f0ece4', kind:'bed', model:'malm', url:'https://www.ikea.com/us/en/p/malm-bed-frame-white-s49931604/'},
  {id:'gullaberg_q', cat:'床 / 床头柜', name:'GULLABERG 床架 Queen', w:163,d:210,h:113, price:299, priceCA:349, color:'#d9d4ca', kind:'bed', model:'gullaberg', url:'https://www.ikea.com/us/en/p/gullaberg-bed-frame-gray-20608931/', note:'实木，HEMNES继任款'},
  {id:'songesand_q', cat:'床 / 床头柜', name:'SONGESAND 床架 Queen', w:165,d:208,h:95, price:249, priceCA:289, color:'#8b6f52', kind:'bed', model:'songesand', url:'https://www.ikea.com/us/en/p/songesand-bed-frame-brown-s89241044/'},
- {id:'idanas_q', cat:'床 / 床头柜', name:'IDANÄS 软包床 Queen', w:159,d:224,h:121, price:549, priceCA:599, color:'#8f96a3', kind:'bed', url:'https://www.ikea.com/us/en/p/idanaes-upholstered-bed-frame-gunnared-dark-gray-60458958/', note:'最长，注意进深224'},
+ {id:'idanas_q', cat:'床 / 床头柜', name:'IDANÄS 软包床 Queen', w:159,d:224,h:121, price:549, priceCA:599, color:'#8f96a3', kind:'bed', model:'idanas', url:'https://www.ikea.com/us/en/p/idanaes-upholstered-bed-frame-gunnared-dark-gray-60458958/', note:'最长，注意进深224'},
  {id:'storklinta_ns', cat:'床 / 床头柜', name:'STORKLINTA 床头柜', w:50,d:48,h:53, price:79.99, priceCA:79.99, color:'#f0ece4', kind:'nightstand', url:'https://www.ikea.com/us/en/p/storklinta-2-drawer-chest-white-with-2-drawers-90559296/', note:'MALM床头柜继任款'},
  {id:'nordli_ns', cat:'床 / 床头柜', name:'NORDLI 床头柜(窄40)', w:40,d:47,h:54, price:99.99, priceCA:149, color:'#f0ece4', kind:'nightstand', url:'https://www.ikea.com/us/en/p/nordli-2-drawer-chest-white-30589079/', note:'适合窄位'},
  {id:'vikhammer', cat:'床 / 床头柜', name:'VIKHAMMER 床头柜', w:60,d:39,h:65, price:99.99, priceCA:129, color:'#3e4249', kind:'nightstand', url:'https://www.ikea.com/us/en/p/vikhammer-nightstand-black-90388978/'},
@@ -7539,6 +7539,33 @@ MODELS['songesand'] = (C) => {
   // 排骨 ×8，12→16（图标排骨区 20）
   for(let i=0;i<8;i++)
     C.rb(cm(150), cm(4), cm(8), cm(1), M1, 0, cm(12), -cm(88)+i*cm(176/7), 3);
+  C.g.updateMatrixWorld(true);
+  const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3();
+  bb.getCenter(off);
+  for(const ch of C.g.children){ ch.position.x-=off.x; ch.position.z-=off.z; }
+};
+
+/* IDANÄS 软包床 Queen 159×224×121：尺寸图 v04（床头宽 162/基座 159/床头高 121/基高 46）+ v05/v06 实拍
+   （大圆角拉扣床头、软包基座、浅橡锥形腿）（brief: idanas.md）。 */
+MODELS['idanas'] = (C) => {
+  const cm=C.cm, T=C.THREE;
+  const W=C.w, D=C.d;
+  const M1 = C.M(C.col, {fabric:true, sheen:.08, envI:.15});
+  const legM = C.M('#b3906a', {wood:'oak', rough:.45, envI:.5});
+  // 浅橡锥形腿 ×4，0→15（v06）
+  for(const [lx,lz] of [[-71.5,-104],[71.5,-104],[-71.5,104],[71.5,104]])
+    C.cyl(cm(2.5), cm(1.5), cm(15), legM, cm(lx), 0, cm(lz), 14);
+  // 软包基座 159 宽，15→46（图标基高）
+  C.rb(W, cm(31), D, cm(4), M1, 0, cm(15), 0, 4);
+  // 排骨 ×8（基座内，v03 尾侧可见）
+  const slatM = C.M('#a5825c', {wood:'oak', rough:.5});
+  for(let i=0;i<8;i++)
+    C.box(cm(140), cm(3.5), cm(7), slatM, 0, cm(42.5), -cm(92)+i*cm(184/7));
+  // 大圆角拉扣床头板 162×20 深，15→121（图标）
+  C.rb(cm(162), cm(106), cm(20), cm(8), M1, 0, cm(15), -D/2+cm(10), 4);
+  // 菱形拉扣 9 粒（v05）
+  for(const [bx,by] of [[-48,95],[-24,95],[0,95],[24,95],[48,95],[-36,72],[-12,72],[12,72],[36,72]])
+    C.sph(cm(1.2), M1, cm(bx), cm(by), -D/2+cm(20.5), 10);
   C.g.updateMatrixWorld(true);
   const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3();
   bb.getCenter(off);
