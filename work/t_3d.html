@@ -675,8 +675,8 @@ const CATALOG = [
  {id:'kivik3', cat:'沙发 / 单椅', name:'KIVIK 三人沙发', w:228,d:95,h:83, price:899, priceCA:849, caVar:'加拿大无 Tresund 深灰，价为同系列 Tresund 浅米色', color:'#8d8579', kind:'sofa', model:'kivik', url:'https://www.ikea.com/us/en/p/kivik-sofa-tresund-anthracite-s39482837/', note:'可拆洗，多色 $849-999'},
  {id:'kivik2', cat:'沙发 / 单椅', name:'KIVIK 双人沙发', w:190,d:95,h:83, price:849, priceCA:749, color:'#8d8579', kind:'sofa', model:'kivik', url:'https://www.ikea.com/us/en/p/kivik-loveseat-tresund-light-beige-s29482828/'},
  {id:'soderhamn3', cat:'沙发 / 单椅', name:'SÖDERHAMN 三人沙发', w:198,d:99,h:83, price:819, priceCA:850, caVar:'加拿大无 Tonerud 面料，价为同尺寸 Fridtuna 浅米色', color:'#7d8577', kind:'sofa', model:'soderhamn', url:'https://www.ikea.com/us/en/p/soederhamn-sofa-tonerud-gray-s19452105/', note:'低坐深座'},
- {id:'friheten', cat:'沙发 / 单椅', name:'FRIHETEN 转角沙发床', w:230,d:151,h:86, price:999, priceCA:1099, color:'#5a5f6b', kind:'sofaL', url:'https://www.ikea.com/us/en/p/friheten-sleeper-sectional-3-seat-w-storage-skiftebo-dark-gray-s69216757/', note:'带储物，床面140×204'},
- {id:'morabo3', cat:'沙发 / 单椅', name:'MORABO 三人沙发', w:206,d:92,h:81, price:799, priceCA:799, color:'#6e7276', kind:'sofa', url:'https://www.ikea.com/us/en/p/morabo-sofa-gunnared-dark-gray-metal-s09318320/', note:'LANDSKRONA继任款'},
+ {id:'friheten', cat:'沙发 / 单椅', name:'FRIHETEN 转角沙发床', w:230,d:151,h:86, price:999, priceCA:1099, color:'#5a5f6b', kind:'sofaL', model:'friheten', url:'https://www.ikea.com/us/en/p/friheten-sleeper-sectional-3-seat-w-storage-skiftebo-dark-gray-s69216757/', note:'带储物，床面140×204'},
+ {id:'morabo3', cat:'沙发 / 单椅', name:'MORABO 三人沙发', w:206,d:92,h:81, price:799, priceCA:799, color:'#6e7276', kind:'sofa', model:'morabo', url:'https://www.ikea.com/us/en/p/morabo-sofa-gunnared-dark-gray-metal-s09318320/', note:'LANDSKRONA继任款'},
  {id:'uppland3', cat:'沙发 / 单椅', name:'UPPLAND 三人沙发', w:224,d:92,h:92, price:899, priceCA:649, color:'#c8bfae', kind:'sofa', url:'https://www.ikea.com/us/en/p/uppland-sofa-blekinge-white-s19384116/', note:'EKTORP继任款，可拆洗'},
  {id:'ekholma3', cat:'沙发 / 单椅', name:'EKHOLMA 三人沙发', w:207,d:85,h:94, price:799, priceCA:599, color:'#b3a794', kind:'sofa', url:'https://www.ikea.com/us/en/p/ekholma-sofa-hakebo-beige-s29537411/'},
  {id:'poang', cat:'沙发 / 单椅', name:'POÄNG 扶手椅', w:68,d:82,h:100, price:149, priceCA:149, caVar:'加拿大无 Hillared 面料，价为同档 Kelinge', color:'#a5906e', kind:'armchair', url:'https://www.ikea.com/us/en/p/poaeng-armchair-brown-hillared-anthracite-s19336026/', note:'面料不同 $149-249'},
@@ -7166,6 +7166,89 @@ MODELS['gladom'] = (C) => {
     m.rotation.x=Math.PI/2; m.castShadow=m.receiveShadow=true;
     gg.add(m); C.g.add(gg);
   }
+  C.g.updateMatrixWorld(true);
+  const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3();
+  bb.getCenter(off);
+  for(const ch of C.g.children){ ch.position.x-=off.x; ch.position.z-=off.z; }
+};
+
+/* MORABO 三人沙发 206×92×81：尺寸图 v05_0815815（扶手顶 67/座高 47/底座离地 16/背垫宽 61×2）；
+   扶手宽 42/座深 64/背框深 26/腿位/拉扣为实拍比例估计（brief: work/briefs/morabo.md）。 */
+MODELS['morabo'] = (C) => {
+  const cm=C.cm, T=C.THREE;
+  const W=C.w, D=C.d, H=C.h;
+  const M1 = C.M(C.col, {fabric:true, sheen:.15, envI:.15});
+  const chrome = C.M('#d8dadc', {metal:.95, rough:.18, envI:.95});
+  // 底座 16→38（图标 16）
+  C.rb(W, cm(22), D, cm(2.5), M1, 0, cm(16), 0);
+  // 扶手 42 宽，16→67（图标 67）
+  for(const sx of [-1,1])
+    C.rb(cm(42), cm(51), D, cm(3), M1, sx*(W/2-cm(21)), cm(16), 0);
+  // 背框 122 宽×26 深，38→81（背在 -z，与 2D 图例/通用回退同向）
+  C.rb(W-cm(84), cm(43), cm(26), cm(2.5), M1, 0, cm(38), -(D/2-cm(13)));
+  // 座垫 ×2：60.5 宽，35→47.5（座高 47 图标），深 64
+  for(const sx of [-1,1])
+    C.rb(cm(60.5), cm(12.5), cm(64), cm(4.5), M1, sx*cm(30.75), cm(35), D/2-cm(32));
+  // 背垫 ×2：61 宽（图标）×30 高×20 厚，50→80，前倾 3°，3×3 拉扣
+  for(const sx of [-1,1]){
+    const c = C.rb(cm(61), cm(30), cm(20), cm(5), M1, 0, 0, 0, 3);
+    C.g.remove(c);
+    const g = new T.Group();
+    g.position.set(sx*cm(31), cm(50), -cm(11)); g.rotation.x=0.05;   // 单轴前倾（朝 +z）
+    c.position.set(0, cm(15), 0);
+    g.add(c);
+    for(const bx of [-cm(18),0,cm(18)]) for(const by of [-cm(9.5),0,cm(9.5)]){
+      const b = new T.Mesh(new T.SphereGeometry(cm(1.0), 10, 8), M1);
+      b.position.set(bx, by, cm(9.5)); b.castShadow=b.receiveShadow=true;
+      g.add(b);
+    }
+    C.g.add(g);
+  }
+  // 腿 ×4：镀铬喇叭脚 0→8 + 布包腿 6.5→17.5（v00/v09）
+  for(const [lx,lz] of [[-64,33],[64,33],[-64,-28],[64,-28]]){
+    const x=cm(lx), z=cm(lz);
+    C.cyl(cm(5), cm(5), cm(0.8), chrome, x, 0, z, 20);        // 底盘
+    C.cyl(cm(2.6), cm(3.4), cm(7.2), chrome, x, cm(0.8), z, 20); // 锥脚
+    C.cyl(cm(2.2), cm(2.8), cm(11), M1, x, cm(6.5), z, 14);   // 布腿
+  }
+  C.g.updateMatrixWorld(true);
+  const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3();
+  bb.getCenter(off);
+  for(const ch of C.g.children){ ch.position.x-=off.x; ch.position.z-=off.z; }
+};
+
+/* FRIHETEN 转角沙发床 230×151×86：尺寸图 v05（chaise 深 151/座深 122/座高 44/3 座段深 90/
+   扶手 66/背垫 57×3 高出座面 44）；chaise 宽 95/扶手 24/背框深 24/腿为实拍比例估计（brief: friheten.md）。 */
+MODELS['friheten'] = (C) => {
+  const cm=C.cm, T=C.THREE;
+  const W=C.w, D=C.d, H=C.h;
+  const M1 = C.M(C.col, {fabric:true, sheen:.12, envI:.15});
+  const legM = C.M('#2a2c2f', {rough:.7});
+  // chaise 在 +x，背在 +z。3 座段 x -115→+20，chaise x +20→+115
+  // 底座：chaise 段 (6→38)、3 座段 (6→34)（背在 -z，与 2D 图例同向）
+  C.rb(cm(71), cm(32), D, cm(2.5), M1, cm(55.5), cm(6), 0);
+  C.rb(cm(135), cm(28), cm(90), cm(2.5), M1, cm(-47.5), cm(6), -cm(30.5));
+  // 右扶手 24 宽，跨 chaise 全深，6→66（图标）
+  C.rb(cm(24), cm(60), D, cm(3), M1, cm(103), cm(6), 0);
+  // chaise 矮背 38→60；3 座背框 34→86（图标 86）
+  C.rb(cm(71), cm(22), cm(24), cm(2.5), M1, cm(55.5), cm(38), -(D/2-cm(12)));
+  C.rb(cm(206), cm(52), cm(24), cm(2.5), M1, cm(-14), cm(34), -(D/2-cm(12)));
+  // 座垫：chaise 70×12×122 顶 44（图标）；3 座 2×57 顶 42
+  C.rb(cm(70), cm(12), cm(122), cm(4), M1, cm(55.5), cm(32), D/2-cm(61));
+  for(const cx of [-80,-15])
+    C.rb(cm(57), cm(12), cm(66), cm(4), M1, cm(cx), cm(30), -cm(18.5));
+  // 背垫 ×3：57×20×44（图标），松散斜靠、互相叠压
+  for(const [cx, ry] of [[-80,-0.05],[-20,0],[40,0.06]]){
+    const c = C.rb(cm(57), cm(44), cm(20), cm(5), M1, 0, 0, 0, 3);
+    C.g.remove(c);
+    const g = new T.Group();
+    g.position.set(cm(cx), cm(42), -cm(42)); g.rotation.y=ry;
+    c.position.set(0, cm(22), 0); c.rotation.x=0.09;   // 单轴前倾（朝 +z）
+    g.add(c); C.g.add(g);
+  }
+  // 腿：暗色小圆柱 φ5 高 6（v03）
+  for(const [lx,lz] of [[-103,4],[12,4],[30,67],[103,67],[103,-67],[-103,-67]])
+    C.cyl(cm(2.5), cm(2.5), cm(6), legM, cm(lx), 0, cm(lz), 10);
   C.g.updateMatrixWorld(true);
   const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3();
   bb.getCenter(off);
