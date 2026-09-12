@@ -683,7 +683,7 @@ const CATALOG = [
  {id:'strandmon', cat:'沙发 / 单椅', name:'STRANDMON 高背椅', w:82,d:96,h:101, price:299, priceCA:349, color:'#4a5d52', kind:'armchair', model:'strandmon', url:'https://www.ikea.com/us/en/p/strandmon-wing-chair-nordvalla-dark-gray-90359829/'},
  // —— 餐桌椅 / 吧凳 ——
  {id:'docksta', cat:'餐桌椅 / 吧凳', name:'DOCKSTA 圆桌 Ø103', w:103,d:103,h:75, price:279.99, priceCA:249, color:'#e8e4dc', kind:'tableRound', model:'docksta', url:'https://www.ikea.com/us/en/p/docksta-table-white-white-s19324995/', note:'独腿，坐4人'},
- {id:'vihals', cat:'餐桌椅 / 吧凳', name:'VIHALS 伸缩桌 120→180', w:120,d:74,h:75, price:149.99, priceCA:179, color:'#e8e4dc', kind:'tableRect', url:'https://www.ikea.com/us/en/p/vihals-extendable-table-white-20589777/', note:'EKEDALEN继任款'},
+ {id:'vihals', cat:'餐桌椅 / 吧凳', name:'VIHALS 伸缩桌 120→180', w:120,d:74,h:75, price:149.99, priceCA:179, color:'#e8e4dc', kind:'tableRect', model:'vihals', url:'https://www.ikea.com/us/en/p/vihals-extendable-table-white-20589777/', note:'EKEDALEN继任款'},
  {id:'lisabo140', cat:'餐桌椅 / 吧凳', name:'LISABO 餐桌 140×78', w:140,d:78,h:74, price:299.99, priceCA:229, color:'#c9a877', kind:'tableRect', url:'https://www.ikea.com/us/en/p/lisabo-table-ash-veneer-70294339/'},
  {id:'pinntorp', cat:'餐桌椅 / 吧凳', name:'PINNTORP 餐桌 125×75', w:125,d:75,h:75, price:199.99, priceCA:149, color:'#c9b287', kind:'tableRect', model:'pinntorp', url:'https://www.ikea.com/us/en/p/pinntorp-table-light-brown-stained-white-stained-pine-30529467/'},
  {id:'teodores', cat:'餐桌椅 / 吧凳', name:'TEODORES 餐椅', w:46,d:54,h:80, seatH:45, price:55, priceCA:45, color:'#e8e4dc', kind:'chair', model:'teodores', url:'https://www.ikea.com/us/en/p/teodores-chair-white-30486156/', note:'一体注塑座面+独立靠背板，实木染白腿；座宽40 座深37'},
@@ -7411,6 +7411,26 @@ MODELS['docksta'] = (C) => {
           M1, 0, 0, 0, 72);
   // 台面 Ø103×2.2，72.8→75（图标）
   C.cyl(cm(51.5), cm(51.5), cm(2.2), M1, 0, cm(72.8), 0, 88);
+  C.g.updateMatrixWorld(true);
+  const T=C.THREE, bb=new T.Box3().setFromObject(C.g), off=new T.Vector3();
+  bb.getCenter(off);
+  for(const ch of C.g.children){ ch.position.x-=off.x; ch.position.z-=off.z; }
+};
+
+/* VIHALS 伸缩桌（折叠态）120×74×75：尺寸图 v03（120 折叠/180 伸展/深 74/高 75）；
+   台面厚 4/方腿 5/伸缩槽板为 v02+v08 实拍比例（brief: vihals.md）。 */
+MODELS['vihals'] = (C) => {
+  const cm=C.cm;
+  const M1 = C.M('#f7f6f2', {rough:.35, clear:.5, envI:.4});
+  const slotM = C.M('#d8d6d0', {rough:.5});
+  // 台面 120×74×4（v08 特写厚边），71→75
+  C.rb(cm(120), cm(4), cm(74), cm(1), M1, 0, cm(71), 0, 6);
+  // 四腿 5×5 微倒角，内缩 10（v02 比例），0→71
+  for(const [lx,lz] of [[-50,-27],[50,-27],[-50,27],[50,27]])
+    C.rb(cm(5), cm(71), cm(5), cm(0.8), M1, cm(lx), 0, cm(lz), 4);
+  // 台面下伸缩叶槽嵌板 ×2（v08）
+  for(const sx of [-1,1])
+    C.box(cm(50), cm(1.5), cm(30), slotM, sx*cm(30), cm(69.5), 0);
   C.g.updateMatrixWorld(true);
   const T=C.THREE, bb=new T.Box3().setFromObject(C.g), off=new T.Vector3();
   bb.getCenter(off);
