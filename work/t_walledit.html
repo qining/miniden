@@ -674,7 +674,7 @@ const CATALOG = [
  // —— 沙发/单椅 ——
  {id:'kivik3', cat:'沙发 / 单椅', name:'KIVIK 三人沙发', w:228,d:95,h:83, price:899, priceCA:849, caVar:'加拿大无 Tresund 深灰，价为同系列 Tresund 浅米色', color:'#8d8579', kind:'sofa', model:'kivik', url:'https://www.ikea.com/us/en/p/kivik-sofa-tresund-anthracite-s39482837/', note:'可拆洗，多色 $849-999'},
  {id:'kivik2', cat:'沙发 / 单椅', name:'KIVIK 双人沙发', w:190,d:95,h:83, price:849, priceCA:749, color:'#8d8579', kind:'sofa', model:'kivik', url:'https://www.ikea.com/us/en/p/kivik-loveseat-tresund-light-beige-s29482828/'},
- {id:'soderhamn3', cat:'沙发 / 单椅', name:'SÖDERHAMN 三人沙发', w:198,d:99,h:83, price:819, priceCA:850, caVar:'加拿大无 Tonerud 面料，价为同尺寸 Fridtuna 浅米色', color:'#7d8577', kind:'sofa', url:'https://www.ikea.com/us/en/p/soederhamn-sofa-tonerud-gray-s19452105/', note:'低坐深座'},
+ {id:'soderhamn3', cat:'沙发 / 单椅', name:'SÖDERHAMN 三人沙发', w:198,d:99,h:83, price:819, priceCA:850, caVar:'加拿大无 Tonerud 面料，价为同尺寸 Fridtuna 浅米色', color:'#7d8577', kind:'sofa', model:'soderhamn', url:'https://www.ikea.com/us/en/p/soederhamn-sofa-tonerud-gray-s19452105/', note:'低坐深座'},
  {id:'friheten', cat:'沙发 / 单椅', name:'FRIHETEN 转角沙发床', w:230,d:151,h:86, price:999, priceCA:1099, color:'#5a5f6b', kind:'sofaL', url:'https://www.ikea.com/us/en/p/friheten-sleeper-sectional-3-seat-w-storage-skiftebo-dark-gray-s69216757/', note:'带储物，床面140×204'},
  {id:'morabo3', cat:'沙发 / 单椅', name:'MORABO 三人沙发', w:206,d:92,h:81, price:799, priceCA:799, color:'#6e7276', kind:'sofa', url:'https://www.ikea.com/us/en/p/morabo-sofa-gunnared-dark-gray-metal-s09318320/', note:'LANDSKRONA继任款'},
  {id:'uppland3', cat:'沙发 / 单椅', name:'UPPLAND 三人沙发', w:224,d:92,h:92, price:899, priceCA:649, color:'#c8bfae', kind:'sofa', url:'https://www.ikea.com/us/en/p/uppland-sofa-blekinge-white-s19384116/', note:'EKTORP继任款，可拆洗'},
@@ -7006,6 +7006,64 @@ MODELS['kivik'] = (C) => {
     C.rb(ARM, cm(60), D, cm(3), fab, sx*(W/2-ARM/2), cm(2));
 
   // 水平重心归零（2D 图例与碰撞都假定原点 = 占地中心）
+  C.g.updateMatrixWorld(true);
+  const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3();
+  bb.getCenter(off);
+  for(const ch of C.g.children){ ch.position.x-=off.x; ch.position.z-=off.z; }
+};
+
+/* SÖDERHAMN 三人(198×99×83)：尺寸全部来自官方尺寸图 work/ref/soder_4_dims.png（逐箭头核对），
+   无标注项见 work/briefs/soderhamn.md：扶手宽 28.5=(198-2×70-1)/2 推导；背框深 17、坐垫深 55
+   为无标注比例估计（参考 KIVIK 同口径）。 */
+MODELS['soderhamn'] = (C) => {
+  const cm=C.cm, T=C.THREE;
+  const W=C.w, D=C.d, H=C.h;
+  const fab  = C.M(C.col, {fabric:true, rough:.92, sheen:.18, envI:.15});
+  const fabD = C.M(new T.Color(C.col).multiplyScalar(.88), {fabric:true, rough:.95, sheen:.14, envI:.12});
+  const legM = C.M('#c9ae83', {wood:'beech', envI:.5});
+
+  const ARM=cm(28.5);          // 扶手宽：内开口放 2×70 靠背垫+1cm 缝
+  const innerW=W-2*ARM;        // 141
+  const BASE_TOP=cm(14);       // 箱顶（尺寸图 14）；座高 40（尺寸图）
+
+  // 4 条锥形细腿：高 6（尺寸图），前缩进 6（尺寸图），侧/后缩进 ~8（比例估计）
+  for(const sx of [-1,1]) for(const sz of [-1,1])
+    C.legT(cm(0.9), cm(1.3), cm(6), legM, sx*(W/2-cm(8)), sz>0? D/2-cm(6) : -(D/2-cm(8)), 0);
+
+  // 箱体底座：满宽满深 6→14，圆角
+  C.rb(W, cm(8), D, cm(3), fab, 0, cm(6));
+
+  // 坐垫 ×2：14→40（厚 26）手动建；前缘齐底座前缘，深 55（比例估计）
+  const seatD=cm(55), cw=(innerW-cm(1.5))/2, sz=D/2-seatD/2;
+  for(const sx of [-1,1]){
+    const x=sx*(cw/2+cm(0.75));
+    C.rb(cw, cm(24), seatD, cm(4.5), fab, x, BASE_TOP, sz);
+    C.rb(cw*0.94, cm(12), seatD*0.94, cm(4), fab, x, BASE_TOP+cm(14), sz);
+    C.rb(cw+cm(0.3), cm(1.1), seatD+cm(0.3), cm(0.5), fab, x, BASE_TOP+cm(8), sz);
+  }
+
+  // 背框：14→69（尺寸图），深 17 贴后（比例估计）
+  C.rb(innerW, cm(55), cm(17), cm(2.5), fabD, 0, BASE_TOP, -(D/2-cm(8.5)));
+
+  // 靠背垫 ×2：70×48（尺寸图）×高 40，底 41 顶 81，外层 Group 后仰 2.3°（后上角 ≈82.6=整高附近）
+  const bw=cm(70), bcH=cm(40), bcTh=cm(48),
+        bcZ=-D/2+bcTh/2+cm(0.5);
+  for(const sx of [-1,1]){
+    const bc=C.rb(bw, bcH, bcTh, cm(5), fab, 0, 0, 0);
+    const holder=new T.Group();
+    C.g.remove(bc); holder.add(bc);
+    holder.position.set(sx*(bw/2+cm(0.5)), cm(41), bcZ);
+    holder.rotation.x=-0.04;
+    C.g.add(holder);
+  }
+
+  // 扶手 ×2：软包低箱，6→54（尺寸图），顶叠薄枕
+  for(const sx of [-1,1]){
+    C.rb(ARM, cm(48), D, cm(3.5), fab, sx*(W/2-ARM/2), cm(6));
+    C.rb(ARM-cm(1), cm(5), D-cm(2), cm(3), fab, sx*(W/2-ARM/2), cm(49));
+  }
+
+  // 水平重心归零
   C.g.updateMatrixWorld(true);
   const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3();
   bb.getCenter(off);
