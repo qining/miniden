@@ -684,7 +684,7 @@ const CATALOG = [
  // —— 餐桌椅 / 吧凳 ——
  {id:'docksta', cat:'餐桌椅 / 吧凳', name:'DOCKSTA 圆桌 Ø103', w:103,d:103,h:75, price:279.99, priceCA:249, color:'#e8e4dc', kind:'tableRound', model:'docksta', url:'https://www.ikea.com/us/en/p/docksta-table-white-white-s19324995/', note:'独腿，坐4人'},
  {id:'vihals', cat:'餐桌椅 / 吧凳', name:'VIHALS 伸缩桌 120→180', w:120,d:74,h:75, price:149.99, priceCA:179, color:'#e8e4dc', kind:'tableRect', model:'vihals', url:'https://www.ikea.com/us/en/p/vihals-extendable-table-white-20589777/', note:'EKEDALEN继任款'},
- {id:'lisabo140', cat:'餐桌椅 / 吧凳', name:'LISABO 餐桌 140×78', w:140,d:78,h:74, price:299.99, priceCA:229, color:'#c9a877', kind:'tableRect', url:'https://www.ikea.com/us/en/p/lisabo-table-ash-veneer-70294339/'},
+ {id:'lisabo140', cat:'餐桌椅 / 吧凳', name:'LISABO 餐桌 140×78', w:140,d:78,h:74, price:299.99, priceCA:229, color:'#c9a877', kind:'tableRect', model:'lisabo', url:'https://www.ikea.com/us/en/p/lisabo-table-ash-veneer-70294339/'},
  {id:'pinntorp', cat:'餐桌椅 / 吧凳', name:'PINNTORP 餐桌 125×75', w:125,d:75,h:75, price:199.99, priceCA:149, color:'#c9b287', kind:'tableRect', model:'pinntorp', url:'https://www.ikea.com/us/en/p/pinntorp-table-light-brown-stained-white-stained-pine-30529467/'},
  {id:'teodores', cat:'餐桌椅 / 吧凳', name:'TEODORES 餐椅', w:46,d:54,h:80, seatH:45, price:55, priceCA:45, color:'#e8e4dc', kind:'chair', model:'teodores', url:'https://www.ikea.com/us/en/p/teodores-chair-white-30486156/', note:'一体注塑座面+独立靠背板，实木染白腿；座宽40 座深37'},
  {id:'odger', cat:'餐桌椅 / 吧凳', name:'ODGER 餐椅', w:45,d:51,h:81, seatH:43, price:125, priceCA:120, color:'#5c5f66', kind:'chair', model:'odger', url:'https://www.ikea.com/us/en/p/odger-chair-anthracite-50457313/', note:'再生木纤维+塑料一体壳，四条锥形腿；座宽45 座深41'},
@@ -7433,6 +7433,28 @@ MODELS['vihals'] = (C) => {
     C.box(cm(50), cm(1.5), cm(30), slotM, sx*cm(30), cm(69.5), 0);
   C.g.updateMatrixWorld(true);
   const T=C.THREE, bb=new T.Box3().setFromObject(C.g), off=new T.Vector3();
+  bb.getCenter(off);
+  for(const ch of C.g.children){ ch.position.x-=off.x; ch.position.z-=off.z; }
+};
+
+/* LISABO 餐桌 140×78×74：尺寸图 v02（腿距 128/66）+ v01/v06 实拍（薄台面、中古风外撇锥形圆腿）；
+   腿顶挂点/撇角/锥度为比例估计（brief: lisabo.md）。腿用 Group+四元数单旋转定向。 */
+MODELS['lisabo'] = (C) => {
+  const cm=C.cm, T=C.THREE;
+  const M1 = C.M(C.col, {wood:'oak', rough:.42, clear:.35, envI:.55});
+  // 台面 140×78×2（实拍薄台），72→74（图标高）
+  C.rb(cm(140), cm(2), cm(78), cm(2), M1, 0, cm(72), 0, 6);
+  // 4 锥形圆腿：顶 r3.2 挂台面下 (±62,72.5,±31)，底 r2.2 落 (±68,0,±36)，外撇 ~5°
+  for(const [sx,sz] of [[-1,-1],[1,-1],[-1,1],[1,1]]){
+    const g = new T.Group();
+    g.position.set(sx*cm(62), cm(72.5), sz*cm(31));
+    const dir = new T.Vector3(-sx*6, 72.5, -sz*5).normalize();
+    g.quaternion.setFromUnitVectors(new T.Vector3(0,1,0), dir);   // 单旋转，无复合欧拉
+    const leg = C.cyl(cm(3.2), cm(2.2), cm(72.9), M1, 0, -cm(72.9), 0, 18);
+    C.g.remove(leg); g.add(leg); C.g.add(g);
+  }
+  C.g.updateMatrixWorld(true);
+  const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3();
   bb.getCenter(off);
   for(const ch of C.g.children){ ch.position.x-=off.x; ch.position.z-=off.z; }
 };
