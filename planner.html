@@ -715,7 +715,7 @@ const CATALOG = [
  {id:'kallax24', cat:'收纳 / 电视柜', name:'KALLAX 2×4 格架', w:76.5,d:39,h:146.5, price:79.99, priceCA:99, color:'#e8e4dc', kind:'shelf', model:'kallax24', url:'https://www.ikea.com/us/en/p/kallax-shelf-unit-white-20631663/', note:'可横放当电视柜'},
  {id:'vittsjo_sh', cat:'收纳 / 电视柜', name:'VITTSJÖ 玻璃格架 100', w:100,d:36,h:175, price:129, priceCA:129, color:'#3a3d43', kind:'bookcase', glassShelf:true, model:'vittsjo_sh', url:'https://www.ikea.com/us/en/p/vittsjoe-shelf-unit-black-brown-glass-20213312/'},
  {id:'stall', cat:'收纳 / 电视柜', name:'STÄLL 鞋柜(超薄17)', w:96,d:17,h:90, price:149.99, priceCA:159, color:'#e8e4dc', kind:'shoeCab', model:'stall', url:'https://www.ikea.com/us/en/p/staell-shoe-cabinet-with-4-compartments-white-60530266/'},
- {id:'trones', cat:'收纳 / 电视柜', name:'TRONES 鞋盒×2(壁挂)', w:52,d:18,h:39, price:39.99, priceCA:49.99, color:'#e8e4dc', kind:'shoeCab', url:'https://www.ikea.com/us/en/p/trones-shoe-storage-cabinet-white-00397307/', note:'两个/组，可叠'},
+ {id:'trones', cat:'收纳 / 电视柜', name:'TRONES 鞋盒×2(壁挂)', w:52,d:18,h:39, price:39.99, priceCA:49.99, color:'#e8e4dc', kind:'shoeCab', model:'trones', url:'https://www.ikea.com/us/en/p/trones-shoe-storage-cabinet-white-00397307/', note:'两个/组，可叠'},
  // —— 书桌 / 办公椅 ——
  {id:'lagkapten140', cat:'书桌 / 办公椅', name:'LAGKAPTEN/ALEX 书桌 140', w:140,d:60,h:73, price:209.97, priceCA:308, color:'#d8d3c8', kind:'desk', url:'https://www.ikea.com/us/en/p/lagkapten-alex-desk-white-s99431982/', note:'含两个抽屉柜'},
  {id:'lagkapten120', cat:'书桌 / 办公椅', name:'LAGKAPTEN/ADILS 书桌 120', w:120,d:60,h:73, price:59.99, priceCA:90, color:'#d8d3c8', kind:'desk', url:'https://www.ikea.com/us/en/p/lagkapten-adils-desk-white-s29416758/'},
@@ -7948,6 +7948,43 @@ MODELS['stall'] = (C) => {
   }
   for(const dy of [85.5,43.5]) for(const dx of [-21.75,21.75])
     C.box(cm(4), cm(1.5), cm(0.8), hM, cm(dx), cm(dy), cm(8.7));
+  C.g.updateMatrixWorld(true);
+  const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3();
+  bb.getCenter(off);
+  for(const ch of C.g.children){ ch.position.x-=off.x; ch.position.z-=off.z; }
+};
+
+/* TRONES 鞋盒 52×18×39：尺寸图 v03（单台 52/39/18、门内 37/47、顶唇 2）+ v0/v2 实拍
+   （单门黑缺口拉手+内斜鞋架）（brief: trones.md）。 */
+MODELS['trones'] = (C) => {
+  const cm=C.cm, T=C.THREE;
+  const M1 = C.M(C.col, {rough:.5, envI:.25});
+  const hM = C.M('#1a1a1a', {rough:.4, envI:.3});
+  // 底框 3 + 柜体 52×31.5×16 (3→34.5)，顶板 53×2.5×18.5 (34.5→37) + 顶唇 52×2×18.8 (37→39)
+  C.rb(cm(52), cm(3), cm(16), cm(0.5), M1, 0, 0, 0, 3);
+  C.rb(cm(52), cm(31.5), cm(16), cm(0.5), M1, 0, cm(3), 0, 3);
+  C.rb(cm(53), cm(2.5), cm(17.2), cm(0.5), M1, 0, cm(34.5), 0, 3);
+  C.rb(cm(52), cm(2), cm(17.2), cm(0.5), M1, 0, cm(37), 0, 3);
+  // 背板 + 内背板
+  C.box(cm(52), cm(34.5), cm(1), M1, 0, cm(3), -cm(8));
+  C.box(cm(48), cm(29), cm(0.8), M1, 0, cm(5), -cm(6.8));
+  // 单门 48×32 凸 2 + 黑缺口拉手
+  C.rb(cm(48), cm(32), cm(2.4), cm(0.7), M1, 0, cm(4.5), cm(7.5), 3);
+  C.box(cm(5), cm(1.5), cm(0.6), hM, 0, cm(35.5), cm(9.0));
+  // 门框边条（y 底对齐）：顶 36.5→39、底 3→5.4、两侧 5.4→36.5
+  C.box(cm(52), cm(2.5), cm(16), M1, 0, cm(36.5), 0);
+  C.box(cm(52), cm(2.4), cm(16), M1, 0, cm(3), 0);
+  for(const dx of [-25,25]) C.box(cm(2.4), cm(31.1), cm(16), M1, cm(dx), cm(5.4), 0);
+  // 内斜鞋架 47×3.2 倾斜 28° + 2 侧撑
+  const sh = C.rb(cm(47), cm(3.2), cm(13), cm(0.5), M1, 0, 0, 0, 2);
+  sh.rotation.x = -28*Math.PI/180; sh.position.set(0, cm(17), -cm(1.5));
+  for(const dx of [-21,21]){
+    const su = C.box(cm(2), cm(8), cm(1.2), M1, 0, 0, 0);
+    su.rotation.x = -28*Math.PI/180; su.position.set(cm(dx), cm(13), -cm(3.2));
+  }
+  // 铰链 ×2
+  for(const dx of [-20,20])
+    C.cyl(cm(0.7), cm(0.7), cm(3), M1, cm(dx), cm(36), cm(6.5), 10).rotation.x = Math.PI/2;
   C.g.updateMatrixWorld(true);
   const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3();
   bb.getCenter(off);
