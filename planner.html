@@ -713,7 +713,7 @@ const CATALOG = [
  {id:'hauga6', cat:'收纳 / 电视柜', name:'HAUGA 六屉柜 138', w:138,d:46,h:84, price:279.99, priceCA:399, color:'#f0ece4', kind:'dresser', model:'hauga6', url:'https://www.ikea.com/us/en/p/hauga-6-drawer-dresser-white-60581538/'},
  {id:'billy', cat:'收纳 / 电视柜', name:'BILLY 书柜 80', w:80,d:28,h:202, price:79, priceCA:90, color:'#e8e4dc', kind:'bookcase', model:'billy', url:'https://www.ikea.com/us/en/p/billy-bookcase-white-20522046/'},
  {id:'kallax24', cat:'收纳 / 电视柜', name:'KALLAX 2×4 格架', w:76.5,d:39,h:146.5, price:79.99, priceCA:99, color:'#e8e4dc', kind:'shelf', model:'kallax24', url:'https://www.ikea.com/us/en/p/kallax-shelf-unit-white-20631663/', note:'可横放当电视柜'},
- {id:'vittsjo_sh', cat:'收纳 / 电视柜', name:'VITTSJÖ 玻璃格架 100', w:100,d:36,h:175, price:129, priceCA:129, color:'#3a3d43', kind:'bookcase', glassShelf:true, url:'https://www.ikea.com/us/en/p/vittsjoe-shelf-unit-black-brown-glass-20213312/'},
+ {id:'vittsjo_sh', cat:'收纳 / 电视柜', name:'VITTSJÖ 玻璃格架 100', w:100,d:36,h:175, price:129, priceCA:129, color:'#3a3d43', kind:'bookcase', glassShelf:true, model:'vittsjo_sh', url:'https://www.ikea.com/us/en/p/vittsjoe-shelf-unit-black-brown-glass-20213312/'},
  {id:'stall', cat:'收纳 / 电视柜', name:'STÄLL 鞋柜(超薄17)', w:96,d:17,h:90, price:149.99, priceCA:159, color:'#e8e4dc', kind:'shoeCab', url:'https://www.ikea.com/us/en/p/staell-shoe-cabinet-with-4-compartments-white-60530266/'},
  {id:'trones', cat:'收纳 / 电视柜', name:'TRONES 鞋盒×2(壁挂)', w:52,d:18,h:39, price:39.99, priceCA:49.99, color:'#e8e4dc', kind:'shoeCab', url:'https://www.ikea.com/us/en/p/trones-shoe-storage-cabinet-white-00397307/', note:'两个/组，可叠'},
  // —— 书桌 / 办公椅 ——
@@ -7880,6 +7880,44 @@ MODELS['kallax24'] = (C) => {
   const xs=[-35.25,-1.25,1.25,35.25], ys=[1.5,38.375,72.5,106.625,145];
   for(const x of xs) for(const y of ys) for(const zs of [19,-18.5])
     C.cyl(cm(1.7), cm(1.7), cm(0.8), holeM, cm(x), cm(y), cm(zs), 14).rotation.x = Math.PI/2;
+  C.g.updateMatrixWorld(true);
+  const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3();
+  bb.getCenter(off);
+  for(const ch of C.g.children){ ch.position.x-=off.x; ch.position.z-=off.z; }
+};
+
+/* VITTSJÖ 玻璃格架 100×36×175：尺寸图 v1（层距 39/玻璃 47×32/腿 9）+ v0 实拍
+   （黑钢方管+5 层玻璃+底格 45° 斜撑）（brief: vittsjo_sh.md）。 */
+MODELS['vittsjo_sh'] = (C) => {
+  const cm=C.cm, T=C.THREE;
+  const st = C.M(C.col, {metal:.72, rough:.38, envI:.85});
+  const gl = new T.MeshPhysicalMaterial({color:0xbcd6e6, transparent:true, opacity:.24,
+    roughness:.05, metalness:.05});
+  const GL=(w,h,d,x,y,z)=>{ const m=new T.Mesh(new T.BoxGeometry(cm(w),cm(h),cm(d)),gl);
+    m.position.set(cm(x),cm(y),cm(z)); m.castShadow=m.receiveShadow=true; C.g.add(m); };
+  // 6 立柱 2×2 方管 0→175
+  for(const [px,pz] of [[-49,-16],[49,-16],[-49,16],[49,16],[0,-16],[0,16]])
+    C.box(cm(2), cm(175), cm(2), st, cm(px), 0, cm(pz));
+  // 5 层玻璃 47×32×0.4 @ y 9/48/87/126/165，每格一块
+  for(const y of [9,48,87,126,165]) for(const bx of [-24.5,24.5])
+    GL(47, .4, 32, bx, y, 0);
+  // 5 圈横框 2×2 @ 各层 + 顶圈 173→175
+  for(const y of [7,46,85,124,163,173]){
+    C.box(cm(96), cm(2), cm(2), st, 0, cm(y), cm(16));
+    C.box(cm(96), cm(2), cm(2), st, 0, cm(y), -cm(16));
+    C.box(cm(2), cm(2), cm(32), st, cm(49), cm(y), 0);
+    C.box(cm(2), cm(2), cm(32), st, -cm(49), cm(y), 0);
+  }
+  // 底格前后 4 条 45° 斜撑
+  const BR=(ax,ay,az,bx,by,bz)=>{
+    const A=new T.Vector3(cm(ax),cm(ay),cm(az)), B=new T.Vector3(cm(bx),cm(by),cm(bz));
+    const d=new T.Vector3().subVectors(B,A), len=d.length();
+    const m=new T.Mesh(new T.CapsuleGeometry(cm(0.5), Math.max(0.01,len-cm(1)), 4, 10), st);
+    m.position.copy(A).addScaledVector(d, 0.5);
+    m.quaternion.setFromUnitVectors(new T.Vector3(0,1,0), d.normalize());
+    m.castShadow=true; C.g.add(m); };
+  for(const sz of [16,-16]) for(const s of [1,-1])
+    BR(s*47.5, 9.3, sz, s*48.8, 17.5, sz);
   C.g.updateMatrixWorld(true);
   const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3();
   bb.getCenter(off);
