@@ -708,7 +708,7 @@ const CATALOG = [
  {id:'lack_tv', cat:'收纳 / 电视柜', name:'LACK 电视柜 120', w:120,d:35,h:36, price:54.99, priceCA:89.99, color:'#2e3138', kind:'tvBench', model:'lack_tv', url:'https://www.ikea.com/us/en/p/lack-tv-unit-black-brown-00566060/', note:'另有160cm款~$59'},
  {id:'radmanso6', cat:'收纳 / 电视柜', name:'RÅDMANSÖ 六屉柜 159', w:159,d:48,h:81, price:349.99, priceCA:399, color:'#6e5843', kind:'dresser', model:'radmanso6', url:'https://www.ikea.com/us/en/p/radmansoe-6-drawer-dresser-brown-walnut-effect-40593839/', note:'MALM宽柜继任款'},
  {id:'storklinta6', cat:'收纳 / 电视柜', name:'STORKLINTA 六屉柜 140', w:140,d:48,h:75, price:249.99, priceCA:249, color:'#f0ece4', kind:'dresser', model:'storklinta6', url:'https://www.ikea.com/us/en/p/storklinta-6-drawer-dresser-140-cm-60561248/'},
- {id:'storklinta4', cat:'收纳 / 电视柜', name:'STORKLINTA 四屉柜', w:70,d:48,h:98, price:179.99, priceCA:199, color:'#f0ece4', kind:'dresser', url:'https://www.ikea.com/us/en/p/storklinta-4-drawer-dresser-white-anchor-unlock-function-40559289/'},
+ {id:'storklinta4', cat:'收纳 / 电视柜', name:'STORKLINTA 四屉柜', w:70,d:48,h:98, price:179.99, priceCA:199, color:'#f0ece4', kind:'dresser', model:'storklinta4', url:'https://www.ikea.com/us/en/p/storklinta-4-drawer-dresser-white-anchor-unlock-function-40559289/'},
  {id:'hemnes_d8', cat:'收纳 / 电视柜', name:'HEMNES 八屉柜 160', w:160,d:50,h:96, price:449.99, priceCA:369, color:'#e8e4dc', kind:'dresser', url:'https://www.ikea.com/us/en/p/hemnes-8-drawer-dresser-white-stain-10576191/'},
  {id:'hauga6', cat:'收纳 / 电视柜', name:'HAUGA 六屉柜 138', w:138,d:46,h:84, price:279.99, priceCA:399, color:'#f0ece4', kind:'dresser', url:'https://www.ikea.com/us/en/p/hauga-6-drawer-dresser-white-60581538/'},
  {id:'billy', cat:'收纳 / 电视柜', name:'BILLY 书柜 80', w:80,d:28,h:202, price:79, priceCA:90, color:'#e8e4dc', kind:'bookcase', model:'billy', url:'https://www.ikea.com/us/en/p/billy-bookcase-white-20522046/'},
@@ -7763,6 +7763,24 @@ MODELS['storklinta6'] = (C) => {
     const dx=(col?-1:1)*33.75, y0=6.5+row*22.5;
     C.rb(cm(66), cm(21), cm(1.8), cm(0.7), M1, cm(dx), cm(y0), cm(24.2), 3);
   }
+  C.g.updateMatrixWorld(true);
+  const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3();
+  bb.getCenter(off);
+  for(const ch of C.g.children){ ch.position.x-=off.x; ch.position.z-=off.z; }
+};
+
+/* STORKLINTA 四屉柜 70×48×98：尺寸图 v02（抽箱 61×40×16）+ v04 实拍（brief: storklinta4.md）
+   白四抽无拉手（按压开门）+ 低踢脚。 */
+MODELS['storklinta4'] = (C) => {
+  const cm=C.cm, T=C.THREE;
+  const M1 = C.M(C.col, {rough:.45, envI:.25});
+  // 低踢脚 66×5×44 (0→5)
+  C.rb(cm(66), cm(5), cm(44), cm(0.6), M1, 0, 0, 0, 3);
+  // 柜体 70×93×47 (5→98)
+  C.rb(cm(70), cm(93), cm(47), cm(0.8), M1, 0, cm(5), 0, 3);
+  // 4 抽前板 66×21.5×1.8（竖叠），无拉手，微凸 0.3
+  for(let row=0; row<4; row++)
+    C.rb(cm(66), cm(21.5), cm(1.8), cm(0.7), M1, 0, cm(6+row*23), cm(24.2), 3);
   C.g.updateMatrixWorld(true);
   const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3();
   bb.getCenter(off);
