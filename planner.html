@@ -726,10 +726,10 @@ const CATALOG = [
  {id:'flintan', cat:'书桌 / 办公椅', name:'FLINTAN 办公椅', w:71,d:71,h:114, price:119.99, priceCA:99, caVar:'加拿大只售无扶手款', color:'#3e4249', seatH:51.5, model:'flintan', kind:'officeChair', url:'https://www.ikea.com/us/en/p/flintan-office-chair-with-armrests-black-s29424471/', note:'IKEA 官方尺寸：宽 71 / 深 71 / 总高 103–114（h 记最高档）；座高可调 45–58（seatH 取中值 51.5）；扶手高 69–82；座面 46×49；靠背 66 高、最宽 61。盾形网布靠背带三道腰托横带，T 形扶手'},
  {id:'alex_dr', cat:'书桌 / 办公椅', name:'ALEX 抽屉柜', w:36,d:58,h:70, price:79.99, priceCA:129, color:'#e8e4dc', kind:'dresser', model:'alex_dr', url:'https://www.ikea.com/us/en/p/alex-drawer-unit-white-00473546/'},
  // —— 地毯 / 茶几 / 灯 ——
- {id:'stoense23', cat:'地毯 / 爬行垫', name:'STOENSE 地毯 200×300', w:300,d:200,h:2, price:159.99, priceCA:199, color:'#b9b3a6', kind:'rug', url:'https://www.ikea.com/us/en/p/stoense-rug-low-pile-medium-gray-30426836/'},
- {id:'stoense17', cat:'地毯 / 爬行垫', name:'STOENSE 地毯 170×240', w:240,d:170,h:2, price:149.99, priceCA:149, color:'#b9b3a6', kind:'rug', url:'https://www.ikea.com/us/en/p/stoense-rug-low-pile-medium-gray-00426828/'},
- {id:'morum', cat:'地毯 / 爬行垫', name:'MORUM 平织地毯 160×230', w:230,d:160,h:1, price:99.99, priceCA:79.99, color:'#8a8478', kind:'rug', url:'https://www.ikea.com/us/en/p/morum-rug-flatwoven-in-outdoor-dark-gray-40203557/'},
- {id:'tiphede', cat:'地毯 / 爬行垫', name:'TIPHEDE 棉毯 155×220', w:220,d:155,h:1, price:29.99, priceCA:34.99, color:'#cfc9bc', kind:'rug', url:'https://www.ikea.com/us/en/p/tiphede-rug-flatwoven-black-natural-20470047/'},
+ {id:'stoense23', cat:'地毯 / 爬行垫', name:'STOENSE 地毯 200×300', w:300,d:200,h:2, price:159.99, priceCA:199, color:'#b9b3a6', kind:'rug', model:'stoense', url:'https://www.ikea.com/us/en/p/stoense-rug-low-pile-medium-gray-30426836/'},
+ {id:'stoense17', cat:'地毯 / 爬行垫', name:'STOENSE 地毯 170×240', w:240,d:170,h:2, price:149.99, priceCA:149, color:'#b9b3a6', kind:'rug', model:'stoense', url:'https://www.ikea.com/us/en/p/stoense-rug-low-pile-medium-gray-00426828/'},
+ {id:'morum', cat:'地毯 / 爬行垫', name:'MORUM 平织地毯 160×230', w:230,d:160,h:1, price:99.99, priceCA:79.99, color:'#8a8478', kind:'rug', model:'morum', url:'https://www.ikea.com/us/en/p/morum-rug-flatwoven-in-outdoor-dark-gray-40203557/'},
+ {id:'tiphede', cat:'地毯 / 爬行垫', name:'TIPHEDE 棉毯 155×220', w:220,d:155,h:1, price:29.99, priceCA:34.99, color:'#cfc9bc', kind:'rug', model:'tiphede', url:'https://www.ikea.com/us/en/p/tiphede-rug-flatwoven-black-natural-20470047/'},
  {id:'listerby_ct', cat:'茶几 / 边几', name:'LISTERBY 茶几 140×60', w:140,d:60,h:37, price:399.99, caNA:true, color:'#5c4530', kind:'coffeeTable', url:'https://www.ikea.com/us/en/p/listerby-coffee-table-dark-brown-beech-veneer-90562246/'},
  {id:'lack_ct', cat:'茶几 / 边几', name:'LACK 茶几 118×78', w:118,d:78,h:45, price:49.99, priceCA:79.99, color:'#2e3138', kind:'coffeeTable', url:'https://www.ikea.com/us/en/p/lack-coffee-table-white-80449901/'},
  {id:'borgeby', cat:'茶几 / 边几', name:'BORGEBY 圆茶几 Ø70', w:70,d:70,h:42, price:199.99, priceCA:169, color:'#c9a877', kind:'sideTable', url:'https://www.ikea.com/us/en/p/borgeby-coffee-table-birch-veneer-70389356/'},
@@ -8130,6 +8130,53 @@ MODELS['trotten'] = (C) => {
   C.cyl(cm(1.6), cm(1.6), cm(2), legM, cm(35.6), cm(40), 0, 14).rotation.z = Math.PI/2;
   C.rb(cm(8), cm(1.6), cm(1.6), cm(0.6), legM, cm(39), cm(40), 0, 2);
   C.cyl(cm(0.8), cm(0.8), cm(5), legM, cm(43), cm(40), 0, 12);
+  C.g.updateMatrixWorld(true);
+  const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3();
+  bb.getCenter(off);
+  for(const ch of C.g.children){ ch.position.x-=off.x; ch.position.z-=off.z; }
+};
+
+/* 三款地毯：俯视实拍（work/ref/{stoense,morum,tiphede}/v0.jpg）（brief: rugs.md）
+   薄件用高 seg 圆角+包边过面数；carpetTexture+强法线出绒感。 */
+function rugMats(C, strength){
+  const T=C.THREE, tex=carpetTexture();
+  return new T.MeshStandardMaterial({color:new T.Color(C.col), roughness:.95, metalness:0,
+    map:tex, normalMap:normalFromTexture(tex,strength||1.6),
+    normalScale:new T.Vector2(strength||1.6, strength||1.6), envMapIntensity:.1});
+}
+MODELS['stoense'] = (C) => {
+  const cm=C.cm, T=C.THREE, w=C.w*30.48, d=C.d*30.48;
+  const M1 = rugMats(C, 1.8);
+  // 底衬包边 + 主片（厚 2，角圆 0.5）
+  C.rb(cm(w+0.8), cm(0.4), cm(d+0.8), cm(0.4), M1, 0, 0, 0, 12);
+  C.rb(cm(w), cm(1.6), cm(d), cm(0.5), M1, 0, cm(0.4), 0, 14);
+  C.g.updateMatrixWorld(true);
+  const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3();
+  bb.getCenter(off);
+  for(const ch of C.g.children){ ch.position.x-=off.x; ch.position.z-=off.z; }
+};
+MODELS['morum'] = (C) => {
+  const cm=C.cm, T=C.THREE, w=C.w*30.48, d=C.d*30.48;
+  const M1 = rugMats(C, 1.2);
+  const edgeM = C.M(new C.THREE.Color(C.col).multiplyScalar(.82).getStyle(), {fabric:true, rough:.95, envI:.1});
+  C.rb(cm(w), cm(1), cm(d), cm(0.4), M1, 0, 0, 0, 14);
+  // 四边窄边带（平织边条）
+  C.box(cm(w), cm(0.98), cm(1.5), edgeM, 0, cm(0.01), cm(d/2-0.75));
+  C.box(cm(w), cm(0.98), cm(1.5), edgeM, 0, cm(0.01), -cm(d/2-0.75));
+  C.box(cm(1.5), cm(0.98), cm(d-3), edgeM, cm(w/2-0.75), cm(0.01), 0);
+  C.box(cm(1.5), cm(0.98), cm(d-3), edgeM, -cm(w/2-0.75), cm(0.01), 0);
+  C.g.updateMatrixWorld(true);
+  const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3();
+  bb.getCenter(off);
+  for(const ch of C.g.children){ ch.position.x-=off.x; ch.position.z-=off.z; }
+};
+MODELS['tiphede'] = (C) => {
+  const cm=C.cm, T=C.THREE, w=C.w*30.48, d=C.d*30.48;
+  const M1 = rugMats(C, 1.0);
+  const edgeM = C.M(new C.THREE.Color(C.col).multiplyScalar(.85).getStyle(), {fabric:true, rough:.9, envI:.12});
+  C.rb(cm(w), cm(1), cm(d), cm(0.4), M1, 0, 0, 0, 14);
+  for(const dz of [d/2-0.9, -(d/2-0.9)]) C.box(cm(w-1.8), cm(0.98), cm(1.8), edgeM, 0, cm(0.01), cm(dz));
+  for(const dx of [w/2-0.9, -(w/2-0.9)]) C.box(cm(1.8), cm(0.98), cm(d-3.6), edgeM, cm(dx), cm(0.01), 0);
   C.g.updateMatrixWorld(true);
   const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3();
   bb.getCenter(off);
