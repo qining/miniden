@@ -717,14 +717,14 @@ const CATALOG = [
  {id:'stall', cat:'收纳 / 电视柜', name:'STÄLL 鞋柜(超薄17)', w:96,d:17,h:90, price:149.99, priceCA:159, color:'#e8e4dc', kind:'shoeCab', model:'stall', url:'https://www.ikea.com/us/en/p/staell-shoe-cabinet-with-4-compartments-white-60530266/'},
  {id:'trones', cat:'收纳 / 电视柜', name:'TRONES 鞋盒×2(壁挂)', w:52,d:18,h:39, price:39.99, priceCA:49.99, color:'#e8e4dc', kind:'shoeCab', model:'trones', url:'https://www.ikea.com/us/en/p/trones-shoe-storage-cabinet-white-00397307/', note:'两个/组，可叠'},
  // —— 书桌 / 办公椅 ——
- {id:'lagkapten140', cat:'书桌 / 办公椅', name:'LAGKAPTEN/ALEX 书桌 140', w:140,d:60,h:73, price:209.97, priceCA:308, color:'#d8d3c8', kind:'desk', url:'https://www.ikea.com/us/en/p/lagkapten-alex-desk-white-s99431982/', note:'含两个抽屉柜'},
+ {id:'lagkapten140', cat:'书桌 / 办公椅', name:'LAGKAPTEN/ALEX 书桌 140', w:140,d:60,h:73, price:209.97, priceCA:308, color:'#d8d3c8', kind:'desk', model:'lagkapten140', url:'https://www.ikea.com/us/en/p/lagkapten-alex-desk-white-s99431982/', note:'含两个抽屉柜'},
  {id:'lagkapten120', cat:'书桌 / 办公椅', name:'LAGKAPTEN/ADILS 书桌 120', w:120,d:60,h:73, price:59.99, priceCA:90, color:'#d8d3c8', kind:'desk', url:'https://www.ikea.com/us/en/p/lagkapten-adils-desk-white-s29416758/'},
  {id:'micke', cat:'书桌 / 办公椅', name:'MICKE 书桌 105', w:105,d:50,h:75, price:99.99, priceCA:149, color:'#e8e4dc', kind:'desk', url:'https://www.ikea.com/us/en/p/micke-desk-black-brown-10244743/'},
  {id:'bekant160', cat:'书桌 / 办公椅', name:'BEKANT 书桌 160×80', w:160,d:80,h:73, price:329, priceCA:199, color:'#d8d3c8', kind:'desk', url:'https://www.ikea.com/us/en/p/bekant-desk-white-s19022808/'},
  {id:'trotten', cat:'书桌 / 办公椅', name:'TROTTEN 升降桌 120×70', w:120,d:70,h:73, price:249.99, caNA:true, color:'#d8d3c8', kind:'desk', url:'https://www.ikea.com/us/en/p/trotten-desk-sit-stand-beige-white-s89434127/', note:'手摇升降72-122'},
  {id:'markus', cat:'书桌 / 办公椅', name:'MARKUS 办公椅', w:62,d:60,h:140, price:299.99, priceCA:229, color:'#3e4249', seatH:51.5, model:'markus', kind:'officeChair', url:'https://www.ikea.com/us/en/p/markus-office-chair-vissle-dark-gray-90289172/', note:'Vissle 深灰。IKEA 官方尺寸：宽 62 / 深 60 / 总高 129–140（h 记最高档）；座高可调 46–57（seatH 取中值 51.5）；扶手高 68–79；座面 53×47；高背含头枕总长 94，头枕 42×18。网布中上段 + 织物下段 + 固定环形扶手'},
  {id:'flintan', cat:'书桌 / 办公椅', name:'FLINTAN 办公椅', w:71,d:71,h:114, price:119.99, priceCA:99, caVar:'加拿大只售无扶手款', color:'#3e4249', seatH:51.5, model:'flintan', kind:'officeChair', url:'https://www.ikea.com/us/en/p/flintan-office-chair-with-armrests-black-s29424471/', note:'IKEA 官方尺寸：宽 71 / 深 71 / 总高 103–114（h 记最高档）；座高可调 45–58（seatH 取中值 51.5）；扶手高 69–82；座面 46×49；靠背 66 高、最宽 61。盾形网布靠背带三道腰托横带，T 形扶手'},
- {id:'alex_dr', cat:'书桌 / 办公椅', name:'ALEX 抽屉柜', w:36,d:58,h:70, price:79.99, priceCA:129, color:'#e8e4dc', kind:'dresser', url:'https://www.ikea.com/us/en/p/alex-drawer-unit-white-00473546/'},
+ {id:'alex_dr', cat:'书桌 / 办公椅', name:'ALEX 抽屉柜', w:36,d:58,h:70, price:79.99, priceCA:129, color:'#e8e4dc', kind:'dresser', model:'alex_dr', url:'https://www.ikea.com/us/en/p/alex-drawer-unit-white-00473546/'},
  // —— 地毯 / 茶几 / 灯 ——
  {id:'stoense23', cat:'地毯 / 爬行垫', name:'STOENSE 地毯 200×300', w:300,d:200,h:2, price:159.99, priceCA:199, color:'#b9b3a6', kind:'rug', url:'https://www.ikea.com/us/en/p/stoense-rug-low-pile-medium-gray-30426836/'},
  {id:'stoense17', cat:'地毯 / 爬行垫', name:'STOENSE 地毯 170×240', w:240,d:170,h:2, price:149.99, priceCA:149, color:'#b9b3a6', kind:'rug', url:'https://www.ikea.com/us/en/p/stoense-rug-low-pile-medium-gray-00426828/'},
@@ -7985,6 +7985,51 @@ MODELS['trones'] = (C) => {
   // 铰链 ×2
   for(const dx of [-20,20])
     C.cyl(cm(0.7), cm(0.7), cm(3), M1, cm(dx), cm(36), cm(6.5), 10).rotation.x = Math.PI/2;
+  C.g.updateMatrixWorld(true);
+  const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3();
+  bb.getCenter(off);
+  for(const ch of C.g.children){ ch.position.x-=off.x; ch.position.z-=off.z; }
+};
+
+/* ALEX 抽屉柜（36×58×70，5 抽黑缺口拉手）——lagkapten140 与 alex_dr 共用构造 */
+function alexUnit(C, ox){
+  const cm=C.cm, T=C.THREE;
+  const M1 = C.M(C.col, {rough:.5, envI:.25});
+  const hM = C.M('#1a1a1a', {rough:.4, envI:.3});
+  // 4 小脚 1.5 + 体 36×65.5×58 (1.5→67) + 顶 36.5×1×58.5 (67→68)
+  for(const [lx,lz] of [[-15,-26],[15,-26],[-15,26],[15,26]])
+    C.box(cm(2.5), cm(1.5), cm(2.5), M1, cm(ox+lx), 0, cm(lz));
+  C.rb(cm(36), cm(65.5), cm(57), cm(0.5), M1, cm(ox), cm(1.5), 0, 2);
+  C.rb(cm(36.5), cm(1), cm(57.5), cm(0.4), M1, cm(ox), cm(67), 0, 2);
+  C.box(cm(36), cm(65.5), cm(1), M1, cm(ox), cm(1.5), -cm(28.5));
+  // 5 抽前板 33×12 + 黑缺口拉手
+  for(let i=0;i<5;i++){
+    const y0 = 3.2 + i*12.7;
+    C.rb(cm(33), cm(12.2), cm(1.6), cm(0.5), M1, cm(ox), cm(y0), cm(28.2), 2);
+    C.box(cm(5), cm(1.5), cm(0.5), hM, cm(ox), cm(y0+10.8), cm(29.2));
+  }
+}
+
+/* LAGKAPTEN/ALEX 书桌 140×60×73：尺寸图 v03（140/60/73/ALEX 36/净空 70）+ v0-v4 实拍（brief: lagkapten140.md） */
+MODELS['lagkapten140'] = (C) => {
+  const cm=C.cm, T=C.THREE;
+  const M1 = C.M(C.col, {rough:.5, envI:.25});
+  const holeM = C.M('#2a2a2a', {rough:.6, envI:.2});
+  // 台面 140×60×2.5 (70.5→73) + 中线线孔
+  C.rb(cm(140), cm(2.5), cm(60), cm(0.5), M1, 0, cm(70.5), 0, 3);
+  C.cyl(cm(1.5), cm(1.5), cm(2.4), holeM, 0, cm(70.6), cm(15), 14);
+  // 两端 ALEX
+  alexUnit(C, -52); alexUnit(C, 52);
+  C.g.updateMatrixWorld(true);
+  const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3();
+  bb.getCenter(off);
+  for(const ch of C.g.children){ ch.position.x-=off.x; ch.position.z-=off.z; }
+};
+
+/* ALEX 抽屉柜 36×58×70（alex_dr） */
+MODELS['alex_dr'] = (C) => {
+  alexUnit(C, 0);
+  const T=C.THREE;
   C.g.updateMatrixWorld(true);
   const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3();
   bb.getCenter(off);
