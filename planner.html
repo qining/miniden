@@ -710,7 +710,7 @@ const CATALOG = [
  {id:'storklinta6', cat:'收纳 / 电视柜', name:'STORKLINTA 六屉柜 140', w:140,d:48,h:75, price:249.99, priceCA:249, color:'#f0ece4', kind:'dresser', model:'storklinta6', url:'https://www.ikea.com/us/en/p/storklinta-6-drawer-dresser-140-cm-60561248/'},
  {id:'storklinta4', cat:'收纳 / 电视柜', name:'STORKLINTA 四屉柜', w:70,d:48,h:98, price:179.99, priceCA:199, color:'#f0ece4', kind:'dresser', model:'storklinta4', url:'https://www.ikea.com/us/en/p/storklinta-4-drawer-dresser-white-anchor-unlock-function-40559289/'},
  {id:'hemnes_d8', cat:'收纳 / 电视柜', name:'HEMNES 八屉柜 160', w:160,d:50,h:96, price:449.99, priceCA:369, color:'#e8e4dc', kind:'dresser', model:'hemnes_d8', url:'https://www.ikea.com/us/en/p/hemnes-8-drawer-dresser-white-stain-10576191/'},
- {id:'hauga6', cat:'收纳 / 电视柜', name:'HAUGA 六屉柜 138', w:138,d:46,h:84, price:279.99, priceCA:399, color:'#f0ece4', kind:'dresser', url:'https://www.ikea.com/us/en/p/hauga-6-drawer-dresser-white-60581538/'},
+ {id:'hauga6', cat:'收纳 / 电视柜', name:'HAUGA 六屉柜 138', w:138,d:46,h:84, price:279.99, priceCA:399, color:'#f0ece4', kind:'dresser', model:'hauga6', url:'https://www.ikea.com/us/en/p/hauga-6-drawer-dresser-white-60581538/'},
  {id:'billy', cat:'收纳 / 电视柜', name:'BILLY 书柜 80', w:80,d:28,h:202, price:79, priceCA:90, color:'#e8e4dc', kind:'bookcase', model:'billy', url:'https://www.ikea.com/us/en/p/billy-bookcase-white-20522046/'},
  {id:'kallax24', cat:'收纳 / 电视柜', name:'KALLAX 2×4 格架', w:76.5,d:39,h:146.5, price:79.99, priceCA:99, color:'#e8e4dc', kind:'shelf', url:'https://www.ikea.com/us/en/p/kallax-shelf-unit-white-20631663/', note:'可横放当电视柜'},
  {id:'vittsjo_sh', cat:'收纳 / 电视柜', name:'VITTSJÖ 玻璃格架 100', w:100,d:36,h:175, price:129, priceCA:129, color:'#3a3d43', kind:'bookcase', glassShelf:true, url:'https://www.ikea.com/us/en/p/vittsjoe-shelf-unit-black-brown-glass-20213312/'},
@@ -7816,6 +7816,43 @@ MODELS['hemnes_d8'] = (C) => {
   for(const [y0,d] of [[55,43],[30,43]])
     for(const dx of [-38,38])
       C.box(cm(68), cm(13), cm(d), inM, cm(dx), cm(y0), -cm(3));
+  C.g.updateMatrixWorld(true);
+  const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3();
+  bb.getCenter(off);
+  for(const ch of C.g.children){ ch.position.x-=off.x; ch.position.z-=off.z; }
+};
+
+/* HAUGA 六屉柜 138×46×84：尺寸图 v11（顶板 2.5/抽箱 61×38×9&19）+ v00/v05 实拍
+   （标志性弧形顶+实心侧板+深圆钮）（brief: hauga.md）。'zy' 挤出：shape_x=-z_world。 */
+MODELS['hauga6'] = (C) => {
+  const cm=C.cm, T=C.THREE;
+  const M1 = C.M(C.col, {rough:.45, envI:.25});
+  const knobM = C.M('#2b2b28', {wood:'pine', rough:.5, envI:.25});
+  const inM = C.M('#d8c9a8', {wood:'pine', rough:.8, envI:.15});
+  // 侧板轮廓（z ±22）：底 5 → 后顶 81.8 → 弧顶峰 84 @ z-4 → 前顶 81.5
+  const side = [[22,5],[22,81.8],[4,84],[-22,81.5],[-22,5]];
+  C.ext(side.map(p=>[cm(p[0]),cm(p[1])]), cm(3), M1, cm(67), 0, 0, 'zy');
+  C.ext(side.map(p=>[cm(p[0]),cm(p[1])]), cm(3), M1, -cm(70), 0, 0, 'zy');
+  // 弧形顶板（弯月形 81.5→84）
+  const top = [[22,81.5],[4,84],[-22,81.5]];
+  C.ext(top.map(p=>[cm(p[0]),cm(p[1])]), cm(138), M1, -cm(69), 0, 0, 'zy');
+  // 前面板 134×76.5×2.5 (5→81.5) 封住侧板间角缝
+  C.rb(cm(134), cm(76.5), cm(2.5), cm(0.5), M1, 0, cm(5), cm(20.75), 3);
+  // 低踢脚 134×5×40
+  C.rb(cm(134), cm(5), cm(40), cm(0.5), M1, 0, 0, 0, 3);
+  // 6 抽前板 64（2 列×3 行）凸出 0.9 成台阶 + 深圆钮
+  const rows=[[16,21],[39,21],[62,21]];
+  for(const [yc,ht] of rows) for(const dx of [-33,33]){
+    C.rb(cm(64), cm(ht), cm(1.8), cm(0.7), M1, cm(dx), cm(yc-ht/2), cm(22.05), 3);
+    C.sph(cm(1.3), knobM, cm(dx), cm(yc), cm(23.0), 14);
+  }
+  // 抽箱内衬 ×4
+  C.box(cm(61), cm(19), cm(38), inM, -cm(33), cm(6.5), -cm(2));
+  C.box(cm(61), cm(19), cm(38), inM, cm(33), cm(6.5), -cm(2));
+  C.box(cm(61), cm(9), cm(38), inM, -cm(33), cm(29.5), -cm(2));
+  C.box(cm(61), cm(9), cm(38), inM, cm(33), cm(29.5), -cm(2));
+  C.box(cm(61), cm(9), cm(38), inM, -cm(33), cm(51.5), -cm(2));
+  C.box(cm(61), cm(9), cm(38), inM, cm(33), cm(51.5), -cm(2));
   C.g.updateMatrixWorld(true);
   const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3();
   bb.getCenter(off);
