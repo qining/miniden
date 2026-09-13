@@ -721,7 +721,7 @@ const CATALOG = [
  {id:'lagkapten120', cat:'书桌 / 办公椅', name:'LAGKAPTEN/ADILS 书桌 120', w:120,d:60,h:73, price:59.99, priceCA:90, color:'#d8d3c8', kind:'desk', model:'lagkapten120', url:'https://www.ikea.com/us/en/p/lagkapten-adils-desk-white-s29416758/'},
  {id:'micke', cat:'书桌 / 办公椅', name:'MICKE 书桌 105', w:105,d:50,h:75, price:99.99, priceCA:149, color:'#e8e4dc', kind:'desk', model:'micke', url:'https://www.ikea.com/us/en/p/micke-desk-black-brown-10244743/'},
  {id:'bekant160', cat:'书桌 / 办公椅', name:'BEKANT 书桌 160×80', w:160,d:80,h:73, price:329, priceCA:199, color:'#d8d3c8', kind:'desk', model:'bekant160', url:'https://www.ikea.com/us/en/p/bekant-desk-white-s19022808/'},
- {id:'trotten', cat:'书桌 / 办公椅', name:'TROTTEN 升降桌 120×70', w:120,d:70,h:73, price:249.99, caNA:true, color:'#d8d3c8', kind:'desk', url:'https://www.ikea.com/us/en/p/trotten-desk-sit-stand-beige-white-s89434127/', note:'手摇升降72-122'},
+ {id:'trotten', cat:'书桌 / 办公椅', name:'TROTTEN 升降桌 120×70', w:120,d:70,h:73, price:249.99, caNA:true, color:'#d8d3c8', kind:'desk', model:'trotten', url:'https://www.ikea.com/us/en/p/trotten-desk-sit-stand-beige-white-s89434127/', note:'手摇升降72-122'},
  {id:'markus', cat:'书桌 / 办公椅', name:'MARKUS 办公椅', w:62,d:60,h:140, price:299.99, priceCA:229, color:'#3e4249', seatH:51.5, model:'markus', kind:'officeChair', url:'https://www.ikea.com/us/en/p/markus-office-chair-vissle-dark-gray-90289172/', note:'Vissle 深灰。IKEA 官方尺寸：宽 62 / 深 60 / 总高 129–140（h 记最高档）；座高可调 46–57（seatH 取中值 51.5）；扶手高 68–79；座面 53×47；高背含头枕总长 94，头枕 42×18。网布中上段 + 织物下段 + 固定环形扶手'},
  {id:'flintan', cat:'书桌 / 办公椅', name:'FLINTAN 办公椅', w:71,d:71,h:114, price:119.99, priceCA:99, caVar:'加拿大只售无扶手款', color:'#3e4249', seatH:51.5, model:'flintan', kind:'officeChair', url:'https://www.ikea.com/us/en/p/flintan-office-chair-with-armrests-black-s29424471/', note:'IKEA 官方尺寸：宽 71 / 深 71 / 总高 103–114（h 记最高档）；座高可调 45–58（seatH 取中值 51.5）；扶手高 69–82；座面 46×49；靠背 66 高、最宽 61。盾形网布靠背带三道腰托横带，T 形扶手'},
  {id:'alex_dr', cat:'书桌 / 办公椅', name:'ALEX 抽屉柜', w:36,d:58,h:70, price:79.99, priceCA:129, color:'#e8e4dc', kind:'dresser', model:'alex_dr', url:'https://www.ikea.com/us/en/p/alex-drawer-unit-white-00473546/'},
@@ -8105,6 +8105,31 @@ MODELS['bekant160'] = (C) => {
   C.box(cm(48), cm(0.8), cm(28), meshM, 0, cm(52), 0);
   for(const dx of [-23.6,23.6]) C.box(cm(0.8), cm(10), cm(28), meshM, cm(dx), cm(52.4), 0);
   C.box(cm(48), cm(10), cm(0.8), meshM, 0, cm(52.4), -cm(13.6));
+  C.g.updateMatrixWorld(true);
+  const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3();
+  bb.getCenter(off);
+  for(const ch of C.g.children){ ch.position.x-=off.x; ch.position.z-=off.z; }
+};
+
+/* TROTTEN 升降桌 120×70×73：尺寸图 v02（120/70）+ v0/v3 实拍
+   （白 T 腿双立柱+伸缩节+手摇柄）（brief: trotten.md）。 */
+MODELS['trotten'] = (C) => {
+  const cm=C.cm, T=C.THREE;
+  const M1 = C.M(C.col, {rough:.5, envI:.25});
+  const legM = C.M('#f4f2ec', {rough:.45, envI:.3});
+  // 台面 120×70×2.5 (70.5→73)
+  C.rb(cm(120), cm(2.5), cm(70), cm(0.6), M1, 0, cm(70.5), 0, 3);
+  // 2 立柱 4.5×3.5 @ x±33 (1→70.5) + 中段伸缩节环
+  for(const lx of [-33,33]){
+    C.rb(cm(4.5), cm(69.5), cm(3.5), cm(0.4), legM, cm(lx), cm(1), 0, 2);
+    C.rb(cm(5.3), cm(4), cm(4.3), cm(0.4), legM, cm(lx), cm(34), 0, 2);
+  }
+  // 2 T 型平脚 54×1.2×10
+  for(const lx of [-33,33]) C.rb(cm(54), cm(1.2), cm(10), cm(0.5), legM, cm(lx), 0, 0, 2);
+  // 右腿手摇柄：摇臂 + 握柄
+  C.cyl(cm(1.6), cm(1.6), cm(2), legM, cm(35.6), cm(40), 0, 14).rotation.z = Math.PI/2;
+  C.rb(cm(8), cm(1.6), cm(1.6), cm(0.6), legM, cm(39), cm(40), 0, 2);
+  C.cyl(cm(0.8), cm(0.8), cm(5), legM, cm(43), cm(40), 0, 12);
   C.g.updateMatrixWorld(true);
   const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3();
   bb.getCenter(off);
