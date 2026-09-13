@@ -739,6 +739,8 @@ const CATALOG = [
  {id:'vidja', cat:'灯具 / 照明', name:'VIDJA 落地灯', w:26,d:26,h:138, price:69.99, priceCA:59.99, color:'#e8e4dc', kind:'lamp', model:'vidja', url:'https://www.ikea.com/us/en/p/vidja-floor-lamp-white-10309206/'},
  {id:'ranarp_f', cat:'灯具 / 照明', name:'RANARP 落地阅读灯', w:76,d:28,h:153, price:69.99, priceCA:79.99, color:'#2e3138', kind:'lamp', model:'ranarp_f', note:'占地 76×28×153：臂长 76cm（官方 Length 760mm），臂可旋转', url:'https://www.ikea.com/us/en/p/ranarp-floor-reading-lamp-black-00331383/'},
  {id:'hektar_f', cat:'茶几 / 边几', name:'HEKTAR 落地灯', w:33,d:33,h:180, price:89.99, priceCA:89, color:'#4a4d53', kind:'lamp', model:'hektar_f', url:'https://www.ikea.com/us/en/p/hektar-floor-lamp-dark-gray-70216544/'},
+ {id:'ekorre', cat:'儿童 / 爬爬架', name:'EKORRE 摇摇麋鹿', w:73,d:29,h:52, price:69.99, priceCA:39.99, color:'#c11e23', color2:'#d9bd96', kind:'rocking', model:'ekorre', seatH:28, url:'https://www.ikea.com/us/en/p/ekorre-rocking-moose-red-rubberwood-50060713/'},
+ {id:'hape-horse', cat:'儿童 / 爬爬架', name:'Hape Rock & Ride 摇木马', w:67.6,d:28.2,h:52.3, price:131.72, caNA:true, color:'#dbaf88', color2:'#ca0707', kind:'rocking', model:'hape-horse', seatH:26, url:'https://www.amazon.com/dp/B00712O36C'},
 ];
 
 /* ---------- 预设布局 ---------- */
@@ -1272,7 +1274,7 @@ function furnShape(it, spec){
     el('line',{x1:0,y1:-dp/2+3,x2:0,y2:dp/2-3,stroke:'rgba(0,0,0,.28)','stroke-width':1.4,'stroke-dasharray':'6 4'},body);
   } else
   // 新品类 2D 俯视图例
-  if(['shelf','crib','cart','deskSitStand','swivelChair','playCouch','tableFold','tableDrawer'].includes(kind)){
+  if(['shelf','crib','cart','deskSitStand','swivelChair','playCouch','tableFold','tableDrawer','rocking'].includes(kind)){
     const dk2='rgba(0,0,0,.30)', lt2='rgba(255,255,255,.22)';
     if(kind==='shelf'){
       R(-wf/2,-df/2,wf,df,2,col,{stroke:'rgba(0,0,0,.45)','stroke-width':1.2});
@@ -1302,6 +1304,12 @@ function furnShape(it, spec){
       R(-wf/2,-df/2,wf,df,4,col,{stroke:'rgba(0,0,0,.4)','stroke-width':1.2});
       R(-wf/2+.08,-df/2+.08,wf-.16,cm2ft(20),3,'rgba(0,0,0,.20)');
       el('line',{x1:0,y1:-dp/2+8,x2:0,y2:dp/2,stroke:lt2,'stroke-width':1.4},body);
+    } else if(kind==='rocking'){
+      // 摇摇玩具：长身 + 前端头部圆 + 摇杆线 + 横把手
+      el('rect',{x:-wp/2,y:-dp*0.30,width:wp,height:dp*0.6,rx:dp*0.3,fill:col,stroke:'rgba(0,0,0,.45)','stroke-width':1.2},body);
+      el('circle',{cx:wp*0.36,cy:0,r:Math.min(wp,dp)*0.30,fill:col,stroke:'rgba(0,0,0,.45)','stroke-width':1.2},body);
+      el('line',{x1:-wp/2+1,y1:0,x2:wp/2-1,y2:0,stroke:'rgba(0,0,0,.30)','stroke-width':1},body);
+      el('line',{x1:wp*0.10,y1:-dp/2+1,x2:wp*0.10,y2:dp/2-1,stroke:'rgba(0,0,0,.30)','stroke-width':1},body);
     } else {   // tableFold / tableDrawer
       R(-wf/2,-df/2,wf,df,2,col,{stroke:'rgba(0,0,0,.45)','stroke-width':1.2});
       for(let i=1;i<6;i++) el('line',{x1:-wp/2,y1:-dp/2+dp*i/6,x2:wp/2,y2:-dp/2+dp*i/6,stroke:'rgba(0,0,0,.10)','stroke-width':.8},body);
@@ -4484,7 +4492,7 @@ function texScaled(base, ftSize, per){
 const _furnMatCache=new Map();
 const FURN_SOFT = ['sofa','sofaL','armchair','playCouch','bed','stool','officeChair','swivelChair','chair'];
 const FURN_CASE = ['bookcase','shelf','dresser','nightstand','shoeCab','tvBench','desk','deskSitStand',
-                   'sideTable','coffeeTable','tableRect','tableRound','tableFold','tableDrawer','crib','box'];
+                   'sideTable','coffeeTable','tableRect','tableRound','tableFold','tableDrawer','crib','box','rocking'];
 const FURN_METAL= ['bedMetal','cart'];
 function furnMats(spec, col){
   const kind = spec.kind || 'box';
@@ -8354,7 +8362,178 @@ MODELS['ranarp_f'] = (C) => {
   for(const ch of C.g.children){ ch.position.x-=off.x; ch.position.z-=off.z; }
 };
 
-/* ===== 性能：按材质合并 mesh，大幅减少 draw call（几何逐顶点保留，外观完全不变） ===== */
+
+// ===== EKORRE 摇摇麋鹿（官方 L73 W29 H52，红漆板身+原木摇轨；头部有手孔，口部吊环） =====
+MODELS['ekorre'] = (C) => {
+  const cm=C.cm, T=C.THREE;
+  const red  = C.M('#c11e23', {rough:.2, clear:1, clearRough:.12, envI:.4});
+  const wood = C.M('#d9bd96', {wood:'pine', rough:.5});
+  const blk  = C.M('#17181a', {rough:.55});
+  // 贝塞尔路径 → 采样多边形（点为 cm）
+  const seg2pts=(segs,n=7)=>{ const pts=[];
+    for(const s of segs){
+      if(s[0]==='L') pts.push(s[1]);
+      else { const a=s[1],c=s[2],b=s[3];
+        for(let i=1;i<=n;i++){ const t=i/n,u=1-t;
+          pts.push([u*u*a[0]+2*u*t*c[0]+t*t*b[0], u*u*a[1]+2*u*t*c[1]+t*t*b[1]]); } } }
+    return pts; };
+  const circle=(cx,cy,r,n=20)=>{ const p=[];
+    for(let i=0;i<n;i++){ const a=Math.PI*2*i/n; p.push([cx+r*Math.cos(a), cy+r*Math.sin(a)]); }
+    return p; };
+  const ex=(pts,depth,mat,x,y,z,plane,holes)=>{
+    const sh=new T.Shape(pts.map(p=>new T.Vector2(cm(p[0]),cm(p[1]))));
+    for(const h of (holes||[])){ const hp=new T.Path(h.map(p=>new T.Vector2(cm(p[0]),cm(p[1])))); sh.holes.push(hp); }
+    const geo=new T.ExtrudeGeometry(sh,{depth:depth,bevelEnabled:false,bevelThickness:0,bevelSize:0,curveSegments:1});
+    geo.computeVertexNormals();
+    const mm=new T.Mesh(geo,mat);
+    if(plane==='xz') mm.rotation.x=Math.PI/2;
+    if(plane==='zy') mm.rotation.y=Math.PI/2;
+    mm.position.set(x||0,y||0,z||0); mm.castShadow=mm.receiveShadow=true; C.g.add(mm); return mm; };
+  // 麋鹿身侧板（头颈有手孔、口部有环孔、下颌波浪、前腿 S 形；前端=+x）
+  const body=seg2pts([
+    ['L',[-32,9.5]],
+    ['Q',[-32,9.5],[-28.5,14],[-26.5,20]],
+    ['L',[-26.5,26.5]],
+    ['L',[8,26.5]],
+    ['Q',[8,26.5],[10,35],[13,42]],
+    ['Q',[13,42],[15,46.5],[22,47]],
+    ['Q',[22,47],[30,45.5],[35,38]],
+    ['Q',[35,38],[36.5,32],[36,27]],
+    ['L',[34,23.5]],
+    ['Q',[34,23.5],[31.5,20.5],[29,22.5]],
+    ['Q',[29,22.5],[25.5,24.5],[23,21.5]],
+    ['Q',[23,21.5],[20,18],[17.5,15]],
+    ['Q',[17.5,15],[19,12],[17,9.5]],
+    ['L',[9,9.5]],
+    ['Q',[9,9.5],[11.5,14],[9.5,19]],
+    ['Q',[9.5,19],[-0.5,16.5],[-11,17.5]],
+    ['Q',[-11,17.5],[-16.5,17.5],[-21,9.5]],
+  ]);
+  ex(body, cm(2.5), red, 0, 0, cm(11.75), null, [circle(19.5,37.5,2.6), circle(33.5,24.3,0.9)]);
+  ex(body, cm(2.5), red, 0, 0, -cm(14.25), null, [circle(19.5,37.5,2.6), circle(33.5,24.3,0.9)]);
+  // 摇轨 ×2（∪ 形弧，长 70，中点近地，端头翘起）
+  const rock=seg2pts([
+    ['L',[-35,9.5]],
+    ['Q',[-35,9.5],[-17,1.0],[0,0.6]],
+    ['Q',[0,0.6],[17,1.0],[35,9.5]],
+    ['L',[35,13.5]],
+    ['Q',[35,13.5],[17,5.0],[0,4.6]],
+    ['Q',[0,4.6],[-17,5.0],[-35,13.5]],
+  ]);
+  ex(rock, cm(4.5), wood, 0, 0, cm(10));
+  ex(rock, cm(4.5), wood, 0, 0, -cm(14.5));
+  // 黑胶脚垫 ×4（摇轨端头下方）
+  for(const sx of [-1,1]) for(const sz of [-1,1])
+    C.box(cm(4.5), cm(2.5), cm(4.5), blk, sx*cm(33.75), cm(7), sz*cm(12.25));
+  // 下横梁（连接两摇轨，腿底坐于其上）
+  C.box(cm(4.5), cm(4.5), cm(20), wood, cm(-8), cm(5), 0);
+  // 坐板（延伸到尾部承托靠背）+ 半圆靠背
+  C.rb(cm(30), cm(3), cm(20), cm(1.2), red, cm(-9), cm(26.5), 0);
+  const bs=[]; for(let i=0;i<=12;i++){ const a=Math.PI*i/12;
+    bs.push([7.5*Math.cos(a), 29.5+7.5*Math.sin(a)]); }
+  ex(bs, cm(2.5), red, cm(-24.5), 0, 0, 'zy');
+  // 横向把手（穿过颈后）
+  C.tube(cm(27), cm(1.6), wood, cm(9), cm(39.5), 0, 'z');
+  // 鹿角 ×2（基座条 + 三指，只绕竖轴转，前倾 70° / 后倾 110°）
+  const ant=(z,ang)=>{ const grp=new T.Group(); C.g.add(grp);
+    const addG=(m)=>{ m.castShadow=m.receiveShadow=true; grp.add(m); };
+    const b=new T.Mesh(new T.BoxGeometry(cm(5),cm(2.4),cm(4.4)), wood);
+    b.position.set(cm(2.5),cm(1.2),0); addG(b);
+    for(const fy of [-1.4,0,1.4]){
+      const f=new T.Mesh(new T.CapsuleGeometry(cm(1.1),cm(3.6),4,12), wood);
+      f.rotation.z=Math.PI/2; f.position.set(cm(8.1),cm(2.4),cm(fy)); addG(f); }
+    grp.position.set(cm(19), cm(41.5), cm(z)); grp.rotation.z=ang; };
+  ant(cm(10.8), 70*Math.PI/180);
+  ant(-cm(10.8), 110*Math.PI/180);
+  // 口部吊环（挂在口孔下）
+  C.torus(cm(2.2), cm(0.45), blk, cm(33.5), cm(20), 0);
+  // 水平重心归零（2D 图例/碰撞以占地中心为原点）
+  C.g.updateMatrixWorld(true);
+  const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3(); bb.getCenter(off);
+  for(const ch of C.g.children){ ch.position.x-=off.x; ch.position.z-=off.z; }
+};
+
+// ===== Hape Rock & Ride 摇木马（官方 67.6×28.2×52.3 cm，一体侧板+摇轨，红鬃红座） =====
+MODELS['hape-horse'] = (C) => {
+  const cm=C.cm, T=C.THREE;
+  const wood = C.M('#e2c193', {wood:'beech', rough:.5});
+  const red  = C.M('#ca0707', {rough:.35, clear:.5, envI:.35});
+  const blk  = C.M('#141518', {rough:.4});
+  const seg2pts=(segs,n=7)=>{ const pts=[];
+    for(const s of segs){
+      if(s[0]==='L') pts.push(s[1]);
+      else { const a=s[1],c=s[2],b=s[3];
+        for(let i=1;i<=n;i++){ const t=i/n,u=1-t;
+          pts.push([u*u*a[0]+2*u*t*c[0]+t*t*b[0], u*u*a[1]+2*u*t*c[1]+t*t*b[1]]); } } }
+    return pts; };
+  const ex=(pts,depth,mat,x,y,z,plane,holes)=>{
+    const sh=new T.Shape(pts.map(p=>new T.Vector2(cm(p[0]),cm(p[1]))));
+    for(const h of (holes||[])){ const hp=new T.Path(h.map(p=>new T.Vector2(cm(p[0]),cm(p[1])))); sh.holes.push(hp); }
+    const geo=new T.ExtrudeGeometry(sh,{depth:depth,bevelEnabled:false,bevelThickness:0,bevelSize:0,curveSegments:1});
+    geo.computeVertexNormals();
+    const mm=new T.Mesh(geo,mat);
+    if(plane==='xz') mm.rotation.x=Math.PI/2;
+    if(plane==='zy') mm.rotation.y=Math.PI/2;
+    mm.position.set(x||0,y||0,z||0); mm.castShadow=mm.receiveShadow=true; C.g.add(mm); return mm; };
+  // 侧板一体件：马头(含嘴口凹)+颈+身+前后撑+摇轨（前端=+x），中部椭圆镂空
+  const outer=seg2pts([
+    ['L',[33,31]],
+    ['Q',[33,31],[34.2,38],[29.5,44]],
+    ['Q',[29.5,44],[24.5,50.5],[16,51]],
+    ['Q',[16,51],[9,50.5],[5,45.5]],
+    ['Q',[5,45.5],[2.5,35],[2,25]],
+    ['L',[-24,25]],
+    ['Q',[-24,25],[-28,22.5],[-29.5,17]],
+    ['Q',[-29.5,17],[-31.5,10],[-33.8,5.5]],
+    ['Q',[-33.8,5.5],[-24,1.2],[-8,0.4]],
+    ['Q',[-8,0.4],[6,0.4],[20,1.8]],
+    ['Q',[20,1.8],[26,3.5],[27.5,6]],
+    ['Q',[27.5,6],[27,9],[25,13]],
+    ['Q',[25,13],[23,17],[22,20]],
+    ['Q',[22,20],[24.5,22],[28,23.5]],
+    ['Q',[28,23.5],[30.5,25],[31.8,26.2]],
+    ['Q',[31.8,26.2],[31,28.5],[33,31]],
+  ]);
+  const hole=[]; for(let i=0;i<24;i++){ const a=Math.PI*2*i/24;
+    hole.push([-3+14.5*Math.cos(a), 14+6*Math.sin(a)]); }
+  ex(outer, cm(1.8), wood, 0, 0, cm(12.3), null, [hole]);
+  ex(outer, cm(1.8), wood, 0, 0, -cm(14.1), null, [hole]);
+  // 红鬃：沿头顶外缘的扁条（两面各一，略突出板面）
+  const mOut=seg2pts([
+    ['L',[30.3,45]],
+    ['Q',[30.3,45],[26.2,51.8],[16,52.3]],
+    ['Q',[16,52.3],[8.8,51.9],[4.7,46.8]],
+    ['Q',[4.7,46.8],[2.4,35.8],[1.9,26.3]],
+  ]);
+  const mIn=seg2pts([
+    ['L',[2,25]],
+    ['Q',[2,25],[2.5,35],[5,45.5]],
+    ['Q',[5,45.5],[9,50.5],[16,51]],
+    ['Q',[16,51],[24.5,50.5],[29.5,44]],
+  ]);
+  ex(mOut.concat(mIn), cm(1.8), red, 0, 0, cm(12.45));
+  ex(mOut.concat(mIn), cm(1.8), red, 0, 0, -cm(14.25));
+  // 黑珠子眼睛
+  for(const sz of [-1,1]) C.sph(cm(1.1), blk, cm(25.5), cm(38.5), sz*cm(13));
+  // 红色座板（延伸到尾部承托靠背）+ 半圆木质靠背
+  C.rb(cm(26), cm(1.6), cm(24), cm(0.8), red, cm(-9), cm(25), 0);
+  const bs=[]; for(let i=0;i<=12;i++){ const a=Math.PI*i/12;
+    bs.push([7.5*Math.cos(a), 26.6+7.5*Math.sin(a)]); }
+  ex(bs, cm(1.8), wood, cm(-21.5), 0, 0, 'zy');
+  // 横向把手（架在靠背顶上）+ 端头圆钮
+  C.tube(cm(25), cm(1.5), wood, cm(-21.5), cm(34.4), 0, 'z');
+  for(const sz of [-1,1]) C.knob(cm(2), wood, cm(-21.5), cm(34.4), sz*cm(12.2));
+  // 座下两根横梁（透过镂空可见）
+  C.tube(cm(20), cm(1.1), wood, cm(8), cm(17), 0, 'z');
+  C.tube(cm(20), cm(1.1), wood, cm(-17), cm(17), 0, 'z');
+  // 水平重心归零
+  C.g.updateMatrixWorld(true);
+  const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3(); bb.getCenter(off);
+  for(const ch of C.g.children){ ch.position.x-=off.x; ch.position.z-=off.z; }
+};
+
+
+  /* ===== 性能：按材质合并 mesh，大幅减少 draw call（几何逐顶点保留，外观完全不变） ===== */
 function _concatGeos(list){
   let total=0;
   for(const g of list) total += g.attributes.position.count;
