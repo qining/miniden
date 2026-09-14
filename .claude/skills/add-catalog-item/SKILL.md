@@ -225,6 +225,8 @@ python3 .claude/skills/add-catalog-item/check-item.py --regress
 | 占地缺了伸展部分（臂灯只占机身） | 采集只录了机身 w/d | 核对官方 Length/reach，spec 错了就改目录条目 |
 | 多件套装嵌套与总宽矛盾 | 60+30=90 时嵌套必缩 span | 先算整组 bbox span，选偏移进 92~102% 窗 |
 | 填充率超窗但不知哪个部件超了 | 灯环/绕线带/拉手外缘超 spec | `?nomerge` 逐 child 打 bbox 找最宽部件 |
+| CatmullRom 曲线在长直线+短弧交界处过冲 | 长段只给两个端点，切线被大段拉偏（NIPÅSEN 侧框外溢 0.4cm） | 长直线段按 ~40cm 间隔加密中间点再建 CatmullRomCurve3 |
+| 曲线点忘乘 `cm()`（cm 值被当英尺） | 钩子/管件突然放大 ~30 倍，bbox 爆到 200%+（NIPÅSEN 钩子 395cm） | 手建 Vector3 曲线点与 `C.box`/`C.cyl` 参数一样逐个 `cm()`；填充率体检能抓 |
 | 抓到的价格离谱 | 命中系列落地页而非商品页 |
 | 两次渲染结果不一致 | 新贴图用了 `Math.random()` |
 | 手摆相机后画布是空的 | `OrbitControls.update()` 把相机拉回去了 → 先同步 `controls.target` 再 `update()` |
