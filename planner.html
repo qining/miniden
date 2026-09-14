@@ -710,6 +710,11 @@ const CATALOG = [
  {id:'gullaberg_q', cat:'床 / 婴儿床', name:'GULLABERG 床架 Queen', w:163,d:210,h:113, price:299, priceCA:349, color:'#d9d4ca', kind:'bed', model:'gullaberg', url:'https://www.ikea.com/us/en/p/gullaberg-bed-frame-gray-20608931/', note:'实木，HEMNES继任款'},
  {id:'songesand_q', cat:'床 / 婴儿床', name:'SONGESAND 床架 Queen', w:165,d:208,h:95, price:249, priceCA:289, color:'#8b6f52', kind:'bed', model:'songesand', url:'https://www.ikea.com/us/en/p/songesand-bed-frame-brown-s89241044/'},
  {id:'idanas_q', cat:'床 / 婴儿床', name:'IDANÄS 软包床 Queen', w:159,d:224,h:121, price:549, priceCA:599, color:'#8f96a3', kind:'bed', model:'idanas', url:'https://www.ikea.com/us/en/p/idanaes-upholstered-bed-frame-gunnared-dark-gray-60458958/', note:'最长，注意进深224'},
+ {id:'malm_qm', cat:'床 / 婴儿床', name:'MALM 床架+VALEVÅG 床垫 Queen', w:168,d:211,h:100, price:698, color:'#f0ece4', kind:'bed', model:'malm-m', url:'https://www.ikea.com/us/en/p/malm-bed-frame-with-mattress-white-valevag-firm-s99544856/', note:'IKEA 整套 SKU $698（床架+VALEVÅG 弹簧床垫 Queen 152×203）'},
+ {id:'malm_km', cat:'床 / 婴儿床', name:'MALM 床架+VALEVÅG 床垫 King', w:209,d:211,h:100, price:898, color:'#f0ece4', kind:'bed', model:'malmk-m', url:'https://www.ikea.com/us/en/p/malm-bed-frame-with-mattress-white-valevag-medium-firm-s09544846/', note:'IKEA 整套 SKU $898（King 床垫中软款）'},
+ {id:'gullaberg_qm', cat:'床 / 婴儿床', name:'GULLABERG 床架+VALEVÅG 床垫 Queen', w:163,d:210,h:113, price:698, color:'#d9d4ca', kind:'bed', model:'gullaberg-m', note:'分售加总：床架 $299 + VALEVÅG Queen 床垫 $399'},
+ {id:'songesand_qm', cat:'床 / 婴儿床', name:'SONGESAND 床架+VALEVÅG 床垫 Queen', w:165,d:208,h:95, price:648, color:'#8b6f52', kind:'bed', model:'songesand-m', note:'分售加总：床架 $249 + VALEVÅG Queen 床垫 $399'},
+ {id:'idanas_qm', cat:'床 / 婴儿床', name:'IDANÄS 软包床+VALEVÅG 床垫 Queen', w:159,d:224,h:121, price:948, color:'#8f96a3', kind:'bed', model:'idanas-m', note:'分售加总：床架 $549 + VALEVÅG Queen 床垫 $399'},
  {id:'storklinta_ns', cat:'床头柜', name:'STORKLINTA 床头柜', w:50,d:48,h:53, price:79.99, priceCA:79.99, color:'#f0ece4', kind:'nightstand', model:'storklinta', url:'https://www.ikea.com/us/en/p/storklinta-2-drawer-chest-white-with-2-drawers-90559296/', note:'MALM床头柜继任款'},
  {id:'nordli_ns', cat:'床头柜', name:'NORDLI 床头柜(窄40)', w:40,d:47,h:54, price:99.99, priceCA:149, color:'#f0ece4', kind:'nightstand', model:'nordli', url:'https://www.ikea.com/us/en/p/nordli-2-drawer-chest-white-30589079/', note:'适合窄位'},
  {id:'vikhammer', cat:'床头柜', name:'VIKHAMMER 床头柜', w:60,d:39,h:65, price:99.99, priceCA:129, color:'#3e4249', kind:'nightstand', model:'vikhammer', url:'https://www.ikea.com/us/en/p/vikhammer-nightstand-black-90388978/'},
@@ -7793,6 +7798,18 @@ MODELS['idanas'] = (C) => {
   bb.getCenter(off);
   for(const ch of C.g.children){ ch.position.x-=off.x; ch.position.z-=off.z; }
 };
+
+/* 床「带床垫」版本：床架 + VALEVÅG 弹簧床垫（Queen 152×203 / King 193×203，厚 20）。
+   床垫居中放在排骨架上；床架模型末尾已把原点归到占地中心，床垫直接居中即可。 */
+function mattressOn(C, mw, md, slatTop){
+  const M = C.M('#f2efe6', {fabric:true, sheen:.05, envI:.2});
+  C.rb(C.cm(mw), C.cm(20), C.cm(md), C.cm(4), M, 0, C.cm(slatTop), 0, 3);
+}
+MODELS['malm-m']      = (C) => { MODELS['malm'](C);      mattressOn(C, 152, 203, 28); };
+MODELS['malmk-m']     = (C) => { MODELS['malm'](C);      mattressOn(C, 193, 203, 28); };
+MODELS['gullaberg-m'] = (C) => { MODELS['gullaberg'](C); mattressOn(C, 152, 203, 16); };
+MODELS['songesand-m'] = (C) => { MODELS['songesand'](C); mattressOn(C, 152, 203, 16); };
+MODELS['idanas-m']    = (C) => { MODELS['idanas'](C);    mattressOn(C, 152, 203, 46); };
 
 /* STORKLINTA 床头柜 50×48×53：尺寸图 v03（双抽 41×16×40）+ v02/v04/v05 实拍
    （MALM 继任：台面微外挑、双深拉抽、小方脚）（brief: storklinta.md）。 */
