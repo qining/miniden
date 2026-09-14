@@ -23,7 +23,6 @@
 | `.claude/skills/add-catalog-item/SKILL.md` | **加家具/灯具/地毯/游具入库的作业指导书**（唯一一份，下面两个 agent 都读它）。详细版是本文 §8.1，冲突以 §8.1 为准 |
 | `.claude/skills/add-catalog-item/check-item.py` | 单件体检 + 全量回归：`python3 .claude/skills/add-catalog-item/check-item.py <条目id>` / `--regress` |
 | `.agents/skills` → `../.claude/skills` | **给 pi coding agent 用的软链**（git 存 mode 120000）。pi 只扫 `.agents/skills`，不认 `.claude/`；Claude Code 反过来不认 `.agents/`。软链让两边共用同一份文件，改一处两边同时生效 |
-| `.claude/settings.json` | 项目级设置。Claude Code 的 **subagent 并发上限锁成 1**（`CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS`） |
 | `work/t_walledit.html` `work/t_3d.html` `work/t_pt.html` | 三个自动化测试台（§3） |
 | `work/headful_test.py` | 真显卡光追验证（§5.5） |
 | `work/layouts/*.json` | 4 套压力测试布局 |
@@ -83,6 +82,9 @@ md5 -q /tmp/ckc.png
 ---
 
 ## 2. 开发流程（每次改动都走一遍）
+
+> **所有建模/采集/验证工作都直接在主会话里做，不委派 subagent。**
+> 大件任务按 §8.1 的步骤逐件推进即可。
 
 ```bash
 cd /Users/dako/planner
@@ -433,46 +435,6 @@ three 按 XYZ 序复合（`R = Rx·Ry·Rz`），块会被转翻。两个实测�
 
 排查手法：逐 child 打 `Box3` 的 y 范围并按 max 排序，一眼能看出是谁
 
-## 5.4.8 subagent 重做建模（v3.6 实践）
-
-> **现在 subagent 并发上限是 1（硬约束，两个 agent 都适用）。**
-> 下面记的是当时 3 个并行跑出来的经验，结论依旧成立，只是现在会串行执行：
-> 派活时**一次派一个**，别一口气开三个。
-> 串行之后 worktree 隔离不再是防并发覆盖的刚需，但仍然建议保留：
-> 隔离出来的分支便于单件回滚，也保证主线随时可跑回归。
->
-> | agent | 闸门在哪 | 跟随 git？ |
-> |---|---|---|
-> | Claude Code | `.claude/settings.json` → `CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS=1`。超限是**直接拒绝**，不是排队 | ✅ 在仓库里 |
-> | pi-subagents | `~/.pi/agent/extensions/subagent/config.json` → `globalConcurrencyLimit: 1` + `maxActiveAsyncRunsPerSession: 1`（默认 20）。改完**要重启 pi**，扩展激活时只 `loadConfig()` 一次 | ❌ **在用户 home，不在仓库内**，clone 到新机器要手工建 |
->
-> pi 这边**没有**项目级并发配置：`getConfigPath()`（`pi-subagents/src/extension/config.ts:186`）
-> 只拼 `~/.pi/agent/extensions/subagent/config.json`，无 projectRoot 分支、无合并、无回退；
-> `.pi/settings.json` 的 `subagents.*` 白名单里一个并发键都没有；也没有对应环境变量。
-> 文档里的 `parallel.{maxTasks,concurrency}` 在 0.67.0 是**死配置**（类型还在，无读取点），别用。
->
-> 仓库内能做的第二道防线（跟随 git，但属"劝导"不是闸门）：
-> 用 pi 的 workflowScript 时在**顶层**显式传 `globalConcurrencyLimit: 1`
-> （只允许出现在顶层调用，且不会转发给子调用）。
-
-9 件座椅（4 餐椅 / 3 吧凳 / 2 办公椅）原来全在吃 `kind` 通用回退——实测只有
-**120 面 / 2 个网格**，就是两个盒子摞起来。用 3 个 subagent 各带一个 git worktree
-并行重做，每个都跑 `add-catalog-item` skill。经验：
-
-- **一定要让 agent 自己去核实商品页**。我在任务里给的 12 个链接**有 5 个是死链**，
-  而且我对 SKOGSTA（写成方料腿，实为温莎式）、TEODORES（写成镂空椅背，实为实心板）、
-  ODGER（写成三条腿，实为四条）、FLINTAN（写成软包背，实为网布背）四处描述都是错的。
-  三个 agent 都是按实拍图建的，没跟着错误描述走——这就是「不看图不建模」那条铁律的价值。
-- **worktree 隔离是必须的**。9 件同时改一个 `planner.html` 必然互相覆盖。
-- **合并不要用 `git apply`**。三个 patch 都往同一个锚点插 MODELS，第二个就冲突。
-  改成按内容提取（目录行按 id、模型按 `MODELS['key']` 块、函数按名字连注释一起抓）
-  再定点插入，完全确定性。
-- **必须查种子冲突**。两个 agent 都给新贴图挑了 `srand(1016)`——撞了的话两张贴图
-  会一模一样。合并脚本里自动改号，测试台加了
-  `speckleTexture() !== meshWeaveTexture()` 守着。
-- **合并后要在主线重跑一遍单件体检**。worktree 是老基线，主线可能已经改过共享代码
-  （这次主线正好修了 `C.caster`）。
-
 ## 5.5 GPU 路径追踪（`ptRender`）
 
 浏览器里**拿不到显卡的 RT core**：WebGPU 至今没有 ray query / ray tracing pipeline，
@@ -595,91 +557,6 @@ WebGL2 更没有。所以这是「用 GPU 的通用计算单元跑软件光追�
 
 判断缩略图是否有内容要**解码后数不透明像素**，不能看 PNG 字节数：简单形状压得极小，
 1.9KB 也可能是张正常的图。
-
-## 6. LLM Agent 审查与验证方法论
-
-这个项目大量使用 subagent/workflow，以下是**实测有效**的模式。
-
-### 6.1 对抗验证是刚需
-
-流程：**多路并行找问题 → 每条发现交独立"怀疑论者"复测 → 只留确认项**。
-
-实测数据：三轮下来 62 + 38 + 35 条候选，对抗验证后只剩 **52 条真问题**，其余全是量测伪影。
-**没有对抗验证就会过度修复**——曾经按未验证的报告改动，反而把已经对齐的几何改坏（r26 的三处回退）。
-
-怀疑论者的提示词要点：
-- 明确要求 **REFUTE**（驳倒），而不是"检查"
-- "只有实测 ≥N px 或明确豁口才 confirmed=true；测不出、属豁免清单、底图本来如此 → false"
-- **结论必须带数字证据**
-
-（当时的）外部强模型做验证的质量很高：会自建合成模型（`ovl = 0.6*img + c`）分离矢量层、用 50% 边缘做亚像素、拿控制行自校准方法偏差。本地模型做同口径验证时，把合成模型/探针脚本**写死在代码里**（而不是让它自由发挥），质量才稳定。
-
-### 6.2 双审查体系互补，冲突要自己裁决
-
-外部审查员（差分/三版对比）和内部怀疑论者（亚像素探针）**各有盲区**。
-遇到过同一区域一方读出"白楔口"、另一方读出"斜墙带"——真相是**两个元素并存**（底图上细线+垛+白口挤在一起）。
-
-裁决办法：
-1. 自己下 `lum<130` 中阈值探针看**全部墨层**
-2. 用"底图实黑但 4px 内无矢量黑"的像素计数作为客观优化目标
-3. 修复时**保留双方各自验证过的部分**，不要拿一方结论整体推翻另一方
-
-### 6.3 审查员的口径盲区
-
-外部审查员用 **≥5px 逐点中线偏差**口径，对**"角度/走向"类偏差是盲区**——门垛被画成近乎水平（斜率 0.012 vs 底图 0.292）而 27 轮都没报出来，是用户拿直尺看出来的。
-
-**长直线特征要按斜率拟合验证**，不能只测端点偏差。
-
-### 6.4 Workflow 编排模式（本地模型口径，2026-09 起）
-
-**本项目用本地模型（`llamacpp-lan/qwen38-27b`）跑 subagent，不要假设 opus/claude/openai 可用。**
-并发锁 1（§5.4.8），**一件任务一个 run、fresh 上下文、给足超时**（单件建模 1-2h）。
-
-本地模型的上下文/输出上限比外部强模型小得多，实测三次失败后沉淀的守则：
-
-1. **不 fork 继承大上下文**。父会话上下文 + 几张 PNG 就能把窗口撑爆（`stopReason "length"`，死在写代码前）。
-2. **fresh 上下文 + 有界读取**：planner.html 284KB 绝不全读，先 `grep -n` 定位再 `sed` 取区块；参考图每款最多 2-3 张（正脸 + 尺寸图），且**文件名可能标错**，读到的内容不符就换一张，别纠结。
-3. **死在哪切到哪**：采集/看图阶段能跑完但写代码前死掉 → 切成两个 run：分析 run 把尺寸/部件/材质写成 `work/briefs/<key>.md`，建模 run 只读 brief 不碰图。
-4. **代码分小块写**：底座→坐垫→扶手→细节，每块一次 `edit`，中途 `node --check`；不要一次生成 200 行代码块。
-5. **验收看 `git diff --stat`**：本地模型可能 exit 0 却没写任何文件，输出报告前先确认仓库确实变了。
-
-```js
-// 串行模式：一件一个 run，fresh 上下文
-for (const t of TASKS) {
-  const r = await agent(prompt(t), { schema: OUT })   // model 缺省 = 继承本地模型
-  results.push(r)
-  log(`已完成 ${results.length}/${TASKS.length}`)
-}
-```
-
-实测有效的三类 workflow：
-1. **数据采集**：15 个商品页并行抓尺寸/价格/全部配色（返回 schema 化结果）
-2. **代码审查**：按维度切分（交互状态机 / 数据一致性 / 材质渲染），每条发现再对抗验证
-3. **逐件建模**：每件家具一个 agent，打开商品页看图后写建模代码
-
-**结果回收**：workflow 的 `.output` 文件可能被截断，**去 journal 里取完整数据**：
-```bash
-J=~/.claude/projects/.../subagents/workflows/wf_XXXX/journal.jsonl
-python3 -c "
-import json
-for line in open('$J'):
-    d=json.loads(line)
-    if d.get('type')=='result': print(json.dumps(d['result'], ensure_ascii=False)[:500])
-"
-```
-注意字段是 `d['result']`（不是 `d['value']`），且 `started`/`result` 两种行都有。
-
-### 6.5 给建模 agent 的提示词要点
-
-- 给**完整的 API 文档**（每个基元的签名、y 是底面还是中心、坐标系约定）
-- 硬性要求写清楚：必须用 `C.col`/`C.col2` 表达配色、外轮廓不能超官方尺寸、mesh 数上限
-- 要求先 WebFetch 商品页**看图**，与已采集的文字描述互相印证
-- 要求返回 `notes` 说明抓住了哪些形态特征——能据此判断它是真看了图还是在编
-
-实测 agent 能做到：像素反解投影矩阵求腿平面朝向、发现文字描述与图片矛盾并以图为准、
-主动报告 API 缺陷（`rb` 尺寸 bug 就是建模 agent 发现的）。
-
----
 
 ## 7. 代码结构地图
 
