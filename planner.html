@@ -667,6 +667,9 @@ const CATALOG = [
  {id:'raskog-1', cat:'手推车', name:'RÅSKOG 手推车 · 黑色', w:35,d:45,h:77, price:39.99, priceCA:39.99, color:'#2E2E2E', color2:'#1F1F1F', model:'raskog', kind:'cart', url:'https://www.ikea.com/ca/en/p/raskog-utility-cart-pink-70629714/'},
  {id:'raskog-2', cat:'手推车', name:'RÅSKOG 手推车 · 红棕色', w:35,d:45,h:77, price:39.99, priceCA:39.99, color:'#7E4038', color2:'#3A3A3C', model:'raskog', kind:'cart', url:'https://www.ikea.com/ca/en/p/raskog-utility-cart-pink-70629714/'},
  {id:'raskog-3', cat:'手推车', name:'RÅSKOG 手推车 · 白色', w:35,d:45,h:77, price:39.99, priceCA:39.99, color:'#F5F5F3', color2:'#3A3A3C', model:'raskog', kind:'cart', url:'https://www.ikea.com/ca/en/p/raskog-utility-cart-pink-70629714/'},
+ {id:'ovning-0', cat:'手推车', name:'ÖVNING 收纳小推车 · 白色/灰绿', w:54,d:33,h:70, price:79.99, priceCA:99, color:'#f4f4f1', color2:'#93a29b', model:'ovning', kind:'cart', url:'https://www.ikea.com/us/en/p/oevning-utility-cart-white-gray-green-50517005/', note:'冲孔金属篮 + 白色分格柜身（左格矮/右格高），含脚轮总高 70cm；加拿大货号为同一款 505.170.05'},
+ {id:'ps2026-0', cat:'手推车', name:'IKEA PS 2026 小推车 · 米色', w:48,d:48,h:89, price:79.99, priceCA:79.99, color:'#b8b1a1', model:'ps2026', kind:'cart', url:'https://www.ikea.com/us/en/p/ikea-ps-2026-utility-cart-beige-50621078/', note:'四层圆形托盘小推车（⌀48×89cm，中心立杆 + 4 个带刹脚轮），承重 20kg'},
+ {id:'ps2026-1', cat:'手推车', name:'IKEA PS 2026 小推车 · 蓝色', w:48,d:48,h:89, price:79.99, priceCA:79.99, color:'#5d9bc6', model:'ps2026', kind:'cart', url:'https://www.ikea.com/us/en/p/ikea-ps-2026-utility-cart-blue-40621074/', note:'同款蓝色'},
  // —— 灯具（可调色温；3D 中为真实光源）——
  {id:'dl-4', cat:'固定灯具', name:'筒灯 4″（嵌入式）', w:12,d:12,h:6, color:'#f2efe8', kind:'downlight', cct:3000, lum:900, note:'吸顶嵌入；色温可调 2700-6500K'},
  {id:'dl-6', cat:'固定灯具', name:'筒灯 6″（嵌入式）', w:17,d:17,h:7, color:'#f2efe8', kind:'downlight', cct:3000, lum:1300},
@@ -4487,6 +4490,23 @@ function meshWeaveTexture(){
   _meshTex=t; return t;
 }
 
+let _perfTex = null;
+function perforatedTexture(){                 // 冲孔金属篮（ÖVNING）：规则圆孔阵列
+  if(_perfTex) return _perfTex;
+  srand(1018);
+  const N=512, c=document.createElement('canvas'); c.width=c.height=N;
+  const g=c.getContext('2d');
+  g.fillStyle='#f8f8f6'; g.fillRect(0,0,N,N);
+  const sp=32, d=11;
+  for(let row=0; row<=N/sp; row++) for(let col=0; col<=N/sp; col++){
+    const x=col*sp + (row%2? sp/2:0), y=row*sp;
+    g.fillStyle='#333835'; g.beginPath(); g.arc(x,y,d/2,0,Math.PI*2); g.fill();
+  }
+  const t=new THREE.CanvasTexture(c); t.wrapS=t.wrapT=THREE.RepeatWrapping;
+  t.repeat.set(3,2); t.encoding=THREE.sRGBEncoding; t.anisotropy=8;
+  _perfTex=t; return t;
+}
+
 
 function chairTab(K){ return (t)=>{
   if(t<=K[0][0]) return K[0][1];
@@ -5681,6 +5701,64 @@ MODELS['sniglar-crib'] = (C) => {
       b.rotation.x = Math.PI/2;
     }
 };
+/* ÖVNING 收纳小推车 54×33×70：官方尺寸图 o4（54×33×70，篮高 17.5，左格 16.9 / 右格 34.9 分格）
+   + o1 主图 + o2 脚轮特写 + o3 篮筐特写：白色四角柱柜身（背板 + 中隔 + 左低/右高两层板）、
+   冲孔金属篮（前 + 左侧卷边提手、左前黄色卡扣）、白色刹车脚轮×4。spec：54×33×70，$79.99/CA$99。 */
+MODELS['ovning'] = (C) => {
+  const T=C.THREE, cm=C.cm, hw=C.w/2, hd=C.d/2;
+  const body = C.M('#f4f4f1', {rough:.55});
+  const perf = perforatedTexture();
+  const basket = C.M('#93a29b', {metal:.45, rough:.55, envI:.6});
+  basket.map = perf; basket.normalMap = normalFromTexture(perf, 1.2);
+  const castM = C.M('#dcdcd6', {rough:.6});
+  const knobM = C.M('#e8b91f', {rough:.4});
+  for(const sx of [-1,1]) for(const sz of [-1,1]) C.caster(cm(5), castM, sx*cm(21.5), sz*cm(11));
+  const pb=cm(10), ph=cm(42.5);                                   // 柜身 10→52.5
+  C.box(C.w-cm(2), cm(2), C.d-cm(2), body, 0, cm(9.5), 0);      // 底托板 9.5→11.5（压在脚轮上、盖住四柱根部）
+  for(const sx of [-1,1]) for(const sz of [-1,1])
+    C.box(cm(2.2), ph, cm(2.2), body, sx*(hw-cm(1.1)), pb, sz*(hd-cm(1.1)));
+  C.box(C.w, ph, cm(1.5), body, 0, pb, -(hd-cm(0.75)));          // 背板
+  C.box(cm(1.8), ph, C.d, body, 0, pb, 0);                      // 中隔板
+  C.box(cm(26.1), cm(1.6), cm(31), body, -cm(13.95), cm(26.9), 0);   // 左格层板（顶到左外沿）
+  C.box(cm(26.1), cm(1.6), cm(31), body, cm(13.95), cm(44.9), 0);   // 右格层板（顶到右外沿）
+  // 冲孔篮 52.5→70：壁面外缩 1.2（让卷边/卡扣不超出 33cm 深）
+  const bw=cm(1.2), yb=cm(52.5), bh=cm(17.5), wz=hd-cm(1.8);   // 壁外表面 ±15.3
+  for(const sz of [-1,1]) C.box(C.w, bh, bw, basket, 0, yb, sz*wz);
+  for(const sx of [-1,1]) C.box(bw, bh, cm(31.8), basket, sx*(hw-bw/2), yb, 0);  // 侧壁端头越过立柱，压住前后柱
+  C.box(C.w, cm(1.2), C.d, basket, 0, yb, 0);                   // 篮底（满宽满深）
+  C.tube(cm(50), cm(1.0), basket, 0, cm(70), wz, 'x');         // 前卷边（顶缘 71≈101%）
+  C.tube(cm(28), cm(1.0), basket, -(hw-bw/2), cm(70), 0, 'z'); // 左卷边
+  C.tube(cm(1.6), cm(0.6), knobM, -cm(20), cm(62), wz+cm(0.3), 'z'); // 黄色小卡扣（凸出前壁 0.3）
+  C.g.updateMatrixWorld(true);
+  const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3(); bb.getCenter(off);
+  for(const ch of C.g.children){ ch.position.x-=off.x; ch.position.z-=off.z; }
+};
+
+/* IKEA PS 2026 小推车 ⌀48×89：产品图 d/e/f（四层圆托盘下大上小 + 中心立杆 + 米色带刹脚轮×4）。
+   图层（自实测图比例）：底 ⌀48 y8-20、二 ⌀38 y32-43、三 ⌀30 y55-66、顶 ⌀23 y77-89；脚轮高 8。
+   spec：48×48×89，US/CA $79.99（米色 506.210.78 / 蓝色 406.210.74）。 */
+MODELS['ps2026'] = (C) => {
+  const T=C.THREE, cm=C.cm;
+  const mat = C.M(C.col, {rough:.5, envI:.3});
+  const castM = C.M(C.col, {rough:.6});
+  const dish=(R,H,wall,y0,seg)=>{
+    const sh=new T.Shape(); sh.absarc(0,0,cm(R),0,Math.PI*2,false);
+    const ho=new T.Path(); ho.absarc(0,0,cm(R-wall),0,Math.PI*2,true);
+    sh.holes.push(ho);
+    const geo=new T.ExtrudeGeometry(sh,{depth:cm(H),bevelEnabled:false,curveSegments:seg});
+    const m=new T.Mesh(geo,mat); m.rotation.x=Math.PI/2; m.position.y=cm(y0+H);
+    m.castShadow=m.receiveShadow=true; C.g.add(m);
+    const fl=new T.Mesh(new T.CircleGeometry(cm(R-wall),seg),mat);
+    fl.rotation.x=-Math.PI/2; fl.position.y=cm(y0+1.2); fl.receiveShadow=true; C.g.add(fl);
+  };
+  for(const sx of [-1,1]) for(const sz of [-1,1]){
+    C.caster(cm(3), castM, sx*cm(15), sz*cm(15));
+    C.cyl(cm(0.9), cm(0.9), cm(5), castM, sx*cm(15), cm(3), sz*cm(15), 8);  // 支架杆顶到托盘底 8
+  }
+  C.cyl(cm(2), cm(2), cm(81), mat, 0, cm(8), 0, 14);            // 中心立杆 8→89
+  dish(24,12,1.5,8,48); dish(19,11,1.5,32,40); dish(15,11,1.5,55,32); dish(11.5,12,1.5,77,28);
+};
+
 MODELS['raskog'] = (C) => {
   const T = C.THREE, cm = C.cm, hw = C.w / 2, hd = C.d / 2, H = C.h;
   const paint = C.M(C.col, {rough:.36, metal:.22, clear:.30, clearRough:.28});
