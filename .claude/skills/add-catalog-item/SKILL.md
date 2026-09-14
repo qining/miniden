@@ -223,6 +223,9 @@ python3 .claude/skills/add-catalog-item/check-item.py --regress
 | 改尺寸后包围盒跟着变，调不拢 | 散件位置从 `spec.w/d` 反推了 |
 | T 脚/条形部件方向错 90° | 只看正面 3/4 图建模 | brief 写死轴向，侧视角渲染图核对 |
 | 占地缺了伸展部分（臂灯只占机身） | 采集只录了机身 w/d | 核对官方 Length/reach，spec 错了就改目录条目 |
+| 斜网/斜面整体高出占地一截 | 单 mesh 同时设 rotation.x/y/z：Euler XYZ 序按 Rz→Ry→Rx 复合，宽边也被倾斜 | 复合姿态拆成父子：子 mesh 只做一个轴的旋转，父 Group 做另一个（ SPORTSLIG 斜网用 group 绕 x 倾 + 内部绕 y 转） |
+| 杆/管被抬到离地一米多 | C.box/C.cyl/C.rb 的 y 是**底对齐**：横放圆柱底 = 中心高 − len/2（len 是杆长不是半径），曾把 88cm 横杆写到 y 89cm | 先算中心高再减半个杆长：`C.cyl(r,r,len,mat,x, cy-len/2, z)` 再 `rotation.x=π/2` |
+| 占地多出 2~3cm 且找不到超界件 | 圆截面（胶囊端帽/圆管）比它贴的平面凸出半径 r | 探针打印各 mesh 的 max.z/max.x 找圆件；把它整体后移一个 r 使凸缘贴平（横杆布套 r 2.7 超前面 2.7cm） |
 | 多件套装嵌套与总宽矛盾 | 60+30=90 时嵌套必缩 span | 先算整组 bbox span，选偏移进 92~102% 窗 |
 | 填充率超窗但不知哪个部件超了 | 灯环/绕线带/拉手外缘超 spec | `?nomerge` 逐 child 打 bbox 找最宽部件 |
 | CatmullRom 曲线在长直线+短弧交界处过冲 | 长段只给两个端点，切线被大段拉偏（NIPÅSEN 侧框外溢 0.4cm） | 长直线段按 ~40cm 间隔加密中间点再建 CatmullRomCurve3 |
