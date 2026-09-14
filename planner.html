@@ -8964,29 +8964,46 @@ MODELS['mala'] = (C) => {
   const bb=new C.THREE.Box3().setFromObject(C.g), off=new C.THREE.Vector3(); bb.getCenter(off);
   for(const ch of C.g.children){ ch.position.x-=off.x; ch.position.z-=off.z; }
 };
-// ===== RIGGA 高度可调移动挂衣架（111×51.1×145cm，白色钢架+脚轮） =====
+// ===== RIGGA 高度可调移动挂衣架（111×51.1×145cm，白色钢架+外弯腿+脚轮） =====
+// 实际结构（对照 PE727742/PE558487）：2 根立柱在短边中段（z=0），顶一根 x 向挂衣杆
+// （两端伸出立柱外 5.5）；底部 100×40 框（y15）内嵌 3 根 x 向格杆（即「4 层」）；
+// 4 条腿从框角向外弯下到脚轮——占地 111×51.1 是脚轮外缘。
 MODELS['rigga'] = (C) => {
   const cm=C.cm, T=C.THREE;
   const wte = C.M('#f2f3f4', {metal:.35, rough:.45, envI:.5});
   const cst = C.M('#c8cacc', {metal:.6, rough:.5, envI:.6});
-  const px=cm(54.1), pz=cm(23.05);
-  // 四立柱
-  for(const sx of [-1,1]) for(const sz of [-1,1])
-    C.cyl(cm(1.4),cm(1.4),cm(145),wte, sx*px,0, sz*pz);
-  // 顶层矩形框（挂衣杆 + 后横杆）
-  C.tube(cm(108.2),cm(1.25),wte, 0,cm(143.5),0,'x');
-  C.tube(cm(46.1),cm(1.25),wte, 0,cm(143.5),0,'z');
-  // 中层可调横杆（三层）
-  C.tube(cm(108.2),cm(1.1),wte, 0,cm(100),0,'x');
-  C.tube(cm(108.2),cm(1.1),wte, 0,cm(62),0,'x');
-  C.tube(cm(108.2),cm(1.1),wte, 0,cm(28),0,'x');
-  // 底部框 + 四个脚轮
-  C.tube(cm(108.2),cm(1.2),wte, 0,cm(4.5),0,'x');
-  C.tube(cm(46.1),cm(1.2),wte, 0,cm(4.5),0,'z');
+  const drk = C.M('#4a4c52', {metal:.4, rough:.5, envI:.4});
+  const FX=cm(50), FZ=cm(20);                // 框半宽/半深（100×40）
+  // 两根立柱：框顶 → 挂衣杆中心
+  for(const sx of [-1,1])
+    C.cyl(cm(1.25),cm(1.25),cm(128.7),wte, sx*FX, cm(15), 0);
+  // 顶部镀铬套管（立柱穿杆处）
+  for(const sx of [-1,1])
+    C.cyl(cm(1.45),cm(1.45),cm(1.8),cst, sx*FX, cm(142.3), 0);
+  // 顶部挂衣杆（两端伸出立柱外 5.5）
+  C.tube(cm(111),cm(1.3),wte, 0, cm(143.7), 0, 'x');
+  // 底部框（y15）
+  C.tube(cm(100),cm(1.1),wte, 0, cm(13.9),  FZ, 'x');
+  C.tube(cm(100),cm(1.1),wte, 0, cm(13.9), -FZ, 'x');
+  C.tube(cm(40), cm(1.1),wte,  FX, cm(13.9), 0, 'z');
+  C.tube(cm(40), cm(1.1),wte, -FX, cm(13.9), 0, 'z');
+  // 框内 3 根 x 向格杆（挂衣杆 + 3 根 = 「4 层」）
+  for(const bz of [-13.3, 0, 13.3])
+    C.tube(cm(92),cm(1.0),wte, 0, cm(12.9), cm(bz), 'x');
+  // 4 条外弯腿：框角 → 外弯 → 脚轮（占地 111×51.1 含脚轮外缘）
   for(const sx of [-1,1]) for(const sz of [-1,1]){
-    const w=new T.Mesh(new T.CylinderGeometry(cm(2.8),cm(2.8),cm(4.5),18),cst);
-    w.rotation.z=Math.PI/2; w.position.set(sx*cm(52),cm(2.8),sz*pz);
-    w.castShadow=true; C.g.add(w); }
+    const p0=new T.Vector3(sx*FX, cm(15), sz*FZ);
+    const p1=new T.Vector3(sx*cm(54.3), cm(11.5), sz*cm(23.05));
+    const p2=new T.Vector3(sx*cm(54.3), cm(5.0), sz*cm(23.05));
+    const leg=new T.Mesh(new T.TubeGeometry(new T.QuadraticBezierCurve3(p0,p1,p2), 12, cm(1.2), 10), wte);
+    leg.castShadow=leg.receiveShadow=true; C.g.add(leg);
+    const cx=sx*cm(54.3), cz=sz*cm(23.05);
+    const wheel=new T.Mesh(new T.CylinderGeometry(cm(2.5),cm(2.5),cm(2.4),18),wte);
+    wheel.rotation.z=Math.PI/2; wheel.position.set(cx,cm(2.5),cz);
+    wheel.castShadow=true; C.g.add(wheel);
+    const cap=new T.Mesh(new T.CylinderGeometry(cm(1.1),cm(1.1),cm(2.5),14),drk);
+    cap.rotation.z=Math.PI/2; cap.position.set(cx,cm(2.5),cz);
+    cap.castShadow=true; C.g.add(cap); }
   C.g.updateMatrixWorld(true);
   const bb=new C.THREE.Box3().setFromObject(C.g), off=new C.THREE.Vector3(); bb.getCenter(off);
   for(const ch of C.g.children){ ch.position.x-=off.x; ch.position.z-=off.z; }
