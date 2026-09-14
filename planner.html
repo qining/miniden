@@ -766,7 +766,7 @@ const CATALOG = [
  {id:'micro-mini-iceblue', cat:'骑乘玩具', name:'Micro Mini 三轮滑板车 · Ice Blue', w:39,d:28,h:66, price:99.99, color:'#b8dcea', kind:'scooter', model:'micro-mini', note:'12" 前轮×2 + 8" 后轮，车把高 19.25-27" 可调，2-5 岁', url:'https://microkickboard.com/products/micro-mini-scooter'}, {id:'micro-mini-blue', cat:'骑乘玩具', name:'Micro Mini 三轮滑板车 · Blue', w:39,d:28,h:66, price:99.99, color:'#2e6fd8', kind:'scooter', model:'micro-mini', note:'12" 前轮×2 + 8" 后轮，车把高 19.25-27" 可调，2-5 岁', url:'https://microkickboard.com/products/micro-mini-scooter'}, {id:'micro-mini-turquoise', cat:'骑乘玩具', name:'Micro Mini 三轮滑板车 · Turquoise', w:39,d:28,h:66, price:99.99, color:'#3fc0b4', kind:'scooter', model:'micro-mini', note:'12" 前轮×2 + 8" 后轮，车把高 19.25-27" 可调，2-5 岁', url:'https://microkickboard.com/products/micro-mini-scooter'}, {id:'micro-mini-pink', cat:'骑乘玩具', name:'Micro Mini 三轮滑板车 · Pink', w:39,d:28,h:66, price:99.99, color:'#e884b8', kind:'scooter', model:'micro-mini', note:'12" 前轮×2 + 8" 后轮，车把高 19.25-27" 可调，2-5 岁', url:'https://microkickboard.com/products/micro-mini-scooter'}, {id:'micro-mini-oceanblue', cat:'骑乘玩具', name:'Micro Mini 三轮滑板车 · Ocean Blue', w:39,d:28,h:66, price:99.99, color:'#20509c', kind:'scooter', model:'micro-mini', note:'12" 前轮×2 + 8" 后轮，车把高 19.25-27" 可调，2-5 岁', url:'https://microkickboard.com/products/micro-mini-scooter'}, {id:'lilkick-blue', cat:'骑乘玩具', name:"Razor Jr. Lil' Kick 三轮滑板车 · Blue", w:56.4,d:36.8,h:66, price:39.94, color:'#3f78c8', kind:'scooter', model:'lilkick', note:'3 岁+，44lb 限重，透明轮，防翻倒后臂', url:'https://www.amazon.com/dp/B01EM4MJCG'},
  {id:'lilkick-pink', cat:'骑乘玩具', name:"Razor Jr. Lil' Kick 三轮滑板车 · Pink", w:56.4,d:36.8,h:66, price:39.94, color:'#e868a8', kind:'scooter', model:'lilkick', note:'3 岁+，44lb 限重，透明轮，防翻倒后臂', url:'https://www.amazon.com/dp/B01EM4MJCG'},
  {id:'rigga', cat:'入户 / 衣物', name:'IKEA RIGGA 高度可调移动挂衣架', w:111,d:51.1,h:145, price:19.99, priceCA:29.99, color:'#f2f3f4', kind:'clothesRail', model:'rigga', note:'白色钢架，高度 124-145cm 可调，带脚轮，4 层横杆', url:'https://www.ikea.com/us/en/p/rigga-clothes-rack-white-50231630/'},
- {id:'nipasen', cat:'入户 / 衣物', name:'IKEA NIPÅSEN 门厅衣帽架带换鞋凳', w:79,d:35,h:190, price:99.99, priceCA:99, color:'#2a2b2d', kind:'coatRack', model:'nipasen', note:'黑色钢架：顶板+挂钩+双层搁板+换鞋凳+鞋架', url:'https://www.ikea.com/us/en/p/nipasen-coat-rack-and-bench-w-shoe-storage-black-50586145/'},
+ {id:'nipasen', cat:'入户 / 衣物', name:'IKEA NIPÅSEN 门厅衣帽架带换鞋凳', w:79,d:35,h:190, price:99.99, priceCA:99, color:'#2a2b2d', kind:'coatRack', model:'nipasen', note:'黑色钢架：圆角顶框+两排三钩（18钩）+条板换鞋凳(h58)+网格鞋架(h36)', url:'https://www.ikea.com/us/en/p/nipasen-coat-rack-and-bench-w-shoe-storage-black-50586145/'},
  {id:'sportslig', cat:'运动器材', name:'IKEA SPORTSLIG 迷你足球门储物箱', w:90.2,d:52.7,h:52.7, price:29.99, caNA:true, color:'#0a70b0', kind:'goal', model:'sportslig', note:'90cm 款，蓝色塑料框架 + 白色网，门里可放球', url:'https://www.ikea.com/us/en/p/sportslig-ball-storage-goal-70504238/'},
  {id:'mala', cat:'儿童游乐架', name:'IKEA MÅLA 儿童画架（白板）', w:66,d:48.3,h:111.8, price:29.99, priceCA:39.99, color:'#e4ccad', kind:'easel', model:'mala', note:'A 型松木画架，白色写字板 + 红色五金', url:'https://www.ikea.com/us/en/p/mala-easel-softwood-30488966/'},
  {id:'giantex7-blue', cat:'运动器材', name:'Giantex 7ft 圆形蹦床带安全网 · Blue', w:221.6,d:221.6,h:185.4, price:199.99, priceCA:259.99, color:'#3d6cb4', col2:'#46b13c', kind:'trampoline', model:'giantex7', note:'直径 7.3ft，高 6.1ft（含网架），3 组 A 字架 + PE 护垫 + 绿色底座，3 岁+', url:'https://www.giantex.com/products/7-ft-kids-trampoline-with-safety-enclosure-net'},
@@ -9010,34 +9010,56 @@ MODELS['rigga'] = (C) => {
 };
 
 // ===== NIPÅSEN 门厅衣帽架带换鞋凳（79×35×190cm，黑色钢架） =====
+// 实际结构（对照 PE965439/PE965440）：圆角顶框（2 条拱形侧框 + 顶杆），2 根中段立柱，
+// 两排扁平挂钩条（各 3 组三钩 = 18 钩），条板换鞋凳（顶 58.2），网格鞋架（顶 36）。
 MODELS['nipasen'] = (C) => {
   const cm=C.cm, T=C.THREE;
-  const blk  = C.M('#2a2b2d', {metal:.5, rough:.5, envI:.5});
-  const seat = C.M('#f0f0ec', {plastic:true, rough:.55, envI:.25});
-  const px=cm(36.2), pz=cm(15.2);
-  // 四立柱
-  for(const sx of [-1,1]) for(const sz of [-1,1])
-    C.cyl(cm(1.25),cm(1.25),cm(188),blk, sx*px,0, sz*pz);
-  // 顶板
-  C.box(cm(79),cm(1.8),cm(35),blk, 0,cm(185),0);
-  // 顶板前缘三个挂钩
-  for(const hx of [-25,0,25]){
-    const bar=new T.Mesh(new T.CylinderGeometry(cm(0.9),cm(0.9),cm(5.5),12),blk);
-    bar.rotation.x=Math.PI/2; bar.position.set(cm(hx),cm(180),cm(12.5));
-    bar.castShadow=true; C.g.add(bar);
-    const tip=new T.Mesh(new T.SphereGeometry(cm(1.3),10,8),blk);
-    tip.position.set(cm(hx),cm(177.8),cm(16));
-    tip.castShadow=true; C.g.add(tip); }
-  // 第二层搁板
-  C.box(cm(79),cm(1.5),cm(35),blk, 0,cm(140),0);
-  // 换鞋凳：白色座面 + 黑框
-  C.box(cm(79),cm(3.5),cm(30),seat, 0,cm(41.5),0);
-  for(const sz of [-1,1]){
-    C.tube(cm(77),cm(1),blk, 0,cm(38.5),sz*cm(14),'x');
-  }
-  C.tube(cm(30),cm(1),blk, 0,cm(38.5),0,'z');
-  // 鞋架层板
-  C.box(cm(75),cm(1.2),cm(28),blk, 0,cm(13),0);
+  const blk  = C.M('#2a2b2d', {metal:.35, rough:.5, envI:.45});
+  const blkL = C.M('#333438', {metal:.4, rough:.55, envI:.4});
+  const msh  = C.M('#43454b', {metal:.65, rough:.5, envI:.55, flat:true, map:meshWeaveTexture()});
+  msh.normalMap = normalFromTexture(meshWeaveTexture(), 1.0);
+  // 两条拱形侧框（前立柱 → 圆角 → 顶 → 圆角 → 后立柱，通到地面）
+  for(const sx of [-1,1]){
+    const px = sx*cm(38.35);
+    const pts = [];
+    for(let i=0;i<=4;i++) pts.push(new T.Vector3(px, cm(178.5*i/4), cm(16.35)));
+    for(let i=1;i<=5;i++){ const th=i*Math.PI/10;
+      pts.push(new T.Vector3(px, cm(178.5+9.5*Math.sin(th)), cm(6.85+9.5*Math.cos(th)))); }
+    for(let i=1;i<=3;i++) pts.push(new T.Vector3(px, cm(188), cm(6.85-13.7*i/3)));
+    for(let i=1;i<=5;i++){ const th=Math.PI/2+i*Math.PI/10;
+      pts.push(new T.Vector3(px, cm(178.5+9.5*Math.sin(th)), cm(-6.85+9.5*Math.cos(th)))); }
+    for(let i=0;i<=4;i++) pts.push(new T.Vector3(px, cm(178.5*i/4), cm(-16.35)));
+    const arch=new T.Mesh(new T.TubeGeometry(new T.CatmullRomCurve3(pts), 48, cm(1.15), 10), blk);
+    arch.castShadow=arch.receiveShadow=true; C.g.add(arch); }
+  // 顶杆（顶 190）
+  C.tube(cm(76.7),cm(1.15),blk, 0, cm(188.85), 0, 'x');
+  // 两根中段立柱（座面 → 顶杆下缘）
+  for(const sx of [-1,1]) C.cyl(cm(1.15),cm(1.15),cm(129.5),blk, sx*cm(13.17), cm(58.2), 0);
+  // 中段立柱顶部小安装板
+  for(const sx of [-1,1]) C.box(cm(2.5),cm(1.5),cm(3.5),blkL, sx*cm(13.17), cm(186.2), 0);
+  // 两排挂钩条：扁条（3 段，被中段立柱打断）+ 每组 3 个 J 钩
+  const segs=[[-37.2,-14.32],[-14.32,14.32],[14.32,37.2]];
+  for(const by of [171, 134.6]){
+    for(const [a,b] of segs) C.box(cm(b-a),cm(7.2),cm(2.2),blkL, cm((a+b)/2), cm(by-3.6), 0);
+    for(const mx of [-26.33, 0, 26.33]){
+      C.box(cm(2.8),cm(7),cm(1.2),blk, cm(mx), cm(by-3.5), cm(1.1));
+      for(const ho of [-2.6, 0, 2.6]){
+        const s = ho===0 ? 1 : 0.82;
+        const pts=[ new T.Vector3(0,0,0), new T.Vector3(0,cm(5.5),0) ];
+        for(let i=1;i<=9;i++){ const th=Math.PI-(270*Math.PI/180)*i/9;
+          pts.push(new T.Vector3(0, cm(5.5+1.8*Math.sin(th)), cm(1.8+1.8*Math.cos(th)))); }
+        const hook=new T.Mesh(new T.TubeGeometry(new T.CatmullRomCurve3(pts), 10, cm(0.55), 8), blk);
+        hook.scale.set(s,s,s);
+        hook.position.set(cm(mx+ho*s), cm(by+1), cm(2.3+1.0*s));
+        hook.rotation.y = ho===0 ? 0 : (ho<0 ? -0.35 : 0.35);
+        hook.castShadow=true; C.g.add(hook); }
+    } }
+  // 换鞋凳：框（顶 54.8）+ 6 条黑板座面（顶 58.2）
+  for(const sz of [-1,1]) C.box(cm(79),cm(1.4),cm(2),blk, 0, cm(53.4), sz*cm(16.35));
+  for(const sx of [-1,1]) C.box(cm(2),cm(1.4),cm(32.7),blk, sx*cm(38.35), cm(53.4), 0);
+  for(let i=0;i<6;i++) C.box(cm(79),cm(3.4),cm(5.2),blkL, 0, cm(54.8), cm(-14.25+i*5.7));
+  // 网格鞋架（顶 36）
+  C.box(cm(70.4),cm(1.5),cm(29),msh, 0, cm(34.5), 0);
   C.g.updateMatrixWorld(true);
   const bb=new C.THREE.Box3().setFromObject(C.g), off=new C.THREE.Vector3(); bb.getCenter(off);
   for(const ch of C.g.children){ ch.position.x-=off.x; ch.position.z-=off.z; }
