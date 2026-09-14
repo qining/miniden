@@ -115,11 +115,19 @@ brief 里写清「沿 x 还是 z、平行长边还是短边」——正面 3/4 �
 落在 92~102% 填充窗内即可（VITTSJÖ 套几：span 85 = 94%）。
 
 散件位置**不能从 `spec.w/d` 反推**（改 spec 又改包围盒，收敛不了）→ 用相对主体的固定偏移。
-模型末尾做水平重心归零：
+模型末尾做水平重心归零。**含旋转件时必须按真实顶点求 bbox**：
+`Box3.setFromObject` 对旋转 mesh 按局部包围盒 8 角点算（过度估计），
+中心与合并后真实顶点 bbox 不一致，归零会偏 1cm 量级（lunix 实测偏 7.9cm）：
 
 ```js
 C.g.updateMatrixWorld(true);
-const bb = new C.THREE.Box3().setFromObject(C.g);
+const bb = new C.THREE.Box3();
+C.g.traverse(o=>{
+  if(o.isMesh && o.geometry){
+    const pos = o.geometry.attributes.position, v = new C.THREE.Vector3();
+    for(let i=0; i<pos.count; i++){ v.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld); bb.expandByPoint(v); }
+  }
+});
 const off = new C.THREE.Vector3(); bb.getCenter(off);
 for(const ch of C.g.children){ ch.position.x -= off.x; ch.position.z -= off.z; }
 ```
@@ -207,6 +215,7 @@ python3 .claude/skills/add-catalog-item/check-item.py --regress
 | 2D 图上比 3D 里小一圈 | 建模超出 `spec.w/d`，或散件没算进占地 |
 | 半截埋进地板 | 复合欧拉角转翻了；或 `C.ext(...,'xz')` 忘了抬一个厚度 |
 | 偏在格子一角 | 没做水平重心归零 |
+| centered 断言偏 ~1cm（含旋转件） | `Box3.setFromObject` 对旋转 mesh 过度估计，中心 ≠ 真实顶点 bbox 中心 | 归零改按真实顶点求 bbox（traverse + `fromBufferAttribute` + `applyMatrix4`） |
 | 近看像塑料板 | 材质没贴图 → 跑 `catalog-all-textured` |
 | 彩色件变粉彩色 | `envMapIntensity` 默认 1 + clearcoat |
 | 贴图发白 | `CanvasTexture` 漏了 `encoding=sRGBEncoding` |

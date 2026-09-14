@@ -714,11 +714,20 @@ tableRect tableRound tvBench vanityLight`。加新 `kind` 要同时管三处：
 配套两条：
 - 散件位置**不能从 `spec.w/d` 反推**（改 spec 又会改包围盒，来回收敛不了），
   用相对主体的固定偏移摆
-- 模型末尾做一次水平重心归零：
+- 模型末尾做一次水平重心归零。**模型里有旋转件时必须按真实顶点求 bbox**：
+  `Box3.setFromObject` 对旋转 mesh 用的是局部包围盒的 8 个角点（过度估计），
+  其中心与 `mergeByMaterial` 后真实顶点 bbox 的中心不一致，归零会偏 1cm 量级
+  （lunix 实例：偏 7.9cm，`*-centered` 断言红）：
 
 ```js
 C.g.updateMatrixWorld(true);
-const bb = new C.THREE.Box3().setFromObject(C.g);
+const bb = new C.THREE.Box3();
+C.g.traverse(o=>{
+  if(o.isMesh && o.geometry){
+    const pos = o.geometry.attributes.position, v = new C.THREE.Vector3();
+    for(let i=0; i<pos.count; i++){ v.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld); bb.expandByPoint(v); }
+  }
+});
 const off = new C.THREE.Vector3(); bb.getCenter(off);
 for(const ch of C.g.children){ ch.position.x -= off.x; ch.position.z -= off.z; }
 ```
@@ -904,6 +913,7 @@ requestRender();
 | 成品比 spec 大一圈 | `C.ext(..., bevel)` 的 `bevelSize` **向外扩**，轮廓要先减掉倒角量（深度它补偿了，截面没有） |
 | 折线管件像一串香肠 | `C.tube` 的胶囊端帽正好收在端点上，首尾相接会在每个折点掐出一道腰 → 每段用 `C.tube(L + 2r, ...)` 搭接 |
 | 家具偏在格子一角 | 模型末尾没做水平重心归零 |
+| centered 断言偏 ~1cm（模型含旋转件） | 归零用 `Box3.setFromObject`：旋转 mesh 按局部包围盒 8 角点算 bbox（过度估计），中心 ≠ 合并后真实顶点 bbox 中心 | 归零改按真实顶点求 bbox（traverse + `fromBufferAttribute` + `applyMatrix4`） |
 | 近看像塑料板 / 一眼假 | 材质没贴图。跑 `catalog-all-textured` 一查便知 |
 | 彩色件全变粉彩色 | `envMapIntensity` 默认 1 + clearcoat，白光罩糊了颜色 |
 | 贴图发白 | `CanvasTexture` 忘了 `encoding = sRGBEncoding` |
