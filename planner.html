@@ -767,7 +767,7 @@ const CATALOG = [
  {id:'lilkick-pink', cat:'骑乘玩具', name:"Razor Jr. Lil' Kick 三轮滑板车 · Pink", w:56.5,d:36.5,h:65, price:39.94, color:'#eb3487', kind:'scooter', model:'lilkick', note:'双前轮+后轮 Ø10cm 透明五瓣轮，波纹橡胶叉臂，加宽蓝踏板+后防翻翼，3 岁+ / 44lb 限重，官方 56.5×36.5×65cm', url:'https://www.amazon.com/dp/B01EM4MJCG'},
  {id:'rigga', cat:'入户 / 衣物', name:'IKEA RIGGA 高度可调移动挂衣架', w:111,d:51.1,h:145, price:19.99, priceCA:29.99, color:'#f2f3f4', kind:'clothesRail', model:'rigga', note:'白色钢架，高度 124-145cm 可调，带脚轮，4 层横杆', url:'https://www.ikea.com/us/en/p/rigga-clothes-rack-white-50231630/'},
  {id:'nipasen', cat:'入户 / 衣物', name:'IKEA NIPÅSEN 门厅衣帽架带换鞋凳', w:79,d:35,h:190, price:99.99, priceCA:99, color:'#2a2b2d', kind:'coatRack', model:'nipasen', note:'黑色钢架：圆角顶框+两排三钩（18钩）+条板换鞋凳(h58)+网格鞋架(h36)', url:'https://www.ikea.com/us/en/p/nipasen-coat-rack-and-bench-w-shoe-storage-black-50586145/'},
- {id:'sportslig', cat:'运动器材', name:'IKEA SPORTSLIG 迷你足球门储物箱', w:90.2,d:52.7,h:52.7, price:29.99, caNA:true, color:'#0a70b0', kind:'goal', model:'sportslig', note:'90cm 款，蓝色塑料框架 + 白色网，门里可放球', url:'https://www.ikea.com/us/en/p/sportslig-ball-storage-goal-70504238/'},
+ {id:'sportslig', cat:'运动器材', name:'IKEA SPORTSLIG 迷你足球门储物箱', w:90.2,d:52.7,h:52.7, price:29.99, caNA:true, color:'#0a70b0', kind:'goal', model:'sportslig', note:'90cm 款，蓝色布艺框架 + 白色网 + 白横杆，可折叠，立起来可当球类储物箱', url:'https://www.ikea.com/us/en/p/sportslig-ball-storage-goal-70504238/'},
  {id:'mala', cat:'儿童游乐架', name:'IKEA MÅLA 儿童画架（白板）', w:66,d:48.3,h:111.8, price:29.99, priceCA:39.99, color:'#e4ccad', kind:'easel', model:'mala', note:'A 型松木画架，白色写字板 + 红色五金', url:'https://www.ikea.com/us/en/p/mala-easel-softwood-30488966/'},
  {id:'giantex7-blue', cat:'运动器材', name:'Giantex 7ft 圆形蹦床带安全网 · Blue', w:221.6,d:221.6,h:185.4, price:199.99, priceCA:259.99, color:'#3d6cb4', col2:'#46b13c', kind:'trampoline', model:'giantex7', note:'直径 7.3ft，高 6.1ft（含网架），3 组 A 字架 + PE 护垫 + 绿色底座，3 岁+', url:'https://www.giantex.com/products/7-ft-kids-trampoline-with-safety-enclosure-net'},
  {id:'giantex7-green', cat:'运动器材', name:'Giantex 7ft 圆形蹦床带安全网 · Green', w:221.6,d:221.6,h:185.4, price:199.99, priceCA:259.99, color:'#3f9e3a', col2:'#46b13c', kind:'trampoline', model:'giantex7', note:'直径 7.3ft，高 6.1ft（含网架），3 组 A 字架 + PE 护垫 + 绿色底座，3 岁+', url:'https://www.giantex.com/products/7-ft-kids-trampoline-with-safety-enclosure-net'},
@@ -8881,29 +8881,49 @@ MODELS['strider12'] = (C) => {
 };
 
 // ===== SPORTSLIG 迷你足球门储物箱（90.2×52.7×52.7cm，蓝框白网） =====
+/* IKEA SPORTSLIG 布艺折叠迷你球门（90.2×52.7×52.7cm，三角棱柱）：
+   前面 90×52.7 球门口（蓝布立柱+上沿带，z=0 面），白色横杆 y≈47.7（轴 x，两端白布套+蓝端帽+挂扣），
+   整面白色斜网从横杆落到后底沿（z=-52.7），两侧三角网，蓝布斜边带，蓝色布底。立起来可当储物箱。
+   轴约定：宽 90.2 沿 x，深 52.7 沿 z */
 MODELS['sportslig'] = (C) => {
   const cm=C.cm, T=C.THREE;
-  const blue = C.M('#0a70b0', {plastic:true, rough:.45, clear:.25, envI:.3});
-  const netM = C.M('#f5f7f9', {fabric:true, rough:.9, envI:.1});
-  netM.transparent=true; netM.opacity=.32; netM.side=T.DoubleSide;
-  const S=cm(52.7);
-  // 前面框（开口）：上/下/左右立柱
-  C.box(cm(2.6),cm(2.6),S,blue, cm(44),cm(50.1),0);
-  C.box(cm(2.6),cm(2.6),S,blue, cm(44),cm(5),0);
-  for(const sz of [-1,1]) C.box(cm(2.6),cm(46.4),cm(2.6),blue, cm(44),cm(5),sz*cm(25.05));
-  // 背面框
-  C.box(cm(2.6),cm(2.6),S,blue, -cm(44),cm(50.1),0);
-  C.box(cm(2.6),cm(2.6),S,blue, -cm(44),cm(5),0);
-  for(const sz of [-1,1]) C.box(cm(2.6),cm(46.4),cm(2.6),blue, -cm(44),cm(5),sz*cm(25.05));
-  // 四条长轨（上二下二）
-  for(const sy of [51.4, 6.3]) for(const sz of [-1,1])
-    C.tube(cm(85),cm(1.3),blue, 0,cm(sy), sz*cm(25.05),'x');
-  // 网（背板，ZY 面）
-  const net=new T.Mesh(new T.PlaneGeometry(cm(48),cm(43.5)),netM);
-  net.rotation.y=Math.PI/2; net.position.set(-cm(44),cm(28),0); net.castShadow=false; C.g.add(net);
-  // 四角支脚（y 底面 = 0）
-  for(const sx of [-1,1]) for(const sz of [-1,1])
-    C.box(cm(2.6),cm(5),cm(2.6),blue, sx*cm(42),0, sz*cm(24));
+  const fab  = C.M(C.col, {fabric:true, rough:.85, envI:.15});
+  const netM = C.M('#f2f5f7', {fabric:true, rough:.9, envI:.1});
+  netM.map=meshWeaveTexture(); netM.side=T.DoubleSide;
+  netM.transparent=true; netM.opacity=.5;
+  const white = C.M('#f4f6f8', {fabric:true, rough:.8, envI:.15});
+  // 斜面方向：(z 0, y 46.5) → (z -52.7, y 0.8)，长 69.5
+  const slopeAng = Math.PI - Math.atan2(52.7, 45.7);   // 绕 x 旋转把 +y_local 映射到 (0,-0.655,-0.756)
+  // 蓝色布底（圆角浅盘）：宽 90.2 沿 x，深 52.7 沿 z
+  C.box(cm(90.2),cm(0.6),cm(52.7),fab, 0,0,-cm(26.35));   // 布底（box 不 bevel，尺寸精确）
+  C.box(cm(90.2),cm(4),cm(2.4),fab, 0,0,-cm(1.2));        // 前底沿起的布边
+  // 前面框：左右立柱 + 上沿带（前面开口面 z=0）
+  for(const sx of [-1,1]) C.box(cm(6),cm(46.8),cm(2.4),fab, sx*cm(42.1),cm(0.6),-cm(1.2));
+  C.box(cm(84.2),cm(5.3),cm(2.4),fab, 0,cm(47.4),-cm(1.2));
+  // 白色横杆（轴 x）+ 两端白布套 + 蓝端帽；整体后移 2.7 使布套前缘齐前面开口面
+  C.tube(cm(88.6),cm(2.2),white, 0,cm(47.7),-cm(2.7),'x');
+  for(const sx of [-1,1]){
+    C.tube(cm(16),cm(2.7),white, sx*cm(34),cm(47.7),-cm(2.7),'x');
+    C.tube(cm(2),cm(2.5),fab, sx*cm(41),cm(47.7),-cm(2.7),'x'); }
+  // 横杆挂扣（拉网蓝布带）
+  for(const sx of [-1,1]) C.box(cm(1.2),cm(5),cm(1.2),fab, sx*cm(20),cm(42.7),-cm(2.4));
+  // 斜网（整面，横杆 → 后底沿）
+  const net=new T.Mesh(new T.PlaneGeometry(cm(86),cm(69.5),12,10),netM);
+  net.rotation.x=-slopeAng;
+  net.position.set(0,cm(23.65),-cm(26.35)); net.castShadow=false; C.g.add(net);
+  // 两侧三角网（前面柱顶 → 后底 → 前底）
+  for(const sx of [-1,1]){
+    const sh=new T.Shape();
+    sh.moveTo(cm(0),cm(52.7)); sh.lineTo(-cm(52.7),cm(0.2)); sh.lineTo(cm(0),cm(0.2)); sh.closePath();
+    const m=new T.Mesh(new T.ShapeGeometry(sh,8),netM);
+    m.rotation.y=-Math.PI/2; m.position.x=sx*cm(44.5); m.castShadow=false; C.g.add(m); }
+  // 斜边蓝布带（两侧，沿斜边的胶囊管）
+  for(const sx of [-1,1]){
+    const m=new T.Mesh(new T.CapsuleGeometry(cm(1.6),cm(57.8),4,14),fab);
+    m.rotation.x=-slopeAng; m.position.set(sx*cm(44.0),cm(24.6),-cm(26.0));
+    m.castShadow=m.receiveShadow=true; C.g.add(m); }
+  // 后底沿蓝布带
+  C.box(cm(88),cm(4.5),cm(2.4),fab, 0,cm(0.6),-cm(51.5));
   C.g.updateMatrixWorld(true);
   const bb=new C.THREE.Box3().setFromObject(C.g), off=new C.THREE.Vector3(); bb.getCenter(off);
   for(const ch of C.g.children){ ch.position.x-=off.x; ch.position.z-=off.z; }
