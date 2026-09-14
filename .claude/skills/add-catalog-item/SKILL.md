@@ -231,6 +231,8 @@ python3 .claude/skills/add-catalog-item/check-item.py --regress
 | CatmullRom 曲线在长直线+短弧交界处过冲 | 长段只给两个端点，切线被大段拉偏（NIPÅSEN 侧框外溢 0.4cm） | 长直线段按 ~40cm 间隔加密中间点再建 CatmullRomCurve3 |
 | 曲线点忘乘 `cm()`（cm 值被当英尺） | 钩子/管件突然放大 ~30 倍，bbox 爆到 200%+（NIPÅSEN 钩子 395cm） | 手建 Vector3 曲线点与 `C.box`/`C.cyl` 参数一样逐个 `cm()`；填充率体检能抓 |
 | 已换算值再包一层 `cm()`（双重转换） | 部件缩小 30 倍几乎看不见（Lil' Kick 轮胎/轮毂/花瓣半径 0.1cm，轮子只剩一圈幽灵） | 参数已是英尺（如 `R=cm(7.5)`）就直接用 `R`、`0.43*R`，不要再套 `cm()`；渲染图里「该大的部件很小」先查这个 |
+| Group/holder 里的 `C.rb`/`C.cushion` 子件被抬高半高 | 后仰垫/腰枕整体偏高一半厚度（8 件沙发全部 y 溢出 114~128%） | 子件局部几何是 **y 0..h 底对齐**（不是居中）；要绕中心旋转先 `child.position.y -= cm(h/2)` 再进 holder |
+| `C.cyl` 只传 7 个参数（漏了 y） | seg 值落进 z 槽，腿/柱飞到 z=12ft（365cm），bbox z 爆 400%+ | 必须写全 8 个位置参数 `C.cyl(rTop,rBot,h,mat,x, 0, z, seg)`；bbox 探针的「某轴爆炸 + 单条窄板」就是它 |
 | 抓到的价格离谱 | 命中系列落地页而非商品页 |
 | 两次渲染结果不一致 | 新贴图用了 `Math.random()` |
 | 手摆相机后画布是空的 | `OrbitControls.update()` 把相机拉回去了 → 先同步 `controls.target` 再 `update()` |
