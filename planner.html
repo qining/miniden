@@ -5457,31 +5457,29 @@ MODELS['dyvlinge'] = (C) => {
 };
 MODELS['saltsjobaden'] = (C) => {
   const cm=C.cm, W=C.w, D=C.d, H=C.h;
-  const fab  = C.M(C.col, {fabric:true, rough:.94});
+  const fab  = C.M(C.col, {fabric:true, rough:.92, sheen:.12, envI:.15});
   const fabD = C.M(C.col.clone().multiplyScalar(.9), {fabric:true, rough:.94});
-  const pipe = C.M(C.col.clone().multiplyScalar(.78), {fabric:true, rough:.95});
   const wood = C.M(C.col2 || 0xC9A575, {wood:'birch', rough:.44, clear:.34});
-  const legH=cm(17), seatH=cm(46), armW=cm(13), armH=cm(65);
-  // 四条桦木锥形腿，微外撇
+  // 四条桦木方腿微收分，0→14
   for(const sx of [-1,1]) for(const sz of [-1,1])
-    C.legT(cm(3.4), cm(2.1), legH, wood, sx*(W/2-cm(9)), sz*(D/2-cm(9)), 0.055);
-  // 箱体（软包底座）
-  C.rb(W-cm(2), seatH-legH-cm(10), D-cm(3), cm(4), fabD, 0, legH, 0, 4);
-  // 两侧扶手：等宽方枕，外侧垂直、上缘大圆角
+    C.cyl(cm(3.2), cm(2.6), cm(14), wood, sx*(W/2-cm(8)), 0, sz>0? D/2-cm(8) : -(D/2-cm(8)), 4);
+  // 箱体底座 14→30
+  C.rb(W-cm(2), cm(16), D-cm(2), cm(4), fabD, 0, cm(14), 0, 4);
+  // 扶手 12 宽，14→48 + 顶卷 r4（顶 52）
   for(const sx of [-1,1]){
-    C.rb(armW, armH-legH, D-cm(2), cm(5.5), fab, sx*(W/2-armW/2), legH, 0, 4);
-    C.rb(armW*0.9, cm(2.6), D-cm(8), cm(1.1), pipe, sx*(W/2-armW/2), armH-cm(2.6), 0, 2);
+    C.rb(cm(12), cm(34), D-cm(2), cm(4.5), fab, sx*(W/2-cm(6)), cm(14), 0, 4);
+    C.tube(D-cm(6), cm(4), fab, sx*(W/2-cm(6)), cm(48), 0, 'z');
   }
-  // 靠背板（直立，被靠垫斜倚）
-  C.rb(W-armW*2-cm(2), H-legH-cm(16), cm(12), cm(3.5), fabD, 0, legH, -D/2+cm(7), 3);
-  // 座垫：一整块 14cm 厚软包，前缘外凸
-  C.cushion(W-armW*2-cm(2), cm(14), D-cm(19), fab, 0, seatH-cm(14), cm(3), pipe);
-  // 松软靠垫：略后倾、顶部鼓、中间自然凹
-  const bw=W-armW*2-cm(4), bh=cm(44);
-  const bk=C.cushion(bw, bh, cm(17), fab, 0, seatH-cm(1), -D/2+cm(15), pipe);
-  bk.rotation.x=-0.14;
-  C.rb(bw*0.5, bh*0.86, cm(13), cm(5), fab, 0, seatH+cm(2), -D/2+cm(16), 4).rotation.x=-0.14;
+  // 背板 30→72，深 12
+  C.rb(W-cm(28), cm(42), cm(12), cm(3.5), fabD, 0, cm(30), -D/2+cm(7), 3);
+  // 座垫 69 宽×16 厚×55 深，30→46（座高）
+  C.cushion(W-cm(28), cm(16), cm(55), fab, 0, cm(30), cm(8), fabD);
+  // 松软靠垫 69 宽×36 高×18 厚，底 52 后仰 6°，顶 ~89
+  const bk=C.cushion(W-cm(26), cm(36), cm(18), fab, 0, cm(50), -D/2+cm(13), fabD);
+  bk.rotation.x=-0.08;
 };
+
+
 MODELS['orfjall'] = (C) => {
   const cm=C.cm, T=C.THREE, D=Math.PI/180;
   const FC = C.col2 ? C.col2.clone() : new T.Color(0xf2f0ea);
@@ -7175,60 +7173,49 @@ function kivikWeaveTexture(){
 MODELS['kivik'] = (C) => {
   const cm=C.cm, T=C.THREE;
   const W=C.w, D=C.d, H=C.h;
-  // 织物：密集杂色织纹；背框略深一档，与坐垫区分
   const fab  = C.M(C.col, {fabric:true, rough:.94, sheen:.20, envI:.15});
   fab.map = kivikWeaveTexture();
   const fabD = C.M(new T.Color(C.col).multiplyScalar(.88), {fabric:true, rough:.95, sheen:.14, envI:.12});
   fabD.map = kivikWeaveTexture();
   const footM = C.M(0x151412, {plastic:true, envI:.22});
-
-  const ARM=cm(24);           // 扶手宽（尺寸图 24cm）
-  const innerW = W - 2*ARM;   // 两扶手之间的内开口
-  const BASE_TOP=cm(14);      // 箱体底座顶面（比例反推 14）；坐垫顶面落在 45（尺寸图座高）
-
-  // 四条黑色小脚：分解图见四角黑色垫块，箱体坐在上面
+  const ARM=cm(24);           // 扶手宽（尺寸图 24）
+  const innerW=W-2*ARM;
+  // 四条黑色小脚 0→2
   for(const sx of [-1,1]) for(const sz of [-1,1])
     C.box(cm(9), cm(2), cm(9), footM, sx*(W/2-cm(10.5)), 0, sz*(D/2-cm(10.5)));
-
-  // 箱体底座：满宽落地，矮箱
-  C.rb(W, BASE_TOP-cm(2), D, cm(3), fab, 0, cm(2));
-
-  // 坐垫 ×2：巨厚整块软垫，顶面落在 45（座高）。手动建而不走 C.cushion：
-  // cushion 的顶枕会探出 h*0.41，31cm 厚垫会冲到 57cm。底座 14→43 + 顶枕 33→45 + 包边缝
-  const seatD=cm(63), cw=(innerW-cm(1.5))/2, sz=D/2-seatD/2-cm(0.5);
+  // 箱体底座 2→16
+  C.rb(W, cm(14), D, cm(3), fab, 0, cm(2));
+  // 扶手 2→35 + 顶卷 r7（顶 42，低于座高 45）
+  for(const sx of [-1,1]){
+    C.rb(ARM, cm(33), D, cm(3.5), fab, sx*(W/2-ARM/2), cm(2));
+    C.tube(D-cm(4), cm(7), fab, sx*(W/2-ARM/2), cm(35), 0, 'z');
+  }
+  // 坐垫 ×2：16→45（座高），深 64，前缘齐箱体前缘
+  const cw=(innerW-cm(1.5))/2, seatD=cm(64), sz=cm(15.5);
   for(const sx of [-1,1]){
     const x=sx*(cw/2+cm(0.75));
-    C.rb(cw, cm(29), seatD, cm(4.5), fab, x, BASE_TOP, sz);
-    C.rb(cw*0.94, cm(12), seatD*0.94, cm(4), fab, x, BASE_TOP+cm(19), sz);
-    C.rb(cw+cm(0.3), cm(1.1), seatD+cm(0.3), cm(0.5), fab, x, BASE_TOP+cm(10), sz);
+    C.rb(cw, cm(29), seatD, cm(4.5), fab, x, cm(16), sz);
+    C.rb(cw+cm(0.3), cm(1.2), seatD+cm(0.3), cm(0.6), fab, x, cm(34), sz);
   }
-
-  // 背框：两扶手之间，顶面 73（比靠背垫顶低 ~10，正面视角被垫遮住）
-  C.rb(innerW, cm(59), cm(17), cm(2.5), fabD, 0, BASE_TOP, -(D/2-cm(8.5)));
-
-  // 靠背垫 ×2：高 42、深 45（比例反推），整件最高的元素，顶面 ~83 略后仰
-  // （后仰绕底面中心，后上角升到 83）。mesh 只管形状+抬升，后仰交外层 Group。
-  const bw=(innerW-cm(2))/2, bcH=cm(42), bcTh=cm(45),
-        bcZ=-D/2+bcTh/2+cm(0.5);   // 背面贴沙发后背，前缘伸到座区
+  // 背框 16→72，深 17
+  C.rb(innerW, cm(56), cm(17), cm(2.5), fabD, 0, cm(16), -(D/2-cm(8.5)));
+  // 靠背垫 ×2：45 厚×42 高，底 38 后仰 3°，顶 ~83
+  const bw=(innerW-cm(2))/2, bcTh=cm(42);
   for(const sx of [-1,1]){
-    const bc=C.rb(bw, bcH, bcTh, cm(5), fab, 0, 0, 0);
+    const bc=C.rb(bw, cm(45), bcTh, cm(5), fab, 0, 0, 0);   // 底对齐：局部 y 0..45
+    bc.position.y -= cm(22.5);                              // 移到组原点居中，绕中心后仰
     const holder=new T.Group();
     C.g.remove(bc); holder.add(bc);
-    holder.position.set(sx*(bw/2+cm(1)), BASE_TOP+cm(25), bcZ);   // 底 39，顶 81，后上角 ≈83
-    holder.rotation.x=-0.05;
+    holder.position.set(sx*(bw/2+cm(1)), cm(38+22.5), -D/2+bcTh/2+cm(0.5));
+    holder.rotation.x=-0.03;
     C.g.add(holder);
   }
-
-  // 扶手 ×2：一体低箱体，落地→顶面 62，外侧与底座齐平
-  for(const sx of [-1,1])
-    C.rb(ARM, cm(60), D, cm(3), fab, sx*(W/2-ARM/2), cm(2));
-
-  // 水平重心归零（2D 图例与碰撞都假定原点 = 占地中心）
   C.g.updateMatrixWorld(true);
   const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3();
   bb.getCenter(off);
   for(const ch of C.g.children){ ch.position.x-=off.x; ch.position.z-=off.z; }
 };
+
 
 /* SÖDERHAMN 三人(198×99×83)：尺寸全部来自官方尺寸图 work/ref/soder_4_dims.png（逐箭头核对），
    无标注项见 work/briefs/soderhamn.md：扶手宽 28.5=(198-2×70-1)/2 推导；背框深 17、坐垫深 55
@@ -7238,55 +7225,53 @@ MODELS['soderhamn'] = (C) => {
   const W=C.w, D=C.d, H=C.h;
   const fab  = C.M(C.col, {fabric:true, rough:.92, sheen:.18, envI:.15});
   const fabD = C.M(new T.Color(C.col).multiplyScalar(.88), {fabric:true, rough:.95, sheen:.14, envI:.12});
-  const legM = C.M('#c9ae83', {wood:'beech', envI:.5});
-
-  const ARM=cm(28.5);          // 扶手宽：内开口放 2×70 靠背垫+1cm 缝
-  const innerW=W-2*ARM;        // 141
-  const BASE_TOP=cm(14);       // 箱顶（尺寸图 14）；座高 40（尺寸图）
-
-  // 4 条锥形细腿：高 6（尺寸图），前缩进 6（尺寸图），侧/后缩进 ~8（比例估计）
+  const legM = C.M('#3c4043', {metal:.85, rough:.4, envI:.8});
+  const ARM=cm(28.5), innerW=W-2*ARM;
+  // 锥形细金属腿 0→14（尺寸图 14），前缘内缩 6（尺寸图）
   for(const sx of [-1,1]) for(const sz of [-1,1])
-    C.legT(cm(0.9), cm(1.3), cm(6), legM, sx*(W/2-cm(8)), sz>0? D/2-cm(6) : -(D/2-cm(8)), 0);
-
-  // 箱体底座：满宽满深 6→14，圆角
-  C.rb(W, cm(8), D, cm(3), fab, 0, cm(6));
-
-  // 坐垫 ×2：14→40（厚 26）手动建；前缘齐底座前缘，深 55（比例估计）
-  const seatD=cm(55), cw=(innerW-cm(1.5))/2, sz=D/2-seatD/2;
+    C.cyl(cm(1.1), cm(1.6), cm(14), legM, sx*(W/2-cm(9)), 0, sz>0? D/2-cm(6) : -(D/2-cm(10)), 12);
+  // 箱体底座 14→22
+  C.rb(W, cm(8), D, cm(3), fab, 0, cm(14));
+  // 坐垫 ×2：22→40（座高），深 58
+  const seatD=cm(58), cw=(innerW-cm(1.5))/2, sz=D/2-seatD/2-cm(1);
   for(const sx of [-1,1]){
     const x=sx*(cw/2+cm(0.75));
-    C.rb(cw, cm(24), seatD, cm(4.5), fab, x, BASE_TOP, sz);
-    C.rb(cw*0.94, cm(12), seatD*0.94, cm(4), fab, x, BASE_TOP+cm(14), sz);
-    C.rb(cw+cm(0.3), cm(1.1), seatD+cm(0.3), cm(0.5), fab, x, BASE_TOP+cm(8), sz);
+    C.rb(cw, cm(18), seatD, cm(5), fab, x, cm(22), sz);
+    C.rb(cw+cm(0.3), cm(1.2), seatD+cm(0.3), cm(0.6), fab, x, cm(33.5), sz);
   }
-
-  // 背框：14→69（尺寸图），深 17 贴后（比例估计）
-  C.rb(innerW, cm(55), cm(17), cm(2.5), fabD, 0, BASE_TOP, -(D/2-cm(8.5)));
-
-  // 靠背垫 ×2：70×48（尺寸图）×高 40，底 41 顶 81，外层 Group 后仰 2.3°（后上角 ≈82.6=整高附近）
-  const bw=cm(70), bcH=cm(40), bcTh=cm(48),
-        bcZ=-D/2+bcTh/2+cm(0.5);
+  // 背框 22→69（尺寸图），深 16
+  C.rb(innerW, cm(47), cm(16), cm(2.5), fabD, 0, cm(22), -(D/2-cm(8)));
+  // 靠背垫 ×2：70×48（尺寸图），底 35 顶 ~83，后仰 2°
+  const bw=cm(70);
   for(const sx of [-1,1]){
-    const bc=C.rb(bw, bcH, bcTh, cm(5), fab, 0, 0, 0);
+    const bc=C.rb(bw, cm(48), cm(20), cm(5.5), fab, 0, 0, 0);
+    bc.position.y -= cm(24);
     const holder=new T.Group();
     C.g.remove(bc); holder.add(bc);
-    holder.position.set(sx*(bw/2+cm(0.5)), cm(41), bcZ);
-    holder.rotation.x=-0.04;
+    holder.position.set(sx*(bw/2+cm(0.5)), cm(35+24), -(D/2-cm(10.5)));
+    holder.rotation.x=-0.02;
     C.g.add(holder);
   }
-
-  // 扶手 ×2：软包低箱，6→54（尺寸图），顶叠薄枕
+  // 腰枕 ×2：48×26×10（尺寸图），斜倚在靠背垫前
   for(const sx of [-1,1]){
-    C.rb(ARM, cm(48), D, cm(3.5), fab, sx*(W/2-ARM/2), cm(6));
-    C.rb(ARM-cm(1), cm(5), D-cm(2), cm(3), fab, sx*(W/2-ARM/2), cm(49));
+    const lc=C.rb(cm(48), cm(26), cm(10), cm(4.5), fab, 0, 0, 0);
+    lc.position.y -= cm(13);
+    const g=new T.Group();
+    C.g.remove(lc); g.add(lc);
+    g.position.set(sx*(bw/2+cm(0.5)), cm(40+13), -cm(16)); g.rotation.x=-0.5;
+    C.g.add(g);
   }
-
-  // 水平重心归零
+  // 扶手 14→50 + 顶枕 50→54
+  for(const sx of [-1,1]){
+    C.rb(ARM, cm(36), D, cm(4), fab, sx*(W/2-ARM/2), cm(14));
+    C.rb(ARM-cm(1), cm(4), D-cm(3), cm(2), fab, sx*(W/2-ARM/2), cm(50));
+  }
   C.g.updateMatrixWorld(true);
   const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3();
   bb.getCenter(off);
   for(const ch of C.g.children){ ch.position.x-=off.x; ch.position.z-=off.z; }
 };
+
 
 /* MALM 床架 Queen(168)/King(209) 共用：尺寸图 work/ref/malm_39.png——前横档 21→38（图标 21/38），
    床头板 0→100；排骨架高/中梁/壁厚无标注，比例估计。 */
@@ -7400,38 +7385,35 @@ MODELS['morabo'] = (C) => {
   const cm=C.cm, T=C.THREE;
   const W=C.w, D=C.d, H=C.h;
   const M1 = C.M(C.col, {fabric:true, sheen:.15, envI:.15});
-  const chrome = C.M('#d8dadc', {metal:.95, rough:.18, envI:.95});
-  // 底座 16→38（图标 16）
+  const legM = C.M('#6b5a45', {wood:'beech', rough:.55, envI:.5});
+  // 桦木锥形圆腿 0→16（尺寸图）
+  for(const [lx,lz] of [[-78,28],[78,28],[-78,-28],[78,-28]])
+    C.cyl(cm(3.2), cm(2.4), cm(16), legM, cm(lx), 0, cm(lz), 14);
+  // 底座 16→38
   C.rb(W, cm(22), D, cm(2.5), M1, 0, cm(16), 0);
-  // 扶手 42 宽，16→67（图标 67）
-  for(const sx of [-1,1])
-    C.rb(cm(42), cm(51), D, cm(3), M1, sx*(W/2-cm(21)), cm(16), 0);
-  // 背框 122 宽×26 深，38→81（背在 -z，与 2D 图例/通用回退同向）
-  C.rb(W-cm(84), cm(43), cm(26), cm(2.5), M1, 0, cm(38), -(D/2-cm(13)));
-  // 座垫 ×2：60.5 宽，35→47.5（座高 47 图标），深 64
-  for(const sx of [-1,1])
-    C.rb(cm(60.5), cm(12.5), cm(64), cm(4.5), M1, sx*cm(30.75), cm(35), D/2-cm(32));
-  // 背垫 ×2：61 宽（图标）×30 高×20 厚，50→80，前倾 3°，3×3 拉扣
+  // 扶手 42 宽，16→61 + 顶卷 r6（顶 67 尺寸图）
   for(const sx of [-1,1]){
-    const c = C.rb(cm(61), cm(30), cm(20), cm(5), M1, 0, 0, 0, 3);
-    C.g.remove(c);
-    const g = new T.Group();
-    g.position.set(sx*cm(31), cm(47.5), -cm(11)); g.rotation.x=0.05;   // 单轴前倾（朝 +z），底部坐于座垫顶面
-    c.position.set(0, cm(15), 0);
-    g.add(c);
-    for(const bx of [-cm(18),0,cm(18)]) for(const by of [-cm(9.5),0,cm(9.5)]){
-      const b = new T.Mesh(new T.SphereGeometry(cm(1.0), 10, 8), M1);
-      b.position.set(bx, cm(15) + by, cm(9.8)); b.castShadow=b.receiveShadow=true;
+    C.rb(cm(42), cm(45), D, cm(3), M1, sx*(W/2-cm(21)), cm(16), 0);
+    C.tube(D-cm(4), cm(6), M1, sx*(W/2-cm(21)), cm(61), 0, 'z');
+  }
+  // 背框 122 宽×24 深，38→78
+  C.rb(cm(122), cm(40), cm(24), cm(2.5), M1, 0, cm(38), -(D/2-cm(12)));
+  // 座垫 ×2：60 宽，38→47.5（座高 47），深 62
+  for(const sx of [-1,1])
+    C.rb(cm(60), cm(9.5), cm(62), cm(4.5), M1, sx*cm(30.75), cm(38), D/2-cm(31));
+  // 背垫 ×2：61×30×20（尺寸图），底 47.5 顶 ~78，后仰 3°，3×2 拉扣
+  for(const sx of [-1,1]){
+    const g=new T.Group();
+    g.position.set(sx*cm(31), cm(47.5+15), -cm(9.5)); g.rotation.x=-0.03;
+    const c=C.rb(cm(61), cm(30), cm(20), cm(5), M1, 0, 0, 0);
+    c.position.y -= cm(15);
+    C.g.remove(c); g.add(c);
+    for(const bx of [-cm(18),0,cm(18)]) for(const by of [-cm(9),0,cm(9)]){
+      const b=new T.Mesh(new T.SphereGeometry(cm(1), 10, 8), M1);
+      b.position.set(bx, by, cm(9.8)); b.castShadow=b.receiveShadow=true;
       g.add(b);
     }
     C.g.add(g);
-  }
-  // 腿 ×4：镀铬喇叭脚 0→8 + 布包腿 6.5→17.5（v00/v09）
-  for(const [lx,lz] of [[-64,33],[64,33],[-64,-28],[64,-28]]){
-    const x=cm(lx), z=cm(lz);
-    C.cyl(cm(5), cm(5), cm(0.8), chrome, x, 0, z, 20);        // 底盘
-    C.cyl(cm(2.6), cm(3.4), cm(7.2), chrome, x, cm(0.8), z, 20); // 锥脚
-    C.cyl(cm(2.2), cm(2.8), cm(11), M1, x, cm(6.5), z, 14);   // 布腿
   }
   C.g.updateMatrixWorld(true);
   const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3();
@@ -7439,43 +7421,47 @@ MODELS['morabo'] = (C) => {
   for(const ch of C.g.children){ ch.position.x-=off.x; ch.position.z-=off.z; }
 };
 
-/* FRIHETEN 转角沙发床 230×151×86：尺寸图 v05（chaise 深 151/座深 122/座高 44/3 座段深 90/
-   扶手 66/背垫 57×3 高出座面 44）；chaise 宽 95/扶手 24/背框深 24/腿为实拍比例估计（brief: friheten.md）。 */
+
+/* FRIHETEN 转角沙发床 230×151×86：对照 FRIHETEN 官方实拍（work/ref/friheten/）——3 座段+右 chaise，
+   低矮方扶手（顶 ~48-50，低于背垫）、方形薄背垫 ×3、储物底座箱坐小暗色脚上、座高 ~46-48、
+   背垫顶 = 整高 86。chaise 宽 95/扶手 24/背框深 20 为实拍比例。 */
 MODELS['friheten'] = (C) => {
   const cm=C.cm, T=C.THREE;
   const W=C.w, D=C.d, H=C.h;
   const M1 = C.M(C.col, {fabric:true, sheen:.12, envI:.15});
   const legM = C.M('#2a2c2f', {rough:.7});
-  // chaise 在 +x，背在 +z。3 座段 x -115→+20，chaise x +20→+115
-  // 底座：chaise 段 (6→38)、3 座段 (6→34)（背在 -z，与 2D 图例同向）
-  C.rb(cm(71), cm(32), D, cm(2.5), M1, cm(55.5), cm(6), 0);
-  C.rb(cm(135), cm(28), cm(90), cm(2.5), M1, cm(-47.5), cm(6), -cm(30.5));
-  // 右扶手 24 宽，跨 chaise 全深，6→66（图标）
-  C.rb(cm(24), cm(60), D, cm(3), M1, cm(103), cm(6), 0);
-  // chaise 矮背 38→60；3 座背框 34→86（图标 86）
-  C.rb(cm(71), cm(22), cm(24), cm(2.5), M1, cm(55.5), cm(38), -(D/2-cm(12)));
-  C.rb(cm(206), cm(52), cm(24), cm(2.5), M1, cm(-14), cm(34), -(D/2-cm(12)));
-  // 座垫：chaise 70×12×122 顶 44（图标）；3 座 2×57 顶 42
-  C.rb(cm(70), cm(12), cm(122), cm(4), M1, cm(55.5), cm(32), D/2-cm(61));
-  for(const cx of [-80,-15])
-    C.rb(cm(57), cm(12), cm(66), cm(4), M1, cm(cx), cm(30), -cm(18.5));
-  // 背垫 ×3：57×20×44（图标），松散斜靠、互相叠压
-  for(const [cx, ry] of [[-80,-0.05],[-20,0],[40,0.06]]){
-    const c = C.rb(cm(57), cm(44), cm(20), cm(5), M1, 0, 0, 0, 3);
+  // chaise 在 +x，背在 -z。3 座段 x -115→+20（深 90），chaise x +20→+115（深 151）
+  // 小暗色脚 0→8
+  for(const [lx,lz] of [[-103,-60],[12,-60],[103,-60],[103,55],[103,0],[-103,5]])
+    C.cyl(cm(2.2), cm(2.2), cm(8), legM, cm(lx), 0, cm(lz), 10);
+  // 底座：3 座段 8→34（深 90），chaise 段 8→36（深 151）
+  C.rb(cm(135), cm(26), cm(90), cm(2.5), M1, cm(-47.5), cm(8), -cm(30.5));
+  C.rb(cm(95), cm(28), D, cm(2.5), M1, cm(67.5), cm(8), 0);
+  // 左扶手 24 宽（深 90）8→48；右扶手跨 chaise 全深 8→50
+  C.rb(cm(24), cm(40), cm(90), cm(3), M1, -cm(103), cm(8), -cm(30.5));
+  C.rb(cm(24), cm(42), D, cm(3), M1, cm(103), cm(8), 0);
+  // 背框：3 座段 34→72，chaise 矮背 36→60，深 24
+  C.rb(cm(111), cm(38), cm(24), cm(2.5), M1, cm(-35.5), cm(34), -(D/2-cm(12)));
+  C.rb(cm(71), cm(24), cm(24), cm(2.5), M1, cm(55.5), cm(36), -(D/2-cm(12)));
+  // 座垫：3 座段 ×2 顶 46，chaise ×1 顶 48
+  for(const cx of [-62.5,-7.5])
+    C.rb(cm(55), cm(12), cm(62), cm(4), M1, cm(cx), cm(34), -cm(16));
+  C.rb(cm(68), cm(12), cm(118), cm(4), M1, cm(58), cm(36), 0);
+  // 背垫 ×3：52×42×18，底 44 顶 86，松散微偏转
+  for(const [cx, ry] of [[-62.5,-0.05],[3.5,0],[55.5,0.05]]){
+    const c = C.rb(cm(52), cm(42), cm(18), cm(5), M1, 0, 0, 0, 3);
+    c.position.y -= cm(21);
     C.g.remove(c);
     const g = new T.Group();
-    g.position.set(cm(cx), cm(42), -cm(42)); g.rotation.y=ry;
-    c.position.set(0, cm(22), 0); c.rotation.x=0.09;   // 单轴前倾（朝 +z）
+    g.position.set(cm(cx), cm(44+21), -cm(55)); g.rotation.y=ry;
     g.add(c); C.g.add(g);
   }
-  // 腿：暗色小圆柱 φ5 高 6（v03）
-  for(const [lx,lz] of [[-103,4],[12,4],[30,67],[103,67],[103,-67],[-103,-67]])
-    C.cyl(cm(2.5), cm(2.5), cm(6), legM, cm(lx), 0, cm(lz), 10);
   C.g.updateMatrixWorld(true);
   const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3();
   bb.getCenter(off);
   for(const ch of C.g.children){ ch.position.x-=off.x; ch.position.z-=off.z; }
 };
+
 
 /* UPPLAND 三人沙发 224×92×92（EKTORP 继任款）：尺寸图 v12（扶手 25/背垫 58×3/座高 47/背垫 45/裙 17，
    47+45=92 自洽）；裙摆落地无腿、卷臂为实拍特征，扶手顶 63 比例估计（brief: uppland.md）。 */
@@ -7483,26 +7469,25 @@ MODELS['uppland'] = (C) => {
   const cm=C.cm, T=C.THREE;
   const W=C.w, D=C.d, H=C.h;
   const M1 = C.M(C.col, {fabric:true, sheen:.10, envI:.15});
-  // 裙摆箱体 0→35（图标裙高 17 可见带 + 座框），落地无腿
+  // 裙摆箱体 0→35，落地无腿
   C.rb(W, cm(35), D, cm(3), M1, 0, 0, 0);
-  // 扶手 25 宽（图标）0→53 + 顶卷 r10 横贯全深（顶 63 比例估计）
+  // 卷臂：25 宽 0→53 + 顶卷 r9.5 横贯全深（顶 62.5）
   for(const sx of [-1,1]){
     C.rb(cm(25), cm(53), D, cm(4), M1, sx*(W/2-cm(12.5)), 0, 0);
-    // 顶卷：胶囊沿 z 横贯全深（中心定位，端帽正好齐前后缘），顶 63
-    C.tube(D, cm(10), M1, sx*(W/2-cm(12.5)), cm(53), 0, 'z');
+    C.tube(D-cm(3), cm(9.5), M1, sx*(W/2-cm(12.5)), cm(53), 0, 'z');
   }
-  // 背框 174 宽×24 深，35→92（图标总高）
-  C.rb(cm(174), cm(57), cm(24), cm(4), M1, 0, cm(35), -(D/2-cm(12)));
-  // 座垫 ×3：58 宽（图标），35→47（座高图标），深 68
+  // 背框 174 宽，35→84，深 24
+  C.rb(cm(174), cm(49), cm(24), cm(4), M1, 0, cm(35), -(D/2-cm(12)));
+  // 座垫 ×3：58 宽，35→47（座高），深 66
   for(const cx of [-58,0,58])
-    C.rb(cm(58), cm(12), cm(68), cm(5), M1, cm(cx), cm(35), cm(12));
-  // 背垫 ×3：58×20×45（图标），47→92，松散微前倾
+    C.rb(cm(58), cm(12), cm(66), cm(5), M1, cm(cx), cm(35), cm(13));
+  // 背垫 ×3：58×45×20，底 47 顶 92，后仰 2.5°
   for(const cx of [-58,0,58]){
-    const c = C.rb(cm(58), cm(45), cm(20), cm(6), M1, 0, 0, 0, 3);
+    const c = C.rb(cm(58), cm(45), cm(20), cm(7), M1, 0, 0, 0);
+    c.position.y -= cm(22.5);
     C.g.remove(c);
     const g = new T.Group();
-    g.position.set(cm(cx), cm(47), -cm(31)); g.rotation.x=0.07;
-    c.position.set(0, cm(22.5), 0);
+    g.position.set(cm(cx), cm(47+22.5), -cm(31)); g.rotation.x=-0.025;
     g.add(c); C.g.add(g);
   }
   C.g.updateMatrixWorld(true);
@@ -7510,6 +7495,7 @@ MODELS['uppland'] = (C) => {
   bb.getCenter(off);
   for(const ch of C.g.children){ ch.position.x-=off.x; ch.position.z-=off.z; }
 };
+
 
 /* EKHOLMA 三人沙发 207×85×94：尺寸图 v06（座高 49/扶手 70/座深 55/腿 15，49+45=94 自洽）；
    扶手宽 26/背框深 28/木腿收分方形为实拍比例估计（brief: ekholma.md）。 */
@@ -7518,27 +7504,30 @@ MODELS['ekholma'] = (C) => {
   const W=C.w, D=C.d, H=C.h;
   const M1 = C.M(C.col, {fabric:true, sheen:.10, envI:.15});
   const legM = C.M('#3a2f28', {wood:'walnut', rough:.55});
-  // 腿 ×4：4 棱收分柱（方形锥），0→15（图标腿高）
-  for(const [lx,lz] of [[-89.5,-30.5],[89.5,-30.5],[-89.5,30.5],[89.5,30.5]])
+  // 腿 ×4：4 棱收分柱（方形锥），0→15
+  for(const [lx,lz] of [[-89.5,-28.5],[89.5,-28.5],[-89.5,28.5],[89.5,28.5]])
     C.cyl(cm(5.6), cm(2.8), cm(15), legM, cm(lx), 0, cm(lz), 4);
-  // 底座 15→36（坐垫厚 13，顶 49 图标座高）
+  // 底座 15→36
   C.rb(W, cm(21), D, cm(4), M1, 0, cm(15), 0);
-  // 扶手 26 宽（比例）15→64 + 顶卷 r6（顶 70 图标）
+  // 扶手 26 宽：前面竖直、顶面宽而平（49cm）、后缘短斜，顶卷 r6
   for(const sx of [-1,1]){
-    C.rb(cm(26), cm(49), D, cm(5), M1, sx*(W/2-cm(13)), cm(15), 0);
-    C.tube(D, cm(6), M1, sx*(W/2-cm(13)), cm(64), 0, 'z');
+    // 侧面轮廓（local x=-z, y）：前竖 15→60、顶面 z+34.5→-15、后斜、底
+    const pts=[[-cm(34.5),cm(15)],[-cm(34.5),cm(60)],[cm(15),cm(60)],[cm(34.5),cm(15)]];
+    C.ext(pts, cm(26), M1, sx>0? W/2-cm(26) : -W/2, 0, 0, 'zy', cm(4));
+    C.tube(cm(56), cm(6), M1, sx*(W/2-cm(13)), cm(63), cm(1), 'z');
   }
-  // 背框 155 宽×28 深（85−55−前缘），36→88
+  // 背框 155 宽×28 深，36→88
   C.rb(cm(155), cm(52), cm(28), cm(4), M1, 0, cm(36), -(D/2-cm(14)));
-  // 座垫 ×2：77.5 宽×13 厚×55 深（图标座深），36→49
+  // 座垫 ×2：77.5 宽×13 厚×55 深，36→49
   for(const sx of [-1,1])
     C.rb(cm(77.5), cm(13), cm(55), cm(5), M1, sx*cm(38.75), cm(36), cm(13));
-  // 背垫 ×2：77.5×20×45（49→94 自洽），微前倾
+  // 背垫 ×2：77.5×45×20，底 49 顶 94，后仰 4°
   for(const sx of [-1,1]){
-    const c = C.rb(cm(77.5), cm(45), cm(20), cm(6), M1, 0, 0, 0, 3);
+    const c = C.rb(cm(77.5), cm(45), cm(20), cm(6), M1, 0, 0, 0);
+    c.position.y -= cm(22.5);
     C.g.remove(c);
     const g = new T.Group();
-    g.position.set(sx*cm(38.75), cm(49), -cm(23.5)); g.rotation.x=0.07;
+    g.position.set(sx*cm(38.75), cm(49+22.5), -cm(23.5)); g.rotation.x=-0.04;
     g.add(c); C.g.add(g);
   }
   C.g.updateMatrixWorld(true);
@@ -7546,6 +7535,7 @@ MODELS['ekholma'] = (C) => {
   bb.getCenter(off);
   for(const ch of C.g.children){ ch.position.x-=off.x; ch.position.z-=off.z; }
 };
+
 
 /* POÄNG 扶手椅 68×82×100：对照 v00/v03 实拍——每侧 Z 形一体弯木侧件
    （前腿+底轨+后腿+扶手，前上肘部/后下圆角），前撑杆，绷板+座垫（座高 44），
@@ -7592,33 +7582,37 @@ MODELS['strandmon'] = (C) => {
   const cm=C.cm, T=C.THREE;
   const W=C.w, D=C.d, H=C.h;
   const M1 = C.M(C.col, {fabric:true, sheen:.12, envI:.15});
-  const legM = C.M('#3a2f28', {wood:'walnut', rough:.5});
-  // 腿 ×4：锥形圆腿 0→12（v00 深褐）
-  for(const [lx,lz] of [[-30,-36],[30,-36],[-30,36],[30,36]])
-    C.cyl(cm(3), cm(1.5), cm(12), legM, cm(lx), 0, cm(lz), 12);
-  // 底座 12→33，深 89（后缘齐占地，前缘齐座垫，v00 裙包到座前）
-  C.rb(W, cm(21), cm(89), cm(6), M1, 0, cm(12), -cm(3.5));
-  // 扶手 16 宽（(82−50)/2）12→48 + 顶卷 r7（顶 55 比例），深 80（端头齐座前）
+  const legM = C.M('#2c2622', {rough:.5});
+  // 腿 ×4：细锥形圆腿 0→13
+  for(const [lx,lz] of [[-30,-32],[30,-32],[-30,38],[30,38]])
+    C.cyl(cm(1.4), cm(2.6), cm(13), legM, cm(lx), 0, cm(lz), 10);
+  // 底座 13→33，深 89
+  C.rb(W, cm(20), cm(89), cm(6), M1, 0, cm(13), -cm(3.5));
+  // 扶手基 + 顶卷 r7（顶 54），深 84
   for(const sx of [-1,1]){
-    C.rb(cm(16), cm(36), cm(80), cm(7), M1, sx*cm(33), cm(12), -cm(8));
-    C.tube(cm(76), cm(7), M1, sx*cm(33), cm(48), -cm(8), 'z');
+    C.rb(cm(16), cm(32), cm(84), cm(6), M1, sx*cm(33), cm(13), -cm(6));
+    C.tube(cm(84), cm(7), M1, sx*cm(33), cm(47), -cm(6), 'z');
   }
-  // 座垫 54×10×58（图标座宽）33→43（图标座高），前缘齐裙边
-  C.rb(cm(54), cm(10), cm(58), cm(5), M1, 0, cm(33), cm(11));
-  // 背框总成：Group 后仰 0.08（背在 z-30）
+  // 座垫 54×10×58，33→43，前缘齐底座前缘
+  C.rb(cm(54), cm(10), cm(58), cm(5), M1, 0, cm(33), cm(12));
+  // 背总成：Group 后仰 4.5°（背在 z -30）
   const back = new T.Group(); back.position.set(0,0,-cm(30)); back.rotation.x=-0.08;
   const B=(mm)=>{ C.g.remove(mm); back.add(mm); return mm; };
-  B(C.rb(cm(54), cm(58), cm(14), cm(5), M1, 0, cm(43), 0, 3));       // 背板 43→101（图标内宽 54）
-  for(const sx of [-1,1])                                            // 翼板 58→92，与背板一体（v04 前卷）
-    B(C.rb(cm(16), cm(34), cm(20), cm(5), M1, sx*cm(22), cm(58), 0, 3));
-  for(const [bx,by] of [[-20,67],[-10,69],[0,70],[10,69],[20,67]])   // 拉扣 5 粒浅 V
-    B(C.sph(cm(0.9), M1, cm(bx), cm(by), cm(8.5), 10));
+  B(C.rb(cm(54), cm(73), cm(13), cm(5), M1, 0, cm(28), 0, 3));   // 背板 28→101（下缘埋进底座）
+  for(const sx of [-1,1]){
+    // 翼板 S 形侧面轮廓（local px=-z, py=y），沿 +x 挤出 16
+    const pts=[[cm(13),cm(42)],[cm(13),cm(92)],[cm(5),cm(100)],[cm(-2),cm(84)],[cm(4),cm(62)],[cm(8),cm(44)]];
+    B(C.ext(pts, cm(16), M1, sx>0? cm(24) : -cm(40), 0, 0, 'zy', cm(2.5)));
+  }
+  for(const [bx,by] of [[-20,70],[-10,72],[0,73],[10,72],[20,70]])   // 拉扣 5 粒横排
+    B(C.sph(cm(0.9), M1, cm(bx), cm(by), cm(6), 10));
   C.g.add(back);
   C.g.updateMatrixWorld(true);
   const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3();
   bb.getCenter(off);
   for(const ch of C.g.children){ ch.position.x-=off.x; ch.position.z-=off.z; }
 };
+
 
 /* DOCKSTA 独腿圆桌 Ø103×75：尺寸图 v03（总高 75/台面顶 73/底盘 Ø60）；
    Eames 式独腿柱身锥度与喇叭口为 v02 特写比例（brief: docksta.md）。 */
