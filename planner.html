@@ -741,6 +741,7 @@ const CATALOG = [
  {id:'hektar_f', cat:'茶几 / 边几', name:'HEKTAR 落地灯', w:33,d:33,h:180, price:89.99, priceCA:89, color:'#4a4d53', kind:'lamp', model:'hektar_f', url:'https://www.ikea.com/us/en/p/hektar-floor-lamp-dark-gray-70216544/'},
  {id:'ekorre', cat:'儿童 / 爬爬架', name:'EKORRE 摇摇麋鹿', w:73,d:29,h:52, price:69.99, priceCA:39.99, color:'#c11e23', color2:'#d9bd96', kind:'rocking', model:'ekorre', seatH:28, url:'https://www.ikea.com/us/en/p/ekorre-rocking-moose-red-rubberwood-50060713/'},
  {id:'hape-horse', cat:'儿童 / 爬爬架', name:'Hape Rock & Ride 摇木马', w:67.6,d:28.2,h:52.3, price:131.72, caNA:true, color:'#dbaf88', color2:'#ca0707', kind:'rocking', model:'hape-horse', seatH:26, url:'https://www.amazon.com/dp/B00712O36C'},
+ {id:'kiddiecouch-0', cat:'儿童 / 爬爬架', name:'Kiddie Couch 儿童模块沙发 · Koala Grey', w:170.2,d:83.8,h:58.4, price:399, priceCA:399, color:'#8d8d92', kind:'playCouch', model:'kiddiecouch', seatH:30.5, note:'67"×33"×23" 双人模块：两层坐垫（12" 座高）+ 两个三角靠背垫，可自由重组', url:'https://www.kiddiecouch.com/products/kiddie-couch'}, {id:'kiddiecouch-1', cat:'儿童 / 爬爬架', name:'Kiddie Couch 儿童模块沙发 · Emerald Green', w:170.2,d:83.8,h:58.4, price:399, priceCA:399, color:'#2e5e56', kind:'playCouch', model:'kiddiecouch', seatH:30.5, note:'67"×33"×23" 双人模块：两层坐垫（12" 座高）+ 两个三角靠背垫，可自由重组', url:'https://www.kiddiecouch.com/products/kiddie-couch'}, {id:'kiddiecouch-2', cat:'儿童 / 爬爬架', name:'Kiddie Couch 儿童模块沙发 · Pacific Blue', w:170.2,d:83.8,h:58.4, price:399, priceCA:399, color:'#5b7fb0', kind:'playCouch', model:'kiddiecouch', seatH:30.5, note:'67"×33"×23" 双人模块：两层坐垫（12" 座高）+ 两个三角靠背垫，可自由重组', url:'https://www.kiddiecouch.com/products/kiddie-couch'}, {id:'kiddiecouch-3', cat:'儿童 / 爬爬架', name:'Kiddie Couch 儿童模块沙发 · Sand Beige', w:170.2,d:83.8,h:58.4, price:399, priceCA:399, color:'#cfc2ae', kind:'playCouch', model:'kiddiecouch', seatH:30.5, note:'67"×33"×23" 双人模块：两层坐垫（12" 座高）+ 两个三角靠背垫，可自由重组', url:'https://www.kiddiecouch.com/products/kiddie-couch'}, {id:'kiddiecouch-4', cat:'儿童 / 爬爬架', name:'Kiddie Couch 儿童模块沙发 · Jet Black', w:170.2,d:83.8,h:58.4, price:399, priceCA:399, color:'#1c1c1e', kind:'playCouch', model:'kiddiecouch', seatH:30.5, note:'67"×33"×23" 双人模块：两层坐垫（12" 座高）+ 两个三角靠背垫，可自由重组', url:'https://www.kiddiecouch.com/products/kiddie-couch'}, {id:'kiddiecouch-5', cat:'儿童 / 爬爬架', name:'Kiddie Couch 儿童模块沙发 · Blush Pink', w:170.2,d:83.8,h:58.4, price:399, priceCA:399, color:'#d19a94', kind:'playCouch', model:'kiddiecouch', seatH:30.5, note:'67"×33"×23" 双人模块：两层坐垫（12" 座高）+ 两个三角靠背垫，可自由重组', url:'https://www.kiddiecouch.com/products/kiddie-couch'}, {id:'kiddiecouch-6', cat:'儿童 / 爬爬架', name:'Kiddie Couch 儿童模块沙发 · Orchid Purple', w:170.2,d:83.8,h:58.4, price:399, priceCA:399, color:'#ab92ac', kind:'playCouch', model:'kiddiecouch', seatH:30.5, note:'67"×33"×23" 双人模块：两层坐垫（12" 座高）+ 两个三角靠背垫，可自由重组', url:'https://www.kiddiecouch.com/products/kiddie-couch'}, {id:'kiddiecouch-7', cat:'儿童 / 爬爬架', name:'Kiddie Couch 儿童模块沙发 · Stone Brown', w:170.2,d:83.8,h:58.4, price:399, priceCA:399, color:'#57493e', kind:'playCouch', model:'kiddiecouch', seatH:30.5, note:'67"×33"×23" 双人模块：两层坐垫（12" 座高）+ 两个三角靠背垫，可自由重组', url:'https://www.kiddiecouch.com/products/kiddie-couch'}, {id:'kiddiecouch-8', cat:'儿童 / 爬爬架', name:'Kiddie Couch 儿童模块沙发 · Sage Green', w:170.2,d:83.8,h:58.4, price:399, priceCA:399, color:'#879188', kind:'playCouch', model:'kiddiecouch', seatH:30.5, note:'67"×33"×23" 双人模块：两层坐垫（12" 座高）+ 两个三角靠背垫，可自由重组', url:'https://www.kiddiecouch.com/products/kiddie-couch'},
 ];
 
 /* ---------- 预设布局 ---------- */
@@ -8533,7 +8534,29 @@ MODELS['hape-horse'] = (C) => {
 };
 
 
-  /* ===== 性能：按材质合并 mesh，大幅减少 draw call（几何逐顶点保留，外观完全不变） ===== */
+  
+// ===== Kiddie Couch 儿童模块沙发（官方 67"×33"×23"，双层坐垫 12" 座高 + 两个三角靠背垫） =====
+MODELS['kiddiecouch'] = (C) => {
+  const cm=C.cm, T=C.THREE;
+  const vel  = C.M(C.col, {fabric:true, rough:.94, sheen:.22, sheenColor:0xffffff, envI:.14});
+  const velD = C.M(new T.Color(C.col).multiplyScalar(.88), {fabric:true, rough:.96, sheen:.15, envI:.12});
+  const halfW=cm(85.1), D=cm(83.8);
+  const base=cm(16.5), gW=cm(83.6);            // 底层 6.5"，单块宽 83.6（中间 1cm 缝）
+  C.rb(gW, base, D, cm(1.8), velD, -cm(42.55), 0, 0);
+  C.rb(gW, base, D, cm(1.8), velD, +cm(42.55), 0, 0);
+  // 上層坐垫 ×2（内收、大圆角 = 蓬松；顶面正好 30.5cm）
+  C.rb(cm(80.6), cm(14), cm(80.8), cm(4), vel, -cm(42.55), base, 0);
+  C.rb(cm(80.6), cm(14), cm(80.8), cm(4), vel, +cm(42.55), base, 0);
+  // 三角靠背垫 ×2：截面在 z-y 面（'zy' 沿 x 拉伸），后立面 + 前下斜面
+  const prof=[[-30.9,30.8],[-30.2,43],[-38,56.5],[-41.5,57.8],[-41.9,30.8]].map(p=>[-cm(p[0]),cm(p[1])]);
+  C.ext(prof, cm(32.5), vel, -cm(33.25), 0, 0, 'zy');
+  C.ext(prof, cm(32.5), vel, +cm(0.75), 0, 0, 'zy');
+  // 水平重心归零
+  C.g.updateMatrixWorld(true);
+  const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3(); bb.getCenter(off);
+  for(const ch of C.g.children){ ch.position.x-=off.x; ch.position.z-=off.z; }
+};
+/* ===== 性能：按材质合并 mesh，大幅减少 draw call（几何逐顶点保留，外观完全不变） ===== */
 function _concatGeos(list){
   let total=0;
   for(const g of list) total += g.attributes.position.count;
