@@ -227,6 +227,7 @@ python3 .claude/skills/add-catalog-item/check-item.py --regress
 | 填充率超窗但不知哪个部件超了 | 灯环/绕线带/拉手外缘超 spec | `?nomerge` 逐 child 打 bbox 找最宽部件 |
 | CatmullRom 曲线在长直线+短弧交界处过冲 | 长段只给两个端点，切线被大段拉偏（NIPÅSEN 侧框外溢 0.4cm） | 长直线段按 ~40cm 间隔加密中间点再建 CatmullRomCurve3 |
 | 曲线点忘乘 `cm()`（cm 值被当英尺） | 钩子/管件突然放大 ~30 倍，bbox 爆到 200%+（NIPÅSEN 钩子 395cm） | 手建 Vector3 曲线点与 `C.box`/`C.cyl` 参数一样逐个 `cm()`；填充率体检能抓 |
+| 已换算值再包一层 `cm()`（双重转换） | 部件缩小 30 倍几乎看不见（Lil' Kick 轮胎/轮毂/花瓣半径 0.1cm，轮子只剩一圈幽灵） | 参数已是英尺（如 `R=cm(7.5)`）就直接用 `R`、`0.43*R`，不要再套 `cm()`；渲染图里「该大的部件很小」先查这个 |
 | 抓到的价格离谱 | 命中系列落地页而非商品页 |
 | 两次渲染结果不一致 | 新贴图用了 `Math.random()` |
 | 手摆相机后画布是空的 | `OrbitControls.update()` 把相机拉回去了 → 先同步 `controls.target` 再 `update()` |
