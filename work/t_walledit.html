@@ -774,6 +774,9 @@ const CATALOG = [
  {id:'giantex7-yellow', cat:'运动器材', name:'Giantex 7ft 圆形蹦床带安全网 · Yellow', w:221.6,d:221.6,h:185.4, price:189.99, priceCA:259.99, color:'#e8b524', col2:'#46b13c', kind:'trampoline', model:'giantex7', note:'直径 7.3ft，高 6.1ft（含网架），3 组 A 字架 + PE 护垫 + 绿色底座，3 岁+', url:'https://www.giantex.com/products/7-ft-kids-trampoline-with-safety-enclosure-net'},
  {id:'giantex7-rainbow', cat:'运动器材', name:'Giantex 7ft 圆形蹦床带安全网 · Red/Yellow/Blue', w:221.6,d:221.6,h:185.4, price:189.99, priceCA:259.99, color:'#d1442e', col2:'#46b13c', kind:'trampoline', model:'giantex7', note:'直径 7.3ft，高 6.1ft（含网架），三色款，3 岁+', url:'https://www.giantex.com/products/7-ft-kids-trampoline-with-safety-enclosure-net'},
  {id:'giantex7-purple', cat:'运动器材', name:'Giantex 7ft 圆形蹦床带安全网 · Purple/Pink', w:221.6,d:221.6,h:185.4, price:199.99, priceCA:259.99, color:'#8e4f9e', col2:'#46b13c', kind:'trampoline', model:'giantex7', note:'直径 7.3ft，高 6.1ft（含网架），紫粉款，3 岁+', url:'https://www.giantex.com/products/7-ft-kids-trampoline-with-safety-enclosure-net'},
+ {id:'tramp60-blue', cat:'运动器材', name:'FFFROG 60" 室内儿童蹦床 · 蓝色', w:140,d:140,h:170, priceCA:159.99, color:'#5aa8d4', color2:'#a0d0f0', kind:'trampoline', model:'tramp60', url:'https://www.amazon.ca/dp/B0FB8N8F3X', note:'官方 140×140×170cm，1-8 岁承重 440lbs · 安全网+拉链门+三档高低杠（13.7/16.5/19.2"）· 含沙包/吊环/吊床/篮球筐/6 个沙滩球 · 加元实际标价，美元为折算 ≈'},
+ {id:'tramp60-green', cat:'运动器材', name:'FFFROG 60" 室内儿童蹦床 · 绿黄', w:140,d:140,h:170, priceCA:159.99, color:'#b8e8b8', color2:'#d8d058', kind:'trampoline', model:'tramp60', url:'https://www.amazon.ca/dp/B0FB8N8F3X', note:'官方 140×140×170cm，1-8 岁承重 440lbs · 绿黄配色，含全套附件'},
+ {id:'tramp60-pink', cat:'运动器材', name:'FFFROG 60" 室内儿童蹦床 · 粉紫', w:140,d:140,h:170, priceCA:159.99, color:'#e090b0', color2:'#c898d0', kind:'trampoline', model:'tramp60', url:'https://www.amazon.ca/dp/B0FB8N8F3X', note:'官方 140×140×170cm，1-8 岁承重 440lbs · 粉紫配色，含全套附件'},
  {id:'mmjeep12-black', cat:'骑乘玩具', name:'Miniature Motors 12V 4x4 Jeep 儿童电动车 · Black', w:99.1,d:62,h:62, price:116.99, caNA:true, color:'#17181a', col2:'#202226', kind:'rideOn', model:'mmjeep12', note:'双 35W 电机，2-3.5MPH，遥控 + 蓝牙音乐，LED 大灯，2 座，2 岁+', url:'https://www.amazon.com/dp/B0CY5HRL3K'},
  {id:'mmjeep12-blue', cat:'骑乘玩具', name:'Miniature Motors 12V 4x4 Jeep 儿童电动车 · Blue', w:99.1,d:62,h:62, price:116.99, caNA:true, color:'#2e5fa3', col2:'#202226', kind:'rideOn', model:'mmjeep12', note:'双 35W 电机，2-3.5MPH，遥控 + 蓝牙音乐，LED 大灯，2 座，2 岁+', url:'https://www.amazon.com/dp/B0CY5HRL3K'},
  {id:'mmjeep12-red', cat:'骑乘玩具', name:'Miniature Motors 12V 4x4 Jeep 儿童电动车 · Red', w:99.1,d:62,h:62, price:129.99, caNA:true, color:'#c22a3a', col2:'#202226', kind:'rideOn', model:'mmjeep12', note:'双 35W 电机，2-3.5MPH，遥控 + 蓝牙音乐，LED 大灯，2 座，2 岁+', url:'https://www.amazon.com/dp/B0CY5HRL3K'},
@@ -8885,6 +8888,86 @@ MODELS['strider12'] = (C) => {
    前面 90×52.7 球门口（蓝布立柱+上沿带，z=0 面），白色横杆 y≈47.7（轴 x，两端白布套+蓝端帽+挂扣），
    整面白色斜网从横杆落到后底沿（z=-52.7），两侧三角网，蓝布斜边带，蓝色布底。立起来可当储物箱。
    轴约定：宽 90.2 沿 x，深 52.7 沿 z */
+MODELS['tramp60'] = (C) => {
+  /* FFFROG 60" 室内儿童蹦床：官方 140×140×170cm（环 Ø140 为占地）
+   · 6 弯腿 + 黑脚垫 → 铬环 Ø135(y26) → 蓝护垫环 Ø124(y33) → 黑弹面 Ø106(y40)
+   · 6 网柱 + 顶环 y112 + 白网(前开口) + 深红拉链门拱
+   · 顶方框 y166-170 + 蓝色高低杠 y163（最高档）
+   · 附件：左红沙包(吊于前框)、中双吊环、右吊床、后篮球筐、6 沙滩球 */
+  const c = C.cm, T = C.THREE;
+  const chrome = C.m.chrome || C.M('#c6cad0', {metal:.94, rough:.14, envI:.95});
+  const black  = C.m.black  || C.M('#24262a', {metal:.5, rough:.44, envI:.5});
+  const padM   = C.M(C.col,  {fabric:true, rough:.9});
+  const postM  = C.M(C.col2, {plastic:true, rough:.55});
+  const matM   = C.M('#1c1e20', {fabric:true, rough:.95});
+  const gateM  = C.M('#4a2424', {plastic:true, rough:.6});
+  const bagM   = C.M('#d8442c', {leather:true});
+  const ringM  = C.M('#e8a020', {plastic:true});
+  const hammM  = C.M('#d09030', {fabric:true, rough:.9});
+  const hoopM  = C.M('#e06820', {plastic:true});
+  /* 6 弯腿：竖管 + 斜管 + 黑脚垫（脚垫 R55 在环内） */
+  for(const a of [0,60,120,180,240,300]){
+    const lg = new T.Group(); lg.rotation.y = -a*Math.PI/180; C.g.add(lg);
+    const leg=(mm,px,py)=>{ mm.castShadow=mm.receiveShadow=true; mm.position.set(px,py,0); lg.add(mm); };
+    leg(new T.Mesh(new T.CylinderGeometry(c(5),c(5),c(1.5),16), black), c(55), c(0.75));
+    leg(new T.Mesh(new T.CylinderGeometry(c(2),c(2),c(12),10), chrome), c(55), c(6));
+    const dc = new T.Mesh(new T.CylinderGeometry(c(2),c(2),c(17.6),10), chrome);
+    dc.rotation.z = -Math.atan2(10,14); leg(dc, c(60), c(19));
+  }
+  C.torus(c(67.5), c(2.5), chrome, 0, c(26), 0, Math.PI/2);            // 铬环框架
+  C.torus(c(62), c(7), padM, 0, c(33), 0, Math.PI/2);                  // 蓝护垫环
+  C.cyl(c(53), c(53), c(1.2), matM, 0, c(39.5), 0);         // 黑色弹面
+  for(const a of [68,112,172,232,292,332]){                 // 6 网柱（门前一对在 68/112）
+    const r = a*Math.PI/180;
+    C.cyl(c(3), c(3), c(72), postM, c(62)*Math.cos(r), c(40), c(62)*Math.sin(r));
+  }
+  C.torus(c(62), c(3.5), postM, 0, c(112), 0, Math.PI/2);              // 顶环（网柱顶）
+  /* 白网：开口圆柱，前部 ±22° 让出门口 */
+  const netM = C.M('#eef2f5', {fabric:true, rough:.9});
+  netM.map = meshWeaveTexture(); netM.transparent = true; netM.opacity = .5;
+  netM.side = T.DoubleSide; netM.userData.noNrm = true;
+  const net = new T.Mesh(new T.CylinderGeometry(c(61.5), c(61.5), c(75.5), 48, 1, true,
+    T.MathUtils.degToRad(22), T.MathUtils.degToRad(316)), netM);
+  net.castShadow = false; net.receiveShadow = false; net.position.set(0, c(77.75), 0); C.g.add(net);
+  /* 拉链门拱：深红 */
+  C.box(c(1.8), c(48), c(1.8), gateM, -c(22), c(40), c(59));
+  C.box(c(1.8), c(48), c(1.8), gateM,  c(22), c(40), c(59));
+  const arch = new T.Mesh(new T.TorusGeometry(c(22), c(1.5), 8, 24, Math.PI), gateM);
+  arch.castShadow = arch.receiveShadow = true; arch.position.set(0, c(88), c(59)); C.g.add(arch);
+  /* 顶方框（铬） */
+  C.box(c(132), c(4.5), c(4.5), chrome, 0, c(165.5), -c(66));
+  C.box(c(132), c(4.5), c(4.5), chrome, 0, c(165.5),  c(66));
+  C.box(c(4.5), c(58), c(132), chrome, -c(66), c(112), 0);
+  C.box(c(4.5), c(58), c(132), chrome,  c(66), c(112), 0);
+  /* 高低杠（蓝色泡沫 + 铬挂钩）：最高档 y163 */
+  C.tube(c(126), c(3), postM, 0, c(163), 0, 'x');
+  C.tube(c(9), c(2), chrome, -c(61.5), c(163), 0, 'x');
+  C.tube(c(9), c(2), chrome,  c(61.5), c(163), 0, 'x');
+  /* 吊环 ×2（橙圈 + 黑带，吊于高低杠） */
+  C.torus(c(9), c(2.2), ringM, -c(8), c(128), 0);
+  C.torus(c(9), c(2.2), ringM,  c(8), c(128), 0);
+  for(const sx of [-12,-4,4,12]) C.box(c(1.4), c(36), c(1.4), black, c(sx), c(130), 0);
+  /* 沙包（红皮革 + 黑环带，4 条黑带吊于前框） */
+  C.cyl(c(12.5), c(12.5), c(55), bagM, -c(50), c(95), c(58));
+  C.cyl(c(12.7), c(12.7), c(4), black, -c(50), c(115), c(58));
+  for(const bx of [-56.5,-43.5]) for(const bz of [58,64]) C.box(c(1.5), c(17.5), c(1.5), black, c(bx), c(149), c(bz));
+  /* 吊床（黄布斜挂于右侧栏与自身左端） */
+  const hammock = C.box(c(40), c(3), c(38), hammM, 0, 0, 0);
+  hammock.position.set(c(45), c(140), c(30)); hammock.rotation.z = -25*Math.PI/180;
+  for(const zz of [15,45]) for(const [hx,hy] of [[64,150],[28,135]])
+    C.box(c(2), c(16.5), c(2), black, c(hx), c(hy), c(zz));
+  /* 篮球筐（挂于后网） */
+  C.torus(c(10), c(1.8), hoopM, c(25), c(114), -c(55), Math.PI/2);
+  /* 6 个沙滩球 */
+  const balls = [['#60c848',-25,25],['#3890e0',0,35],['#8048c8',18,10],
+                 ['#e0c020',-8,-5],['#e878a0',30,-20],['#e8e8e8',-35,-15]];
+  for(const [col,bx,bz] of balls) C.sph(c(5.5), C.M(col, {plastic:true}), c(bx), c(46.2), c(bz));
+  /* 水平重心归零 */
+  C.g.updateMatrixWorld(true);
+  const bb = new T.Box3().setFromObject(C.g);
+  const off = new T.Vector3(); bb.getCenter(off);
+  for(const ch of C.g.children){ ch.position.x -= off.x; ch.position.z -= off.z; }
+};
 MODELS['sportslig'] = (C) => {
   const cm=C.cm, T=C.THREE;
   const fab  = C.M(C.col, {fabric:true, rough:.85, envI:.15});
