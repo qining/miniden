@@ -147,8 +147,8 @@ open('/tmp/p.js','w').write(m.group(1))" && node --check /tmp/p.js
 
 # 关 2+3：单件体检（包围盒/填充率/重心/贴地/材质/缩略图）+ 隔离渲染出图
 python3 .claude/skills/add-catalog-item/check-item.py <条目id>
-# → 输出两张 PNG：主 3/4 前视角 + 侧视角（check_<id>.png / check_<id>_side.png）
-#   两张都要 Read，对照 work/ref/ 实拍图比
+# → 输出两张 PNG：主 3/4 前视角 + 侧视角（work/ref/check_<id>.png / check_<id>_side.png）
+#   出图后**立刻**走下面的「并排目检」，不要攒到最后一并看
 
 # 关 4：全量回归
 python3 .claude/skills/add-catalog-item/check-item.py --regress
@@ -158,10 +158,18 @@ python3 .claude/skills/add-catalog-item/check-item.py --regress
 `catalog-all-build` / `catalog-all-textured` / `catalog-all-normalmapped` /
 `catalog-tri-avg` / `catalog-tri-max` / `thumb-renders`。
 
-**对着实拍图逐项比（至少两个角度，硬条件）**：部件数量 → 形状 → 相对位置朝向 → 比例 → 颜色 → 材质 → 特征细节（把手/缝线/螺丝/logo/脚垫）。
+**并排目检（硬条件，不能跳过）**：体检出图后，在**同一会话里按顺序 Read**，让图直接列在终端里，人和 agent 看的是同一组帧：
+
+1. 先 Read 参考实拍（正面 + 侧面/3-4 视角，`work/ref/<名>/v*.jpg`）——建立正确印象
+2. 再 Read 渲染图 `work/ref/check_<id>.png` 和 `check_<id>_side.png`
+3. 对着刚才看的实拍逐项比对，**边看边说哪里对哪里不对**，不要只说「看起来还行」
+
+逐项比（至少两个角度）：部件数量 → 形状 → 相对位置朝向 → 比例 → 颜色 → 材质 → 特征细节（把手/缝线/螺丝/logo/脚垫）。
 - 主视角图对**正面实拍**；侧视角图对**侧面/3-4 实拍**。两视角都要过，只对一个角度不算完。
 - 侧面轮廓（腿距、悬挑、背部结构、深度比例）只有侧视角才露馅，单角度最容易在这栽。
+- 拿不准就 `sips -z` 放大裁剪重看（小裁剪会误判，扩大范围再看）。
 - 参考图不够两个角度时，先补抓一张侧面/剖切实拍再对照。
+- **攒到最后一起看 = 放过比例错误**（T 脚 90° 就是只靠数字体检过、用户目检才抓到的）；每件出图后立刻并排看。
 
 给新家具补一条常驻断言进 `work/t_3d.html`（参考现有的 `lunix-*` 那组），
 然后按 `AGENTS.md` §3 重新生成三个测试台。
