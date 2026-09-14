@@ -11,7 +11,8 @@
     --danger:#e05656;
   }
   *{box-sizing:border-box; margin:0; padding:0;}
-  html,body{height:100%; overflow:hidden;}
+  html,body{height:100%; overflow:hidden; user-select:none; -webkit-user-select:none;}
+  input,textarea{user-select:text; -webkit-user-select:text;}
   body{
     font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
     background:var(--bg); color:var(--text); display:flex; flex-direction:column;
@@ -5597,12 +5598,13 @@ MODELS['idasen-desk'] = (C) => {
     // 上部 T 形托板
     C.rb(cm(6.0), cm(4.2), cm(46), cm(0.5), frame, x, yTop-cm(4.2), 0, 2);
   }
-  // 连接横梁（两立柱之间，靠后）
-  C.rb(legX*2-cm(9), cm(5.0), cm(4.6), cm(0.5), frame, 0, yTop-cm(11), -D/2+cm(11), 2);
-  // 桌下线槽 + 控制面板
+  // 连接横梁（穿过两立柱，中深位）
+  C.rb(legX*2, cm(5.0), cm(4.6), cm(0.5), frame, 0, yTop-cm(11), 0, 2);
+  // 桌下线槽（悬于台面下 ~9.5cm，两条吊带连台面）+ 控制面板（挂台面前沿下）
   C.rb(W*0.34, cm(6.5), cm(7.5), cm(0.5), frame, 0, yTop-cm(9.5), -D/2+cm(5.5), 2);
+  for(const sx of [-1,1]) C.rb(cm(1.5), cm(10), cm(5.0), cm(0.3), frame, sx*W*0.16, yTop-cm(10), -D/2+cm(5.5), 2);
   const panel=C.M(0x121316,{rough:.4});
-  C.rb(cm(11), cm(2.2), cm(4.0), cm(0.3), panel, W/2-cm(26), yTop-cm(2.4), D/2-cm(2.6), 2);
+  C.rb(cm(11), cm(2.2), cm(4.0), cm(0.3), panel, W/2-cm(26), yTop-cm(2.2), D/2-cm(2.6), 2);
 };
 MODELS['sniglar-crib'] = (C) => {
   const cm = C.cm;
@@ -5775,9 +5777,15 @@ MODELS['figgy'] = (C) => {
   const zip  = C.M(acc.clone().multiplyScalar(.62), {rough:.45, metal:.20});
   const tagW = C.M(0xf2f0e8, {rough:.85});
   const tagG = C.M(0x3d7a4b, {rough:.85});
-  const S = (w, h, d, r, mat, x, y, z, seg) => {
-    const rr = Math.max(0.006, Math.min(r, w/4 - 0.002, h/4 - 0.002, d/2 - 0.004));
-    return C.rb(Math.max(w - 2*rr, 0.01), Math.max(h - 2*rr, 0.01), d, rr, mat, x, y + rr, z, seg);
+  /* 泡棉块：俯视圆角平板（顶/底面平整，y=底面）——不用 bevel，尺寸精确 */
+  const S = (w, h, d, r, mat, x, y, z) => {
+    r = Math.max(0.006, Math.min(r, w/2 - 0.002, d/2 - 0.002));
+    const N = 6, pts = [];
+    for(let i = 0; i < N*4; i++){
+      const a = i*Math.PI/2/N;
+      pts.push([(w/2-r)*(Math.cos(a)>=0?1:-1) + r*Math.cos(a), (d/2-r)*(Math.sin(a)>=0?1:-1) + r*Math.sin(a)]);
+    }
+    return C.ext(pts, h, mat, x, y + h, z, 'xz');
   };
   const pad = C.cm(0.6);
   const grip = (fx, fy, fz, dir) => {
@@ -7238,35 +7246,39 @@ MODELS['pinntorp'] = (C) => {
 
 /* GLADOM 托盘桌 Ø45×53：尺寸图 work/ref/gladom_33.png——圆盘带盘沿、5 根细圆腿、
    离地 ~10 五角星交叉横撑（图里可见）；腿径/撑径/盘沿高比例估计。 */
+/* GLADOM 托盘桌 Ø45×53：v05 实拍结构（ref: work/ref/ctables/gladom_*）——
+   浅盘托盘（盘底+立沿）+ 4 圆管腿 + 底部方形框撑 + 两根对角撑（近地交叉）。 */
 MODELS['gladom'] = (C) => {
   const cm=C.cm, T=C.THREE;
-  const W=C.w, D=C.d, H=C.h;
+  const H=C.h, R=C.w/2;
   const M1 = C.M(C.col, {metal:.85, rough:.4, envI:.85});
-  const R=W/2, TOP_T=cm(2.5), legR=cm(1.25), brR=cm(0.7), lr=R-cm(3);
-  C.cyl(R, R, TOP_T, M1, 0, H-TOP_T, 0, 40);
-  C.torus(R-cm(1), cm(1.2), M1, 0, H-cm(0.8), 0, Math.PI/2);   // 水平盘沿（不转是竖环！）
-  const n=5, ang=i=>-Math.PI/2+i*2*Math.PI/n;
-  for(let i=0;i<n;i++){
-    // 外层 Group 只转竖轴定方位，mesh 只单轴外撇（不叠欧拉角）
-    const g=new T.Group(); g.rotation.y=-ang(i);   // 局部 +x 对准该腿的外撇方向
-    const m=new T.Mesh(new T.CylinderGeometry(legR, legR*1.15, H-TOP_T-cm(0.5), 10), M1);
-    m.position.set(lr, (H-TOP_T-cm(0.5))/2, 0); m.rotation.z=-0.03;
-    m.castShadow=m.receiveShadow=true; g.add(m); C.g.add(g);
-  }
-  for(let i=0;i<n;i++){   // 五角星横撑：连隔一根的腿（Group 转竖轴定向，mesh 单轴倒平）
-    const a=ang(i), b=ang((i+2)%n), y=cm(10);
-    const ax=Math.cos(a)*lr, az=Math.sin(a)*lr, bx=Math.cos(b)*lr, bz=Math.sin(b)*lr;
-    const dx=bx-ax, dz=bz-az, len=Math.sqrt(dx*dx+dz*dz);
-    const gg=new T.Group();
-    gg.position.set((ax+bx)/2, y, (az+bz)/2); gg.rotation.y=Math.atan2(dx, dz);
+  // 浅盘托盘：盘底 Ø44 (50.5→51) + 立沿 Ø45 (51→53)
+  C.cyl(R-cm(0.5), R-cm(0.5), cm(0.5), M1, 0, cm(50.5), 0, 40);
+  const rim=new T.Mesh(new T.CylinderGeometry(R, R, cm(2), 40, 1, true), M1);
+  rim.material=M1; rim.position.y=cm(52); rim.castShadow=rim.receiveShadow=true; C.g.add(rim);
+  // 4 圆管腿 Ø2 (0→51) @ 半径 20.5（lr 已是英尺，不要再套 cm）
+  M1.side = T.DoubleSide;
+  const lr=R-cm(2);
+  const ang=i=>Math.PI/4+i*Math.PI/2;
+  for(let i=0;i<4;i++) C.cyl(cm(1), cm(1), cm(51), M1, lr*Math.cos(ang(i)), 0, lr*Math.sin(ang(i)), 12);
+  // 底部框撑（4 条边）+ 2 根对角撑，y≈4.5（Group 转竖轴定向，capsule 轴线 Y 转局部 Z）
+  const brR=cm(0.9), ch=2*lr*Math.SQRT1_2, cc=lr*Math.SQRT1_2;
+  const bar=(len, x, z, theta)=>{
+    const gg=new T.Group(); gg.position.set(x, cm(4.5), z); gg.rotation.y=theta;
     const m=new T.Mesh(new T.CapsuleGeometry(brR, Math.max(0.005, len-2*brR), 4, 10), M1);
-    m.rotation.x=Math.PI/2; m.castShadow=m.receiveShadow=true;
-    gg.add(m); C.g.add(gg);
+    m.rotation.x = Math.PI/2;
+    m.castShadow=m.receiveShadow=true; gg.add(m); C.g.add(gg);
+  };
+  for(let i=0;i<4;i++){
+    const a=ang(i)+Math.PI/4;
+    bar(ch, cc*Math.cos(a), cc*Math.sin(a), -a);   // 弦向边撑
   }
+  bar(2*lr, 0, 0, Math.PI/4);      // 对角撑 1（45° 线）
+  bar(2*lr, 0, 0, 3*Math.PI/4);    // 对角撑 2（135° 线）
   C.g.updateMatrixWorld(true);
   const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3();
   bb.getCenter(off);
-  for(const ch of C.g.children){ ch.position.x-=off.x; ch.position.z-=off.z; }
+  for(const ch2 of C.g.children){ ch2.position.x-=off.x; ch2.position.z-=off.z; }
 };
 
 /* MORABO 三人沙发 206×92×81：尺寸图 v05_0815815（扶手顶 67/座高 47/底座离地 16/背垫宽 61×2）；
@@ -7291,12 +7303,12 @@ MODELS['morabo'] = (C) => {
     const c = C.rb(cm(61), cm(30), cm(20), cm(5), M1, 0, 0, 0, 3);
     C.g.remove(c);
     const g = new T.Group();
-    g.position.set(sx*cm(31), cm(50), -cm(11)); g.rotation.x=0.05;   // 单轴前倾（朝 +z）
+    g.position.set(sx*cm(31), cm(47.5), -cm(11)); g.rotation.x=0.05;   // 单轴前倾（朝 +z），底部坐于座垫顶面
     c.position.set(0, cm(15), 0);
     g.add(c);
     for(const bx of [-cm(18),0,cm(18)]) for(const by of [-cm(9.5),0,cm(9.5)]){
       const b = new T.Mesh(new T.SphereGeometry(cm(1.0), 10, 8), M1);
-      b.position.set(bx, by, cm(9.5)); b.castShadow=b.receiveShadow=true;
+      b.position.set(bx, cm(15) + by, cm(9.8)); b.castShadow=b.receiveShadow=true;
       g.add(b);
     }
     C.g.add(g);
@@ -7566,14 +7578,14 @@ MODELS['bedmetal'] = (C) => {
   // 围框：4 根管 5 宽×12 高，3→15 + 4 角脚
   C.box(cm(5), cm(12), D-cm(6), M1, -(W/2-cm(2.5)), cm(3), 0);
   C.box(cm(5), cm(12), D-cm(6), M1,  (W/2-cm(2.5)), cm(3), 0);
-  C.box(W-cm(16), cm(12), cm(5), M1, 0, cm(3), -(D/2-cm(2.5)));
-  C.box(W-cm(16), cm(12), cm(5), M1, 0, cm(3),  (D/2-cm(2.5)));
+  C.box(W, cm(12), cm(5), M1, 0, cm(3), -(D/2-cm(2.5)));
+  C.box(W, cm(12), cm(5), M1, 0, cm(3),  (D/2-cm(2.5)));
   for(const [fx,fz] of [[-1,-1],[1,-1],[-1,1],[1,1]])
     C.box(cm(7), cm(3), cm(7), M1, fx*(W/2-cm(3.5)), 0, fz*(D/2-cm(3.5)));
   // 排骨架 ×8，15→17
   for(let i=0;i<8;i++){
     const zz = -D/2+cm(14) + i*(D-cm(28))/7;
-    C.box(W-cm(20), cm(2), cm(4), M1, 0, cm(15), zz);
+    C.box(W, cm(2), cm(4), M1, 0, cm(15), zz);
   }
   // 床垫 (W-8)×27×(D-8)，17→44
   C.rb(W-cm(8), cm(27), D-cm(8), cm(4), M2, 0, cm(17), 0, 4);
@@ -7806,16 +7818,15 @@ MODELS['besta120'] = (C) => {
 MODELS['lack_tv'] = (C) => {
   const cm=C.cm, T=C.THREE;
   const M1 = C.M(C.col, {rough:.65, envI:.12});
-  // 4 方腿 5×5 (0→10)，四角内缩（v02 方柱腿）
-  for(const [lx,lz] of [[-52.5,-12],[52.5,-12],[-52.5,12],[52.5,12]])
-    C.rb(cm(5), cm(10), cm(5), cm(0.8), M1, cm(lx), 0, cm(lz), 4);
-  // 下搁板 117×2.5×33 (16→18.5，图标搁板 16)
-  C.rb(cm(117), cm(2.5), cm(33), cm(0.4), M1, 0, cm(16), 0, 3);
-  // 厚顶 120×4×35 (32→36，v03 蜂窝芯外观平板)
-  C.rb(cm(120), cm(4), cm(35), cm(0.8), M1, 0, cm(32), 0, 4);
-  // 顶部后侧穿线孔 Ø4 暗圈（v04 走线）
+  // v05 实拍结构（work/ref/ctables/lack_tv_*）：4 根全高方腿直顶到厚顶板，
+  // 中间两层搁板（下板顶 12.5 / 中板顶 20.5），背部开放，后顶穿线孔。
+  for(const [lx,lz] of [[-56,-12.75],[56,-12.75],[-56,12.75],[56,12.75]])
+    C.rb(cm(5), cm(34), cm(5), cm(0.8), M1, cm(lx), 0, cm(lz), 4);
+  C.rb(cm(114), cm(2), cm(27.5), cm(0.4), M1, 0, cm(10.5), 0, 3);
+  C.rb(cm(114), cm(2), cm(27.5), cm(0.4), M1, 0, cm(18.5), 0, 3);
+  C.rb(cm(120), cm(2), cm(33.5), cm(0.5), M1, 0, cm(34), 0, 4);
   const holeM = C.M('#17181b', {flat:true, rough:.9});
-  C.cyl(cm(2), cm(2), cm(0.4), holeM, 0, cm(35.8), -cm(12), 28);
+  C.cyl(cm(2), cm(2), cm(0.3), holeM, 0, cm(35.8), -cm(13), 28);
   C.g.updateMatrixWorld(true);
   const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3();
   bb.getCenter(off);
@@ -8098,12 +8109,12 @@ function alexUnit(C, ox){
     C.box(cm(2.5), cm(1.5), cm(2.5), M1, cm(ox+lx), 0, cm(lz));
   C.rb(cm(36), cm(65.5), cm(57), cm(0.5), M1, cm(ox), cm(1.5), 0, 2);
   C.rb(cm(36.5), cm(1), cm(57.5), cm(0.4), M1, cm(ox), cm(67), 0, 2);
-  C.box(cm(36), cm(65.5), cm(1), M1, cm(ox), cm(1.5), -cm(28.5));
+  C.box(cm(36), cm(67), cm(1), M1, cm(ox), 0, -cm(28.5));
   // 5 抽前板 33×12 + 黑缺口拉手
   for(let i=0;i<5;i++){
     const y0 = 3.2 + i*12.7;
     C.rb(cm(33), cm(12.2), cm(1.6), cm(0.5), M1, cm(ox), cm(y0), cm(28.2), 2);
-    C.box(cm(5), cm(1.5), cm(0.5), hM, cm(ox), cm(y0+10.8), cm(29.2));
+    C.box(cm(5), cm(1.5), cm(0.5), hM, cm(ox), cm(y0+10.8), cm(28.9));
   }
 }
 
@@ -8281,58 +8292,63 @@ MODELS['tiphede'] = (C) => {
 };
 
 /* LISTERBY 茶几 140×60×37：v0/v1 实拍（雕塑感圆角台面+板条底架+微撇锥形腿）（brief: tables6.md） */
+/* LISTERBY 140×60×37：v05 实拍结构（ref: work/ref/ctables/listerby_*）——
+   全高圆腿(微收分) + 底部板条架：两根 z 向端梁固定在腿上，板条横跨两端梁，
+   板条顶离地 12.75；大圆角跑道形台面 140×60×2.5。 */
 MODELS['listerby_ct'] = (C) => {
   const cm=C.cm, T=C.THREE;
   const M1 = C.M(C.col, {wood:'beech', rough:.55, envI:.4});
-  // 雕塑感台面 140×60×4.5 (32.5→37) 大圆角
-  C.rb(cm(140), cm(4.5), cm(60), cm(15), M1, 0, cm(32.5), 0, 6);
-  // 板条底架：12 条 (x 向) @ y 12
-  for(let i=0;i<12;i++){
-    const sz = -26.4 + i*4.8;
-    C.box(cm(56), cm(2), cm(1.6), M1, 0, cm(11), cm(sz));
-  }
-  for(const dx of [-27,27]) C.box(cm(3), cm(2), cm(56), M1, cm(dx), cm(11), 0);
-  // 4 微撇锥形腿
-  for(const [lx,lz] of [[-62,-24],[62,-24],[-62,24],[62,24]])
-    C.legT(cm(1.8), cm(1.4), cm(32.5), M1, cm(lx), cm(lz), 0.05);
+  // 4 微收分圆腿 (0→34.5)，内缩 14/10
+  for(const [lx,lz] of [[-56,-20],[56,-20],[-56,20],[56,20]])
+    C.legT(cm(2.2), cm(2.9), cm(34.5), M1, cm(lx), cm(lz), 0.03);
+  // 端梁（z 向，腿位，8.75→10.75，托住板条）
+  for(const dx of [-56,56]) C.box(cm(2.5), cm(2), cm(40), M1, cm(dx), cm(8.75), 0);
+  // 13 条板条 (x 向，10.75→12.75，端头搭在端梁上)
+  for(let i=0;i<13;i++) C.box(cm(113), cm(2), cm(2.6), M1, 0, cm(10.75), cm(-19.5+i*3.3));
+  // 跑道形台面 140×60×2.5 (34.5→37)
+  C.rb(cm(140), cm(2.5), cm(60), cm(28), M1, 0, cm(34.5), 0, 8);
   C.g.updateMatrixWorld(true);
   const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3();
   bb.getCenter(off);
   for(const ch of C.g.children){ ch.position.x-=off.x; ch.position.z-=off.z; }
 };
 
-/* LACK 茶几 118×78×45 与 LACK 边桌 55×55×45：厚顶板+下搁板/方腿（brief: tables6.md） */
-function lackTable(C){
+/* LACK 茶几 118×78×45（官方尺寸图：搁板离地 20 / 顶板离地 41，4 全高方腿）
+   与 LACK 边桌 55×55×45（实拍无下搁板，同框架）（ref: work/ref/ctables/lack_ct_*） */
+function lackTable(C, withShelf){
   const cm=C.cm, T=C.THREE, w=C.w*30.48, d=C.d*30.48;
   const M1 = C.M(C.col, {rough:.55, envI:.25});
-  // 厚顶板 4 (41→45) + 下搁板 2.2 @ y 12
-  C.rb(cm(w), cm(4), cm(d), cm(0.5), M1, 0, cm(41), 0, 3);
-  C.box(cm(w-8), cm(2.2), cm(d-8), M1, 0, cm(12), 0);
-  // 4 方腿 4.5
+  // 4 全高方腿 5×5 (0→41)
   const lx = w/2-3, lz = d/2-3;
   for(const [sx,sz] of [[-1,-1],[1,-1],[-1,1],[1,1]])
-    C.box(cm(4.5), cm(39), cm(4.5), M1, cm(sx*lx), 0, cm(sz*lz));
+    C.box(cm(5), cm(41), cm(5), M1, cm(sx*lx), 0, cm(sz*lz));
+  // 厚顶板 4 (41→45) + 下搁板 2 @ 20（仅茶几）
+  C.rb(cm(w), cm(4), cm(d), cm(0.5), M1, 0, cm(41), 0, 3);
+  if(withShelf) C.box(cm(w-9.5), cm(2), cm(d-9.5), M1, 0, cm(20), 0);
   C.g.updateMatrixWorld(true);
   const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3();
   bb.getCenter(off);
   for(const ch of C.g.children){ ch.position.x-=off.x; ch.position.z-=off.z; }
 }
-MODELS['lack_ct'] = (C) => lackTable(C);
-MODELS['lack_side'] = (C) => lackTable(C);
+MODELS['lack_ct'] = (C) => lackTable(C, true);
+MODELS['lack_side'] = (C) => lackTable(C, false);
 
-/* BORGEBY 圆茶几 Ø70×42：v0 实拍（圆顶+圆环底托+3 腿）（brief: tables6.md） */
+/* BORGEBY 圆茶几 Ø70×42：v05 实拍结构（ref: work/ref/ctables/borgeby_*）——
+   圆顶 + 3 片桨形腿（外侧贴环形底架）+ 环形收纳架（环壁 4→19、底板 4→6）。 */
 MODELS['borgeby'] = (C) => {
   const cm=C.cm, T=C.THREE;
   const M1 = C.M(C.col, {wood:'birch', rough:.5, envI:.4});
   // 圆顶 Ø70×2.5 (39.5→42)
   C.cyl(cm(35), cm(35), cm(2.5), M1, 0, cm(39.5), 0, 32);
-  // 圆环底托：壁 Ø66→62 锥 + 底板
-  C.cyl(cm(32.5), cm(31), cm(6), M1, 0, cm(8), 0, 32);
-  C.cyl(cm(31), cm(31), cm(1), M1, 0, cm(7), 0, 32);
-  // 3 腿微撇 @ 120°
-  for(let i=0;i<3;i++){
-    const a = i*2.094 + 0.52;
-    C.legT(cm(2), cm(1.5), cm(39.5), M1, cm(24*Math.cos(a)), cm(24*Math.sin(a)), 0.05);
+  // 环形收纳架：壁 Ø64 (4→19) + 底板 Ø64 (4→6)
+  C.cyl(cm(32), cm(32), cm(15), M1, 0, cm(4), 0, 40);
+  C.cyl(cm(32), cm(32), cm(2), M1, 0, cm(4), 0, 40);
+  // 3 桨形腿（Group 转竖轴定向，mesh 无复合欧拉角），贴环外壁，0→39.5
+  for(const a of [-Math.PI/2, Math.PI/6, 5*Math.PI/6]){
+    const g=new T.Group(); g.position.set(cm(32.8*Math.cos(a)), 0, cm(32.8*Math.sin(a)));
+    g.rotation.y = -a;
+    const m=C.rb(cm(2.8), cm(39.5), cm(7), cm(1.2), M1, 0, 0, 0, 4); g.remove(m); g.add(m);
+    C.g.add(g);
   }
   C.g.updateMatrixWorld(true);
   const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3();
@@ -8348,19 +8364,19 @@ MODELS['vittsjo_nest'] = (C) => {
     roughness:.05, metalness:.05});
   const GT=(w,d,x,y,z)=>{ const m=new T.Mesh(new T.BoxGeometry(cm(w),cm(0.8),cm(d)),gl);
     m.position.set(cm(x),cm(y),cm(z)); m.castShadow=m.receiveShadow=true; C.g.add(m); };
-  const unit=(W,D,H,cx,cz)=>{
+  const unit=(W,D,H,cx,cz,shelf)=>{
     const px=W/2-1, pz=D/2-1;
     for(const [sx,sz] of [[-1,-1],[1,-1],[-1,1],[1,1]])
       C.rb(cm(2), cm(H-2), cm(2), cm(0.4), st, cm(cx+sx*px), 0, cm(cz+sz*pz), 3);
-    C.box(cm(W-4), cm(2), cm(2), st, cm(cx), cm(H-4), cm(cz+pz-1));
-    C.box(cm(W-4), cm(2), cm(2), st, cm(cx), cm(H-4), cm(cz-pz+1));
-    C.box(cm(2), cm(2), cm(D-4), st, cm(cx+px-1), cm(H-4), cm(cz));
-    C.box(cm(2), cm(2), cm(D-4), st, cm(cx-px+1), cm(H-4), cm(cz));
-    GT(W-2.5, D-2.5, cx, H-1, cz);
-    C.box(cm(W-8), cm(1.5), cm(D-8), st, cm(cx), cm(12), cm(cz));
+    C.box(cm(W), cm(2), cm(2), st, cm(cx), cm(H-4), cm(cz+pz-1));
+    C.box(cm(W), cm(2), cm(2), st, cm(cx), cm(H-4), cm(cz-pz-1));
+    C.box(cm(2), cm(2), cm(D), st, cm(cx+px-1), cm(H-4), cm(cz));
+    C.box(cm(2), cm(2), cm(D), st, cm(cx-px+1), cm(H-4), cm(cz));
+    GT(W-2.5, D-2.5, cx, H-1.6, cz);
+    if(shelf) C.box(cm(W-1), cm(1.5), cm(D-1), st, cm(cx), cm(12), cm(cz));
   };
-  unit(60, 50, 50, -15, 0);
-  unit(30, 40, 42, 25, 0);
+  unit(60, 50, 50, -15, 0, true);   // 大几带下搁板
+  unit(30, 40, 42, 25, -2, false);  // 小几嵌套（实拍无搁板）
   C.g.updateMatrixWorld(true);
   const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3();
   bb.getCenter(off);
@@ -8503,39 +8519,40 @@ MODELS['ekorre'] = (C) => {
   // 摇轨 ×2（∪ 形弧，长 70，中点近地，端头翘起）
   const rock=seg2pts([
     ['L',[-35,9.5]],
-    ['Q',[-35,9.5],[-17,1.0],[0,0.6]],
-    ['Q',[0,0.6],[17,1.0],[35,9.5]],
+    ['Q',[-35,9.5],[-17,0.6],[0,0.2]],
+    ['Q',[0,0.2],[17,0.6],[35,9.5]],
     ['L',[35,13.5]],
-    ['Q',[35,13.5],[17,5.0],[0,4.6]],
-    ['Q',[0,4.6],[-17,5.0],[-35,13.5]],
+    ['Q',[35,13.5],[17,4.6],[0,4.2]],
+    ['Q',[0,4.2],[-17,4.6],[-35,13.5]],
   ]);
   ex(rock, cm(4.5), wood, 0, 0, cm(10));
   ex(rock, cm(4.5), wood, 0, 0, -cm(14.5));
-  // 黑胶脚垫 ×4（摇轨端头下方）
+  // 黑胶脚垫 ×4（摇轨端头下缘，略探出端头）
   for(const sx of [-1,1]) for(const sz of [-1,1])
-    C.box(cm(4.5), cm(2.5), cm(4.5), blk, sx*cm(33.75), cm(7), sz*cm(12.25));
-  // 下横梁（连接两摇轨，腿底坐于其上）
-  C.box(cm(4.5), cm(4.5), cm(20), wood, cm(-8), cm(5), 0);
-  // 坐板（延伸到尾部承托靠背）+ 半圆靠背
-  C.rb(cm(30), cm(3), cm(20), cm(1.2), red, cm(-9), cm(26.5), 0);
+    C.box(cm(4.5), cm(2.5), cm(4.5), blk, sx*cm(33.75), cm(7), sz*cm(11.75));
+  // 下横梁 ×2（两端贯入摇轨，前后腿底坐于其上）
+  C.box(cm(8), cm(4.5), cm(25), wood, cm(13), cm(5), 0);
+  C.box(cm(6), cm(4.5), cm(25), wood, cm(-18.5), cm(5), 0);
+  // 坐板（两端贯入侧板）+ 半圆靠背（直径≈座深）
+  C.rb(cm(30), cm(3), cm(26.4), cm(1.2), red, cm(-9), cm(26.5), 0);
   const bs=[]; for(let i=0;i<=12;i++){ const a=Math.PI*i/12;
-    bs.push([7.5*Math.cos(a), 29.5+7.5*Math.sin(a)]); }
-  ex(bs, cm(2.5), red, cm(-24.5), 0, 0, 'zy');
+    bs.push([8.5*Math.cos(a), 27+8.5*Math.sin(a)]); }
+  ex(bs, cm(2.5), red, cm(-22.5), 0, 0, 'zy');
   // 横向把手（穿过颈后）
   C.tube(cm(27), cm(1.6), wood, cm(9), cm(39.5), 0, 'z');
   // 鹿角 ×2（基座条 + 三指，只绕竖轴转，前倾 70° / 后倾 110°）
   const ant=(z,ang)=>{ const grp=new T.Group(); C.g.add(grp);
     const addG=(m)=>{ m.castShadow=m.receiveShadow=true; grp.add(m); };
-    const b=new T.Mesh(new T.BoxGeometry(cm(5),cm(2.4),cm(4.4)), wood);
-    b.position.set(cm(2.5),cm(1.2),0); addG(b);
+    const b=new T.Mesh(new T.BoxGeometry(cm(12),cm(2.4),cm(4.4)), wood);
+    b.position.set(cm(6),cm(1.2),0); addG(b);   // 基座条加长，三指嵌入条内
     for(const fy of [-1.4,0,1.4]){
       const f=new T.Mesh(new T.CapsuleGeometry(cm(1.1),cm(3.6),4,12), wood);
       f.rotation.z=Math.PI/2; f.position.set(cm(8.1),cm(2.4),cm(fy)); addG(f); }
-    grp.position.set(cm(19), cm(41.5), cm(z)); grp.rotation.z=ang; };
-  ant(cm(10.8), 70*Math.PI/180);
-  ant(-cm(10.8), 110*Math.PI/180);
-  // 口部吊环（挂在口孔下）
-  C.torus(cm(2.2), cm(0.45), blk, cm(33.5), cm(20), 0);
+    grp.position.set(cm(19), cm(40), z); grp.rotation.z=ang; }   // z 已是英尺;
+  ant(cm(11.5), 70*Math.PI/180);
+  ant(-cm(11.5), 110*Math.PI/180);
+  // 口部吊环（挂在口孔下，贴前侧板）
+  C.torus(cm(2.2), cm(0.45), blk, cm(33.5), cm(21.9), cm(12.9));
   // 水平重心归零（2D 图例/碰撞以占地中心为原点）
   C.g.updateMatrixWorld(true);
   const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3(); bb.getCenter(off);
@@ -8574,8 +8591,8 @@ MODELS['hape-horse'] = (C) => {
     ['L',[-24,25]],
     ['Q',[-24,25],[-28,22.5],[-29.5,17]],
     ['Q',[-29.5,17],[-31.5,10],[-33.8,5.5]],
-    ['Q',[-33.8,5.5],[-24,1.2],[-8,0.4]],
-    ['Q',[-8,0.4],[6,0.4],[20,1.8]],
+    ['Q',[-33.8,5.5],[-24,0.8],[-8,0]],
+    ['Q',[-8,0],[6,0],[20,1.8]],
     ['Q',[20,1.8],[26,3.5],[27.5,6]],
     ['Q',[27.5,6],[27,9],[25,13]],
     ['Q',[25,13],[23,17],[22,20]],
@@ -8604,17 +8621,20 @@ MODELS['hape-horse'] = (C) => {
   ex(mOut.concat(mIn), cm(1.8), red, 0, 0, -cm(14.25));
   // 黑珠子眼睛
   for(const sz of [-1,1]) C.sph(cm(1.1), blk, cm(25.5), cm(38.5), sz*cm(13));
-  // 红色座板（延伸到尾部承托靠背）+ 半圆木质靠背
-  C.rb(cm(26), cm(1.6), cm(24), cm(0.8), red, cm(-9), cm(25), 0);
+  // 红色座板（两端插入侧板）+ 半圆木质靠背
+  C.rb(cm(26), cm(1.6), cm(27), cm(0.8), red, cm(-9), cm(25), 0);
+  // 半圆木质靠背（坐在座板后缘，宽度≈座深）
   const bs=[]; for(let i=0;i<=12;i++){ const a=Math.PI*i/12;
-    bs.push([7.5*Math.cos(a), 26.6+7.5*Math.sin(a)]); }
+    bs.push([10*Math.cos(a), 26.6+10*Math.sin(a)]); }
   ex(bs, cm(1.8), wood, cm(-21.5), 0, 0, 'zy');
-  // 横向把手（架在靠背顶上）+ 端头圆钮
-  C.tube(cm(25), cm(1.5), wood, cm(-21.5), cm(34.4), 0, 'z');
-  for(const sz of [-1,1]) C.knob(cm(2), wood, cm(-21.5), cm(34.4), sz*cm(12.2));
-  // 座下两根横梁（透过镂空可见）
-  C.tube(cm(20), cm(1.1), wood, cm(8), cm(17), 0, 'z');
-  C.tube(cm(20), cm(1.1), wood, cm(-17), cm(17), 0, 'z');
+  // 颈部握杆 ×2（从两侧板颈处向外伸出，孩子握持位）+ 端头圆钮
+  for(const sz of [-1,1]){
+    C.tube(cm(11.5), cm(1.5), wood, cm(10), cm(40), sz*cm(15.75), 'z');
+    C.knob(cm(1.6), wood, cm(10), cm(40.5), sz*cm(21));
+  }
+  // 座下竖直木条 ×4（每侧板前后各一，从座板下缘垂到镂空区）
+  for(const sz of [-1,1]) for(const xc of [-1,-19])
+    C.box(cm(2.4), cm(13.5), cm(0.8), wood, cm(xc), cm(11.5), sz*cm(13.2));
   // 水平重心归零
   C.g.updateMatrixWorld(true);
   const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3(); bb.getCenter(off);

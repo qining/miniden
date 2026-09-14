@@ -5598,12 +5598,13 @@ MODELS['idasen-desk'] = (C) => {
     // 上部 T 形托板
     C.rb(cm(6.0), cm(4.2), cm(46), cm(0.5), frame, x, yTop-cm(4.2), 0, 2);
   }
-  // 连接横梁（两立柱之间，靠后）
-  C.rb(legX*2-cm(9), cm(5.0), cm(4.6), cm(0.5), frame, 0, yTop-cm(11), -D/2+cm(11), 2);
-  // 桌下线槽 + 控制面板
+  // 连接横梁（穿过两立柱，中深位）
+  C.rb(legX*2, cm(5.0), cm(4.6), cm(0.5), frame, 0, yTop-cm(11), 0, 2);
+  // 桌下线槽（悬于台面下 ~9.5cm，两条吊带连台面）+ 控制面板（挂台面前沿下）
   C.rb(W*0.34, cm(6.5), cm(7.5), cm(0.5), frame, 0, yTop-cm(9.5), -D/2+cm(5.5), 2);
+  for(const sx of [-1,1]) C.rb(cm(1.5), cm(10), cm(5.0), cm(0.3), frame, sx*W*0.16, yTop-cm(10), -D/2+cm(5.5), 2);
   const panel=C.M(0x121316,{rough:.4});
-  C.rb(cm(11), cm(2.2), cm(4.0), cm(0.3), panel, W/2-cm(26), yTop-cm(2.4), D/2-cm(2.6), 2);
+  C.rb(cm(11), cm(2.2), cm(4.0), cm(0.3), panel, W/2-cm(26), yTop-cm(2.2), D/2-cm(2.6), 2);
 };
 MODELS['sniglar-crib'] = (C) => {
   const cm = C.cm;
@@ -5776,9 +5777,15 @@ MODELS['figgy'] = (C) => {
   const zip  = C.M(acc.clone().multiplyScalar(.62), {rough:.45, metal:.20});
   const tagW = C.M(0xf2f0e8, {rough:.85});
   const tagG = C.M(0x3d7a4b, {rough:.85});
-  const S = (w, h, d, r, mat, x, y, z, seg) => {
-    const rr = Math.max(0.006, Math.min(r, w/4 - 0.002, h/4 - 0.002, d/2 - 0.004));
-    return C.rb(Math.max(w - 2*rr, 0.01), Math.max(h - 2*rr, 0.01), d, rr, mat, x, y + rr, z, seg);
+  /* 泡棉块：俯视圆角平板（顶/底面平整，y=底面）——不用 bevel，尺寸精确 */
+  const S = (w, h, d, r, mat, x, y, z) => {
+    r = Math.max(0.006, Math.min(r, w/2 - 0.002, d/2 - 0.002));
+    const N = 6, pts = [];
+    for(let i = 0; i < N*4; i++){
+      const a = i*Math.PI/2/N;
+      pts.push([(w/2-r)*(Math.cos(a)>=0?1:-1) + r*Math.cos(a), (d/2-r)*(Math.sin(a)>=0?1:-1) + r*Math.sin(a)]);
+    }
+    return C.ext(pts, h, mat, x, y + h, z, 'xz');
   };
   const pad = C.cm(0.6);
   const grip = (fx, fy, fz, dir) => {
@@ -7296,12 +7303,12 @@ MODELS['morabo'] = (C) => {
     const c = C.rb(cm(61), cm(30), cm(20), cm(5), M1, 0, 0, 0, 3);
     C.g.remove(c);
     const g = new T.Group();
-    g.position.set(sx*cm(31), cm(50), -cm(11)); g.rotation.x=0.05;   // 单轴前倾（朝 +z）
+    g.position.set(sx*cm(31), cm(47.5), -cm(11)); g.rotation.x=0.05;   // 单轴前倾（朝 +z），底部坐于座垫顶面
     c.position.set(0, cm(15), 0);
     g.add(c);
     for(const bx of [-cm(18),0,cm(18)]) for(const by of [-cm(9.5),0,cm(9.5)]){
       const b = new T.Mesh(new T.SphereGeometry(cm(1.0), 10, 8), M1);
-      b.position.set(bx, by, cm(9.5)); b.castShadow=b.receiveShadow=true;
+      b.position.set(bx, cm(15) + by, cm(9.8)); b.castShadow=b.receiveShadow=true;
       g.add(b);
     }
     C.g.add(g);
@@ -7571,14 +7578,14 @@ MODELS['bedmetal'] = (C) => {
   // 围框：4 根管 5 宽×12 高，3→15 + 4 角脚
   C.box(cm(5), cm(12), D-cm(6), M1, -(W/2-cm(2.5)), cm(3), 0);
   C.box(cm(5), cm(12), D-cm(6), M1,  (W/2-cm(2.5)), cm(3), 0);
-  C.box(W-cm(16), cm(12), cm(5), M1, 0, cm(3), -(D/2-cm(2.5)));
-  C.box(W-cm(16), cm(12), cm(5), M1, 0, cm(3),  (D/2-cm(2.5)));
+  C.box(W, cm(12), cm(5), M1, 0, cm(3), -(D/2-cm(2.5)));
+  C.box(W, cm(12), cm(5), M1, 0, cm(3),  (D/2-cm(2.5)));
   for(const [fx,fz] of [[-1,-1],[1,-1],[-1,1],[1,1]])
     C.box(cm(7), cm(3), cm(7), M1, fx*(W/2-cm(3.5)), 0, fz*(D/2-cm(3.5)));
   // 排骨架 ×8，15→17
   for(let i=0;i<8;i++){
     const zz = -D/2+cm(14) + i*(D-cm(28))/7;
-    C.box(W-cm(20), cm(2), cm(4), M1, 0, cm(15), zz);
+    C.box(W, cm(2), cm(4), M1, 0, cm(15), zz);
   }
   // 床垫 (W-8)×27×(D-8)，17→44
   C.rb(W-cm(8), cm(27), D-cm(8), cm(4), M2, 0, cm(17), 0, 4);
@@ -8102,12 +8109,12 @@ function alexUnit(C, ox){
     C.box(cm(2.5), cm(1.5), cm(2.5), M1, cm(ox+lx), 0, cm(lz));
   C.rb(cm(36), cm(65.5), cm(57), cm(0.5), M1, cm(ox), cm(1.5), 0, 2);
   C.rb(cm(36.5), cm(1), cm(57.5), cm(0.4), M1, cm(ox), cm(67), 0, 2);
-  C.box(cm(36), cm(65.5), cm(1), M1, cm(ox), cm(1.5), -cm(28.5));
+  C.box(cm(36), cm(67), cm(1), M1, cm(ox), 0, -cm(28.5));
   // 5 抽前板 33×12 + 黑缺口拉手
   for(let i=0;i<5;i++){
     const y0 = 3.2 + i*12.7;
     C.rb(cm(33), cm(12.2), cm(1.6), cm(0.5), M1, cm(ox), cm(y0), cm(28.2), 2);
-    C.box(cm(5), cm(1.5), cm(0.5), hM, cm(ox), cm(y0+10.8), cm(29.2));
+    C.box(cm(5), cm(1.5), cm(0.5), hM, cm(ox), cm(y0+10.8), cm(28.9));
   }
 }
 
@@ -8512,39 +8519,40 @@ MODELS['ekorre'] = (C) => {
   // 摇轨 ×2（∪ 形弧，长 70，中点近地，端头翘起）
   const rock=seg2pts([
     ['L',[-35,9.5]],
-    ['Q',[-35,9.5],[-17,1.0],[0,0.6]],
-    ['Q',[0,0.6],[17,1.0],[35,9.5]],
+    ['Q',[-35,9.5],[-17,0.6],[0,0.2]],
+    ['Q',[0,0.2],[17,0.6],[35,9.5]],
     ['L',[35,13.5]],
-    ['Q',[35,13.5],[17,5.0],[0,4.6]],
-    ['Q',[0,4.6],[-17,5.0],[-35,13.5]],
+    ['Q',[35,13.5],[17,4.6],[0,4.2]],
+    ['Q',[0,4.2],[-17,4.6],[-35,13.5]],
   ]);
   ex(rock, cm(4.5), wood, 0, 0, cm(10));
   ex(rock, cm(4.5), wood, 0, 0, -cm(14.5));
-  // 黑胶脚垫 ×4（摇轨端头下方）
+  // 黑胶脚垫 ×4（摇轨端头下缘，略探出端头）
   for(const sx of [-1,1]) for(const sz of [-1,1])
-    C.box(cm(4.5), cm(2.5), cm(4.5), blk, sx*cm(33.75), cm(7), sz*cm(12.25));
-  // 下横梁（连接两摇轨，腿底坐于其上）
-  C.box(cm(4.5), cm(4.5), cm(20), wood, cm(-8), cm(5), 0);
-  // 坐板（延伸到尾部承托靠背）+ 半圆靠背
-  C.rb(cm(30), cm(3), cm(20), cm(1.2), red, cm(-9), cm(26.5), 0);
+    C.box(cm(4.5), cm(2.5), cm(4.5), blk, sx*cm(33.75), cm(7), sz*cm(11.75));
+  // 下横梁 ×2（两端贯入摇轨，前后腿底坐于其上）
+  C.box(cm(8), cm(4.5), cm(25), wood, cm(13), cm(5), 0);
+  C.box(cm(6), cm(4.5), cm(25), wood, cm(-18.5), cm(5), 0);
+  // 坐板（两端贯入侧板）+ 半圆靠背（直径≈座深）
+  C.rb(cm(30), cm(3), cm(26.4), cm(1.2), red, cm(-9), cm(26.5), 0);
   const bs=[]; for(let i=0;i<=12;i++){ const a=Math.PI*i/12;
-    bs.push([7.5*Math.cos(a), 29.5+7.5*Math.sin(a)]); }
-  ex(bs, cm(2.5), red, cm(-24.5), 0, 0, 'zy');
+    bs.push([8.5*Math.cos(a), 27+8.5*Math.sin(a)]); }
+  ex(bs, cm(2.5), red, cm(-22.5), 0, 0, 'zy');
   // 横向把手（穿过颈后）
   C.tube(cm(27), cm(1.6), wood, cm(9), cm(39.5), 0, 'z');
   // 鹿角 ×2（基座条 + 三指，只绕竖轴转，前倾 70° / 后倾 110°）
   const ant=(z,ang)=>{ const grp=new T.Group(); C.g.add(grp);
     const addG=(m)=>{ m.castShadow=m.receiveShadow=true; grp.add(m); };
-    const b=new T.Mesh(new T.BoxGeometry(cm(5),cm(2.4),cm(4.4)), wood);
-    b.position.set(cm(2.5),cm(1.2),0); addG(b);
+    const b=new T.Mesh(new T.BoxGeometry(cm(12),cm(2.4),cm(4.4)), wood);
+    b.position.set(cm(6),cm(1.2),0); addG(b);   // 基座条加长，三指嵌入条内
     for(const fy of [-1.4,0,1.4]){
       const f=new T.Mesh(new T.CapsuleGeometry(cm(1.1),cm(3.6),4,12), wood);
       f.rotation.z=Math.PI/2; f.position.set(cm(8.1),cm(2.4),cm(fy)); addG(f); }
-    grp.position.set(cm(19), cm(41.5), cm(z)); grp.rotation.z=ang; };
-  ant(cm(10.8), 70*Math.PI/180);
-  ant(-cm(10.8), 110*Math.PI/180);
-  // 口部吊环（挂在口孔下）
-  C.torus(cm(2.2), cm(0.45), blk, cm(33.5), cm(20), 0);
+    grp.position.set(cm(19), cm(40), z); grp.rotation.z=ang; }   // z 已是英尺;
+  ant(cm(11.5), 70*Math.PI/180);
+  ant(-cm(11.5), 110*Math.PI/180);
+  // 口部吊环（挂在口孔下，贴前侧板）
+  C.torus(cm(2.2), cm(0.45), blk, cm(33.5), cm(21.9), cm(12.9));
   // 水平重心归零（2D 图例/碰撞以占地中心为原点）
   C.g.updateMatrixWorld(true);
   const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3(); bb.getCenter(off);
@@ -8583,8 +8591,8 @@ MODELS['hape-horse'] = (C) => {
     ['L',[-24,25]],
     ['Q',[-24,25],[-28,22.5],[-29.5,17]],
     ['Q',[-29.5,17],[-31.5,10],[-33.8,5.5]],
-    ['Q',[-33.8,5.5],[-24,1.2],[-8,0.4]],
-    ['Q',[-8,0.4],[6,0.4],[20,1.8]],
+    ['Q',[-33.8,5.5],[-24,0.8],[-8,0]],
+    ['Q',[-8,0],[6,0],[20,1.8]],
     ['Q',[20,1.8],[26,3.5],[27.5,6]],
     ['Q',[27.5,6],[27,9],[25,13]],
     ['Q',[25,13],[23,17],[22,20]],
@@ -8613,17 +8621,20 @@ MODELS['hape-horse'] = (C) => {
   ex(mOut.concat(mIn), cm(1.8), red, 0, 0, -cm(14.25));
   // 黑珠子眼睛
   for(const sz of [-1,1]) C.sph(cm(1.1), blk, cm(25.5), cm(38.5), sz*cm(13));
-  // 红色座板（延伸到尾部承托靠背）+ 半圆木质靠背
-  C.rb(cm(26), cm(1.6), cm(24), cm(0.8), red, cm(-9), cm(25), 0);
+  // 红色座板（两端插入侧板）+ 半圆木质靠背
+  C.rb(cm(26), cm(1.6), cm(27), cm(0.8), red, cm(-9), cm(25), 0);
+  // 半圆木质靠背（坐在座板后缘，宽度≈座深）
   const bs=[]; for(let i=0;i<=12;i++){ const a=Math.PI*i/12;
-    bs.push([7.5*Math.cos(a), 26.6+7.5*Math.sin(a)]); }
+    bs.push([10*Math.cos(a), 26.6+10*Math.sin(a)]); }
   ex(bs, cm(1.8), wood, cm(-21.5), 0, 0, 'zy');
-  // 横向把手（架在靠背顶上）+ 端头圆钮
-  C.tube(cm(25), cm(1.5), wood, cm(-21.5), cm(34.4), 0, 'z');
-  for(const sz of [-1,1]) C.knob(cm(2), wood, cm(-21.5), cm(34.4), sz*cm(12.2));
-  // 座下两根横梁（透过镂空可见）
-  C.tube(cm(20), cm(1.1), wood, cm(8), cm(17), 0, 'z');
-  C.tube(cm(20), cm(1.1), wood, cm(-17), cm(17), 0, 'z');
+  // 颈部握杆 ×2（从两侧板颈处向外伸出，孩子握持位）+ 端头圆钮
+  for(const sz of [-1,1]){
+    C.tube(cm(11.5), cm(1.5), wood, cm(10), cm(40), sz*cm(15.75), 'z');
+    C.knob(cm(1.6), wood, cm(10), cm(40.5), sz*cm(21));
+  }
+  // 座下竖直木条 ×4（每侧板前后各一，从座板下缘垂到镂空区）
+  for(const sz of [-1,1]) for(const xc of [-1,-19])
+    C.box(cm(2.4), cm(13.5), cm(0.8), wood, cm(xc), cm(11.5), sz*cm(13.2));
   // 水平重心归零
   C.g.updateMatrixWorld(true);
   const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3(); bb.getCenter(off);
