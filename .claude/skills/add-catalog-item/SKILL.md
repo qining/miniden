@@ -233,6 +233,10 @@ python3 .claude/skills/add-catalog-item/check-item.py --regress
 | 已换算值再包一层 `cm()`（双重转换） | 部件缩小 30 倍几乎看不见（Lil' Kick 轮胎/轮毂/花瓣半径 0.1cm，轮子只剩一圈幽灵） | 参数已是英尺（如 `R=cm(7.5)`）就直接用 `R`、`0.43*R`，不要再套 `cm()`；渲染图里「该大的部件很小」先查这个 |
 | Group/holder 里的 `C.rb`/`C.cushion` 子件被抬高半高 | 后仰垫/腰枕整体偏高一半厚度（8 件沙发全部 y 溢出 114~128%） | 子件局部几何是 **y 0..h 底对齐**（不是居中）；要绕中心旋转先 `child.position.y -= cm(h/2)` 再进 holder |
 | `C.cyl` 只传 7 个参数（漏了 y） | seg 值落进 z 槽，腿/柱飞到 z=12ft（365cm），bbox z 爆 400%+ | 必须写全 8 个位置参数 `C.cyl(rTop,rBot,h,mat,x, 0, z, seg)`；bbox 探针的「某轴爆炸 + 单条窄板」就是它 |
+| 居中件偏了「一个半径」 | `C.rb`/`C.box` 的 x/z 是**中心点**不是角点：想让 11cm 块居中却写 (-5.5, 0, -5.5)，整块偏 5.5cm，上面的部件悬空（DYVLINGE 底座块） | 居中写 (0,0,0)，偏移用 ±w/2；bbox 探针「对称件整体偏半宽」就是它 |
+| 模型「不报错」但其实是通用回退造型 | `furn3D` 对注册模型的异常是 **try/catch 静默回退**（只 console.warn），mesh 是自定义+通用的混合体 | 验证探针要抓 console.warn，或数 mesh 数/三角形数对照预期；「没抛错」不是验收标准（`Object3D` 没有 `.translate()`，`mesh.translate()` 就属于这种炸法） |
+| rboxGeo 薄板退化（r ≈ h/2） | 基形先缩 2r 后基形接近扁平，圆角形状病态，成品尺寸漂移（17cm 板渲出 20.5cm） | 厚度 < 2r+余量 时改用直角 `C.box`，或选 r < h/2 留足基形厚度 |
+| 旋转件的 bbox 比名义尺寸高 | `Box3.setFromObject` 按局部包围盒 8 角点算旋转体（过度估计）：60cm 板倾 3.4° 的 bbox 竖直方向多 3.6cm | 倾垫/倾斜面板的正常现象，别当成建模错误；填充率余量本就吸收它 |
 | 抓到的价格离谱 | 命中系列落地页而非商品页 |
 | 两次渲染结果不一致 | 新贴图用了 `Math.random()` |
 | 手摆相机后画布是空的 | `OrbitControls.update()` 把相机拉回去了 → 先同步 `controls.target` 再 `update()` |
