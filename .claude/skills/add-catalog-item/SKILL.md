@@ -85,6 +85,7 @@ Length/reach 对应的**最大占地**，不是机身尺寸。如果录好的 sp
 ```
 
 - **同款不同色 = 每个配色一个独立条目**，共用同一个 `model`
+- **写入前查 id / model 唯一性**（`grep "id:'xxx'" planner.html`）：同系列不同品类会撞（PS 2026 推车已有 `id:'ps2026-0'/model:'ps2026'`，落地灯必须改名如 `ps2026l`）
 - `price`=美国实际标价、`priceCA`=加拿大实际标价（**不是汇率折算**）；
   `caVar`=同型号但面料/配置不同、`caNA`=加拿大不售
 - 固定在墙/天花的灯（`downlight/ceilingLight/vanityLight/pendant`）**不写价格**，公寓自带；
