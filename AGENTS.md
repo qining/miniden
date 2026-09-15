@@ -935,6 +935,8 @@ requestRender();
 | Group/holder 里的 `C.rb`/`C.cushion` 子件被抬高半高 | 后仰垫/腰枕整体偏高半厚（8 件沙发全部 y 溢出 114~128%） | 子件局部几何是 **y 0..h 底对齐**（不是居中）；要绕中心旋转先 `child.position.y -= cm(h/2)` 再进 holder |
 | `C.cyl` 只传 7 个参数（漏了 y） | seg 落进 z 槽，腿/柱飞到 z=12ft（365cm），bbox z 爆 400%+ | 写全 8 个位置参数 `C.cyl(rTop,rBot,h,mat,x, 0, z, seg)`；bbox 探针「某轴爆炸 + 单条窄板」就是它 |
 | 居中件偏了「一个半径」 | `C.rb`/`C.box` 的 x/z 是**中心点**不是角点：想让 11cm 块居中却写 (-5.5, 0, -5.5)，整块偏 5.5cm、上面部件悬空（DYVLINGE 镀铬底座） | 居中写 (0,0,0)，偏移用 ±w/2；bbox 探针「对称件整体偏半宽」就是它 |
+| 位置参数忘包 `cm()`（把 cm 数字当英尺传） | `C.box(...,y=3,...)` 的 3 被当成 3ft=91cm，立杆整体抬高 88cm、bbox y 爆到 134%（UPPVIND 框架） | `C.box`/`C.cyl`/`C.rb` 的 x/y/z 和尺寸参数**一样**要 `cm()`；bbox 探针「某部件整体平移到不可能高度」先查这个 |
+| 新条目 id/model 与既有条目撞 | 同系列不同品类共用命名空间：PS 2026 推车已有 `id:'ps2026-0'`/`model:'ps2026'`，再加同名的落地灯会让后写者覆盖前者（furn3D 按 model 查 MODELS） | 写入前 `grep "id:'xxx'"` + `grep "model:'xxx'"` 查唯一性，撞了就换键（如 `ps2026l`）；t_bbox 探针同一 id 出两行就是撞了 |
 | 模型「不报错」但其实是通用回退造型 | `furn3D` 对注册模型异常是 **try/catch 静默回退**（只 console.warn），mesh 是自定义+通用的混合体 | 验证探针要抓 console.warn，或数 mesh 数/三角形数对照预期；「没抛错」不是验收标准（`Object3D` 没有 `.translate()` 方法，误调 `mesh.translate()` 就是这种炸法，改用 `geometry.translate()`） |
 | 旋转件的 bbox 比名义尺寸高 | `Box3.setFromObject` 按局部包围盒 8 角点算旋转体（过度估计）：60cm 板倾 3.4°，bbox 竖直方向多 3.6cm | 倾垫/斜面板的正常现象，别当成建模错误；填充率余量本就吸收它 |
 | rboxGeo 薄板退化（r ≈ h/2） | 基形先缩 2r 后接近扁平，圆角形状病态，成品尺寸漂移（17cm 座垫渲出 20.5cm） | 厚度 < 2r+余量 时改用直角 `C.box`，或选 r < h/2 留足基形厚度 |
