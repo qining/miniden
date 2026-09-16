@@ -1386,12 +1386,13 @@ function furnShape(it, spec){
       el('line',{x1:-wp/2+1,y1:0,x2:wp/2-1,y2:0,stroke:'rgba(0,0,0,.30)','stroke-width':1},body);
       el('line',{x1:wp*0.10,y1:-dp/2+1,x2:wp*0.10,y2:dp/2-1,stroke:'rgba(0,0,0,.30)','stroke-width':1},body);
     } else if(kind==='xylophone'){
-      // D 形木琴：圆角底座 + 提手环 + 五根平行于短边的音条（长→短）
-      R(-wp/2,-dp/2,wp,dp,dp*0.42,col,{stroke:'rgba(0,0,0,.45)','stroke-width':1.2});
-      el('circle',{cx:-wp/2+dp*0.42,cy:0,r:dp*0.17,fill:'none',stroke:dk2,'stroke-width':2.4},body);
-      for(let i=0;i<5;i++){ const x=(-wp/2+wp*(0.22+0.56*i/4))*S;
-        const top=-dp*0.38, len=dp*0.74*(1-0.075*i);
-        el('line',{x1:x,y1:top*S,x2:x,y2:(top+len)*S,stroke:i<2?'rgba(0,150,220,.75)':i<4?'rgba(140,190,60,.75)':'rgba(225,64,46,.75)','stroke-width':Math.max(2,dp*0.16),"stroke-linecap":'round'},body); }
+      // D 形木琴：圆角底座 + 提手环 + 五根平行于短边的音条（长→短）。
+      // 注意 R() 内部会对参数乘 S（期望英尺），故这里统一用 wf/df(英尺)，不要传已是像素的 wp/dp。
+      R(-wf/2,-df/2,wf,df, dp*0.42, col,{stroke:'rgba(0,0,0,.45)','stroke-width':1.2});
+      el('circle',{cx:(-wf/2+df*0.42)*S,cy:0,r:df*0.17*S,fill:'none',stroke:dk2,'stroke-width':2.4},body);
+      for(let i=0;i<5;i++){ const x=(-wf/2+wf*(0.22+0.56*i/4))*S;
+        const top=-df*0.38, len=df*0.74*(1-0.075*i);
+        el('line',{x1:x,y1:top*S,x2:x,y2:(top+len)*S,stroke:i<2?'rgba(0,150,220,.75)':i<4?'rgba(140,190,60,.75)':'rgba(225,64,46,.75)','stroke-width':Math.max(2,df*0.16*S),"stroke-linecap":'round'},body); }
     } else if(kind==='wagon'){
       R(-wp/2,-dp/2,wp,dp,2,col,{stroke:'rgba(0,0,0,.45)','stroke-width':1.2});
       for(const sx of [-1,1]) for(const sz of [-1,1])

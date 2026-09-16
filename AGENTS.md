@@ -940,6 +940,7 @@ requestRender();
 | 模型「不报错」但其实是通用回退造型 | `furn3D` 对注册模型异常是 **try/catch 静默回退**（只 console.warn），mesh 是自定义+通用的混合体 | 验证探针要抓 console.warn，或数 mesh 数/三角形数对照预期；「没抛错」不是验收标准（`Object3D` 没有 `.translate()` 方法，误调 `mesh.translate()` 就是这种炸法，改用 `geometry.translate()`） |
 | 旋转件的 bbox 比名义尺寸高 | `Box3.setFromObject` 按局部包围盒 8 角点算旋转体（过度估计）：60cm 板倾 3.4°，bbox 竖直方向多 3.6cm | 倾垫/斜面板的正常现象，别当成建模错误；填充率余量本就吸收它 |
 | rboxGeo 薄板退化（r ≈ h/2） | 基形先缩 2r 后接近扁平，圆角形状病态，成品尺寸漂移（17cm 座垫渲出 20.5cm） | 厚度 < 2r+余量 时改用直角 `C.box`，或选 r < h/2 留足基形厚度 |
+| 2D 符号大得离谱（比实物大 S≈22 倍） | `furnShape()` 里 px/ft 混用：`wp=wf*S` 已是 px，却传给内部又乘 S 的 `R()`（S² 双重放大）；裸 `el()` 直接吃 px、`R()` 吃 ft | 一律先用 `wf`/`df`（英尺）算几何，传给裸 `el()` 时自己乘 `S`；`R()` 只喂英尺；加新 kind 图例后在放大视图里量一下符号实际像素（见 SKILL §5） |
 | C.box 的 x/z 也是中心点（同 C.rb） | 想让板居中却把 ±w/2 写成 x → 整板偏半个板长，bbox 爆 1.46×（BARLAST 十字底座两板都偏 -w/2，交叠区撑出 48cm） | 居中写 (0,0,0)；要偏置写 ±w/2 |
 
 **自我生长**：会话中用户指出了 agent 自己没发现的问题、steering 后才修正时，
