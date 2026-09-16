@@ -802,6 +802,7 @@ const CATALOG = [
  {id:'sportslig', cat:'运动器材', name:'IKEA SPORTSLIG 迷你足球门储物箱', w:90.2,d:52.7,h:52.7, price:29.99, caNA:true, color:'#0a70b0', kind:'goal', model:'sportslig', note:'90cm 款，蓝色布艺框架 + 白色网 + 白横杆，可折叠，立起来可当球类储物箱', url:'https://www.ikea.com/us/en/p/sportslig-ball-storage-goal-70504238/'},
  {id:'mala', cat:'儿童游乐架', name:'IKEA MÅLA 儿童画架（白板）', w:66,d:48.3,h:111.8, price:29.99, priceCA:39.99, color:'#e4ccad', kind:'easel', model:'mala', note:'A 型松木画架，白色写字板 + 红色五金', url:'https://www.ikea.com/us/en/p/mala-easel-softwood-30488966/'},
  {id:'laett-0', cat:'儿童桌 / 椅', name:'LÄTT 儿童桌 + 2 椅 · 白/松木', w:119,d:48,h:48, seatH:28, price:49.99, priceCA:49.99, color:'#e3c592', color2:'#f2efe6', kind:'tableRect', wood:'pine', model:'laett', url:'https://www.ikea.com/us/en/p/laett-childrens-table-and-2-chairs-white-pine-50178411/', note:'桌椅套装：桌 63×48×45（松木方框+白色三聚氰胺面板），椅 28×28×48、座高 28；两椅对称摆在桌短边两侧（整套占地 119×48）'},
+  {id:'hape-xylo-0', cat:'音乐 / 乐器', name:'Hape Rainbow Xylophone 木琴 · 彩虹5音', w:27.5,d:13.7,h:4.3, price:33.99, priceCA:29.99, color:'#2ea3d8', color2:'#d9b98c', kind:'xylophone', wood:'birch', model:'hape-xylo', url:'https://global.hape.com/rainbow-xylophone-e0606', note:'木质5音木琴+2蓝槌（E0606，12月+）：蓝最长到红最短五根音条横排，D形提手底座可拎走，槌有收纳槽；颜色与音高识别、节奏与手部精细动作启蒙'},
  {id:'giantex7-blue', cat:'运动器材', name:'Giantex 7ft 圆形蹦床带安全网 · Blue', w:221.6,d:221.6,h:185.4, price:199.99, priceCA:259.99, color:'#3d6cb4', col2:'#46b13c', kind:'trampoline', model:'giantex7', note:'直径 7.3ft，高 6.1ft（含网架），3 组 A 字架 + PE 护垫 + 绿色底座，3 岁+', url:'https://www.giantex.com/products/7-ft-kids-trampoline-with-safety-enclosure-net'},
  {id:'giantex7-green', cat:'运动器材', name:'Giantex 7ft 圆形蹦床带安全网 · Green', w:221.6,d:221.6,h:185.4, price:199.99, priceCA:259.99, color:'#3f9e3a', col2:'#46b13c', kind:'trampoline', model:'giantex7', note:'直径 7.3ft，高 6.1ft（含网架），3 组 A 字架 + PE 护垫 + 绿色底座，3 岁+', url:'https://www.giantex.com/products/7-ft-kids-trampoline-with-safety-enclosure-net'},
  {id:'giantex7-yellow', cat:'运动器材', name:'Giantex 7ft 圆形蹦床带安全网 · Yellow', w:221.6,d:221.6,h:185.4, price:189.99, priceCA:259.99, color:'#e8b524', col2:'#46b13c', kind:'trampoline', model:'giantex7', note:'直径 7.3ft，高 6.1ft（含网架），3 组 A 字架 + PE 护垫 + 绿色底座，3 岁+', url:'https://www.giantex.com/products/7-ft-kids-trampoline-with-safety-enclosure-net'},
@@ -1348,7 +1349,7 @@ function furnShape(it, spec){
     el('line',{x1:0,y1:-dp/2+3,x2:0,y2:dp/2-3,stroke:'rgba(0,0,0,.28)','stroke-width':1.4,'stroke-dasharray':'6 4'},body);
   } else
   // 新品类 2D 俯视图例
-  if(['shelf','crib','cart','deskSitStand','swivelChair','playCouch','tableFold','tableDrawer','rocking'].includes(kind)){
+  if(['shelf','crib','cart','deskSitStand','swivelChair','playCouch','tableFold','tableDrawer','rocking','xylophone'].includes(kind)){
     const dk2='rgba(0,0,0,.30)', lt2='rgba(255,255,255,.22)';
     if(kind==='shelf'){
       R(-wf/2,-df/2,wf,df,2,col,{stroke:'rgba(0,0,0,.45)','stroke-width':1.2});
@@ -1384,6 +1385,13 @@ function furnShape(it, spec){
       el('circle',{cx:wp*0.36,cy:0,r:Math.min(wp,dp)*0.30,fill:col,stroke:'rgba(0,0,0,.45)','stroke-width':1.2},body);
       el('line',{x1:-wp/2+1,y1:0,x2:wp/2-1,y2:0,stroke:'rgba(0,0,0,.30)','stroke-width':1},body);
       el('line',{x1:wp*0.10,y1:-dp/2+1,x2:wp*0.10,y2:dp/2-1,stroke:'rgba(0,0,0,.30)','stroke-width':1},body);
+    } else if(kind==='xylophone'){
+      // D 形木琴：圆角底座 + 提手环 + 五根平行于短边的音条（长→短）
+      R(-wp/2,-dp/2,wp,dp,dp*0.42,col,{stroke:'rgba(0,0,0,.45)','stroke-width':1.2});
+      el('circle',{cx:-wp/2+dp*0.42,cy:0,r:dp*0.17,fill:'none',stroke:dk2,'stroke-width':2.4},body);
+      for(let i=0;i<5;i++){ const x=(-wp/2+wp*(0.22+0.56*i/4))*S;
+        const top=-dp*0.38, len=dp*0.74*(1-0.075*i);
+        el('line',{x1:x,y1:top*S,x2:x,y2:(top+len)*S,stroke:i<2?'rgba(0,150,220,.75)':i<4?'rgba(140,190,60,.75)':'rgba(225,64,46,.75)','stroke-width':Math.max(2,dp*0.16),"stroke-linecap":'round'},body); }
     } else if(kind==='wagon'){
       R(-wp/2,-dp/2,wp,dp,2,col,{stroke:'rgba(0,0,0,.45)','stroke-width':1.2});
       for(const sx of [-1,1]) for(const sz of [-1,1])
@@ -4672,7 +4680,7 @@ function texScaled(base, ftSize, per){
 const _furnMatCache=new Map();
 const FURN_SOFT = ['sofa','sofaL','armchair','playCouch','bed','stool','officeChair','swivelChair','chair'];
 const FURN_CASE = ['bookcase','shelf','dresser','nightstand','shoeCab','tvBench','desk','deskSitStand',
-                   'sideTable','coffeeTable','tableRect','tableRound','tableFold','tableDrawer','crib','box','rocking'];
+                   'sideTable','coffeeTable','tableRect','tableRound','tableFold','tableDrawer','crib','box','rocking','xylophone'];
 const FURN_METAL= ['bedMetal','cart'];
 function furnMats(spec, col){
   const kind = spec.kind || 'box';
@@ -9975,6 +9983,78 @@ MODELS['mala'] = (C) => {
 // 实际结构（对照 PE727742/PE558487）：2 根立柱在短边中段（z=0），顶一根 x 向挂衣杆
 // （两端伸出立柱外 5.5）；底部 100×40 框（y15）内嵌 3 根 x 向格杆（即「4 层」）；
 // 4 条腿从框角向外弯下到脚轮——占地 111×51.1 是脚轮外缘。
+/* Hape Rainbow Xylophone E0606（对照 work/ref/xylophone/hxylo_*.jpg；所有尺寸 cm，一律 C.cm→英尺）：
+   D/pill 形胶合板底座（两端半圆，左端带提手切槽），五根彩色音条（长轴沿深度 z，蓝最长→红最短，
+   近端对齐），每根条顶 2 白桩，两根蓝槌斜卧右侧平面。提手在 -x 端。 */
+MODELS['hape-xylo'] = (C) => {
+  const cm=C.cm, T=C.THREE;
+  const wood = C.M(C.col2, {wood:'birch', rough:.6});
+  const white = C.M('#f5f3ec', {rough:.5});
+  const mal   = C.M('#3aa7d9', {plastic:true, rough:.4});
+  // ---- 底座：外轮廓 = 两个半圆盖（半径 d/2）+ 上下直边；提手切槽 = 左盖上的椭圆孔 ----
+  const Rw=cm(6.9), Rd=cm(6.85);
+  const pts=[];
+  const arc=(cx0,a0,a1,n)=>{ for(let i=0;i<=n;i++){ const a=a0+(a1-a0)*i/n;
+    pts.push([cx0+Rd*Math.cos(a), Rd*Math.sin(a)]); } };
+  arc( Rw,-Math.PI/2, Math.PI/2, 24);      // 右盖（下→上）
+  arc(-Rw, Math.PI/2, Math.PI*1.5, 24);     // 左盖（上→下）
+  const sh = new T.Shape(pts.map(p=>new T.Vector2(p[0],p[1])));
+  const hole=new T.Path();
+  for(let i=0;i<=24;i++){ const a=2*Math.PI*i/24;
+    const x=cm(-9.5)+cm(1.8)*Math.cos(a), y=cm(4.3)*Math.sin(a);
+    i? hole.lineTo(x,y) : hole.moveTo(x,y); }
+  sh.holes.push(hole);
+  const geo=new T.ExtrudeGeometry(sh,{depth:cm(2),bevelEnabled:false});
+  geo.rotateX(Math.PI/2);                      // 挤出沿 -y（shape y→世界 z），顶面在 position.y
+  const base=new T.Mesh(geo,wood);
+  base.position.set(0,cm(2),0); base.castShadow=base.receiveShadow=true;
+  C.g.add(base);
+  // ---- 五根音条（z 轴长轴，近端对齐 z=-5.5）+ 条顶 2 白桩 ----
+  const bars=[
+    [-6,11,'#2ea3d8'], [-3,9,'#7ac244'], [0,7.5,'#f5c33b'],
+    [3,6,'#ef8a2f'], [6,4.5,'#e0452e']
+  ];
+  const z0=-5.5;
+  for(const [x,len,colr] of bars){
+    const m=C.M(colr,{plastic:true,rough:.45});
+    C.rb(cm(2.6),cm(1.5),cm(len),cm(1.1),m, cm(x), cm(2), cm(z0+len/2), 4);
+    for(const dz of [1.2, len-1.2])
+      C.cyl(cm(.45),cm(.45),cm(.7),white, cm(x), cm(3.5), cm(z0+dz), 12);
+  }
+  // ---- 右端小半圆凸起（参照实拍右端木件；顶面 ≤ 4.2 ≤ spec 4.3）----
+  const lipPts=[];
+  for(let i=0;i<=18;i++){ const a=-Math.PI/2 + Math.PI*i/18;          // 右半圆：从 -z 经 +x 到 +z
+    lipPts.push([cm(9.5)+cm(3.2)*Math.cos(a), cm(3.2)*Math.sin(a)]); }
+  lipPts.push([cm(9.5), cm(3.2)]);
+  const lipGeo=new T.ExtrudeGeometry(new T.Shape(lipPts.map(p=>new T.Vector2(p[0],p[1]))),{depth:cm(2.2),bevelEnabled:false});
+  lipGeo.rotateX(Math.PI/2);
+  const lip=new T.Mesh(lipGeo,wood);
+  lip.position.set(0,cm(4.2),0); lip.castShadow=lip.receiveShadow=true;
+  C.g.add(lip);
+  // ---- 两根蓝槌：平放底座顶面（y=2），头部朝前，斜向错开 ----
+  const mallet=(x,z,ang)=>{
+    const gg=new T.Group();
+    const t=new T.Mesh(new T.CapsuleGeometry(cm(.5),cm(7),4,14),mal);
+    t.position.set(0,cm(.5),0); t.rotation.x=Math.PI/2; t.castShadow=true;
+    const hd=new T.Mesh(new T.SphereGeometry(cm(1),16,12),mal);
+    hd.position.set(0,cm(1),cm(3.5)); hd.castShadow=true;
+    gg.add(t); gg.add(hd);
+    gg.position.set(cm(x), cm(2), cm(z));
+    gg.rotation.y=ang;
+    C.g.add(gg);
+  };
+  mallet(8.5,-2.5,0.3);
+  mallet(8.5,2.2,-0.25);
+  // 水平重心归零（真实顶点 bbox）
+  C.g.updateMatrixWorld(true);
+  const bb=new T.Box3();
+  C.g.traverse(o=>{ if(o.isMesh&&o.geometry){
+    const pos=o.geometry.attributes.position, v=new T.Vector3();
+    for(let i=0;i<pos.count;i++){ v.fromBufferAttribute(pos,i).applyMatrix4(o.matrixWorld); bb.expandByPoint(v); } } });
+  const off=new T.Vector3(); bb.getCenter(off);
+  for(const ch of C.g.children){ ch.position.x-=off.x; ch.position.z-=off.z; }
+};
+
 /* LÄTT 儿童桌+2椅（套装 119×48×48）：桌 63×48×45（松木方框+白色面板，4 全高方腿），
    椅 28×28×48、座高 28（白座板+白背顶板，中间镂空）。两椅对称摆桌短边两侧、椅背朝外。
    轴向：桌长边沿 x；椅背朝 ±x（s=+1 右椅椅背朝 +x）。 */
