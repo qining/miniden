@@ -805,6 +805,7 @@ const CATALOG = [
   {id:'hape-xylo-0', cat:'音乐 / 乐器', name:'Hape Rainbow Xylophone 木琴 · 彩虹5音', w:27.5,d:13.7,h:4.3, price:33.99, priceCA:29.99, color:'#2ea3d8', color2:'#d9b98c', kind:'xylophone', wood:'birch', model:'hape-xylo', url:'https://global.hape.com/rainbow-xylophone-e0606', note:'木质5音木琴+2蓝槌（E0606，12月+）：蓝最长到红最短五根音条横排，D形提手底座可拎走，槌有收纳槽；颜色与音高识别、节奏与手部精细动作启蒙'},
  {id:'bt-board-0', cat:'平衡 / 感统', name:'The Balance Board 平衡板 · 波罗的海桦木', w:50.8,d:27.9,h:10.2, price:99, caNA:true, color:'#e6d9bd', kind:'wobble', wood:'birch', model:'bt-board', url:'https://blueberryandthird.com/products/the-balance-board', note:'波罗的海桦木胶合板平衡板（美国俄亥俄手作，2-7岁 / 150lbs）：上层微圆角平板+下半椭球摇摆底座（单点触地），前后左右摇晃练前庭感/核心/重心转移；无加拿店面（caNA）'},
  {id:'lt-sportszone-0', cat:'运动器材', name:'Little Tikes 3-in-1 Sports Zone · 三合一运动站', w:87.6, d:36.8, h:62.2, price:48.99, priceCA:69.97, color:'#7ac143', color2:'#e03a2f', kind:'sportsZone', model:'lt-sportszone', url:'https://www.littletikes.com/products/sportszone', note:'12-36月三合一活动站：足球门（红拱架+白鳞格网）+篮球（黄杆/绿篮板+LED记分屏+橙筐，高度可调）+保龄球（5瓶+橙球）+蓝接球碗；踢球/投掷/滚动练大运动与手眼协调；美$48.99（littletikes.com），加$69.97（Walmart.ca）'},
+ {id:'lt-walker-0', cat:'学步车', name:'Little Tikes Light n Go 3-in-1 Activity Walker', w:53.8, d:43.7, h:42.4, price:39.99, caNA:true, color:'#97c93d', color2:'#ef8f1f', kind:'walker', model:'lt-walker', url:'https://www.littletikes.com/products/light-n-go-3-in-1-activity-walker', note:'9-36月三合一：活动桌(9-12m)→学步车→高边桌；两侧青柠色拱形框架+顶部橙把手+4蓝轮+中央白色活动面板（3齿轮+发光泡+3数字键）+前部字母滚筒；推步/扶走练行走与大运动；美$39.99（littletikes.com）；无加拿大渠道（caNA）'},
  {id:'giantex7-blue', cat:'运动器材', name:'Giantex 7ft 圆形蹦床带安全网 · Blue', w:221.6,d:221.6,h:185.4, price:199.99, priceCA:259.99, color:'#3d6cb4', col2:'#46b13c', kind:'trampoline', model:'giantex7', note:'直径 7.3ft，高 6.1ft（含网架），3 组 A 字架 + PE 护垫 + 绿色底座，3 岁+', url:'https://www.giantex.com/products/7-ft-kids-trampoline-with-safety-enclosure-net'},
  {id:'giantex7-green', cat:'运动器材', name:'Giantex 7ft 圆形蹦床带安全网 · Green', w:221.6,d:221.6,h:185.4, price:199.99, priceCA:259.99, color:'#3f9e3a', col2:'#46b13c', kind:'trampoline', model:'giantex7', note:'直径 7.3ft，高 6.1ft（含网架），3 组 A 字架 + PE 护垫 + 绿色底座，3 岁+', url:'https://www.giantex.com/products/7-ft-kids-trampoline-with-safety-enclosure-net'},
  {id:'giantex7-yellow', cat:'运动器材', name:'Giantex 7ft 圆形蹦床带安全网 · Yellow', w:221.6,d:221.6,h:185.4, price:189.99, priceCA:259.99, color:'#e8b524', col2:'#46b13c', kind:'trampoline', model:'giantex7', note:'直径 7.3ft，高 6.1ft（含网架），3 组 A 字架 + PE 护垫 + 绿色底座，3 岁+', url:'https://www.giantex.com/products/7-ft-kids-trampoline-with-safety-enclosure-net'},
@@ -1351,7 +1352,7 @@ function furnShape(it, spec){
     el('line',{x1:0,y1:-dp/2+3,x2:0,y2:dp/2-3,stroke:'rgba(0,0,0,.28)','stroke-width':1.4,'stroke-dasharray':'6 4'},body);
   } else
   // 新品类 2D 俯视图例
-  if(['shelf','crib','cart','deskSitStand','swivelChair','playCouch','tableFold','tableDrawer','rocking','xylophone','wobble','sportsZone'].includes(kind)){
+  if(['shelf','crib','cart','deskSitStand','swivelChair','playCouch','tableFold','tableDrawer','rocking','xylophone','wobble','sportsZone','walker'].includes(kind)){
     const dk2='rgba(0,0,0,.30)', lt2='rgba(255,255,255,.22)';
     if(kind==='shelf'){
       R(-wf/2,-df/2,wf,df,2,col,{stroke:'rgba(0,0,0,.45)','stroke-width':1.2});
@@ -1387,6 +1388,12 @@ function furnShape(it, spec){
       el('circle',{cx:wp*0.36,cy:0,r:Math.min(wp,dp)*0.30,fill:col,stroke:'rgba(0,0,0,.45)','stroke-width':1.2},body);
       el('line',{x1:-wp/2+1,y1:0,x2:wp/2-1,y2:0,stroke:'rgba(0,0,0,.30)','stroke-width':1},body);
       el('line',{x1:wp*0.10,y1:-dp/2+1,x2:wp*0.10,y2:dp/2-1,stroke:'rgba(0,0,0,.30)','stroke-width':1},body);
+    } else if(kind==='walker'){
+      // 学步车：圆角框 + 4角轮 + 后上横把手
+      R(-wf/2,-df/2,wf,df, Math.min(wf,df)*0.12*S, col,{stroke:'rgba(0,0,0,.45)','stroke-width':1.2});
+      for(const sx of [-1,1]) for(const sz of [-1,1])
+        el('circle',{cx:sx*wf*0.38*S, cy:sz*df*0.36*S, r:Math.max(2.5,df*0.075*S), fill:dk2},body);
+      el('line',{x1:-wf*0.30*S,y1:-df*0.42*S,x2:wf*0.30*S,y2:-df*0.42*S,stroke:dk2,'stroke-width':1.6},body);
     } else if(kind==='sportsZone'){
       // 三合一运动站：圆角框 + 左小拱（球门）+ 中竖杆（篮架）+ 右三小瓶（保龄球）
       R(-wf/2,-df/2,wf,df, Math.min(wf,df)*0.12*S, col,{stroke:'rgba(0,0,0,.45)','stroke-width':1.2});
@@ -10197,6 +10204,58 @@ MODELS['lt-sportszone'] = (C) => {
   for(const ch of C.g.children){ ch.position.x-=off3.x; ch.position.z-=off3.z; }
 };
 
+/* Little Tikes Light 'n Go 3-in-1 Activity Walker #640957（对照 work/ref/lt-walker/lw_0.jpg / lw_4.jpg，全部 cm→C.cm→英尺）：
+   两侧青柠色 C 形拱架（半圆顶+2竖腿）+ 顶部橙色把手（顶=42.4=spec 高）+ 4 蓝轮
+   + 中央白色活动面板（3齿轮+发光泡+3数字键，朝孩子侧 -z）+ 前部橙色字母滚筒。
+   官方产品尺寸 21.2"W×17.2"L×16.7"H = 53.8×43.7×42.4cm（三模式最大包络）；9-36月。 */
+MODELS['lt-walker'] = (C) => {
+  const cm=C.cm, T=C.THREE;
+  const M=(c,o)=>C.M(c, Object.assign({plastic:true, rough:.48, clear:.4}, o||{}));
+  const LIME=M('#97c93d'), ORANGE=M('#e8740f'), BLUE=M('#35b6d8'),
+        WHITE=M('#f7f7f2',{rough:.55, clear:.2}), RED=M('#d8342c'), PURPLE=M('#8e44ad'),
+        YELLOW=M('#f2c94c'), CLEAR=M('#eef4f8',{flat:true, rough:.12, clear:1, clearRough:.05});
+  // —— 两侧青柠 C 形拱架：半圆弧（z-y 平面，顶 y40）+ 2 竖腿（到轮心）——
+  for(const sx of [-22.5, 22.5]){
+    const arc=new T.Mesh(new T.TorusGeometry(cm(15.5), cm(4), 10, 28, Math.PI), LIME);
+    arc.rotation.y=Math.PI/2; arc.position.set(cm(sx), cm(20.5), 0); arc.castShadow=true; C.g.add(arc);
+    for(const sz of [-15.5, 15.5]) C.tube(cm(14.5), cm(3.5), LIME, cm(sx), cm(13.25), cm(sz), 'y');
+  }
+  // —— 顶部橙色把手（横杆 + 两端接球，顶 42.5≈spec 42.4；偏孩子侧 +z）——
+  C.tube(cm(40), cm(2.5), ORANGE, 0, cm(40), cm(1), 'x');
+  C.sph(cm(2.6), ORANGE, cm(-21), cm(40), cm(0.5), 14);
+  C.sph(cm(2.6), ORANGE, cm(21), cm(40), cm(0.5), 14);
+  // —— 4 蓝轮（轴沿 x，盘在 y-z 平面，r6 贴地）——
+  for(const sx of [-22.5, 22.5]) for(const sz of [-15.5, 15.5]){
+    const w=new T.Mesh(new T.CylinderGeometry(cm(6), cm(6), cm(3), 20), BLUE);
+    w.rotation.z=Math.PI/2; w.position.set(cm(sx), cm(6), cm(sz)); w.castShadow=true; C.g.add(w);
+  }
+  // —— 中央白色活动面板（朝孩子侧 +z，前仰 9°）+ 面板件 ——
+  const pn=new T.Group(); pn.position.set(0, 0, 0); pn.rotation.x=0.16; C.g.add(pn);
+  const panel=new T.Mesh(rboxGeo(cm(30), cm(26), cm(2.5), cm(3), 3), WHITE);
+  panel.position.set(0, cm(26), cm(6)); panel.castShadow=panel.receiveShadow=true; pn.add(panel);
+  const gear=(x,r,c)=>{ const g=new T.Mesh(new T.CylinderGeometry(cm(r), cm(r), cm(1.6), 18), c);
+    g.rotation.x=Math.PI/2; g.position.set(cm(x), cm(33), cm(7.6)); g.castShadow=true; pn.add(g); };
+  gear(-9, 3.6, PURPLE); gear(0, 3.2, RED); gear(9, 2.7, YELLOW);
+  const bub=new T.Mesh(new T.SphereGeometry(cm(4.8), 20, 14), CLEAR);
+  bub.position.set(0, cm(25), cm(8.2)); bub.castShadow=true; pn.add(bub);
+  for(let i=0;i<3;i++){
+    const k=new T.Mesh(rboxGeo(cm(4.2), cm(5), cm(1.6), cm(0.8), 2),
+      [PURPLE,RED,YELLOW][i]);
+    k.position.set(cm(-8+i*8), cm(17), cm(8.2)); k.rotation.x=-0.35; k.castShadow=true; pn.add(k);
+  }
+  // —— 前部橙色字母滚筒（轴沿 x，前轮之间）——
+  const roller=new T.Mesh(new T.CylinderGeometry(cm(3), cm(3), cm(26), 18), ORANGE);
+  roller.rotation.z=Math.PI/2; roller.position.set(0, cm(7), cm(12)); roller.castShadow=true; C.g.add(roller);
+  // 水平重心归零（真实顶点 bbox）
+  C.g.updateMatrixWorld(true);
+  const bb4=new T.Box3();
+  C.g.traverse(o=>{ if(o.isMesh&&o.geometry){
+    const pos=o.geometry.attributes.position, v=new T.Vector3();
+    for(let i=0;i<pos.count;i++){ v.fromBufferAttribute(pos,i).applyMatrix4(o.matrixWorld); bb4.expandByPoint(v); } } });
+  const off4=new T.Vector3(); bb4.getCenter(off4);
+  for(const ch of C.g.children){ ch.position.x-=off4.x; ch.position.z-=off4.z; }
+};
+
 /* LÄTT 儿童桌+2椅（套装 119×48×48）：桌 63×48×45（松木方框+白色面板，4 全高方腿），
    椅 28×28×48、座高 28（白座板+白背顶板，中间镂空）。两椅对称摆桌短边两侧、椅背朝外。
    轴向：桌长边沿 x；椅背朝 ±x（s=+1 右椅椅背朝 +x）。 */
@@ -12602,6 +12661,23 @@ async function run3DTest(){
     T('sportszone-centered', Math.abs(szFit.ct.x)<0.03 && Math.abs(szFit.ct.z)<0.03,
       'LT 运动站水平重心 ('+szFit.ct.x.toFixed(2)+', '+szFit.ct.z.toFixed(2)+')');
     T('sportszone-on-floor', szFit.minY>-0.02, 'LT 运动站最低点 y='+szFit.minY.toFixed(3));
+    const lwf=CATALOG.find(c=>c.id==='lt-walker-0');
+    const lwFit = (()=>{
+      const g=furn3D({uid:-117,ref:lwf.id,x:0,y:0,rot:0}, lwf);
+      g.updateMatrixWorld(true);
+      const b=new THREE.Box3().setFromObject(g);
+      const sz=new THREE.Vector3(), ct=new THREE.Vector3(); b.getSize(sz); b.getCenter(ct);
+      disposeOwned(g);
+      return {sz, ct, fx:sz.x/cm2ft(lwf.w), fz:sz.z/cm2ft(lwf.d), fy:sz.y/cm2ft(lwf.h), minY:b.min.y};
+    })();
+    T('lt-walker-fits-footprint', lwFit.fx<=1.02 && lwFit.fz<=1.02 && lwFit.fy<=1.02,
+      'LT 学步车填充率 '+[lwFit.fx,lwFit.fz,lwFit.fy].map(v=>(v*100).toFixed(0)+'%').join('/')+
+      '（声明 '+lwf.w+'×'+lwf.d+'×'+lwf.h+'cm）');
+    T('lt-walker-footprint-not-inflated', lwFit.fx>=0.92 && lwFit.fz>=0.92,
+      '不能虚报占地：'+[lwFit.fx,lwFit.fz].map(v=>(v*100).toFixed(0)+'%').join('/'));
+    T('lt-walker-centered', Math.abs(lwFit.ct.x)<0.03 && Math.abs(lwFit.ct.z)<0.03,
+      'LT 学步车水平重心 ('+lwFit.ct.x.toFixed(2)+', '+lwFit.ct.z.toFixed(2)+')');
+    T('lt-walker-on-floor', lwFit.minY>-0.02, 'LT 学步车最低点 y='+lwFit.minY.toFixed(3));
     const hw=CATALOG.find(c=>c.id==='hw-02e');
     T('hw02e-costs-money', !isBuiltIn(hw) && !!priceOf(hw,'usd') && hasLightCtl(hw),
       '计价 '+fmtPrice(hw,'usd')+' 且有调光控件');
