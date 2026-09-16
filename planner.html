@@ -804,6 +804,7 @@ const CATALOG = [
  {id:'laett-0', cat:'儿童桌 / 椅', name:'LÄTT 儿童桌 + 2 椅 · 白/松木', w:119,d:48,h:48, seatH:28, price:49.99, priceCA:49.99, color:'#e3c592', color2:'#f2efe6', kind:'tableRect', wood:'pine', model:'laett', url:'https://www.ikea.com/us/en/p/laett-childrens-table-and-2-chairs-white-pine-50178411/', note:'桌椅套装：桌 63×48×45（松木方框+白色三聚氰胺面板），椅 28×28×48、座高 28；两椅对称摆在桌短边两侧（整套占地 119×48）'},
   {id:'hape-xylo-0', cat:'音乐 / 乐器', name:'Hape Rainbow Xylophone 木琴 · 彩虹5音', w:27.5,d:13.7,h:4.3, price:33.99, priceCA:29.99, color:'#2ea3d8', color2:'#d9b98c', kind:'xylophone', wood:'birch', model:'hape-xylo', url:'https://global.hape.com/rainbow-xylophone-e0606', note:'木质5音木琴+2蓝槌（E0606，12月+）：蓝最长到红最短五根音条横排，D形提手底座可拎走，槌有收纳槽；颜色与音高识别、节奏与手部精细动作启蒙'},
  {id:'bt-board-0', cat:'平衡 / 感统', name:'The Balance Board 平衡板 · 波罗的海桦木', w:50.8,d:27.9,h:10.2, price:99, caNA:true, color:'#e6d9bd', kind:'wobble', wood:'birch', model:'bt-board', url:'https://blueberryandthird.com/products/the-balance-board', note:'波罗的海桦木胶合板平衡板（美国俄亥俄手作，2-7岁 / 150lbs）：上层微圆角平板+下半椭球摇摆底座（单点触地），前后左右摇晃练前庭感/核心/重心转移；无加拿店面（caNA）'},
+ {id:'lt-sportszone-0', cat:'运动器材', name:'Little Tikes 3-in-1 Sports Zone · 三合一运动站', w:87.6, d:36.8, h:62.2, price:48.99, priceCA:69.97, color:'#7ac143', color2:'#e03a2f', kind:'sportsZone', model:'lt-sportszone', url:'https://www.littletikes.com/products/sportszone', note:'12-36月三合一活动站：足球门（红拱架+白鳞格网）+篮球（黄杆/绿篮板+LED记分屏+橙筐，高度可调）+保龄球（5瓶+橙球）+蓝接球碗；踢球/投掷/滚动练大运动与手眼协调；美$48.99（littletikes.com），加$69.97（Walmart.ca）'},
  {id:'giantex7-blue', cat:'运动器材', name:'Giantex 7ft 圆形蹦床带安全网 · Blue', w:221.6,d:221.6,h:185.4, price:199.99, priceCA:259.99, color:'#3d6cb4', col2:'#46b13c', kind:'trampoline', model:'giantex7', note:'直径 7.3ft，高 6.1ft（含网架），3 组 A 字架 + PE 护垫 + 绿色底座，3 岁+', url:'https://www.giantex.com/products/7-ft-kids-trampoline-with-safety-enclosure-net'},
  {id:'giantex7-green', cat:'运动器材', name:'Giantex 7ft 圆形蹦床带安全网 · Green', w:221.6,d:221.6,h:185.4, price:199.99, priceCA:259.99, color:'#3f9e3a', col2:'#46b13c', kind:'trampoline', model:'giantex7', note:'直径 7.3ft，高 6.1ft（含网架），3 组 A 字架 + PE 护垫 + 绿色底座，3 岁+', url:'https://www.giantex.com/products/7-ft-kids-trampoline-with-safety-enclosure-net'},
  {id:'giantex7-yellow', cat:'运动器材', name:'Giantex 7ft 圆形蹦床带安全网 · Yellow', w:221.6,d:221.6,h:185.4, price:189.99, priceCA:259.99, color:'#e8b524', col2:'#46b13c', kind:'trampoline', model:'giantex7', note:'直径 7.3ft，高 6.1ft（含网架），3 组 A 字架 + PE 护垫 + 绿色底座，3 岁+', url:'https://www.giantex.com/products/7-ft-kids-trampoline-with-safety-enclosure-net'},
@@ -1350,7 +1351,7 @@ function furnShape(it, spec){
     el('line',{x1:0,y1:-dp/2+3,x2:0,y2:dp/2-3,stroke:'rgba(0,0,0,.28)','stroke-width':1.4,'stroke-dasharray':'6 4'},body);
   } else
   // 新品类 2D 俯视图例
-  if(['shelf','crib','cart','deskSitStand','swivelChair','playCouch','tableFold','tableDrawer','rocking','xylophone','wobble'].includes(kind)){
+  if(['shelf','crib','cart','deskSitStand','swivelChair','playCouch','tableFold','tableDrawer','rocking','xylophone','wobble','sportsZone'].includes(kind)){
     const dk2='rgba(0,0,0,.30)', lt2='rgba(255,255,255,.22)';
     if(kind==='shelf'){
       R(-wf/2,-df/2,wf,df,2,col,{stroke:'rgba(0,0,0,.45)','stroke-width':1.2});
@@ -1386,6 +1387,13 @@ function furnShape(it, spec){
       el('circle',{cx:wp*0.36,cy:0,r:Math.min(wp,dp)*0.30,fill:col,stroke:'rgba(0,0,0,.45)','stroke-width':1.2},body);
       el('line',{x1:-wp/2+1,y1:0,x2:wp/2-1,y2:0,stroke:'rgba(0,0,0,.30)','stroke-width':1},body);
       el('line',{x1:wp*0.10,y1:-dp/2+1,x2:wp*0.10,y2:dp/2-1,stroke:'rgba(0,0,0,.30)','stroke-width':1},body);
+    } else if(kind==='sportsZone'){
+      // 三合一运动站：圆角框 + 左小拱（球门）+ 中竖杆（篮架）+ 右三小瓶（保龄球）
+      R(-wf/2,-df/2,wf,df, Math.min(wf,df)*0.12*S, col,{stroke:'rgba(0,0,0,.45)','stroke-width':1.2});
+      el('path',{d:'M '+(-wf*0.32*S)+' '+(df*0.22*S)+' A '+(wf*0.10*S)+' '+(wf*0.10*S)+' 0 0 1 '+(-wf*0.12*S)+' '+(df*0.22*S), fill:'none', stroke:dk2,'stroke-width':1.3},body);
+      el('line',{x1:0,y1:df*0.30*S,x2:0,y2:-df*0.20*S,stroke:dk2,'stroke-width':1.4},body);
+      el('circle',{cx:0,cy:-df*0.20*S,r:df*0.07*S,fill:'none',stroke:dk2,'stroke-width':1.1},body);
+      for(let i=0;i<3;i++) el('line',{x1:wf*(0.14+0.09*i)*S,y1:df*0.06*S,x2:wf*(0.14+0.09*i)*S,y2:df*0.30*S,stroke:dk2,'stroke-width':1.3},body);
     } else if(kind==='wobble'){
       // 摇摆板：圆角顶板（俯视图）+ 沿长轴的摇摆弧（指示下半椭球底座）
       R(-wf/2,-df/2,wf,df, Math.max(3, df*0.12*S), col,{stroke:'rgba(0,0,0,.45)','stroke-width':1.2});
@@ -4475,7 +4483,49 @@ function plasticTexture(){
   t.repeat.set(4,4); t.encoding=THREE.sRGBEncoding; _plasticTex=t; return t;
 }
 
-/* 素皮 / 皮革：不规则毛孔纹（爬行垫的硅胶涂层面、皮质家具） */
+/* 素皮 / 皮革：不规则毛孔纹（爬行垫的硅胶涂层面、皮质家具） *//* 球门网：透明底上的白色鳞片状网纹（Sports Zone 的实心塑料网是镂空的鳞格，半透） */
+let _netTex = null;
+function netTexture(){
+  if(_netTex) return _netTex;
+  srand(1024);
+  const N=256, c=document.createElement('canvas'); c.width=c.height=N;
+  const g=c.getContext('2d');
+  g.clearRect(0,0,N,N);
+  g.fillStyle='#f8f8f4'; g.fillRect(0,0,N,N);   // 不透明白板（产品网是实心塑料+鳞格镂空，远景读作白板）
+  g.strokeStyle='rgba(160,170,165,.4)'; g.lineWidth=4; g.lineCap='round';
+  const step=32;
+  let row=0;
+  for(let y=-step;y<N+step*1.5;y+=step){
+    const off=(row++%2)?step/2:0;
+    for(let x=-step;x<N+step;x+=step){
+      g.beginPath(); g.arc(x+off, y, step*0.72, 0.15*Math.PI, 0.85*Math.PI); g.stroke();
+    }
+  }
+  const t=new THREE.CanvasTexture(c);
+  t.wrapS=t.wrapT=THREE.RepeatWrapping; t.repeat.set(3,3);
+  t.encoding=THREE.sRGBEncoding; t.anisotropy=4;
+  _netTex=t; return t;
+}
+/* LED 记分屏：黑底红点阵列（点阵随机点亮，Sports Zone 篮板上的闪光面板） */
+let _ledTex = null;
+function ledTexture(){
+  if(_ledTex) return _ledTex;
+  srand(1025);
+  const N=128, c=document.createElement('canvas'); c.width=c.height=N;
+  const g=c.getContext('2d');
+  g.fillStyle='#0d0d0d'; g.fillRect(0,0,N,N);
+  const n=5, m=N/(n+1);
+  for(let i=0;i<n;i++) for(let j=0;j<n;j++){
+    const on = rnd01()<0.45;
+    g.fillStyle = on ? '#e33b2e' : '#3a1410';
+    g.beginPath(); g.arc(m*(i+1), m*(j+1), 5.5, 0, Math.PI*2); g.fill();
+  }
+  const t=new THREE.CanvasTexture(c);
+  t.wrapS=t.wrapT=THREE.RepeatWrapping;
+  t.encoding=THREE.sRGBEncoding;
+  _ledTex=t; return t;
+}
+
 function leatherTexture(){
   if(_leatherTex) return _leatherTex;
   srand(1015);
@@ -10083,6 +10133,68 @@ MODELS['bt-board'] = (C) => {
     for(let i=0;i<pos.count;i++){ v.fromBufferAttribute(pos,i).applyMatrix4(o.matrixWorld); bb2.expandByPoint(v); } } });
   const off2=new T.Vector3(); bb2.getCenter(off2);
   for(const ch of C.g.children){ ch.position.x-=off2.x; ch.position.z-=off2.z; }
+};
+
+/* Little Tikes 3-in-1 Sports Zone（对照 work/ref/sportszone/sz_0.jpg / sz_1.jpg / sz_4.jpg，全部 cm→C.cm→英尺）：
+   布局：球门在左（-x）、篮架杆在中、保龄球在右（+x）；网朝后（-z）、碗朝前（+z）。
+   占地 87.6×36.8cm，高 62.2cm（篮板顶）；12-36月。各部件用品牌色塑料件。 */
+MODELS['lt-sportszone'] = (C) => {
+  const cm=C.cm, T=C.THREE;
+  const M=(c,o)=>C.M(c, Object.assign({plastic:true, rough:.5, clear:.35}, o||{}));
+  const RED=M('#e03a2f'), GREEN=M('#7ac143'), DGREEN=M('#3e9e52'), LGREEN=M('#8bc34a'),
+        YELLOW=M('#f2b632'), BLUE=M('#2f9fd8'), PURPLE=M('#8e5bb8'), ORANGE=M('#e8770e'),
+        WHITE=M('#f7f7f2',{rough:.6,clear:0}), BALLOR=M('#e06614');
+  const LED=M('#111111',{flat:true, rough:.35, clear:.4});
+  LED.map=ledTexture(); LED.normalMap=normalFromTexture(ledTexture(),0.15);
+  const NET=M('#ffffff',{flat:true, rough:.9});
+  NET.map=netTexture(); NET.side=T.DoubleSide;
+  // —— 足球门（左）：两根红腿 + 上半圆红拱（x-y 平面）+ 红横管接杆 + 白网 + 绿脚/底垫 ——
+  const gz=-2;
+  C.tube(cm(20), cm(2.2), RED, cm(-38), cm(10), cm(gz), 'y');
+  C.tube(cm(20), cm(2.2), RED, cm(-22), cm(10), cm(gz), 'y');
+  const arch=new T.Mesh(new T.TorusGeometry(cm(8), cm(2.2), 10, 24, Math.PI), RED);
+  arch.position.set(cm(-30), cm(20), cm(gz)); arch.castShadow=true; C.g.add(arch);
+  C.tube(cm(21), cm(2.2), RED, cm(-11.5), cm(26), cm(gz), 'x');
+  const net=new T.Mesh(new T.PlaneGeometry(cm(24), cm(22)), NET);
+  net.rotation.y=Math.PI/2; net.position.set(cm(-20.5), cm(11), cm(gz)); net.castShadow=true; C.g.add(net);
+  C.rb(cm(26), cm(3.5), cm(6), cm(1.2), LGREEN, cm(-27), 0, cm(-15.4), 3);
+  C.rb(cm(8), cm(3), cm(10), cm(1.2), LGREEN, cm(-40), 0, cm(gz-2), 3);
+  C.rb(cm(8), cm(3), cm(10), cm(1.2), LGREEN, cm(-24), 0, cm(gz-2), 3);
+  C.sph(cm(6), WHITE, cm(-37), cm(6), cm(8), 20);
+  // —— 篮球（中）：黄主杆 + 红接环 + 蓝上杆 + 绿篮板(顶=62.2) + LED 屏 + 3 按钮 + 橙筐 + 绿裙 + 蓝碗 ——
+  C.cyl(cm(3.2), cm(3.8), cm(38), YELLOW, 0, 0, 0, 24);
+  C.cyl(cm(4), cm(4), cm(6), RED, 0, cm(34), 0, 24);
+  C.cyl(cm(4), cm(4), cm(2), YELLOW, 0, cm(40), 0, 24);
+  C.cyl(cm(2.2), cm(2.2), cm(6), BLUE, 0, cm(42), 0, 16);
+  C.rb(cm(24), cm(24), cm(2.4), cm(3), GREEN, 0, cm(38.2), cm(-1.2), 4);
+  C.box(cm(11), cm(11), cm(0.8), LED, 0, cm(46), cm(0.1));
+  C.tube(cm(2.2), cm(1.1), M('#f2a516'), cm(-9), cm(46), cm(0.6), 'z');
+  C.tube(cm(2.2), cm(1.1), M('#2f9fd8'), cm(-9), cm(50.5), cm(0.6), 'z');
+  C.tube(cm(2.2), cm(1.1), M('#e03a2f'), cm(-9), cm(55), cm(0.6), 'z');
+  C.torus(cm(5), cm(1.8), ORANGE, 0, cm(40), cm(2.5), Math.PI/2);
+  C.cyl(cm(5.5), cm(3.5), cm(5), DGREEN, 0, cm(35), cm(2.5), 20);
+  // —— 蓝接球碗（开口盘：外壁 + 口缘 + 深色内胆）——
+  C.cyl(cm(9), cm(7.5), cm(4), BLUE, cm(-6), 0, cm(8), 24);
+  C.torus(cm(8.8), cm(1.1), BLUE, cm(-6), cm(4), cm(8), Math.PI/2);
+  C.cyl(cm(7.4), cm(7.4), cm(0.4), M('#23789e'), cm(-6), cm(3.4), cm(8), 24);
+  // —— 保龄球（右）：紫双柱 + 紫顶梁 + 橙底 + 5 白瓶 + 橙球 ——
+  const bx=24;
+  C.cyl(cm(2.5), cm(2.5), cm(22), PURPLE, cm(bx-15), 0, 0, 16);
+  C.cyl(cm(2.5), cm(2.5), cm(22), PURPLE, cm(bx+15), 0, 0, 16);
+  C.rb(cm(34), cm(5.5), cm(4.5), cm(2), PURPLE, cm(bx-17), cm(19), 0, 3);
+  C.box(cm(34), cm(4.5), cm(9), ORANGE, cm(bx-17), 0, cm(-2.5));
+  const pin=[[0.1,0],[2.6,0],[2.9,1],[2.7,3.5],[1.2,6],[0.8,7.5],[1.7,9.5],[2.0,11.5],[1.9,13],[1.2,15],[0.3,15.8]]
+    .map(p=>[cm(p[0]),cm(p[1])]);
+  C.rep(5, i=>{ C.lathe(pin, WHITE, cm(bx-11+i*5.5), cm(4.5), 0, 18); });
+  C.sph(cm(5), BALLOR, cm(bx-8), cm(5), cm(10), 20);
+  // 水平重心归零（真实顶点 bbox）
+  C.g.updateMatrixWorld(true);
+  const bb3=new T.Box3();
+  C.g.traverse(o=>{ if(o.isMesh&&o.geometry){
+    const pos=o.geometry.attributes.position, v=new T.Vector3();
+    for(let i=0;i<pos.count;i++){ v.fromBufferAttribute(pos,i).applyMatrix4(o.matrixWorld); bb3.expandByPoint(v); } } });
+  const off3=new T.Vector3(); bb3.getCenter(off3);
+  for(const ch of C.g.children){ ch.position.x-=off3.x; ch.position.z-=off3.z; }
 };
 
 /* LÄTT 儿童桌+2椅（套装 119×48×48）：桌 63×48×45（松木方框+白色面板，4 全高方腿），
