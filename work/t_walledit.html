@@ -9653,10 +9653,9 @@ MODELS['ranarp_f'] = (C) => {
 // ===== EKORRE 摇摇麋鹿（官方 L73 W29 H52，红漆板身+原木摇轨；头部有手孔，口部吊环） =====
 MODELS['ekorre'] = (C) => {
   const cm=C.cm, T=C.THREE;
-  const red  = C.M('#c11e23', {rough:.2, clear:1, clearRough:.12, envI:.4});
+  const red  = C.M('#c11e23', {rough:.25, clear:.8, clearRough:.15, envI:.3});
   const wood = C.M('#d9bd96', {wood:'pine', rough:.5});
   const blk  = C.M('#17181a', {rough:.55});
-  // 贝塞尔路径 → 采样多边形（点为 cm）
   const seg2pts=(segs,n=7)=>{ const pts=[];
     for(const s of segs){
       if(s[0]==='L') pts.push(s[1]);
@@ -9669,77 +9668,101 @@ MODELS['ekorre'] = (C) => {
     return p; };
   const ex=(pts,depth,mat,x,y,z,plane,holes)=>{
     const sh=new T.Shape(pts.map(p=>new T.Vector2(cm(p[0]),cm(p[1]))));
-    for(const h of (holes||[])){ const hp=new T.Path(h.map(p=>new T.Vector2(cm(p[0]),cm(p[1])))); sh.holes.push(hp); }
+    for(const hh of (holes||[])){ const hp=new T.Path(hh.map(p=>new T.Vector2(cm(p[0]),cm(p[1])))); sh.holes.push(hp); }
     const geo=new T.ExtrudeGeometry(sh,{depth:depth,bevelEnabled:false,bevelThickness:0,bevelSize:0,curveSegments:1});
     geo.computeVertexNormals();
     const mm=new T.Mesh(geo,mat);
     if(plane==='xz') mm.rotation.x=Math.PI/2;
     if(plane==='zy') mm.rotation.y=Math.PI/2;
     mm.position.set(x||0,y||0,z||0); mm.castShadow=mm.receiveShadow=true; C.g.add(mm); return mm; };
-  // 麋鹿身侧板（头颈有手孔、口部有环孔、下颌波浪、前腿 S 形；前端=+x）
+  // ===== 侧板 ×2（仅身体：胸→S 弯腿→摇轨→臀→身顶；头是中央单板，见下）=====
   const body=seg2pts([
-    ['L',[-32,9.5]],
-    ['Q',[-32,9.5],[-28.5,14],[-26.5,20]],
-    ['L',[-26.5,26.5]],
-    ['L',[8,26.5]],
-    ['Q',[8,26.5],[10,35],[13,42]],
-    ['Q',[13,42],[15,46.5],[22,47]],
-    ['Q',[22,47],[30,45.5],[35,38]],
-    ['Q',[35,38],[36.5,32],[36,27]],
-    ['L',[34,23.5]],
-    ['Q',[34,23.5],[31.5,20.5],[29,22.5]],
-    ['Q',[29,22.5],[25.5,24.5],[23,21.5]],
-    ['Q',[23,21.5],[20,18],[17.5,15]],
-    ['Q',[17.5,15],[19,12],[17,9.5]],
-    ['L',[9,9.5]],
-    ['Q',[9,9.5],[11.5,14],[9.5,19]],
-    ['Q',[9.5,19],[-0.5,16.5],[-11,17.5]],
-    ['Q',[-11,17.5],[-16.5,17.5],[-21,9.5]],
+    ['Q',[18,21.5],[19.5,15.5],[21.5,10]], // 胸 → 腿外缘
+    ['Q',[21.5,10],[24,5.5],[23,1.5]],     // 腿 S 下段 → 脚
+    ['L',[16,1.5]],                        // 脚底
+    ['Q',[16,1.5],[14.5,5.5],[14,9]],      // 腿内缘
+    ['Q',[14,9],[13.5,11],[12,12.5]],      // → 腹
+    ['Q',[12,12.5],[4,13.5],[-4,13]],      // 腹下波状
+    ['Q',[-4,13],[-14,12.5],[-22,11.5]],   // → 后下
+    ['L',[-24,12]],
+    ['Q',[-24,12],[-23,15.5],[-21,18]],    // 后缘上收
+    ['Q',[-21,18],[-14,20.5],[-6,22]],     // 座下缘
+    ['Q',[-6,22],[2,23.5],[16,24.5]],      // 身顶（座板下）→ 前（颈底）
+    ['L',[18,21.5]],                       // 前缘（闭合）
   ]);
-  ex(body, cm(2.5), red, 0, 0, cm(11.75), null, [circle(19.5,37.5,2.6), circle(33.5,24.3,0.9)]);
-  ex(body, cm(2.5), red, 0, 0, -cm(14.25), null, [circle(19.5,37.5,2.6), circle(33.5,24.3,0.9)]);
-  // 摇轨 ×2（∪ 形弧，长 70，中点近地，端头翘起）
+  ex(body, cm(2.5), red, 0, 0, cm(11.75), null, [circle(4,17.5,3.2)]);
+  ex(body, cm(2.5), red, 0, 0, -cm(14.25), null, [circle(4,17.5,3.2)]);
+  // ===== 头中央单板（一张板；侧面可见头形；孔：鼻环 + 握杆）=====
+  const head=seg2pts([
+    ['Q',[10,44],[18,43.5],[23,38]],       // 头顶 → 额
+    ['Q',[23,38],[29,29],[30,20]],         // 前脸长弧
+    ['Q',[30,20],[32.5,15.5],[32,11]],     // → 口鼻尖（向下楔形）
+    ['Q',[32,11],[29.5,8.5],[26,10.5]],    // 鼻尖下缘 → 回勾
+    ['Q',[26,10.5],[22.5,12],[21,16.5]],   // 下颌
+    ['Q',[21,16.5],[19.5,19],[18.5,21.5]], // 颌下 → 底边（陷进身体里）
+    ['L',[8,22]],                          // 底边（被身体遮住）
+    ['Q',[8,22],[9.5,31],[9,37]],          // 颈背
+    ['Q',[9,37],[8.5,41.5],[10,44]],       // → 头顶（闭合）
+  ]);
+  ex(head, cm(2.5), red, 0, 0, -cm(1.25), null, [circle(29.5,11.5,1.1), circle(10,34,1.8)]);
+  // ===== 摇轨 ×2（∪ 弧，长 73，端头翘起）+ 黑脚垫 ×4 =====
   const rock=seg2pts([
-    ['L',[-35,9.5]],
-    ['Q',[-35,9.5],[-17,0.6],[0,0.2]],
-    ['Q',[0,0.2],[17,0.6],[35,9.5]],
-    ['L',[35,13.5]],
-    ['Q',[35,13.5],[17,4.6],[0,4.2]],
-    ['Q',[0,4.2],[-17,4.6],[-35,13.5]],
+    ['L',[-36.5,9.5]],
+    ['Q',[-36.5,9.5],[-18,0.6],[0,0.2]],
+    ['Q',[0,0.2],[18,0.6],[36.5,9.5]],
+    ['L',[36.5,13.5]],
+    ['Q',[36.5,13.5],[18,4.6],[0,4.2]],
+    ['Q',[0,4.2],[-18,4.6],[-36.5,13.5]],
   ]);
   ex(rock, cm(4.5), wood, 0, 0, cm(10));
   ex(rock, cm(4.5), wood, 0, 0, -cm(14.5));
-  // 黑胶脚垫 ×4（摇轨端头下缘，略探出端头）
   for(const sx of [-1,1]) for(const sz of [-1,1])
-    C.box(cm(4.5), cm(2.5), cm(4.5), blk, sx*cm(33.75), cm(7), sz*cm(11.75));
-  // 下横梁 ×2（两端贯入摇轨，前后腿底坐于其上）
-  C.box(cm(8), cm(4.5), cm(25), wood, cm(13), cm(5), 0);
-  C.box(cm(6), cm(4.5), cm(25), wood, cm(-18.5), cm(5), 0);
-  // 坐板（两端贯入侧板）+ 半圆靠背（直径≈座深）
-  C.rb(cm(30), cm(3), cm(26.4), cm(1.2), red, cm(-9), cm(26.5), 0);
-  const bs=[]; for(let i=0;i<=12;i++){ const a=Math.PI*i/12;
-    bs.push([8.5*Math.cos(a), 27+8.5*Math.sin(a)]); }
-  ex(bs, cm(2.5), red, cm(-22.5), 0, 0, 'zy');
-  // 横向把手（穿过颈后）
-  C.tube(cm(27), cm(1.6), wood, cm(9), cm(39.5), 0, 'z');
-  // 鹿角 ×2（基座条 + 三指，只绕竖轴转，前倾 70° / 后倾 110°）
-  const ant=(z,ang)=>{ const grp=new T.Group(); C.g.add(grp);
-    const addG=(m)=>{ m.castShadow=m.receiveShadow=true; grp.add(m); };
-    const b=new T.Mesh(new T.BoxGeometry(cm(12),cm(2.4),cm(4.4)), wood);
-    b.position.set(cm(6),cm(1.2),0); addG(b);   // 基座条加长，三指嵌入条内
-    for(const fy of [-1.4,0,1.4]){
-      const f=new T.Mesh(new T.CapsuleGeometry(cm(1.1),cm(3.6),4,12), wood);
-      f.rotation.z=Math.PI/2; f.position.set(cm(8.1),cm(2.4),cm(fy)); addG(f); }
-    grp.position.set(cm(19), cm(40), z); grp.rotation.z=ang; }   // z 已是英尺;
-  ant(cm(11.5), 70*Math.PI/180);
-  ant(-cm(11.5), 110*Math.PI/180);
-  // 口部吊环（挂在口孔下，贴前侧板）
-  C.torus(cm(2.2), cm(0.45), blk, cm(33.5), cm(21.9), cm(12.9));
-  // 水平重心归零（2D 图例/碰撞以占地中心为原点）
+    C.box(cm(4.2), cm(2.4), cm(4.2), blk, sx*cm(34.5), cm(7.1), sz*cm(11.75));
+  // ===== 横撑 ×2（前后腿底坐其上）=====
+  C.box(cm(9), cm(4), cm(25), wood, cm(13), cm(5), 0);
+  C.box(cm(7), cm(4), cm(25), wood, cm(-17), cm(5), 0);
+  // ===== 座盘（顶面 28）+ D 形半椭圆靠背（顶 ~41.5）=====
+  C.rb(cm(30), cm(2.6), cm(26), cm(1.3), red, cm(-6), cm(25.4), 0);
+  const bs=[]; for(let i=0;i<=16;i++){ const a=Math.PI*i/16;
+    bs.push([12.5*Math.cos(a), 28+13.5*Math.sin(a)]); }
+  bs.push([12.5, 27.6]);
+  ex(bs, cm(2.5), red, cm(-19), 0, 0, 'zy');
+  // ===== 横向握杆（穿过头部 y34）=====
+  C.tube(cm(24), cm(1.5), wood, 0, cm(34), 0, 'z');
+  // ===== 鹿角 ×2（扁平掌状切板：基杆 + 3 分叉轮廓，基部坐在头顶，绕竖轴 ±35°、微外倾）=====
+  const palm=[[-1.6,0],[1.6,0],[1.8,3],[3.6,4.6],[3,6.2],[1.7,5.4],[1.6,7.6],[3.2,9],[2.6,10.6],[0.9,9.6],[0,11.2],
+              [-0.9,9.6],[-2.6,10.6],[-3.2,9],[-1.6,7.6],[-1.7,5.4],[-3,6.2],[-3.6,4.6],[-1.8,3]];
+  const ant=(tilt, yaw)=>{
+    const grp=new T.Group();
+    grp.add(ex(palm, cm(1.5), wood, 0, 0, 0));
+    grp.scale.y=0.85; grp.position.set(0,cm(0.8),0); grp.rotation.z=tilt;
+    const holder=new T.Group();
+    holder.position.set(cm(10), cm(41.5), 0);
+    holder.rotation.y=yaw;
+    holder.add(grp);
+    C.g.add(holder); };
+  ant(0.4, Math.PI*28/180);   // 前角：外倾 23°，朝前 28°
+  ant(-0.55,-Math.PI*28/180); // 后角：外倾 32°，朝后 28°
+  // 颈背红鬃条（头板两面各一，沿头顶→颈背线）
+  const mane=[
+    [10.5,43.0],[17,42.8],[22,37.5],[27.5,28.5],[29.5,20],[27,19.5],
+    [24.5,27.5],[19,36.5],[14,41.8],[10.0,41.8],
+  ].map(p=>new T.Vector2(cm(p[0]),cm(p[1])));
+  for(const zs of [cm(1.25),-cm(3.05)]){
+    const g=new T.ExtrudeGeometry(new T.Shape(mane),{depth:cm(1.8),bevelEnabled:false});
+    g.computeVertexNormals();
+    const mm=new T.Mesh(g,red); mm.position.set(0,0,zs); mm.castShadow=mm.receiveShadow=true; C.g.add(mm);
+  }
+  // 黑珠子眼睛（头板两面）
+  for(const sz of [-1,1]) C.sph(cm(1.15), blk, cm(20.5), cm(36.5), sz*cm(2.5));
+  // ===== 口鼻吊环（挂头板鼻环孔，垂在头板面前外）=====
+  C.torus(cm(2.1), cm(0.42), blk, cm(29.5), cm(8.6), cm(2.7));
+  // 水平重心归零
   C.g.updateMatrixWorld(true);
   const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3(); bb.getCenter(off);
   for(const ch of C.g.children){ ch.position.x-=off.x; ch.position.z-=off.z; }
 };
+
 
 // ===== Hape Rock & Ride 摇木马（官方 67.6×28.2×52.3 cm，一体侧板+摇轨，红鬃红座） =====
 MODELS['hape-horse'] = (C) => {
@@ -9763,61 +9786,62 @@ MODELS['hape-horse'] = (C) => {
     if(plane==='xz') mm.rotation.x=Math.PI/2;
     if(plane==='zy') mm.rotation.y=Math.PI/2;
     mm.position.set(x||0,y||0,z||0); mm.castShadow=mm.receiveShadow=true; C.g.add(mm); return mm; };
-  // 侧板一体件：马头(含嘴口凹)+颈+身+前后撑+摇轨（前端=+x），中部椭圆镂空
-  const outer=seg2pts([
-    ['L',[33,31]],
-    ['Q',[33,31],[34.2,38],[29.5,44]],
-    ['Q',[29.5,44],[24.5,50.5],[16,51]],
-    ['Q',[16,51],[9,50.5],[5,45.5]],
-    ['Q',[5,45.5],[2.5,35],[2,25]],
-    ['L',[-24,25]],
-    ['Q',[-24,25],[-28,22.5],[-29.5,17]],
-    ['Q',[-29.5,17],[-31.5,10],[-33.8,5.5]],
-    ['Q',[-33.8,5.5],[-24,0.8],[-8,0]],
-    ['Q',[-8,0],[6,0],[20,1.8]],
-    ['Q',[20,1.8],[26,3.5],[27.5,6]],
-    ['Q',[27.5,6],[27,9],[25,13]],
-    ['Q',[25,13],[23,17],[22,20]],
-    ['Q',[22,20],[24.5,22],[28,23.5]],
-    ['Q',[28,23.5],[30.5,25],[31.8,26.2]],
-    ['Q',[31.8,26.2],[31,28.5],[33,31]],
+  // ===== 侧板 ×2（仅身体：胸→前腿→摇轨→臀→身顶；头颈是中央单板，见下）=====
+  const body=seg2pts([
+    ['Q',[27.2,17.5],[25.5,13],[24.2,8.5]], // 胸 → 前腿
+    ['Q',[24.2,8.5],[25.5,5.5],[28,3.8]],   // 前腿 → 摇轨前端
+    ['Q',[28,3.8],[22,0.8],[12,0.5]],       // 摇轨底（前）
+    ['Q',[12,0.5],[-2,0.2],[-12,0.6]],      // 摇轨底（中）
+    ['Q',[-12,0.6],[-22,1.4],[-29,4.2]],    // 摇轨底（后）
+    ['Q',[-29,4.2],[-33.5,7],[-31.5,12]],   // 后摇轨端 → 臀
+    ['Q',[-31.5,12],[-27,17.5],[-20,19.5]], // 臀 → 身后上缘
+    ['Q',[-20,19.5],[-4,21],[25,22]],       // 身顶（座板下）
+    ['L',[27.2,17.5]],                      // 前缘（颈底接合处，闭合）
   ]);
-  const hole=[]; for(let i=0;i<24;i++){ const a=Math.PI*2*i/24;
-    hole.push([-3+14.5*Math.cos(a), 14+6*Math.sin(a)]); }
-  ex(outer, cm(1.8), wood, 0, 0, cm(12.3), null, [hole]);
-  ex(outer, cm(1.8), wood, 0, 0, -cm(14.1), null, [hole]);
-  // 红鬃：沿头顶外缘的扁条（两面各一，略突出板面）
-  const mOut=seg2pts([
-    ['L',[30.3,45]],
-    ['Q',[30.3,45],[26.2,51.8],[16,52.3]],
-    ['Q',[16,52.3],[8.8,51.9],[4.7,46.8]],
-    ['Q',[4.7,46.8],[2.4,35.8],[1.9,26.3]],
+  const hole=[]; for(let i=0;i<28;i++){ const a=Math.PI*2*i/28;
+    hole.push([-2+14*Math.cos(a), 12+4.8*Math.sin(a)]); }
+  // 侧板 ×2：前视图呈梯形——上窄（座椅处）下宽（摇轨最宽），所以两板绕 x 轴外张 ~10°
+  const m1=ex(body, cm(1.8), wood, 0, 0, cm(12.3), null, [hole]); m1.rotation.x=-0.17; m1.position.y=cm(0.4);
+  const m2=ex(body, cm(1.8), wood, 0, 0, -cm(14.1), null, [hole]); m2.rotation.x=0.17; m2.position.y=cm(0.4);
+  // 注：绕 x 轴旋转以 y=0（地面）为轴，底部几乎不动、顶部内收 → 上窄下宽
+  // ===== 头颈中央单板（一张板；侧面可见头形：头顶→额→鼻梁→嘴尖→颐→颈前→底边→颈背→闭合）=====
+  const head=seg2pts([
+    ['Q',[8,52.3],[15,52.4],[20,49.5]],     // 头顶 → 额
+    ['Q',[20,49.5],[27,46.5],[30.5,41]],    // 额 → 鼻梁
+    ['Q',[30.5,41],[33.5,38.5],[33.2,35.5]],// 鼻梁 → 嘴尖
+    ['Q',[33.2,35.5],[31.5,32],[27.5,29.5]],// 嘴尖 → 颐（凹口）
+    ['Q',[27.5,29.5],[27,26],[26.5,21.5]],  // 颐 → 颈前 → 底边（陷进身体里）
+    ['L',[8,21.5]],                         // 底边（被身体遮住）
+    ['Q',[8,21.5],[8.5,36],[8,52.3]],       // 颈背 → 头顶（闭合）
   ]);
-  const mIn=seg2pts([
-    ['L',[2,25]],
-    ['Q',[2,25],[2.5,35],[5,45.5]],
-    ['Q',[5,45.5],[9,50.5],[16,51]],
-    ['Q',[16,51],[24.5,50.5],[29.5,44]],
-  ]);
-  ex(mOut.concat(mIn), cm(1.8), red, 0, 0, cm(12.45));
-  ex(mOut.concat(mIn), cm(1.8), red, 0, 0, -cm(14.25));
-  // 黑珠子眼睛
-  for(const sz of [-1,1]) C.sph(cm(1.1), blk, cm(25.5), cm(38.5), sz*cm(13));
-  // 红色座板（两端插入侧板）+ 半圆木质靠背
-  C.rb(cm(26), cm(1.6), cm(27), cm(0.8), red, cm(-9), cm(25), 0);
-  // 半圆木质靠背（坐在座板后缘，宽度≈座深）
+  ex(head, cm(1.8), wood, 0, 0, -cm(0.9));
+  // 红鬃：头板两面各一条（沿头顶外缘→颈背线）
+  const mane=[
+    [22,49.0],[10,52.0],[5.5,49.5],[12.5,37.0],[16.5,38.0],[10.5,47.5],[20,48.0],
+  ].map(p=>new T.Vector2(cm(p[0]),cm(p[1])));
+  for(const zs of [cm(1.05),-cm(2.85)]){
+    const g=new T.ExtrudeGeometry(new T.Shape(mane),{depth:cm(1.8),bevelEnabled:false});
+    g.computeVertexNormals();
+    const mm=new T.Mesh(g,red); mm.position.set(0,0,zs); mm.castShadow=mm.receiveShadow=true; C.g.add(mm);
+  }
+  // 黑珠子眼睛（头板两面）
+  for(const sz of [-1,1]) C.sph(cm(1.1), blk, cm(24.5), cm(39), sz*cm(2.0));
+  // 红色座板（单块板，宽于身体顶、窄于摇轨）+ 半圆木质靠背
+  C.rb(cm(26), cm(1.6), cm(15), cm(0.8), red, cm(-9), cm(25), 0);
+  // 半圆木质靠背（坐在座板后缘）
   const bs=[]; for(let i=0;i<=12;i++){ const a=Math.PI*i/12;
     bs.push([10*Math.cos(a), 26.6+10*Math.sin(a)]); }
   ex(bs, cm(1.8), wood, cm(-21.5), 0, 0, 'zy');
-  // 颈部握杆 ×2（从两侧板颈处向外伸出，孩子握持位）+ 端头圆钮
+  // 颈部握杆 ×2（胸前，从侧板穿出，端头贴板面不超深）+ 圆钮
   for(const sz of [-1,1]){
-    C.tube(cm(11.5), cm(1.5), wood, cm(10), cm(40), sz*cm(15.75), 'z');
-    C.knob(cm(1.6), wood, cm(10), cm(40.5), sz*cm(21));
+    C.tube(cm(4.3), cm(1.5), wood, cm(22), cm(28.5), sz*cm(11.1), 'z');
+    C.knob(cm(1.0), wood, cm(22), cm(28.5), sz*cm(13.1));
   }
-  // 座下竖直木条 ×4（每侧板前后各一，从座板下缘垂到镂空区）
-  for(const sz of [-1,1]) for(const xc of [-1,-19])
-    C.box(cm(2.4), cm(13.5), cm(0.8), wood, cm(xc), cm(11.5), sz*cm(13.2));
-  // 水平重心归零
+  // 座下竖直木条 ×4（每侧板前后各一，随板同倾）
+  for(const sz of [-1,1]) for(const xc of [-1,-19]){
+    const bb=C.box(cm(2.4), cm(13.5), cm(0.8), wood, cm(xc), cm(11.5), sz*cm(12.7));
+    bb.rotation.x=-sz*0.17;
+  }  // 水平重心归零
   C.g.updateMatrixWorld(true);
   const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3(); bb.getCenter(off);
   for(const ch of C.g.children){ ch.position.x-=off.x; ch.position.z-=off.z; }
