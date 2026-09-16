@@ -803,6 +803,7 @@ const CATALOG = [
  {id:'mala', cat:'儿童游乐架', name:'IKEA MÅLA 儿童画架（白板）', w:66,d:48.3,h:111.8, price:29.99, priceCA:39.99, color:'#e4ccad', kind:'easel', model:'mala', note:'A 型松木画架，白色写字板 + 红色五金', url:'https://www.ikea.com/us/en/p/mala-easel-softwood-30488966/'},
  {id:'laett-0', cat:'儿童桌 / 椅', name:'LÄTT 儿童桌 + 2 椅 · 白/松木', w:119,d:48,h:48, seatH:28, price:49.99, priceCA:49.99, color:'#e3c592', color2:'#f2efe6', kind:'tableRect', wood:'pine', model:'laett', url:'https://www.ikea.com/us/en/p/laett-childrens-table-and-2-chairs-white-pine-50178411/', note:'桌椅套装：桌 63×48×45（松木方框+白色三聚氰胺面板），椅 28×28×48、座高 28；两椅对称摆在桌短边两侧（整套占地 119×48）'},
   {id:'hape-xylo-0', cat:'音乐 / 乐器', name:'Hape Rainbow Xylophone 木琴 · 彩虹5音', w:27.5,d:13.7,h:4.3, price:33.99, priceCA:29.99, color:'#2ea3d8', color2:'#d9b98c', kind:'xylophone', wood:'birch', model:'hape-xylo', url:'https://global.hape.com/rainbow-xylophone-e0606', note:'木质5音木琴+2蓝槌（E0606，12月+）：蓝最长到红最短五根音条横排，D形提手底座可拎走，槌有收纳槽；颜色与音高识别、节奏与手部精细动作启蒙'},
+ {id:'bt-board-0', cat:'平衡 / 感统', name:'The Balance Board 平衡板 · 波罗的海桦木', w:50.8,d:27.9,h:10.2, price:99, caNA:true, color:'#e6d9bd', kind:'wobble', wood:'birch', model:'bt-board', url:'https://blueberryandthird.com/products/the-balance-board', note:'波罗的海桦木胶合板平衡板（美国俄亥俄手作，2-7岁 / 150lbs）：上层微圆角平板+下半椭球摇摆底座（单点触地），前后左右摇晃练前庭感/核心/重心转移；无加拿店面（caNA）'},
  {id:'giantex7-blue', cat:'运动器材', name:'Giantex 7ft 圆形蹦床带安全网 · Blue', w:221.6,d:221.6,h:185.4, price:199.99, priceCA:259.99, color:'#3d6cb4', col2:'#46b13c', kind:'trampoline', model:'giantex7', note:'直径 7.3ft，高 6.1ft（含网架），3 组 A 字架 + PE 护垫 + 绿色底座，3 岁+', url:'https://www.giantex.com/products/7-ft-kids-trampoline-with-safety-enclosure-net'},
  {id:'giantex7-green', cat:'运动器材', name:'Giantex 7ft 圆形蹦床带安全网 · Green', w:221.6,d:221.6,h:185.4, price:199.99, priceCA:259.99, color:'#3f9e3a', col2:'#46b13c', kind:'trampoline', model:'giantex7', note:'直径 7.3ft，高 6.1ft（含网架），3 组 A 字架 + PE 护垫 + 绿色底座，3 岁+', url:'https://www.giantex.com/products/7-ft-kids-trampoline-with-safety-enclosure-net'},
  {id:'giantex7-yellow', cat:'运动器材', name:'Giantex 7ft 圆形蹦床带安全网 · Yellow', w:221.6,d:221.6,h:185.4, price:189.99, priceCA:259.99, color:'#e8b524', col2:'#46b13c', kind:'trampoline', model:'giantex7', note:'直径 7.3ft，高 6.1ft（含网架），3 组 A 字架 + PE 护垫 + 绿色底座，3 岁+', url:'https://www.giantex.com/products/7-ft-kids-trampoline-with-safety-enclosure-net'},
@@ -1349,7 +1350,7 @@ function furnShape(it, spec){
     el('line',{x1:0,y1:-dp/2+3,x2:0,y2:dp/2-3,stroke:'rgba(0,0,0,.28)','stroke-width':1.4,'stroke-dasharray':'6 4'},body);
   } else
   // 新品类 2D 俯视图例
-  if(['shelf','crib','cart','deskSitStand','swivelChair','playCouch','tableFold','tableDrawer','rocking','xylophone'].includes(kind)){
+  if(['shelf','crib','cart','deskSitStand','swivelChair','playCouch','tableFold','tableDrawer','rocking','xylophone','wobble'].includes(kind)){
     const dk2='rgba(0,0,0,.30)', lt2='rgba(255,255,255,.22)';
     if(kind==='shelf'){
       R(-wf/2,-df/2,wf,df,2,col,{stroke:'rgba(0,0,0,.45)','stroke-width':1.2});
@@ -1385,6 +1386,10 @@ function furnShape(it, spec){
       el('circle',{cx:wp*0.36,cy:0,r:Math.min(wp,dp)*0.30,fill:col,stroke:'rgba(0,0,0,.45)','stroke-width':1.2},body);
       el('line',{x1:-wp/2+1,y1:0,x2:wp/2-1,y2:0,stroke:'rgba(0,0,0,.30)','stroke-width':1},body);
       el('line',{x1:wp*0.10,y1:-dp/2+1,x2:wp*0.10,y2:dp/2-1,stroke:'rgba(0,0,0,.30)','stroke-width':1},body);
+    } else if(kind==='wobble'){
+      // 摇摆板：圆角顶板（俯视图）+ 沿长轴的摇摆弧（指示下半椭球底座）
+      R(-wf/2,-df/2,wf,df, Math.max(3, df*0.12*S), col,{stroke:'rgba(0,0,0,.45)','stroke-width':1.2});
+      el('path',{d:'M '+(-wf*0.42)*S+' 0 Q 0 '+(df*0.30*S)+' '+(wf*0.42)*S+' 0', fill:'none', stroke:dk2,'stroke-width':1.3},body);
     } else if(kind==='xylophone'){
       // D 形木琴：圆角底座 + 提手环 + 五根平行于短边的音条（长→短）。
       // 注意 R() 内部会对参数乘 S（期望英尺），故这里统一用 wf/df(英尺)，不要传已是像素的 wp/dp。
@@ -4681,7 +4686,7 @@ function texScaled(base, ftSize, per){
 const _furnMatCache=new Map();
 const FURN_SOFT = ['sofa','sofaL','armchair','playCouch','bed','stool','officeChair','swivelChair','chair'];
 const FURN_CASE = ['bookcase','shelf','dresser','nightstand','shoeCab','tvBench','desk','deskSitStand',
-                   'sideTable','coffeeTable','tableRect','tableRound','tableFold','tableDrawer','crib','box','rocking','xylophone'];
+                   'sideTable','coffeeTable','tableRect','tableRound','tableFold','tableDrawer','crib','box','rocking','xylophone','wobble'];
 const FURN_METAL= ['bedMetal','cart'];
 function furnMats(spec, col){
   const kind = spec.kind || 'box';
@@ -10056,6 +10061,30 @@ MODELS['hape-xylo'] = (C) => {
   for(const ch of C.g.children){ ch.position.x-=off.x; ch.position.z-=off.z; }
 };
 
+/* Blueberry & Third The Balance Board（对照 work/ref/bt-board/bt_0.png / bt_8.png，全部 cm→C.cm→英尺）：
+   波罗的海桦木胶合板：上层微圆角平板（y 8.7→10.2），下半椭球摇摆底座（尖点触地，
+   顶口略小于平板、由板缘悬挑盖住开口）；单点触地前后左右摇摆，2-7岁 / 150lbs。 */
+MODELS['bt-board'] = (C) => {
+  const cm=C.cm, T=C.THREE;
+  const wood = C.M(C.col, {wood:'birch', rough:.55, clear:.3});
+  // 摇摆底座：椭球下半（SphereGeometry theta π/2→3π/2 = 下半球），原点尖点触地
+  const hull = new T.Mesh(new T.SphereGeometry(1, 48, 16, 0, Math.PI*2, Math.PI/2, Math.PI), wood);
+  hull.scale.set(cm(24.6), cm(8.7), cm(13.1));
+  hull.position.set(0, cm(8.7), 0);
+  hull.castShadow = hull.receiveShadow = true;
+  C.g.add(hull);
+  // 顶板 50.8×27.9×1.5，角半径受厚度限制取 0.7
+  C.rb(cm(50.8), cm(1.5), cm(27.9), cm(0.7), wood, 0, cm(8.7), 0, 5);
+  // 水平重心归零（对称体应≈0，保险）
+  C.g.updateMatrixWorld(true);
+  const bb2=new T.Box3();
+  C.g.traverse(o=>{ if(o.isMesh&&o.geometry){
+    const pos=o.geometry.attributes.position, v=new T.Vector3();
+    for(let i=0;i<pos.count;i++){ v.fromBufferAttribute(pos,i).applyMatrix4(o.matrixWorld); bb2.expandByPoint(v); } } });
+  const off2=new T.Vector3(); bb2.getCenter(off2);
+  for(const ch of C.g.children){ ch.position.x-=off2.x; ch.position.z-=off2.z; }
+};
+
 /* LÄTT 儿童桌+2椅（套装 119×48×48）：桌 63×48×45（松木方框+白色面板，4 全高方腿），
    椅 28×28×48、座高 28（白座板+白背顶板，中间镂空）。两椅对称摆桌短边两侧、椅背朝外。
    轴向：桌长边沿 x；椅背朝 ±x（s=+1 右椅椅背朝 +x）。 */
@@ -12427,6 +12456,23 @@ async function run3DTest(){
     T('hape-xylo-centered', Math.abs(hxyFit.ct.x)<0.03 && Math.abs(hxyFit.ct.z)<0.03,
       'Hape 木琴水平重心 ('+hxyFit.ct.x.toFixed(2)+', '+hxyFit.ct.z.toFixed(2)+')');
     T('hape-xylo-on-floor', hxyFit.minY>-0.02, 'Hape 木琴最低点 y='+hxyFit.minY.toFixed(3));
+    const btb=CATALOG.find(c=>c.id==='bt-board-0');
+    const btbFit = (()=>{
+      const g=furn3D({uid:-115,ref:btb.id,x:0,y:0,rot:0}, btb);
+      g.updateMatrixWorld(true);
+      const b=new THREE.Box3().setFromObject(g);
+      const sz=new THREE.Vector3(), ct=new THREE.Vector3(); b.getSize(sz); b.getCenter(ct);
+      disposeOwned(g);
+      return {sz, ct, fx:sz.x/cm2ft(btb.w), fz:sz.z/cm2ft(btb.d), fy:sz.y/cm2ft(btb.h), minY:b.min.y};
+    })();
+    T('bt-board-fits-footprint', btbFit.fx<=1.02 && btbFit.fz<=1.02 && btbFit.fy<=1.02,
+      'Blueberry 平衡板填充率 '+[btbFit.fx,btbFit.fz,btbFit.fy].map(v=>(v*100).toFixed(0)+'%').join('/')+
+      '（声明 '+btb.w+'×'+btb.d+'×'+btb.h+'cm）');
+    T('bt-board-footprint-not-inflated', btbFit.fx>=0.92 && btbFit.fz>=0.92,
+      '不能虚报占地：'+[btbFit.fx,btbFit.fz].map(v=>(v*100).toFixed(0)+'%').join('/'));
+    T('bt-board-centered', Math.abs(btbFit.ct.x)<0.03 && Math.abs(btbFit.ct.z)<0.03,
+      'Blueberry 平衡板水平重心 ('+btbFit.ct.x.toFixed(2)+', '+btbFit.ct.z.toFixed(2)+')');
+    T('bt-board-on-floor', btbFit.minY>-0.02, 'Blueberry 平衡板最低点 y='+btbFit.minY.toFixed(3));
     const hw=CATALOG.find(c=>c.id==='hw-02e');
     T('hw02e-costs-money', !isBuiltIn(hw) && !!priceOf(hw,'usd') && hasLightCtl(hw),
       '计价 '+fmtPrice(hw,'usd')+' 且有调光控件');
