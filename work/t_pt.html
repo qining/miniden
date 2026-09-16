@@ -809,6 +809,7 @@ const CATALOG = [
  {id:'cove-0', cat:'户外玩乐', name:'Step2 Cascading Cove 沙水两用桌', w:107.95, d:61, h:58.4, price:111.99, priceCA:149.97, color:'#2e8fc7', color2:'#c9bda3', kind:'sandTable', model:'cove', url:'https://www.step2.com/products/cascading-cove-sand-water-table', note:'1.5+岁户外沙水两用桌：沙箱+水渠分列两侧、中央塑模车桥分隔、双侧排水塞、可当车赛垫的绿色盖垫；感官/大运动/手眼协调；含42"遮阳伞（可拆，未建模）+6件玩沙组；美$111.99（step2.com），加$149.97（Amazon.ca）'},
  {id:'roadster-0', cat:'床 / 床头柜', name:'Step2 Roadster 赛车床（幼儿→单人床两用）· 红', w:218.4, d:119.4, h:40.6, price:349.99, priceCA:429.00, color:'#b3121c', color2:'#f5f5f2', kind:'bed', model:'roadster', url:'https://www.step2.com/products/roadster-toddler-to-twin-bed', note:'3+ 岁低床（床沿高 40.6cm，无床头架）：跑车造型——大轮毂×4、圆形大灯、引擎盖白条、前格栅、车门内嵌板+通风格；幼儿模式（64"×36"=162.6×91.4cm，婴儿床床垫）可加装侧板扩展为单人床（86"×47"，本条目占地取扩展后最大值 218.4×119.4×40.6cm）；美$349.99（step2.com），加$429.00（Walmart.ca）'},
  {id:'lilclimb-0', cat:'儿童 / 爬爬架', name:"Delta Children's Lil' Climber 三合一攀爬架", w:181.6, d:63.5, h:68.6, price:149.99, caNA:true, color:'#f0e7cf', color2:'#9fd0c4', kind:'pikler', model:'lilclimb', url:'https://www.deltachildren.com/products/lil-climber-gym-indoor-climbing-gym-playground-for-kids', note:'6个月-3岁蒙特梭利三合一（可拆可组）：A 字三角攀爬梯(27"高,8横档)+岩壁/滑梯双向板(71.5"长,5彩色抓握点)+圆顶拱门(抓杆×5+手柄洞)；白蜡木框架+柔彩横杆(薄荷绿/粉/黄)；25"W×27"H×71.5"D=63.5×68.6×181.6cm；23.5lbs；承重 200lbs(单孩 69lbs)；美$149.99（deltachildren.com；Walmart $129.99），加拿大无售（caNA）'},
+ {id:'busplay-0', cat:'户外玩乐', name:'Costway 5-in-1 巴士滑梯游戏屋 · Teal', w:205, d:150, h:87, price:145.99, caNA:true, color:'#0f7f8b', color2:'#f07818', kind:'playset', model:'busplay', url:'https://www.costway.com/5-in-1-kids-slide-and-swing-set-kids-slide-with-mini-bus-and-basketball-hoop.html', note:'18月+（承重30kg）：巴士驾驶舱(带圆形爬行洞+侧车轮环) + 132cm加长滑梯 + 婴儿秋千(白A架+摇摆底座,座高23cm) + 篮球架(79cm) + 205×150×87cm，17kg；PP/PE；美$145.99（costway.com），加拿大无售（caNA）'},
  {id:'bigset-0', cat:'儿童 / 磁力片', name:"Superspace Big Set 巨幅磁力片(24片) · Blue", w:105, d:51.6, h:19.4, price:429, caNA:true, color:'#2088cc', color2:'#5d6b70', kind:'magTiles', model:'bigset', url:'https://www.getsuperspace.com/products/the-big-set', note:'3-10+岁“真人可钻”巨型磁力片：10方(50×50)+2方窗+6三角(50边)+1长方(100×50)+1长方窗/门+4梯形(底100/顶50/高43)；再生塑料Eco Felt软面+1.2cm厚；收纳平叠105×51.6×19.4cm(41.34×20.32×7.64")，13.3kg；美$429（getsuperspace.com），加拿大无售（caNA）'},
  {id:'nuby-ballpit-0', cat:'儿童 / 球池', name:"Nuby Kids' Ball Pit 球池(200球) · Aqua", w:90, d:90, h:27, price:99.99, caNA:true, color:'#a9b4ad', color2:'#3ec9c0', kind:'ballPit', model:'nubybp', url:'https://us.nuby.com/products/kids-ball-pit-with-200-balls', note:'软布圆桶：直径90cm(35.4")，软壁可倚靠、可机洗，含200球(白/水绿/浅灰)；高27cm（官方未公布高度，由官方商品图几何测量）；10个月+；美$99.99（us.nuby.com，原价$134.99），加拿大无售（caNA）'},
  {id:'hidesc-0', cat:'儿童 / 爬爬架', name:'Little Tikes Hide & Seek 攀爬滑梯秋千组', w:135.9, d:132.1, h:104.1, price:169.99, priceCA:169.96, caVar:true, color:'#e6d5ac', color2:'#b3121c', kind:'playset', model:'hidesc', url:'https://www.littletikes.com/products/hide-seek-climber-swing', note:'2-5 岁：拱门攀爬平台+红色滑梯(28")+匍匐钻洞(藏猫猫)+树形秋千架(蓝吊椅+安全带式)；53.5"L×52"W×41"H=135.9×132.1×104.1cm（含秋千）；美$169.99（含秋千版，littletikes.com；基础版$147.99），加$169.96（Well.ca，为基础版故 caVar）'},
@@ -10326,6 +10327,82 @@ MODELS['lt-sportszone'] = (C) => {
    两侧青柠色 C 形拱架（半圆顶+2竖腿）+ 顶部橙色把手（顶=42.4=spec 高）+ 4 蓝轮
    + 中央白色活动面板（3齿轮+发光泡+3数字键，朝孩子侧 -z）+ 前部橙色字母滚筒。
    官方产品尺寸 21.2"W×17.2"L×16.7"H = 53.8×43.7×42.4cm（三模式最大包络）；9-36月。 */
+MODELS['busplay'] = (C) => {
+  // Costway 5-in-1 巴士滑梯游戏屋：巴士舱(x -76) + 3段滑梯(前) + 婴儿秋千(x 77,架宽150) + 篮球架(车顶79cm) + 爬行洞
+  const T=C.THREE, cm=C.cm;
+  const TEAL  =C.M('#0f7f8b',{plastic:true, rough:.5, envI:.2});
+  const ORANGE=C.M('#f07818',{plastic:true, rough:.5, envI:.18});
+  const WHITE =C.M('#eef1f0',{plastic:true, rough:.6, envI:.15});
+  const HOOPW =C.M('#f5f7f6',{plastic:true, rough:.6, envI:.12});
+  const DARK  =C.M('#1c2528',{flat:true, rough:1, envI:.05});
+  // ---------- 巴士舱：中心(-76, 0, -25)，57×47×55 + 顶盖 ----------
+  const bus=new T.Group(); bus.position.set(cm(-76),0,cm(-25));
+  const bmain=C.rb(cm(57),cm(55),cm(47),cm(4),TEAL,0,0,0,24);
+  const broof=C.rb(cm(53),cm(8),cm(43),cm(3),TEAL,0,cm(55),0,24);
+  const door =C.rb(cm(16),cm(26),cm(1.4),cm(1),ORANGE,cm(-2),cm(8),-cm(23.5),16);
+  const dwin =C.rb(cm(10),cm(12),cm(0.6),cm(0.5),DARK,cm(-2),cm(22),-cm(24.2),10);
+  // 侧车轮环：TorusGeometry 默认在 XY 面（面向±z）——正好是侧轮朝向，保持不转
+  const ring=C.torus(cm(15),cm(3.5),TEAL,cm(-15),cm(19),cm(23.5));
+  const wheelIn=C.sph(cm(8),DARK,cm(-15),cm(19),cm(23.0),16); wheelIn.scale.set(1,1,0.25);
+  // 爬行洞：与车轮环同侧(+z)，靠近滑梯出口；面向±z
+  const hole=C.torus(cm(11),cm(2.5),TEAL,cm(18),cm(22),cm(23.5));
+  const holeIn=C.sph(cm(8.5),DARK,cm(18),cm(22),cm(23.2),16); holeIn.scale.set(1,1,0.25);
+  // 篮球架：屋顶前部支撑 + 白篮板(58..82，顶82≈官方79+盘) + 顶盘
+  const hpost=C.box(cm(4),cm(10),cm(4),TEAL,cm(18),cm(55),0);
+  const hboard=C.box(cm(2),cm(22),cm(22),HOOPW,cm(18),cm(60),0);
+  const htray =C.rb(cm(14),cm(2),cm(10),cm(0.8),HOOPW,cm(18),cm(80),0,10);
+  const cap=C.rb(cm(20),cm(4),cm(10),cm(1.5),TEAL,cm(-12),cm(63),cm(8),12);
+  [bmain,broof,door,dwin,ring,wheelIn,hole,holeIn,hpost,hboard,htray,cap].forEach(m=>bus.add(m));
+  C.g.add(bus);
+  // ---------- 滑梯：3段（-70,52 → -20,18 → +20,5 → +55,0.6），表面33宽；整体斜向+z(31°)远离秋千 ----------
+  const slideRoot=new T.Group(); slideRoot.position.set(cm(-5),0,cm(-10)); slideRoot.rotation.y=-0.55;
+  const slide=(x0,y0,x1,y1,withCap)=>{
+    const dx=x1-x0, dy=y1-y0, len=Math.hypot(dx,dy), ang=Math.atan2(dy,dx);
+    const seg=new T.Group();
+    seg.position.set(cm(x0),cm(y0),0);
+    seg.rotation.z=ang;
+    const surf=C.box(cm(len),cm(2),cm(33),WHITE,cm(len/2),0,0);
+    const r1=C.box(cm(len+2),cm(7),cm(3),TEAL,cm(len/2),cm(1.5),cm(17.5));
+    const r2=C.box(cm(len+2),cm(7),cm(3),TEAL,cm(len/2),cm(1.5),-cm(17.5));
+    const end=withCap?C.box(cm(4),cm(9),cm(37),ORANGE,cm(len),cm(1),0):null;
+    [surf,r1,r2].forEach(m=>seg.add(m)); if(end) seg.add(end);
+    slideRoot.add(seg);
+  };
+  slide(-70,52,-20,18,false);
+  slide(-20,18,20,5,false);
+  slide(20,5,55,0.6,true);
+  C.g.add(slideRoot);
+  // ---------- 秋千：白 A 架(x 77，架宽150) + 顶杆 + 摇摆底座 + 座 ----------
+  const sw=new T.Group(); sw.position.set(cm(77),0,0);
+  const postL=C.rb(cm(14),cm(60),cm(6),cm(2),WHITE,0,0,cm(-72),20);
+  const postR=C.rb(cm(14),cm(60),cm(6),cm(2),WHITE,0,0,cm(72),20);
+  const topbar=C.cyl(cm(1.2),cm(1.2),cm(144),WHITE,0,0,0,16);
+  topbar.position.y=cm(60); topbar.rotation.x=Math.PI/2;
+  // 摇摆底座：半圆截面(平面朝下)×44，挤出后 rotateY(90°) 使长度沿 x
+  const rock=(()=>{ const sh=new T.Shape();
+    sh.absarc(0,0,cm(5),0,Math.PI,false);
+    const g=new T.ExtrudeGeometry(sh,{depth:cm(44),bevelEnabled:false});
+    g.rotateY(Math.PI/2);
+    const m=new T.Mesh(g,WHITE); m.position.set(cm(-22),0,0);
+    m.castShadow=m.receiveShadow=true; return m; })();
+  // 座：白靠背 + 橙座板 + 橙T安全护栏 + 吊带
+  const back=C.rb(cm(4),cm(24),cm(20),cm(1.5),WHITE,0,cm(22),0,16);
+  const seat=C.box(cm(29),cm(3),cm(35),ORANGE,0,cm(20),0);
+  const strap=C.box(cm(3),cm(10),cm(30),ORANGE,cm(14.5),cm(22),0);
+  const chL=C.box(cm(0.8),cm(18),cm(1.2),WHITE,-cm(10),cm(40),cm(-10),8);
+  const chR=C.box(cm(0.8),cm(18),cm(1.2),WHITE,cm(10),cm(40),cm(10),8);
+  [postL,postR,topbar,rock,back,seat,strap,chL,chR].forEach(m=>sw.add(m));
+  C.g.add(sw);
+  // ---------- 水平重心归零（含旋转件，按真实顶点）----------
+  C.g.updateMatrixWorld(true);
+  const bb=new T.Box3(); const v=new T.Vector3();
+  C.g.traverse(o=>{ if(o.isMesh&&o.geometry){ const pos=o.geometry.attributes.position;
+    for(let i=0;i<pos.count;i++){ v.fromBufferAttribute(pos,i).applyMatrix4(o.matrixWorld); bb.expandByPoint(v); } }});
+  const c0=new T.Vector3(); bb.getCenter(c0);
+  for(const ch of C.g.children){ ch.position.x-=c0.x; ch.position.z-=c0.z; }
+  return C.g;
+};
+
 MODELS['bigset'] = (C) => {
   // Superspace The Big Set：24片巨幅磁力片平叠收纳(105×51.6×19.4)。展示 14 层代表性面板：
   // 方50×50 / 方窗 / 长方100×50 / 长方窗 / 三角50边 / 梯形底100顶50高43.3
