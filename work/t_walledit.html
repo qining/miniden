@@ -807,6 +807,7 @@ const CATALOG = [
  {id:'lt-sportszone-0', cat:'运动器材', name:'Little Tikes 3-in-1 Sports Zone · 三合一运动站', w:87.6, d:36.8, h:62.2, price:48.99, priceCA:69.97, color:'#7ac143', color2:'#e03a2f', kind:'sportsZone', model:'lt-sportszone', url:'https://www.littletikes.com/products/sportszone', note:'12-36月三合一活动站：足球门（红拱架+白鳞格网）+篮球（黄杆/绿篮板+LED记分屏+橙筐，高度可调）+保龄球（5瓶+橙球）+蓝接球碗；踢球/投掷/滚动练大运动与手眼协调；美$48.99（littletikes.com），加$69.97（Walmart.ca）'},
  {id:'lt-walker-0', cat:'学步车', name:'Little Tikes Light n Go 3-in-1 Activity Walker', w:53.8, d:43.7, h:42.4, price:39.99, caNA:true, color:'#97c93d', color2:'#ef8f1f', kind:'walker', model:'lt-walker', url:'https://www.littletikes.com/products/light-n-go-3-in-1-activity-walker', note:'9-36月三合一：活动桌(9-12m)→学步车→高边桌；两侧青柠色拱形框架+顶部橙把手+4蓝轮+中央白色活动面板（3齿轮+发光泡+3数字键）+前部字母滚筒；推步/扶走练行走与大运动；美$39.99（littletikes.com）；无加拿大渠道（caNA）'},
  {id:'cove-0', cat:'户外玩乐', name:'Step2 Cascading Cove 沙水两用桌', w:107.95, d:61, h:58.4, price:111.99, priceCA:149.97, color:'#2e8fc7', color2:'#c9bda3', kind:'sandTable', model:'cove', url:'https://www.step2.com/products/cascading-cove-sand-water-table', note:'1.5+岁户外沙水两用桌：沙箱+水渠分列两侧、中央塑模车桥分隔、双侧排水塞、可当车赛垫的绿色盖垫；感官/大运动/手眼协调；含42"遮阳伞（可拆，未建模）+6件玩沙组；美$111.99（step2.com），加$149.97（Amazon.ca）'},
+ {id:'roadster-0', cat:'床 / 床头柜', name:'Step2 Roadster 赛车床（幼儿→单人床两用）· 红', w:218.4, d:119.4, h:40.6, price:349.99, priceCA:429.00, color:'#b3121c', color2:'#f5f5f2', kind:'bed', model:'roadster', url:'https://www.step2.com/products/roadster-toddler-to-twin-bed', note:'3+ 岁低床（床沿高 40.6cm，无床头架）：跑车造型——大轮毂×4、圆形大灯、引擎盖白条、前格栅、车门内嵌板+通风格；幼儿模式（64"×36"=162.6×91.4cm，婴儿床床垫）可加装侧板扩展为单人床（86"×47"，本条目占地取扩展后最大值 218.4×119.4×40.6cm）；美$349.99（step2.com），加$429.00（Walmart.ca）'},
  {id:'mckinney-0', cat:'儿童厨房', name:'KidKraft McKinney 幼儿玩具厨房 · 薄荷绿', w:80, d:34.3, h:83.8, price:70.99, caNA:true, color:'#a9d8c0', color2:'#e8a866', kind:'playKitchen', model:'mckinney', url:'https://www.target.com/p/kidkraft-mckinney-toddler-mid-century-modern-play-kitchen/-/A-53511595', note:'2-5岁中世纪风玩具厨房（Target 限定薄荷绿款）：微波炉+四眼灶+烤箱+冰箱门+2抽+水槽龙头+上排翻门；3 种玩法（煮/洗/收纳）；31.5"L×13.5"W×33"H=80×34.3×83.8cm，台面高18"；美$70.99（Target），加拿大无售（caNA）'},
  {id:'giantex7-blue', cat:'运动器材', name:'Giantex 7ft 圆形蹦床带安全网 · Blue', w:221.6,d:221.6,h:185.4, price:199.99, priceCA:259.99, color:'#3d6cb4', col2:'#46b13c', kind:'trampoline', model:'giantex7', note:'直径 7.3ft，高 6.1ft（含网架），3 组 A 字架 + PE 护垫 + 绿色底座，3 岁+', url:'https://www.giantex.com/products/7-ft-kids-trampoline-with-safety-enclosure-net'},
  {id:'giantex7-green', cat:'运动器材', name:'Giantex 7ft 圆形蹦床带安全网 · Green', w:221.6,d:221.6,h:185.4, price:199.99, priceCA:259.99, color:'#3f9e3a', col2:'#46b13c', kind:'trampoline', model:'giantex7', note:'直径 7.3ft，高 6.1ft（含网架），3 组 A 字架 + PE 护垫 + 绿色底座，3 岁+', url:'https://www.giantex.com/products/7-ft-kids-trampoline-with-safety-enclosure-net'},
@@ -10443,6 +10444,65 @@ MODELS['mckinney'] = (C) => {
     for(let i=0;i<pos.count;i++){ v.fromBufferAttribute(pos,i).applyMatrix4(o.matrixWorld); bb6.expandByPoint(v); } } });
   const off6=new T.Vector3(); bb6.getCenter(off6);
   for(const ch of C.g.children){ ch.position.x-=off6.x; ch.position.z-=off6.z; }
+};
+
+/* Step2 Roadster 赛车床（对照 work/ref/roadster/rd_1/rd_4/rd_5，全部 cm→C.cm→英尺）：
+   低床 tub 结构（离地仅 40.6cm）：底板+侧墙+尾板+大圆角车头鼻，
+   2 大灯（铬环+白镜）+引擎盖白条+格栅(4横条)+4 轮毂(黑胎/银圈/铬轴头)+车门内嵌板+通风
+   格+灰色床垫+枕头。x=长(218.4) z=宽(119.4)；twin 模式占地。 */
+MODELS['roadster'] = (C) => {
+  const cm=C.cm, T=C.THREE;
+  const RED=C.M('#b3121c',{plastic:true, rough:.75, envI:.18});
+  const REDD=C.M('#8e0e16',{plastic:true, rough:.8, envI:.15});
+  const BLACK=C.M('#1a1a1c',{flat:true, rough:.85});
+  const SILV=C.M('#c9ccd1',{metal:.9});
+  const CHROME=C.M('#e8ebef',{metal:1, rough:.05});
+  const WHITE=C.M('#f5f5f2',{plastic:true, clear:.5, envI:.4});
+  const MATT=C.M('#8e8e8c',{fabric:true});
+  const PIL=C.M('#d5d2cc',{fabric:true});
+  // —— tub 主体：底板 + 两侧墙 + 尾板（外缘 119.4/218.4，高 40.6）——
+  C.rb(cm(218.4), cm(8), cm(119.4), cm(1.5), RED, 0, 0, 0);
+  C.rb(cm(218.4), cm(32.6), cm(8), cm(2.5), RED, 0, cm(8), cm(55.7));
+  C.rb(cm(218.4), cm(32.6), cm(8), cm(2.5), RED, 0, cm(8), cm(-55.7));
+  C.rb(cm(8), cm(32.6), cm(103.4), cm(2.5), RED, cm(-105.2), cm(8), 0);
+  // —— 车头鼻（大圆角块）+ 引擎盖白条 ——
+  C.rb(cm(30), cm(40.6), cm(119.4), cm(9), RED, cm(94.2), 0, 0);
+  C.box(cm(22), cm(0.8), cm(28), WHITE, cm(96), cm(39.8), 0);
+  // —— 前格栅（黑底+4 银横条）——
+  C.box(cm(20), cm(10), cm(80), BLACK, cm(99), cm(8), 0);
+  for(let i=0;i<4;i++) C.box(cm(19), cm(1.1), cm(76), SILV, cm(100), cm(9.6+i*2.2), 0);
+  // —— 2 大灯（铬环+白镜，水平圆柱沿 x）——
+  for(const sz of [-38, 38]){
+    const bz=C.cyl(cm(7.5), cm(7.5), cm(1.5), CHROME, 0, 0, 0, 20);
+    bz.rotation.z=Math.PI/2; bz.position.set(cm(107.2), cm(26), cm(sz));
+    const ln=C.cyl(cm(6.4), cm(6.4), cm(3), WHITE, 0, 0, 0, 20);
+    ln.rotation.z=Math.PI/2; ln.position.set(cm(108.1), cm(26), cm(sz));
+  }
+  // —— 4 轮毂（黑胎+银圈+铬轴头，轴沿 z）——
+  for(const sx of [-55, 55]) for(const sz of [-54.5, 54.5]){
+    const tr=C.cyl(cm(19), cm(19), cm(9), BLACK, 0, 0, 0, 24);
+    tr.rotation.x=Math.PI/2; tr.position.set(cm(sx), cm(19), cm(sz));
+    const rm=C.cyl(cm(15.5), cm(15.5), cm(11.5), SILV, 0, 0, 0, 20);
+    rm.rotation.x=Math.PI/2; rm.position.set(cm(sx), cm(19), cm(sz));
+    const hb=C.cyl(cm(3.5), cm(3.5), cm(12.5), CHROME, 0, 0, 0, 12);
+    hb.rotation.x=Math.PI/2; hb.position.set(cm(sx), cm(19), cm(sz));
+  }
+  // —— 车门内嵌板（2）+ 通风格（2）——
+  for(const sz of [-59.1, 59.1]){
+    C.box(cm(46), cm(26), cm(1.2), REDD, cm(-12), cm(12), cm(sz));
+    C.box(cm(10), cm(4), cm(1.2), BLACK, cm(72), cm(13), cm(sz));
+  }
+  // —— 灰床垫（y 16..28）+ 枕头（y 28..36，尾端）——
+  C.rb(cm(179), cm(12), cm(101), cm(2), MATT, cm(-11), cm(16), 0);
+  C.rb(cm(30), cm(8), cm(55), cm(3), PIL, cm(-70), cm(28), 0);
+  // 水平重心归零（真实顶点 bbox）
+  C.g.updateMatrixWorld(true);
+  const bb7=new T.Box3();
+  C.g.traverse(o=>{ if(o.isMesh&&o.geometry){
+    const pos=o.geometry.attributes.position, v=new T.Vector3();
+    for(let i=0;i<pos.count;i++){ v.fromBufferAttribute(pos,i).applyMatrix4(o.matrixWorld); bb7.expandByPoint(v); } } });
+  const off7=new T.Vector3(); bb7.getCenter(off7);
+  for(const ch of C.g.children){ ch.position.x-=off7.x; ch.position.z-=off7.z; }
 };
 
 /* LÄTT 儿童桌+2椅（套装 119×48×48）：桌 63×48×45（松木方框+白色面板，4 全高方腿），
