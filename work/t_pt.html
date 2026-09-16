@@ -809,6 +809,7 @@ const CATALOG = [
  {id:'cove-0', cat:'户外玩乐', name:'Step2 Cascading Cove 沙水两用桌', w:107.95, d:61, h:58.4, price:111.99, priceCA:149.97, color:'#2e8fc7', color2:'#c9bda3', kind:'sandTable', model:'cove', url:'https://www.step2.com/products/cascading-cove-sand-water-table', note:'1.5+岁户外沙水两用桌：沙箱+水渠分列两侧、中央塑模车桥分隔、双侧排水塞、可当车赛垫的绿色盖垫；感官/大运动/手眼协调；含42"遮阳伞（可拆，未建模）+6件玩沙组；美$111.99（step2.com），加$149.97（Amazon.ca）'},
  {id:'roadster-0', cat:'床 / 床头柜', name:'Step2 Roadster 赛车床（幼儿→单人床两用）· 红', w:218.4, d:119.4, h:40.6, price:349.99, priceCA:429.00, color:'#b3121c', color2:'#f5f5f2', kind:'bed', model:'roadster', url:'https://www.step2.com/products/roadster-toddler-to-twin-bed', note:'3+ 岁低床（床沿高 40.6cm，无床头架）：跑车造型——大轮毂×4、圆形大灯、引擎盖白条、前格栅、车门内嵌板+通风格；幼儿模式（64"×36"=162.6×91.4cm，婴儿床床垫）可加装侧板扩展为单人床（86"×47"，本条目占地取扩展后最大值 218.4×119.4×40.6cm）；美$349.99（step2.com），加$429.00（Walmart.ca）'},
  {id:'lilclimb-0', cat:'儿童 / 爬爬架', name:"Delta Children's Lil' Climber 三合一攀爬架", w:181.6, d:63.5, h:68.6, price:149.99, caNA:true, color:'#f0e7cf', color2:'#9fd0c4', kind:'pikler', model:'lilclimb', url:'https://www.deltachildren.com/products/lil-climber-gym-indoor-climbing-gym-playground-for-kids', note:'6个月-3岁蒙特梭利三合一（可拆可组）：A 字三角攀爬梯(27"高,8横档)+岩壁/滑梯双向板(71.5"长,5彩色抓握点)+圆顶拱门(抓杆×5+手柄洞)；白蜡木框架+柔彩横杆(薄荷绿/粉/黄)；25"W×27"H×71.5"D=63.5×68.6×181.6cm；23.5lbs；承重 200lbs(单孩 69lbs)；美$149.99（deltachildren.com；Walmart $129.99），加拿大无售（caNA）'},
+ {id:'bigset-0', cat:'儿童 / 磁力片', name:"Superspace Big Set 巨幅磁力片(24片) · Blue", w:105, d:51.6, h:19.4, price:429, caNA:true, color:'#2088cc', color2:'#5d6b70', kind:'magTiles', model:'bigset', url:'https://www.getsuperspace.com/products/the-big-set', note:'3-10+岁“真人可钻”巨型磁力片：10方(50×50)+2方窗+6三角(50边)+1长方(100×50)+1长方窗/门+4梯形(底100/顶50/高43)；再生塑料Eco Felt软面+1.2cm厚；收纳平叠105×51.6×19.4cm(41.34×20.32×7.64")，13.3kg；美$429（getsuperspace.com），加拿大无售（caNA）'},
  {id:'nuby-ballpit-0', cat:'儿童 / 球池', name:"Nuby Kids' Ball Pit 球池(200球) · Aqua", w:90, d:90, h:27, price:99.99, caNA:true, color:'#a9b4ad', color2:'#3ec9c0', kind:'ballPit', model:'nubybp', url:'https://us.nuby.com/products/kids-ball-pit-with-200-balls', note:'软布圆桶：直径90cm(35.4")，软壁可倚靠、可机洗，含200球(白/水绿/浅灰)；高27cm（官方未公布高度，由官方商品图几何测量）；10个月+；美$99.99（us.nuby.com，原价$134.99），加拿大无售（caNA）'},
  {id:'hidesc-0', cat:'儿童 / 爬爬架', name:'Little Tikes Hide & Seek 攀爬滑梯秋千组', w:135.9, d:132.1, h:104.1, price:169.99, priceCA:169.96, caVar:true, color:'#e6d5ac', color2:'#b3121c', kind:'playset', model:'hidesc', url:'https://www.littletikes.com/products/hide-seek-climber-swing', note:'2-5 岁：拱门攀爬平台+红色滑梯(28")+匍匐钻洞(藏猫猫)+树形秋千架(蓝吊椅+安全带式)；53.5"L×52"W×41"H=135.9×132.1×104.1cm（含秋千）；美$169.99（含秋千版，littletikes.com；基础版$147.99），加$169.96（Well.ca，为基础版故 caVar）'},
  {id:'mckinney-0', cat:'儿童厨房', name:'KidKraft McKinney 幼儿玩具厨房 · 薄荷绿', w:80, d:34.3, h:83.8, price:70.99, caNA:true, color:'#a9d8c0', color2:'#e8a866', kind:'playKitchen', model:'mckinney', url:'https://www.target.com/p/kidkraft-mckinney-toddler-mid-century-modern-play-kitchen/-/A-53511595', note:'2-5岁中世纪风玩具厨房（Target 限定薄荷绿款）：微波炉+四眼灶+烤箱+冰箱门+2抽+水槽龙头+上排翻门；3 种玩法（煮/洗/收纳）；31.5"L×13.5"W×33"H=80×34.3×83.8cm，台面高18"；美$70.99（Target），加拿大无售（caNA）'},
@@ -1434,6 +1435,13 @@ function furnShape(it, spec){
       const dp=[[-1.2,-1.4],[1.1,-1.7],[-0.4,-0.3],[1.6,0.4],[-1.9,0.6],[0.5,1.5],[-0.9,1.9],[2.0,1.2],[-2.2,-0.5],[0.2,-2.3]];
       for(const [qx,qy] of dp){
         el('circle',{cx:qx*S*(wf/14),cy:qy*S*(df/14),r:0.55*S,fill:'rgba(0,0,0,.35)'},body);
+      }
+    } else if(kind==='magTiles'){
+      // 磁力片堆叠（平放收纳）：圆角矩形 + 层线
+      R(-wf/2,-df/2,wf,df, 2, col,{stroke:'rgba(0,0,0,.45)','stroke-width':1.4});
+      for(let i=1;i<=3;i++){
+        const yy=(-df/2+df*i/4)*S;
+        el('line',{x1:(-wf/2+0.12)*S,y1:yy,x2:(wf/2-0.12)*S,y2:yy,stroke:dk2,'stroke-width':1.2},body);
       }
     } else if(kind==='sandTable'){
       // 沙水台：圆角大框 + 中央分隔道 + 4 角排水塞
@@ -4851,7 +4859,7 @@ function texScaled(base, ftSize, per){
    之前这里只有 `new MeshStandardMaterial({color, roughness:.85})`——
    25 个 kind 全是无贴图纯色板。 */
 const _furnMatCache=new Map();
-const FURN_SOFT = ['sofa','sofaL','armchair','playCouch','bed','stool','officeChair','swivelChair','chair','ballPit'];
+const FURN_SOFT = ['sofa','sofaL','armchair','playCouch','bed','stool','officeChair','swivelChair','chair','ballPit','magTiles'];
 const FURN_CASE = ['bookcase','shelf','dresser','nightstand','shoeCab','tvBench','desk','deskSitStand',
                    'sideTable','coffeeTable','tableRect','tableRound','tableFold','tableDrawer','crib','box','rocking','xylophone','wobble','sandTable','playKitchen'];
 const FURN_METAL= ['bedMetal','cart'];
@@ -10318,6 +10326,58 @@ MODELS['lt-sportszone'] = (C) => {
    两侧青柠色 C 形拱架（半圆顶+2竖腿）+ 顶部橙色把手（顶=42.4=spec 高）+ 4 蓝轮
    + 中央白色活动面板（3齿轮+发光泡+3数字键，朝孩子侧 -z）+ 前部橙色字母滚筒。
    官方产品尺寸 21.2"W×17.2"L×16.7"H = 53.8×43.7×42.4cm（三模式最大包络）；9-36月。 */
+MODELS['bigset'] = (C) => {
+  // Superspace The Big Set：24片巨幅磁力片平叠收纳(105×51.6×19.4)。展示 14 层代表性面板：
+  // 方50×50 / 方窗 / 长方100×50 / 长方窗 / 三角50边 / 梯形底100顶50高43.3
+  // 每层1.38cm = 1.03框缘(四周1.2cm边条) + 0.35毡顶；窗口为亮色内板
+  const T=C.THREE, cm=C.cm, L=Math.PI/2;
+  const FRAME=C.M('#2088cc',{plastic:true, rough:.5, envI:.25});
+  const FELT =C.M(C.col2,{fabric:true, rough:.95, envI:.12, sheen:.2});
+  const WIN  =C.M('#dfe5e9',{fabric:true, rough:.95, envI:.1});
+  const yTops=[19.32,17.94,16.56,15.18,13.80,12.42,11.04,9.66,8.28,6.90,5.52,4.14,2.76,1.38];
+  // 方/长方层：4边框条 + 毡顶 + 可选亮色窗板
+  const addRect=(i,w,d,winW,winD)=>{
+    const yt=yTops[i], yb=yt-1.38, t=1.2;
+    C.box(cm(w),cm(1.38),cm(t),FRAME,0,cm(yb),cm(d/2-t/2));
+    C.box(cm(w),cm(1.38),cm(t),FRAME,0,cm(yb),-cm(d/2-t/2));
+    C.box(cm(t),cm(1.38),cm(d-2*t),FRAME,cm(w/2-t/2),cm(yb),0);
+    C.box(cm(t),cm(1.38),cm(d-2*t),FRAME,-cm(w/2-t/2),cm(yb),0);
+    C.box(cm(w-2*t),cm(0.35),cm(d-2*t),FELT,0,cm(yt-0.35),0);
+    if(winW) C.box(cm(winW),cm(0.2),cm(winD),WIN,0,cm(yt-0.2),0);
+  };
+  // 三角/梯形层：毡顶(满轮廓extrude 0.35) + 框底(95%缩放extrude 1.03)
+  const addTri=(i,pts,cx,cz)=>{
+    const yt=yTops[i], yb=yt-1.38;
+    const c=[ pts.reduce((a,p)=>a+p[0],0)/pts.length, pts.reduce((a,p)=>a+p[1],0)/pts.length ];
+    const shrink=f=>pts.map(p=>[c[0]+(p[0]-c[0])*f, c[1]+(p[1]-c[1])*f]);
+    for(const [shape,depth,mat,yTop] of [[pts,0.35,FELT,yt],[shrink(0.95),1.03,FRAME,yb]]){
+      const sh=new T.Shape();
+      shape.forEach((p,k)=>k?sh.lineTo(cm(p[0]),cm(p[1])):sh.moveTo(cm(p[0]),cm(p[1])));
+      sh.closePath();
+      const g=new T.ExtrudeGeometry(sh,{depth:cm(depth),bevelEnabled:false});
+      g.rotateX(L);
+      const m=new T.Mesh(g,mat); m.position.set(cm(cx),cm(yTop),cm(cz));
+      m.castShadow=m.receiveShadow=true; C.g.add(m);
+    }
+  };
+  // 14 层（顶→底）
+  addRect(0, 50,50, 0,0);
+  addRect(1, 50,50, 22,22);
+  addRect(2, 100,50, 0,0);
+  addRect(3, 100,50, 60,24);
+  addRect(4, 50,50, 0,0);
+  addTri(5, [[0,0],[100,0],[75,43.3],[25,43.3]], -50,-21.65);
+  addRect(6, 50,50, 0,0);
+  addTri(7, [[0,0],[50,0],[25,43.3]], -25,-21.65);
+  addRect(8, 50,50, 22,22);
+  addRect(9, 50,50, 0,0);
+  addTri(10,[[0,0],[50,0],[25,43.3]], -25,-21.65);
+  addRect(11,50,50, 0,0);
+  addRect(12,50,50, 22,22);
+  addRect(13,50,50, 0,0);
+  return C.g;
+};
+
 MODELS['lt-walker'] = (C) => {
   const cm=C.cm, T=C.THREE;
   const M=(c,o)=>C.M(c, Object.assign({plastic:true, rough:.48, clear:.4}, o||{}));
