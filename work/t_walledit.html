@@ -801,6 +801,7 @@ const CATALOG = [
  {id:'nipasen', cat:'入户 / 衣物', name:'IKEA NIPÅSEN 门厅衣帽架带换鞋凳', w:79,d:35,h:190, price:99.99, priceCA:99, color:'#2a2b2d', kind:'coatRack', model:'nipasen', note:'黑色钢架：圆角顶框+两排三钩（18钩）+条板换鞋凳(h58)+网格鞋架(h36)', url:'https://www.ikea.com/us/en/p/nipasen-coat-rack-and-bench-w-shoe-storage-black-50586145/'},
  {id:'sportslig', cat:'运动器材', name:'IKEA SPORTSLIG 迷你足球门储物箱', w:90.2,d:52.7,h:52.7, price:29.99, caNA:true, color:'#0a70b0', kind:'goal', model:'sportslig', note:'90cm 款，蓝色布艺框架 + 白色网 + 白横杆，可折叠，立起来可当球类储物箱', url:'https://www.ikea.com/us/en/p/sportslig-ball-storage-goal-70504238/'},
  {id:'mala', cat:'儿童游乐架', name:'IKEA MÅLA 儿童画架（白板）', w:66,d:48.3,h:111.8, price:29.99, priceCA:39.99, color:'#e4ccad', kind:'easel', model:'mala', note:'A 型松木画架，白色写字板 + 红色五金', url:'https://www.ikea.com/us/en/p/mala-easel-softwood-30488966/'},
+ {id:'laett-0', cat:'儿童桌 / 椅', name:'LÄTT 儿童桌 + 2 椅 · 白/松木', w:119,d:48,h:48, seatH:28, price:49.99, priceCA:49.99, color:'#e3c592', color2:'#f2efe6', kind:'tableRect', wood:'pine', model:'laett', url:'https://www.ikea.com/us/en/p/laett-childrens-table-and-2-chairs-white-pine-50178411/', note:'桌椅套装：桌 63×48×45（松木方框+白色三聚氰胺面板），椅 28×28×48、座高 28；两椅对称摆在桌短边两侧（整套占地 119×48）'},
  {id:'giantex7-blue', cat:'运动器材', name:'Giantex 7ft 圆形蹦床带安全网 · Blue', w:221.6,d:221.6,h:185.4, price:199.99, priceCA:259.99, color:'#3d6cb4', col2:'#46b13c', kind:'trampoline', model:'giantex7', note:'直径 7.3ft，高 6.1ft（含网架），3 组 A 字架 + PE 护垫 + 绿色底座，3 岁+', url:'https://www.giantex.com/products/7-ft-kids-trampoline-with-safety-enclosure-net'},
  {id:'giantex7-green', cat:'运动器材', name:'Giantex 7ft 圆形蹦床带安全网 · Green', w:221.6,d:221.6,h:185.4, price:199.99, priceCA:259.99, color:'#3f9e3a', col2:'#46b13c', kind:'trampoline', model:'giantex7', note:'直径 7.3ft，高 6.1ft（含网架），3 组 A 字架 + PE 护垫 + 绿色底座，3 岁+', url:'https://www.giantex.com/products/7-ft-kids-trampoline-with-safety-enclosure-net'},
  {id:'giantex7-yellow', cat:'运动器材', name:'Giantex 7ft 圆形蹦床带安全网 · Yellow', w:221.6,d:221.6,h:185.4, price:189.99, priceCA:259.99, color:'#e8b524', col2:'#46b13c', kind:'trampoline', model:'giantex7', note:'直径 7.3ft，高 6.1ft（含网架），3 组 A 字架 + PE 护垫 + 绿色底座，3 岁+', url:'https://www.giantex.com/products/7-ft-kids-trampoline-with-safety-enclosure-net'},
@@ -9974,6 +9975,61 @@ MODELS['mala'] = (C) => {
 // 实际结构（对照 PE727742/PE558487）：2 根立柱在短边中段（z=0），顶一根 x 向挂衣杆
 // （两端伸出立柱外 5.5）；底部 100×40 框（y15）内嵌 3 根 x 向格杆（即「4 层」）；
 // 4 条腿从框角向外弯下到脚轮——占地 111×51.1 是脚轮外缘。
+/* LÄTT 儿童桌+2椅（套装 119×48×48）：桌 63×48×45（松木方框+白色面板，4 全高方腿），
+   椅 28×28×48、座高 28（白座板+白背顶板，中间镂空）。两椅对称摆桌短边两侧、椅背朝外。
+   轴向：桌长边沿 x；椅背朝 ±x（s=+1 右椅椅背朝 +x）。 */
+MODELS['laett'] = (C) => {
+  const cm=C.cm, T=C.THREE;
+  const pine  = C.M(C.col, {wood:'pine', rough:.62, envI:.5});
+  const panel = C.M(C.col2, {rough:.8, envI:.15});
+  const steel = C.M('#c9ccd2', {metal:.9, rough:.35, envI:.85});
+  // —— 桌（63×48×45，中心原点）——
+  for(const [lx,lz] of [[-28.5,-21],[28.5,-21],[-28.5,21],[28.5,21]])
+    C.box(cm(3), cm(43), cm(3), pine, cm(lx), 0, cm(lz));
+  // 桌下围板环 36.6→42.6（外 63×48，条宽 6）
+  for(const sz of [-21,21])   C.box(cm(63), cm(6), cm(6), pine, 0, cm(36.6), cm(sz));
+  for(const sx of [-28.5,28.5]) C.box(cm(6), cm(6), cm(36), pine, cm(sx), cm(36.6), 0);
+  // 桌面框边 42.6→45（内框 50×35，框条宽 6.5，微倒角）
+  for(const sz of [-20.75,20.75]) C.rb(cm(63), cm(2.4), cm(6.5), cm(0.5), pine, 0, cm(42.6), cm(sz), 2);
+  for(const sx of [-28.25,28.25]) C.rb(cm(6.5), cm(2.4), cm(35), cm(0.5), pine, cm(sx), cm(42.6), 0, 2);
+  // 白色顶板 50×35（顶面 44.8，低于框边 0.2）
+  C.box(cm(50), cm(1.4), cm(35), panel, 0, cm(43.4), 0);
+  // 桌角螺丝（角腿外侧面 y≈40）
+  for(const [sx,sz] of [[-1,1],[1,1],[-1,-1],[1,-1]]){
+    const m = C.cyl(cm(1.1), cm(1.1), cm(0.4), steel, cm(sx*30.2), cm(39.8), cm(sz*21), 12);
+    m.rotation.z = Math.PI/2;
+  }
+  // —— 椅（28×28×48，中心 x=±45.5，s=±1 椅背朝外）——
+  for(const s of [-1,1]){
+    const cx = 45.5*s;
+    for(const [lx,lz] of [[-11.5,-11.5],[11.5,-11.5],[-11.5,11.5],[11.5,11.5]])
+      C.box(cm(2.6), cm(27), cm(2.6), pine, cm(cx+lx), 0, cm(lz));
+    // 座圈 25.6→28（外 28×28，条宽 3.4）
+    for(const sz of [-12.3,12.3]) C.box(cm(28), cm(2.4), cm(3.4), pine, cm(cx), cm(25.6), cm(sz));
+    for(const sx2 of [-12.3,12.3]) C.box(cm(3.4), cm(2.4), cm(21.2), pine, cm(cx+sx2), cm(25.6), 0);
+    // 白座板 20.4×20.4（顶面 27.9）
+    C.box(cm(20.4), cm(1.3), cm(20.4), panel, cm(cx), cm(26.6), 0);
+    // 椅背：立柱 25.6→48 + 顶梁 45.4→48 + 白背顶板 42→48
+    for(const sz of [-11.5,11.5]) C.rb(cm(2.6), cm(22.4), cm(2.6), cm(0.4), pine, cm(cx+s*12.7), cm(25.6), cm(sz), 2);
+    C.rb(cm(2.6), cm(2.6), cm(25.8), cm(0.4), pine, cm(cx+s*12.7), cm(45.4), 0, 2);
+    C.box(cm(1.3), cm(6), cm(21.2), panel, cm(cx+s*11.4), cm(42), 0);
+    // 椅背立柱外侧螺丝
+    for(const sz of [-11.5,11.5]){
+      const m = C.cyl(cm(1), cm(1), cm(0.4), steel, cm(cx+s*14.1), cm(30), cm(sz), 12);
+      m.rotation.z = Math.PI/2;
+    }
+  }
+  // 水平重心归零（对称件，理论上≈0，保险起见）
+  C.g.updateMatrixWorld(true);
+  const bb=new T.Box3();
+  C.g.traverse(o=>{ if(o.isMesh&&o.geometry){
+    const pos=o.geometry.attributes.position, v=new T.Vector3();
+    for(let i=0;i<pos.count;i++){ v.fromBufferAttribute(pos,i).applyMatrix4(o.matrixWorld); bb.expandByPoint(v); }
+  }});
+  const off=new T.Vector3(); bb.getCenter(off);
+  for(const ch of C.g.children){ ch.position.x-=off.x; ch.position.z-=off.z; }
+};
+
 MODELS['rigga'] = (C) => {
   const cm=C.cm, T=C.THREE;
   const wte = C.M('#f2f3f4', {metal:.35, rough:.45, envI:.5});

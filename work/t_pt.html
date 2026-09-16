@@ -11,7 +11,8 @@
     --danger:#e05656;
   }
   *{box-sizing:border-box; margin:0; padding:0;}
-  html,body{height:100%; overflow:hidden;}
+  html,body{height:100%; overflow:hidden; user-select:none; -webkit-user-select:none;}
+  input,textarea{user-select:text; -webkit-user-select:text;}
   body{
     font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
     background:var(--bg); color:var(--text); display:flex; flex-direction:column;
@@ -629,13 +630,23 @@ const CATALOG = [
   {id:'lunix-1', cat:'儿童沙发', name:'Lunix LX15 儿童模块沙发 14件 · 鼠尾草青 Sage Teal', w:164,d:140,h:54, price:275.57, priceCA:274.97, color:'#7C9A93', seatH:23.9, model:'lunix', kind:'playCouch', url:'https://www.amazon.ca/dp/B0BLVNTBB7'},
   {id:'lunix-2', cat:'儿童沙发', name:'Lunix LX15 儿童模块沙发 14件 · 静谧蓝 Serenity Blue', w:164,d:140,h:54, price:275.57, priceCA:274.97, color:'#93A9C2', seatH:23.9, model:'lunix', kind:'playCouch', url:'https://www.amazon.ca/dp/B0BLVNTBB7'},
   {id:'lunix-3', cat:'儿童沙发', name:'Lunix LX15 儿童模块沙发 14件 · 暖黄 Yellow', w:164,d:140,h:54, price:275.57, priceCA:274.97, color:'#E3C05C', seatH:23.9, model:'lunix', kind:'playCouch', url:'https://www.amazon.ca/dp/B0BLVNTBB7'},
+ {id:'epk12-0', cat:'儿童沙发', name:'Epic Kidz Epic Creativity 12件游戏沙发 · 芥末黄 Mustard Yellow', w:168,d:113.5,h:62.5, price:478, priceCA:659, color:'#B68556', model:'epickidz12', kind:'playCouch', url:'https://epickidzplay.com/products/ultimate-12-piece-play-couch', note:'加拿大 Epic Kidz 旗舰款，12 块高密度海绵（1.9 lb/ft³ · CertiPUR-US），防水内衬可机洗 · 12 块：底座半块 ×2 84×84×11.5、背板 ×2 84×42×11.5、拱门 ×2 84×42×11.5（圆拱洞）、半圆垫 ×2 59Ø×11.5、端块 ×2 29×27×57、梯形楔 ×2 26×24×57 · 官方沙发摆法 168×84cm；深度 113.5cm 含半圆垫向前散出的 29.5cm · 官方价 CA$659（划线 CA$719），美元为汇率折算 ≈'},
+ {id:'epk12-1', cat:'儿童沙发', name:'Epic Kidz Epic Creativity 12件游戏沙发 · 苔藓绿 Moss Green', w:168,d:113.5,h:62.5, price:478, priceCA:659, color:'#85826D', model:'epickidz12', kind:'playCouch', url:'https://epickidzplay.com/products/ultimate-12-piece-play-couch'},
+ {id:'epk12-2', cat:'儿童沙发', name:'Epic Kidz Epic Creativity 12件游戏沙发 · 鼠尾草 Sage', w:168,d:113.5,h:62.5, price:478, priceCA:659, color:'#A8AE9C', model:'epickidz12', kind:'playCouch', url:'https://epickidzplay.com/products/ultimate-12-piece-play-couch'},
+ {id:'epk12-3', cat:'儿童沙发', name:'Epic Kidz Epic Creativity 12件游戏沙发 · 午夜蓝 Midnight Blue', w:168,d:113.5,h:62.5, price:478, priceCA:659, color:'#01365F', model:'epickidz12', kind:'playCouch', url:'https://epickidzplay.com/products/ultimate-12-piece-play-couch'},
+ {id:'epk12-4', cat:'儿童沙发', name:'Epic Kidz Epic Creativity 12件游戏沙发 · 浅蓝 Light Blue', w:168,d:113.5,h:62.5, price:478, priceCA:659, color:'#7B9BAB', model:'epickidz12', kind:'playCouch', url:'https://epickidzplay.com/products/ultimate-12-piece-play-couch'},
+ {id:'epk12-5', cat:'儿童沙发', name:'Epic Kidz Epic Creativity 12件游戏沙发 · 深灰 Dark Grey', w:168,d:113.5,h:62.5, price:478, priceCA:659, color:'#7A7372', model:'epickidz12', kind:'playCouch', url:'https://epickidzplay.com/products/ultimate-12-piece-play-couch'},
+ {id:'epk12-6', cat:'儿童沙发', name:'Epic Kidz Epic Creativity 12件游戏沙发 · 浅灰 Light Grey', w:168,d:113.5,h:62.5, price:478, priceCA:659, color:'#B8BBCB', model:'epickidz12' /* light grey */, kind:'playCouch', url:'https://epickidzplay.com/products/ultimate-12-piece-play-couch'},
+ {id:'epk12-7', cat:'儿童沙发', name:'Epic Kidz Epic Creativity 12件游戏沙发 · 沙色 Sand', w:168,d:113.5,h:62.5, price:478, priceCA:659, color:'#C0BBB8', model:'epickidz12', kind:'playCouch', url:'https://epickidzplay.com/products/ultimate-12-piece-play-couch'},
+ {id:'epk12-8', cat:'儿童沙发', name:'Epic Kidz Epic Creativity 12件游戏沙发 · 灰玫瑰 Dusty Rose', w:168,d:113.5,h:62.5, price:478, priceCA:659, color:'#E1C8CB', model:'epickidz12', kind:'playCouch', url:'https://epickidzplay.com/products/ultimate-12-piece-play-couch'},
+ {id:'epk12-9', cat:'儿童沙发', name:'Epic Kidz Epic Creativity 12件游戏沙发 · 梅紫 Plum', w:168,d:113.5,h:62.5, price:478, priceCA:659, color:'#84407C', model:'epickidz12', kind:'playCouch', url:'https://epickidzplay.com/products/ultimate-12-piece-play-couch'},
  {id:'saltsjobaden-0', cat:'沙发 / 单椅', name:'SALTSJÖBADEN 单人扶手椅 · Tonerud 灰色', w:93,d:88,h:90, price:379, priceCA:379, color:'#9E9C96', color2:'#C9A575', seatH:46, model:'saltsjobaden', kind:'armchair', url:'https://www.ikea.com/ca/en/p/saltsjoebaden-armchair-tonerud-gray-s99578568/', note:'宽扁敦实的单人沙发椅，官方尺寸 W93×D88×H90cm，座宽69/座深55/座高46cm（低坐姿）'},
  {id:'saltsjobaden-1', cat:'沙发 / 单椅', name:'SALTSJÖBADEN 单人扶手椅 · Tonerud 红棕色', w:93,d:88,h:90, price:379, priceCA:379, color:'#90523F', color2:'#C9A575', seatH:46, model:'saltsjobaden', kind:'armchair', url:'https://www.ikea.com/ca/en/p/saltsjoebaden-armchair-tonerud-gray-s99578568/'},
  {id:'saltsjobaden-2', cat:'沙发 / 单椅', name:'SALTSJÖBADEN 单人扶手椅 · Blekinge 白色', w:93,d:88,h:90, price:379, priceCA:379, color:'#E9E6DF', color2:'#C9A575', seatH:46, model:'saltsjobaden', kind:'armchair', url:'https://www.ikea.com/ca/en/p/saltsjoebaden-armchair-tonerud-gray-s99578568/'},
  {id:'saltsjobaden-3', cat:'沙发 / 单椅', name:'SALTSJÖBADEN 单人扶手椅 · Fridtuna 浅米色', w:93,d:88,h:90, price:379, priceCA:379, color:'#D6C9B6', color2:'#C9A575', seatH:46, model:'saltsjobaden', kind:'armchair', url:'https://www.ikea.com/ca/en/p/saltsjoebaden-armchair-tonerud-gray-s99578568/'},
- {id:'dyvlinge-0', cat:'办公椅', name:'DYVLINGE 旋转椅 · Kelinge 米色', w:63,d:75,h:68, price:299, priceCA:299, color:'#C8B49A', color2:'#C2C6CA', seatH:43, model:'dyvlinge', kind:'swivelChair', url:'https://www.ikea.com/ca/en/p/dyvlinge-swivel-chair-kelinge-beige-60623859/', note:'复刻 1967 年 MILA“抗压力扶手椅”的 Nytillverkad 系列单椅，整体是矮胖的复古蛋壳/桶形造型'},
- {id:'dyvlinge-1', cat:'办公椅', name:'DYVLINGE 旋转椅 · Kelinge 黑色', w:63,d:75,h:68, price:299, priceCA:299, color:'#262626', color2:'#C2C6CA', seatH:43, model:'dyvlinge', kind:'swivelChair', url:'https://www.ikea.com/ca/en/p/dyvlinge-swivel-chair-kelinge-beige-60623859/'},
- {id:'dyvlinge-2', cat:'办公椅', name:'DYVLINGE 旋转椅 · Kelinge 绿色', w:63,d:75,h:68, price:299, priceCA:299, color:'#3E5B46', color2:'#C2C6CA', seatH:43, model:'dyvlinge', kind:'swivelChair', url:'https://www.ikea.com/ca/en/p/dyvlinge-swivel-chair-kelinge-beige-60623859/'},
+ {id:'dyvlinge-0', cat:'办公椅', name:'DYVLINGE 旋转椅 · Kelinge 米色', w:63,d:75,h:69, price:299, priceCA:299, color:'#C8B49A', color2:'#C2C6CA', seatH:42, model:'dyvlinge', kind:'swivelChair', url:'https://www.ikea.com/ca/en/p/dyvlinge-swivel-chair-kelinge-beige-60623859/', note:'复刻 1967 年 MILA“抗压力扶手椅”的 Nytillverkad 系列单椅，整体是矮胖的复古蛋壳/桶形造型，2×2 四纽扣深绗缝'},
+ {id:'dyvlinge-1', cat:'办公椅', name:'DYVLINGE 旋转椅 · Kelinge 黑色', w:63,d:75,h:69, price:299, priceCA:299, color:'#262626', color2:'#C2C6CA', seatH:42, model:'dyvlinge', kind:'swivelChair', url:'https://www.ikea.com/ca/en/p/dyvlinge-swivel-chair-kelinge-beige-60623859/'},
+ {id:'dyvlinge-2', cat:'办公椅', name:'DYVLINGE 旋转椅 · Kelinge 绿色', w:63,d:75,h:69, price:299, priceCA:299, color:'#3E5B46', color2:'#C2C6CA', seatH:42, model:'dyvlinge', kind:'swivelChair', url:'https://www.ikea.com/ca/en/p/dyvlinge-swivel-chair-kelinge-beige-60623859/'},
  {id:'orfjall-0', cat:'办公椅', name:'ÖRFJÄLL 转椅 · 白色/Vissle 深蓝', w:68,d:68,h:85, price:99, priceCA:99, color:'#3B4A63', color2:'#F4F3F0', seatH:47, model:'orfjall', kind:'swivelChair', url:'https://www.ikea.com/ca/en/p/oerfjaell-swivel-chair-white-vissle-dark-blue-s49590983/', note:'IKEA 官方尺寸（Product dimensions）：宽 68 / 深 68（五爪底座最大跨距）；总高可调 82–'},
  {id:'orfjall-1', cat:'办公椅', name:'ÖRFJÄLL 转椅 · 白色/Vissle 浅灰', w:68,d:68,h:85, price:99, priceCA:99, color:'#B8B8B2', color2:'#F4F3F0', seatH:47, model:'orfjall', kind:'swivelChair', url:'https://www.ikea.com/ca/en/p/oerfjaell-swivel-chair-white-vissle-dark-blue-s49590983/'},
  {id:'orfjall-2', cat:'办公椅', name:'ÖRFJÄLL 转椅 · 黑色/Vissle 红', w:68,d:68,h:85, price:99, priceCA:99, color:'#B03A31', color2:'#2B2B2B', seatH:47, model:'orfjall', kind:'swivelChair', url:'https://www.ikea.com/ca/en/p/oerfjaell-swivel-chair-white-vissle-dark-blue-s49590983/'},
@@ -656,6 +667,9 @@ const CATALOG = [
  {id:'raskog-1', cat:'手推车', name:'RÅSKOG 手推车 · 黑色', w:35,d:45,h:77, price:39.99, priceCA:39.99, color:'#2E2E2E', color2:'#1F1F1F', model:'raskog', kind:'cart', url:'https://www.ikea.com/ca/en/p/raskog-utility-cart-pink-70629714/'},
  {id:'raskog-2', cat:'手推车', name:'RÅSKOG 手推车 · 红棕色', w:35,d:45,h:77, price:39.99, priceCA:39.99, color:'#7E4038', color2:'#3A3A3C', model:'raskog', kind:'cart', url:'https://www.ikea.com/ca/en/p/raskog-utility-cart-pink-70629714/'},
  {id:'raskog-3', cat:'手推车', name:'RÅSKOG 手推车 · 白色', w:35,d:45,h:77, price:39.99, priceCA:39.99, color:'#F5F5F3', color2:'#3A3A3C', model:'raskog', kind:'cart', url:'https://www.ikea.com/ca/en/p/raskog-utility-cart-pink-70629714/'},
+ {id:'ovning-0', cat:'手推车', name:'ÖVNING 收纳小推车 · 白色/灰绿', w:54,d:33,h:70, price:79.99, priceCA:99, color:'#f4f4f1', color2:'#93a29b', model:'ovning', kind:'cart', url:'https://www.ikea.com/us/en/p/oevning-utility-cart-white-gray-green-50517005/', note:'冲孔金属篮 + 白色分格柜身（左格矮/右格高），含脚轮总高 70cm；加拿大货号为同一款 505.170.05'},
+ {id:'ps2026-0', cat:'手推车', name:'IKEA PS 2026 小推车 · 米色', w:48,d:48,h:89, price:79.99, priceCA:79.99, color:'#b8b1a1', model:'ps2026', kind:'cart', url:'https://www.ikea.com/us/en/p/ikea-ps-2026-utility-cart-beige-50621078/', note:'四层圆形托盘小推车（⌀48×89cm，中心立杆 + 4 个带刹脚轮），承重 20kg'},
+ {id:'ps2026-1', cat:'手推车', name:'IKEA PS 2026 小推车 · 蓝色', w:48,d:48,h:89, price:79.99, priceCA:79.99, color:'#5d9bc6', model:'ps2026', kind:'cart', url:'https://www.ikea.com/us/en/p/ikea-ps-2026-utility-cart-blue-40621074/', note:'同款蓝色'},
  // —— 灯具（可调色温；3D 中为真实光源）——
  {id:'dl-4', cat:'固定灯具', name:'筒灯 4″（嵌入式）', w:12,d:12,h:6, color:'#f2efe8', kind:'downlight', cct:3000, lum:900, note:'吸顶嵌入；色温可调 2700-6500K'},
  {id:'dl-6', cat:'固定灯具', name:'筒灯 6″（嵌入式）', w:17,d:17,h:7, color:'#f2efe8', kind:'downlight', cct:3000, lum:1300},
@@ -699,6 +713,11 @@ const CATALOG = [
  {id:'gullaberg_q', cat:'床 / 婴儿床', name:'GULLABERG 床架 Queen', w:163,d:210,h:113, price:299, priceCA:349, color:'#d9d4ca', kind:'bed', model:'gullaberg', url:'https://www.ikea.com/us/en/p/gullaberg-bed-frame-gray-20608931/', note:'实木，HEMNES继任款'},
  {id:'songesand_q', cat:'床 / 婴儿床', name:'SONGESAND 床架 Queen', w:165,d:208,h:95, price:249, priceCA:289, color:'#8b6f52', kind:'bed', model:'songesand', url:'https://www.ikea.com/us/en/p/songesand-bed-frame-brown-s89241044/'},
  {id:'idanas_q', cat:'床 / 婴儿床', name:'IDANÄS 软包床 Queen', w:159,d:224,h:121, price:549, priceCA:599, color:'#8f96a3', kind:'bed', model:'idanas', url:'https://www.ikea.com/us/en/p/idanaes-upholstered-bed-frame-gunnared-dark-gray-60458958/', note:'最长，注意进深224'},
+ {id:'malm_qm', cat:'床 / 婴儿床', name:'MALM 床架+VALEVÅG 床垫 Queen', w:168,d:211,h:100, price:698, color:'#f0ece4', kind:'bed', model:'malm-m', url:'https://www.ikea.com/us/en/p/malm-bed-frame-with-mattress-white-valevag-firm-s99544856/', note:'IKEA 整套 SKU $698（床架+VALEVÅG 弹簧床垫 Queen 152×203）'},
+ {id:'malm_km', cat:'床 / 婴儿床', name:'MALM 床架+VALEVÅG 床垫 King', w:209,d:211,h:100, price:898, color:'#f0ece4', kind:'bed', model:'malmk-m', url:'https://www.ikea.com/us/en/p/malm-bed-frame-with-mattress-white-valevag-medium-firm-s09544846/', note:'IKEA 整套 SKU $898（King 床垫中软款）'},
+ {id:'gullaberg_qm', cat:'床 / 婴儿床', name:'GULLABERG 床架+VALEVÅG 床垫 Queen', w:163,d:210,h:113, price:698, color:'#d9d4ca', kind:'bed', model:'gullaberg-m', note:'分售加总：床架 $299 + VALEVÅG Queen 床垫 $399'},
+ {id:'songesand_qm', cat:'床 / 婴儿床', name:'SONGESAND 床架+VALEVÅG 床垫 Queen', w:165,d:208,h:95, price:648, color:'#8b6f52', kind:'bed', model:'songesand-m', note:'分售加总：床架 $249 + VALEVÅG Queen 床垫 $399'},
+ {id:'idanas_qm', cat:'床 / 婴儿床', name:'IDANÄS 软包床+VALEVÅG 床垫 Queen', w:159,d:224,h:121, price:948, color:'#8f96a3', kind:'bed', model:'idanas-m', note:'分售加总：床架 $549 + VALEVÅG Queen 床垫 $399'},
  {id:'storklinta_ns', cat:'床头柜', name:'STORKLINTA 床头柜', w:50,d:48,h:53, price:79.99, priceCA:79.99, color:'#f0ece4', kind:'nightstand', model:'storklinta', url:'https://www.ikea.com/us/en/p/storklinta-2-drawer-chest-white-with-2-drawers-90559296/', note:'MALM床头柜继任款'},
  {id:'nordli_ns', cat:'床头柜', name:'NORDLI 床头柜(窄40)', w:40,d:47,h:54, price:99.99, priceCA:149, color:'#f0ece4', kind:'nightstand', model:'nordli', url:'https://www.ikea.com/us/en/p/nordli-2-drawer-chest-white-30589079/', note:'适合窄位'},
  {id:'vikhammer', cat:'床头柜', name:'VIKHAMMER 床头柜', w:60,d:39,h:65, price:99.99, priceCA:129, color:'#3e4249', kind:'nightstand', model:'vikhammer', url:'https://www.ikea.com/us/en/p/vikhammer-nightstand-black-90388978/'},
@@ -739,6 +758,30 @@ const CATALOG = [
  {id:'vidja', cat:'落地灯', name:'VIDJA 落地灯', w:26,d:26,h:138, price:69.99, priceCA:59.99, color:'#e8e4dc', kind:'lamp', model:'vidja', url:'https://www.ikea.com/us/en/p/vidja-floor-lamp-white-10309206/'},
  {id:'ranarp_f', cat:'落地灯', name:'RANARP 落地阅读灯', w:76,d:28,h:153, price:69.99, priceCA:79.99, color:'#2e3138', kind:'lamp', model:'ranarp_f', note:'占地 76×28×153：臂长 76cm（官方 Length 760mm），臂可旋转', url:'https://www.ikea.com/us/en/p/ranarp-floor-reading-lamp-black-00331383/'},
  {id:'hektar_f', cat:'落地灯', name:'HEKTAR 落地灯', w:33,d:33,h:180, price:89.99, priceCA:89, color:'#4a4d53', kind:'lamp', model:'hektar_f', url:'https://www.ikea.com/us/en/p/hektar-floor-lamp-dark-gray-70216544/'},
+ {id:'lauters-0', cat:'落地灯', name:'LAUTERS 落地灯 · 白蜡木/白', w:61,d:53,h:150, price:79.99, priceCA:99, color:'#d9c49a', kind:'lamp', model:'lauters', note:'木质三脚架(展 Ø61, 三角顶视深 53) + 可抽拉调高中柱(47–59″) + 白筒罩(Ø38)；线绕下盘', url:'https://www.ikea.com/us/en/p/lauters-floor-lamp-ash-white-00405048/'},
+ {id:'lauters-1', cat:'落地灯', name:'LAUTERS 落地灯 · 棕褐蜡木/白', w:61,d:53,h:150, price:79.99, color:'#8a6a4a', kind:'lamp', model:'lauters', note:'同款，棕褐蜡木色', url:'https://www.ikea.com/us/en/p/lauters-floor-lamp-brown-ash-white-60405941/'},
+ {id:'oekensand-0', cat:'落地灯', name:'ÖKENSAND 落地灯 · 山毛榉/白', w:45,d:43,h:155, price:89.99, priceCA:69.99, color:'#f2efe6', color2:'#cbb494', kind:'lamp', model:'oekensand', note:'三根细榉木脚(顶视展 45×43) + 巨型百褶锥罩(底 Ø41, 垂至 45 高)；罩内 3×E12 烛形灯泡', url:'https://www.ikea.com/us/en/p/oekensand-floor-lamp-beech-white-90541536/'},
+ {id:'lersta-0', cat:'落地灯', name:'LERSTA 落地/阅读灯 · 铬色', w:25,d:45,h:132, price:22.99, priceCA:29.99, color:'#c9ccce', kind:'lamp', model:'lersta', note:'鹅颈软管 + 钟形反射罩；占地 25×45(含鹅颈前伸 ~20cm)', url:'https://www.ikea.com/us/en/p/lersta-floor-reading-lamp-aluminum-chrome-effect-20110903/'},
+ {id:'arstid-0', cat:'落地灯', name:'ÅRSTID 落地灯 · 黄铜/白', w:36,d:36,h:155, price:89.99, priceCA:69.99, color:'#b08d3f', color2:'#f2efe6', kind:'lamp', model:'arstid', note:'黄铜车削底座(Ø28) + 两段杆(中接环) + 百褶锥形罩(底 Ø35.6→顶 Ø21) + 拉珠；占地取罩宽 36', url:'https://www.ikea.com/us/en/p/arstid-floor-lamp-brass-white-60321324/'},
+ {id:'arstid-1', cat:'落地灯', name:'ÅRSTID 落地灯 · 镀镍/白', w:36,d:36,h:155, price:89.99, color:'#c3c6c8', color2:'#f2efe6', kind:'lamp', model:'arstid', note:'同款，镀镍', url:'https://www.ikea.com/us/en/p/arstid-floor-lamp-nickel-plated-white-50163867/'},
+ {id:'tagarp-0', cat:'落地灯', name:'TÅGARP 上照落地灯 · 黑/白', w:23,d:23,h:180, price:14.99, priceCA:15.99, color:'#26262a', color2:'#f2efe8', kind:'lamp', model:'tagarp', note:'细杆上照灯：顶部白色抛物碗(Ø23, 开口朝上)；底座 Ø20', url:'https://www.ikea.com/us/en/p/tagarp-floor-uplighter-black-white-60464049/'},
+ {id:'barlast-0', cat:'落地灯', name:'BARLAST 落地灯 · 黑/白', w:33,d:33,h:150, price:9.99, priceCA:9.99, color:'#26262a', kind:'lamp', model:'barlast', note:'十字薄板底座 + 细杆 + 白色锥形布罩(Ø30.5)', url:'https://www.ikea.com/us/en/p/barlast-floor-lamp-black-white-70437814/'},
+ {id:'nymane-0', cat:'落地灯', name:'NYMÅNE 三头射灯落地灯 · 白', w:25,d:25,h:160, price:99.99, priceCA:69.99, color:'#f4f4f2', kind:'lamp', model:'nymane', note:'三筒射灯可各自转向(GU10)；底座 Ø25，占地取头展 25', url:'https://www.ikea.com/us/en/p/nymane-floor-lamp-with-3-spotlights-white-50477052/'},
+ {id:'isjakt-0', cat:'落地灯', name:'ISJAKT LED 上照/阅读落地灯 · 镀镍', w:50,d:24,h:180, price:149.99, priceCA:139, color:'#c3c6c8', kind:'lamp', model:'isjakt', dimmable:true, cct:2700, lum:1850, note:'LED 可调光：顶部上照盘(Ø24) + 侧臂阅读灯(Ø10)，双按钮独立控制', url:'https://www.ikea.com/us/en/p/isjakt-led-floor-uplighter-reading-lamp-dimmable-nickel-plated-70459716/'},
+ {id:'nyfors-0', cat:'落地灯', name:'NYFORS 落地灯 · 镀镍/白', w:38,d:38,h:168, price:129.99, priceCA:139, color:'#c3c6c8', color2:'#efe9db', kind:'lamp', model:'nyfors', note:'环状底座(Ø28) + 两段镀镍杆(高 54–66″ 可调) + 米白锥形罩(底 Ø38) + 拉珠；占地取罩宽 38', url:'https://www.ikea.com/us/en/p/nyfors-floor-lamp-nickel-plated-white-50303113/'},
+ {id:'roedflik-0', cat:'落地灯', name:'RÖDFLIK 落地/阅读灯 · 灰绿', w:25,d:41,h:140, price:59.99, priceCA:49.99, color:'#5c6b60', kind:'lamp', model:'roedflik', note:'J 形钩弯杆 + 铃形罩(悬于钩前, Ø15×18)；黄铜关节；占地 25×41(含臂)', url:'https://www.ikea.com/us/en/p/roedflik-floor-reading-lamp-gray-green-80563581/'},
+ {id:'roedflik-1', cat:'落地灯', name:'RÖDFLIK 落地/阅读灯 · 浅米', w:25,d:41,h:140, price:59.99, color:'#d9d2c0', kind:'lamp', model:'roedflik', note:'同款，浅米色', url:'https://www.ikea.com/us/en/p/roedflik-floor-reading-lamp-light-beige-10563570/'},
+ {id:'simrishamn-0', cat:'落地灯', name:'SIMRISHAMN 三球落地灯 · 铬色', w:31,d:31,h:158, price:199.99, priceCA:129, color:'#c3c6c8', color2:'#f4f4f2', kind:'lamp', model:'simrishamn', note:'U 形铬架 + 三立杆 + 三只乳白玻球(E12×3, 高度错开)；底座 Ø30.5', url:'https://www.ikea.com/us/en/p/simrishamn-floor-lamp-chrome-plated-opal-glass-50437773/'},
+ {id:'strandad-0', cat:'落地灯', name:'STRANDAD 罗纹鼓罩落地灯 · 白/黑', w:22,d:23,h:112, price:19.99, priceCA:14.99, color:'#f2f2f0', color2:'#1a1a1e', kind:'lamp', model:'strandad', note:'水平罗纹白鼓罩(Ø20×87) + 三细黑腿；PDP 罩径 8″ 为数据错误(按官方图实测 Ø20)；占地 24×21 取腿展', url:'https://www.ikea.com/us/en/p/strandad-floor-lamp-white-black-70594842/'},
+ {id:'sambord-0', cat:'落地灯', name:'SAMBORD 落地阅读灯 · 黑/白', w:56,d:24,h:114, price:29.99, priceCA:29.99, color:'#26262a', color2:'#f4f4f2', kind:'lamp', model:'sambord', note:'黑色弧臂(GU10) + 乳白钟罩(Ø13)；臂左伸 38(官方 Length 15″)；占地 56 含罩', url:'https://www.ikea.com/us/en/p/sambord-floor-reading-lamp-black-white-90573358/'},
+ {id:'ps2026l-0', cat:'落地灯', name:'IKEA PS 2026 落地灯 · 深红', w:74,d:28,h:183, price:59.99, caNA:true, color:'#7a2230', kind:'lamp', model:'ps2026l', note:'限量设计款(72″)：喇叭座(Ø28) + 粗杆 + 顶横臂(左伸 52) + 漏斗形罩(GU10, Ø15)；加拿大无售', url:'https://www.ikea.com/us/en/p/ikea-ps-2026-floor-uplighter-dark-red-60608509/'},
+ {id:'evedal-0', cat:'落地灯', name:'EVEDAL 玻璃穹顶落地灯 · 烟灰绿/橡木', w:41,d:41,h:145, price:399.99, caNA:true, color:'#5f6863', color2:'#c9a06a', kind:'lamp', model:'evedal', note:'灰绿玻璃穹顶(Ø41) + 橡木杆 + 黑盘座(Ø33) + 黄铜拉珠链；加拿大无售', url:'https://www.ikea.com/us/en/p/evedal-floor-lamp-marble-gray-60357916/'},
+ {id:'flyghoejd-0', cat:'落地灯', name:'FLYGHÖJD 落地灯 · 黄铜/灰绿', w:36,d:36,h:142, price:69.99, caNA:true, color:'#7d8a72', kind:'lamp', model:'flyghoejd', note:'黄铜锥形座(Ø23) + 细杆 + 圆鼓罩(Ø35.5)', url:'https://www.ikea.com/us/en/p/flyghoejd-floor-lamp-brass-green-gray-00543846/'},
+ {id:'flyghoejd-1', cat:'落地灯', name:'FLYGHÖJD 落地灯 · 黄铜/米色', w:36,d:36,h:142, price:69.99, caNA:true, color:'#d9c9a8', kind:'lamp', model:'flyghoejd', note:'同款，米色罩', url:'https://www.ikea.com/us/en/p/flyghoejd-floor-lamp-brass-beige-90543853/'},
+ {id:'kinnahult-0', cat:'落地灯', name:'KINNAHULT 车削落地灯 · 白蜡/白', w:38,d:38,h:150, price:89.99, priceCA:89, color:'#f2efe6', color2:'#d8c39a', kind:'lamp', model:'kinnahult', note:'车削白蜡木杆(3 珠) + 圆木座(Ø30.5) + 锥形白鼓罩(底 Ø38, 59″)', url:'https://www.ikea.com/us/en/p/kinnahult-floor-lamp-ash-white-20559266/'},
+ {id:'kloeving-0', cat:'落地灯', name:'KLÖVING 双头射灯落地灯 · 石墨色', w:33,d:28,h:147, price:69.99, priceCA:49.99, color:'#2e3138', kind:'lamp', model:'kloeving', note:'两只可转铃罩(GU10×2)；底座 Ø28', url:'https://www.ikea.com/us/en/p/kloeving-floor-lamp-anthracite-20573564/'},
+ {id:'uppvind-0', cat:'落地灯', name:'UPPVIND 黄铜框架落地灯 · 黄铜/白', w:43,d:26,h:150, price:189.99, priceCA:129, color:'#f2efe6', color2:'#b08d3f', kind:'lamp', model:'uppvind', note:'椭圆黄铜板座 + 回形针框架 + 白色方罩(43×26, 59″)', url:'https://www.ikea.com/us/en/p/uppvind-floor-lamp-brass-plated-white-70488295/'},
+ {id:'vindkast-0', cat:'落地灯', name:'VINDKAST 皱褶纸球落地灯 · 白', w:40,d:40,h:145, price:59.99, priceCA:59.99, color:'#f2f2f0', kind:'lamp', model:'vindkast', note:'皱褶纸球罩(Ø38, 57″) + 细杆 + 圆环底座(Ø35.5)', url:'https://www.ikea.com/us/en/p/vindkast-floor-lamp-white-60539097/'},
  {id:'ekorre', cat:'骑乘玩具', name:'EKORRE 摇摇麋鹿', w:73,d:29,h:52, price:69.99, priceCA:39.99, color:'#c11e23', color2:'#d9bd96', kind:'rocking', model:'ekorre', seatH:28, url:'https://www.ikea.com/us/en/p/ekorre-rocking-moose-red-rubberwood-50060713/'},
  {id:'hape-horse', cat:'骑乘玩具', name:'Hape Rock & Ride 摇木马', w:67.6,d:28.2,h:52.3, price:131.72, caNA:true, color:'#dbaf88', color2:'#ca0707', kind:'rocking', model:'hape-horse', seatH:26, url:'https://www.amazon.com/dp/B00712O36C'},
  {id:'kiddiecouch-0', cat:'儿童沙发', name:'Kiddie Couch 儿童模块沙发 · Koala Grey', w:170.2,d:83.8,h:58.4, price:399, priceCA:399, color:'#8d8d92', kind:'playCouch', model:'kiddiecouch', seatH:30.5, note:'67"×33"×23" 双人模块：两层坐垫（12" 座高）+ 两个三角靠背垫，可自由重组', url:'https://www.kiddiecouch.com/products/kiddie-couch'}, {id:'kiddiecouch-1', cat:'儿童沙发', name:'Kiddie Couch 儿童模块沙发 · Emerald Green', w:170.2,d:83.8,h:58.4, price:399, priceCA:399, color:'#2e5e56', kind:'playCouch', model:'kiddiecouch', seatH:30.5, note:'67"×33"×23" 双人模块：两层坐垫（12" 座高）+ 两个三角靠背垫，可自由重组', url:'https://www.kiddiecouch.com/products/kiddie-couch'}, {id:'kiddiecouch-2', cat:'儿童沙发', name:'Kiddie Couch 儿童模块沙发 · Pacific Blue', w:170.2,d:83.8,h:58.4, price:399, priceCA:399, color:'#5b7fb0', kind:'playCouch', model:'kiddiecouch', seatH:30.5, note:'67"×33"×23" 双人模块：两层坐垫（12" 座高）+ 两个三角靠背垫，可自由重组', url:'https://www.kiddiecouch.com/products/kiddie-couch'}, {id:'kiddiecouch-3', cat:'儿童沙发', name:'Kiddie Couch 儿童模块沙发 · Sand Beige', w:170.2,d:83.8,h:58.4, price:399, priceCA:399, color:'#cfc2ae', kind:'playCouch', model:'kiddiecouch', seatH:30.5, note:'67"×33"×23" 双人模块：两层坐垫（12" 座高）+ 两个三角靠背垫，可自由重组', url:'https://www.kiddiecouch.com/products/kiddie-couch'}, {id:'kiddiecouch-4', cat:'儿童沙发', name:'Kiddie Couch 儿童模块沙发 · Jet Black', w:170.2,d:83.8,h:58.4, price:399, priceCA:399, color:'#1c1c1e', kind:'playCouch', model:'kiddiecouch', seatH:30.5, note:'67"×33"×23" 双人模块：两层坐垫（12" 座高）+ 两个三角靠背垫，可自由重组', url:'https://www.kiddiecouch.com/products/kiddie-couch'}, {id:'kiddiecouch-5', cat:'儿童沙发', name:'Kiddie Couch 儿童模块沙发 · Blush Pink', w:170.2,d:83.8,h:58.4, price:399, priceCA:399, color:'#d19a94', kind:'playCouch', model:'kiddiecouch', seatH:30.5, note:'67"×33"×23" 双人模块：两层坐垫（12" 座高）+ 两个三角靠背垫，可自由重组', url:'https://www.kiddiecouch.com/products/kiddie-couch'}, {id:'kiddiecouch-6', cat:'儿童沙发', name:'Kiddie Couch 儿童模块沙发 · Orchid Purple', w:170.2,d:83.8,h:58.4, price:399, priceCA:399, color:'#ab92ac', kind:'playCouch', model:'kiddiecouch', seatH:30.5, note:'67"×33"×23" 双人模块：两层坐垫（12" 座高）+ 两个三角靠背垫，可自由重组', url:'https://www.kiddiecouch.com/products/kiddie-couch'}, {id:'kiddiecouch-7', cat:'儿童沙发', name:'Kiddie Couch 儿童模块沙发 · Stone Brown', w:170.2,d:83.8,h:58.4, price:399, priceCA:399, color:'#57493e', kind:'playCouch', model:'kiddiecouch', seatH:30.5, note:'67"×33"×23" 双人模块：两层坐垫（12" 座高）+ 两个三角靠背垫，可自由重组', url:'https://www.kiddiecouch.com/products/kiddie-couch'}, {id:'kiddiecouch-8', cat:'儿童沙发', name:'Kiddie Couch 儿童模块沙发 · Sage Green', w:170.2,d:83.8,h:58.4, price:399, priceCA:399, color:'#879188', kind:'playCouch', model:'kiddiecouch', seatH:30.5, note:'67"×33"×23" 双人模块：两层坐垫（12" 座高）+ 两个三角靠背垫，可自由重组', url:'https://www.kiddiecouch.com/products/kiddie-couch'},
@@ -752,17 +795,21 @@ const CATALOG = [
 {id:'strider12-red', cat:'骑乘玩具', name:'Strider 12 Sport 平衡车 · Red', w:87.6,d:40.6,h:55.2, price:149.99, priceCA:179.99, color:'#dc1f2c', kind:'balanceBike', model:'strider12', seatH:43, note:'34.5"×16"×21.75"，12" 防漏气发泡胎，座高 11-17" 可调', url:'https://www.amazon.com/dp/B00IZXBZBM'},
 {id:'strider12-yellow', cat:'骑乘玩具', name:'Strider 12 Sport 平衡车 · Yellow', w:87.6,d:40.6,h:55.2, price:149.99, priceCA:179.99, color:'#f0cf0a', kind:'balanceBike', model:'strider12', seatH:43, note:'34.5"×16"×21.75"，12" 防漏气发泡胎，座高 11-17" 可调', url:'https://www.amazon.com/dp/B00IZXBZBM'},
 {id:'strider12-mattegray', cat:'骑乘玩具', name:'Strider 12 Sport 平衡车 · Matte Gray', w:87.6,d:40.6,h:55.2, price:149.99, priceCA:179.99, color:'#9a9a9a', kind:'balanceBike', model:'strider12', seatH:43, note:'34.5"×16"×21.75"，12" 防漏气发泡胎，座高 11-17" 可调', url:'https://www.amazon.com/dp/B00IZXBZBM'},
- {id:'micro-mini-iceblue', cat:'骑乘玩具', name:'Micro Mini 三轮滑板车 · Ice Blue', w:39,d:28,h:66, price:99.99, color:'#b8dcea', kind:'scooter', model:'micro-mini', note:'12" 前轮×2 + 8" 后轮，车把高 19.25-27" 可调，2-5 岁', url:'https://microkickboard.com/products/micro-mini-scooter'}, {id:'micro-mini-blue', cat:'骑乘玩具', name:'Micro Mini 三轮滑板车 · Blue', w:39,d:28,h:66, price:99.99, color:'#2e6fd8', kind:'scooter', model:'micro-mini', note:'12" 前轮×2 + 8" 后轮，车把高 19.25-27" 可调，2-5 岁', url:'https://microkickboard.com/products/micro-mini-scooter'}, {id:'micro-mini-turquoise', cat:'骑乘玩具', name:'Micro Mini 三轮滑板车 · Turquoise', w:39,d:28,h:66, price:99.99, color:'#3fc0b4', kind:'scooter', model:'micro-mini', note:'12" 前轮×2 + 8" 后轮，车把高 19.25-27" 可调，2-5 岁', url:'https://microkickboard.com/products/micro-mini-scooter'}, {id:'micro-mini-pink', cat:'骑乘玩具', name:'Micro Mini 三轮滑板车 · Pink', w:39,d:28,h:66, price:99.99, color:'#e884b8', kind:'scooter', model:'micro-mini', note:'12" 前轮×2 + 8" 后轮，车把高 19.25-27" 可调，2-5 岁', url:'https://microkickboard.com/products/micro-mini-scooter'}, {id:'micro-mini-oceanblue', cat:'骑乘玩具', name:'Micro Mini 三轮滑板车 · Ocean Blue', w:39,d:28,h:66, price:99.99, color:'#20509c', kind:'scooter', model:'micro-mini', note:'12" 前轮×2 + 8" 后轮，车把高 19.25-27" 可调，2-5 岁', url:'https://microkickboard.com/products/micro-mini-scooter'}, {id:'lilkick-blue', cat:'骑乘玩具', name:"Razor Jr. Lil' Kick 三轮滑板车 · Blue", w:56.4,d:36.8,h:66, price:39.94, color:'#3f78c8', kind:'scooter', model:'lilkick', note:'3 岁+，44lb 限重，透明轮，防翻倒后臂', url:'https://www.amazon.com/dp/B01EM4MJCG'},
- {id:'lilkick-pink', cat:'骑乘玩具', name:"Razor Jr. Lil' Kick 三轮滑板车 · Pink", w:56.4,d:36.8,h:66, price:39.94, color:'#e868a8', kind:'scooter', model:'lilkick', note:'3 岁+，44lb 限重，透明轮，防翻倒后臂', url:'https://www.amazon.com/dp/B01EM4MJCG'},
+ {id:'micro-mini-iceblue', cat:'骑乘玩具', name:'Micro Mini 三轮滑板车 · Ice Blue', w:39,d:28,h:66, price:99.99, color:'#b8dcea', kind:'scooter', model:'micro-mini', note:'前轮 Ø12cm 透明胎+灰12辐 / 后轮 Ø8cm 深色带刹车护罩，三叉 m-cro 星形前叉，T 把高 66cm 可调，2-5 岁', url:'https://microkickboard.com/products/micro-mini-scooter'}, {id:'micro-mini-blue', cat:'骑乘玩具', name:'Micro Mini 三轮滑板车 · Blue', w:39,d:28,h:66, price:99.99, color:'#2e6fd8', kind:'scooter', model:'micro-mini', note:'前轮 Ø12cm 透明胎+灰12辐 / 后轮 Ø8cm 深色带刹车护罩，三叉 m-cro 星形前叉，T 把高 66cm 可调，2-5 岁', url:'https://microkickboard.com/products/micro-mini-scooter'}, {id:'micro-mini-turquoise', cat:'骑乘玩具', name:'Micro Mini 三轮滑板车 · Turquoise', w:39,d:28,h:66, price:99.99, color:'#3fc0b4', kind:'scooter', model:'micro-mini', note:'前轮 Ø12cm 透明胎+灰12辐 / 后轮 Ø8cm 深色带刹车护罩，三叉 m-cro 星形前叉，T 把高 66cm 可调，2-5 岁', url:'https://microkickboard.com/products/micro-mini-scooter'}, {id:'micro-mini-pink', cat:'骑乘玩具', name:'Micro Mini 三轮滑板车 · Pink', w:39,d:28,h:66, price:99.99, color:'#e884b8', kind:'scooter', model:'micro-mini', note:'前轮 Ø12cm 透明胎+灰12辐 / 后轮 Ø8cm 深色带刹车护罩，三叉 m-cro 星形前叉，T 把高 66cm 可调，2-5 岁', url:'https://microkickboard.com/products/micro-mini-scooter'}, {id:'micro-mini-oceanblue', cat:'骑乘玩具', name:'Micro Mini 三轮滑板车 · Ocean Blue', w:39,d:28,h:66, price:99.99, color:'#20509c', kind:'scooter', model:'micro-mini', note:'前轮 Ø12cm 透明胎+灰12辐 / 后轮 Ø8cm 深色带刹车护罩，三叉 m-cro 星形前叉，T 把高 66cm 可调，2-5 岁', url:'https://microkickboard.com/products/micro-mini-scooter'}, {id:'lilkick-blue', cat:'骑乘玩具', name:"Razor Jr. Lil' Kick 三轮滑板车 · Blue", w:56.5,d:36.5,h:65, price:39.94, color:'#0279c2', kind:'scooter', model:'lilkick', note:'双前轮+后轮 Ø10cm 透明五瓣轮，波纹橡胶叉臂，加宽蓝踏板+后防翻翼，3 岁+ / 44lb 限重，官方 56.5×36.5×65cm', url:'https://www.amazon.com/dp/B01EM4MJCG'},
+ {id:'lilkick-pink', cat:'骑乘玩具', name:"Razor Jr. Lil' Kick 三轮滑板车 · Pink", w:56.5,d:36.5,h:65, price:39.94, color:'#eb3487', kind:'scooter', model:'lilkick', note:'双前轮+后轮 Ø10cm 透明五瓣轮，波纹橡胶叉臂，加宽蓝踏板+后防翻翼，3 岁+ / 44lb 限重，官方 56.5×36.5×65cm', url:'https://www.amazon.com/dp/B01EM4MJCG'},
  {id:'rigga', cat:'入户 / 衣物', name:'IKEA RIGGA 高度可调移动挂衣架', w:111,d:51.1,h:145, price:19.99, priceCA:29.99, color:'#f2f3f4', kind:'clothesRail', model:'rigga', note:'白色钢架，高度 124-145cm 可调，带脚轮，4 层横杆', url:'https://www.ikea.com/us/en/p/rigga-clothes-rack-white-50231630/'},
- {id:'nipasen', cat:'入户 / 衣物', name:'IKEA NIPÅSEN 门厅衣帽架带换鞋凳', w:79,d:35,h:190, price:99.99, priceCA:99, color:'#2a2b2d', kind:'coatRack', model:'nipasen', note:'黑色钢架：顶板+挂钩+双层搁板+换鞋凳+鞋架', url:'https://www.ikea.com/us/en/p/nipasen-coat-rack-and-bench-w-shoe-storage-black-50586145/'},
- {id:'sportslig', cat:'运动器材', name:'IKEA SPORTSLIG 迷你足球门储物箱', w:90.2,d:52.7,h:52.7, price:29.99, caNA:true, color:'#0a70b0', kind:'goal', model:'sportslig', note:'90cm 款，蓝色塑料框架 + 白色网，门里可放球', url:'https://www.ikea.com/us/en/p/sportslig-ball-storage-goal-70504238/'},
+ {id:'nipasen', cat:'入户 / 衣物', name:'IKEA NIPÅSEN 门厅衣帽架带换鞋凳', w:79,d:35,h:190, price:99.99, priceCA:99, color:'#2a2b2d', kind:'coatRack', model:'nipasen', note:'黑色钢架：圆角顶框+两排三钩（18钩）+条板换鞋凳(h58)+网格鞋架(h36)', url:'https://www.ikea.com/us/en/p/nipasen-coat-rack-and-bench-w-shoe-storage-black-50586145/'},
+ {id:'sportslig', cat:'运动器材', name:'IKEA SPORTSLIG 迷你足球门储物箱', w:90.2,d:52.7,h:52.7, price:29.99, caNA:true, color:'#0a70b0', kind:'goal', model:'sportslig', note:'90cm 款，蓝色布艺框架 + 白色网 + 白横杆，可折叠，立起来可当球类储物箱', url:'https://www.ikea.com/us/en/p/sportslig-ball-storage-goal-70504238/'},
  {id:'mala', cat:'儿童游乐架', name:'IKEA MÅLA 儿童画架（白板）', w:66,d:48.3,h:111.8, price:29.99, priceCA:39.99, color:'#e4ccad', kind:'easel', model:'mala', note:'A 型松木画架，白色写字板 + 红色五金', url:'https://www.ikea.com/us/en/p/mala-easel-softwood-30488966/'},
+ {id:'laett-0', cat:'儿童桌 / 椅', name:'LÄTT 儿童桌 + 2 椅 · 白/松木', w:119,d:48,h:48, seatH:28, price:49.99, priceCA:49.99, color:'#e3c592', color2:'#f2efe6', kind:'tableRect', wood:'pine', model:'laett', url:'https://www.ikea.com/us/en/p/laett-childrens-table-and-2-chairs-white-pine-50178411/', note:'桌椅套装：桌 63×48×45（松木方框+白色三聚氰胺面板），椅 28×28×48、座高 28；两椅对称摆在桌短边两侧（整套占地 119×48）'},
  {id:'giantex7-blue', cat:'运动器材', name:'Giantex 7ft 圆形蹦床带安全网 · Blue', w:221.6,d:221.6,h:185.4, price:199.99, priceCA:259.99, color:'#3d6cb4', col2:'#46b13c', kind:'trampoline', model:'giantex7', note:'直径 7.3ft，高 6.1ft（含网架），3 组 A 字架 + PE 护垫 + 绿色底座，3 岁+', url:'https://www.giantex.com/products/7-ft-kids-trampoline-with-safety-enclosure-net'},
  {id:'giantex7-green', cat:'运动器材', name:'Giantex 7ft 圆形蹦床带安全网 · Green', w:221.6,d:221.6,h:185.4, price:199.99, priceCA:259.99, color:'#3f9e3a', col2:'#46b13c', kind:'trampoline', model:'giantex7', note:'直径 7.3ft，高 6.1ft（含网架），3 组 A 字架 + PE 护垫 + 绿色底座，3 岁+', url:'https://www.giantex.com/products/7-ft-kids-trampoline-with-safety-enclosure-net'},
  {id:'giantex7-yellow', cat:'运动器材', name:'Giantex 7ft 圆形蹦床带安全网 · Yellow', w:221.6,d:221.6,h:185.4, price:189.99, priceCA:259.99, color:'#e8b524', col2:'#46b13c', kind:'trampoline', model:'giantex7', note:'直径 7.3ft，高 6.1ft（含网架），3 组 A 字架 + PE 护垫 + 绿色底座，3 岁+', url:'https://www.giantex.com/products/7-ft-kids-trampoline-with-safety-enclosure-net'},
  {id:'giantex7-rainbow', cat:'运动器材', name:'Giantex 7ft 圆形蹦床带安全网 · Red/Yellow/Blue', w:221.6,d:221.6,h:185.4, price:189.99, priceCA:259.99, color:'#d1442e', col2:'#46b13c', kind:'trampoline', model:'giantex7', note:'直径 7.3ft，高 6.1ft（含网架），三色款，3 岁+', url:'https://www.giantex.com/products/7-ft-kids-trampoline-with-safety-enclosure-net'},
  {id:'giantex7-purple', cat:'运动器材', name:'Giantex 7ft 圆形蹦床带安全网 · Purple/Pink', w:221.6,d:221.6,h:185.4, price:199.99, priceCA:259.99, color:'#8e4f9e', col2:'#46b13c', kind:'trampoline', model:'giantex7', note:'直径 7.3ft，高 6.1ft（含网架），紫粉款，3 岁+', url:'https://www.giantex.com/products/7-ft-kids-trampoline-with-safety-enclosure-net'},
+ {id:'tramp60-blue', cat:'运动器材', name:'FFFROG 60" 室内儿童蹦床 · 蓝色', w:140,d:140,h:170, priceCA:159.99, color:'#5aa8d4', color2:'#a0d0f0', kind:'trampoline', model:'tramp60', url:'https://www.amazon.ca/dp/B0FB8N8F3X', note:'官方 140×140×170cm，1-8 岁承重 440lbs · 安全网+拉链门+三档高低杠（13.7/16.5/19.2"）· 含沙包/吊环/吊床/篮球筐/6 个沙滩球 · 加元实际标价，美元为折算 ≈'},
+ {id:'tramp60-green', cat:'运动器材', name:'FFFROG 60" 室内儿童蹦床 · 绿黄', w:140,d:140,h:170, priceCA:159.99, color:'#b8e8b8', color2:'#d8d058', kind:'trampoline', model:'tramp60', url:'https://www.amazon.ca/dp/B0FB8N8F3X', note:'官方 140×140×170cm，1-8 岁承重 440lbs · 绿黄配色，含全套附件'},
+ {id:'tramp60-pink', cat:'运动器材', name:'FFFROG 60" 室内儿童蹦床 · 粉紫', w:140,d:140,h:170, priceCA:159.99, color:'#e090b0', color2:'#c898d0', kind:'trampoline', model:'tramp60', url:'https://www.amazon.ca/dp/B0FB8N8F3X', note:'官方 140×140×170cm，1-8 岁承重 440lbs · 粉紫配色，含全套附件'},
  {id:'mmjeep12-black', cat:'骑乘玩具', name:'Miniature Motors 12V 4x4 Jeep 儿童电动车 · Black', w:99.1,d:62,h:62, price:116.99, caNA:true, color:'#17181a', col2:'#202226', kind:'rideOn', model:'mmjeep12', note:'双 35W 电机，2-3.5MPH，遥控 + 蓝牙音乐，LED 大灯，2 座，2 岁+', url:'https://www.amazon.com/dp/B0CY5HRL3K'},
  {id:'mmjeep12-blue', cat:'骑乘玩具', name:'Miniature Motors 12V 4x4 Jeep 儿童电动车 · Blue', w:99.1,d:62,h:62, price:116.99, caNA:true, color:'#2e5fa3', col2:'#202226', kind:'rideOn', model:'mmjeep12', note:'双 35W 电机，2-3.5MPH，遥控 + 蓝牙音乐，LED 大灯，2 座，2 岁+', url:'https://www.amazon.com/dp/B0CY5HRL3K'},
  {id:'mmjeep12-red', cat:'骑乘玩具', name:'Miniature Motors 12V 4x4 Jeep 儿童电动车 · Red', w:99.1,d:62,h:62, price:129.99, caNA:true, color:'#c22a3a', col2:'#202226', kind:'rideOn', model:'mmjeep12', note:'双 35W 电机，2-3.5MPH，遥控 + 蓝牙音乐，LED 大灯，2 座，2 岁+', url:'https://www.amazon.com/dp/B0CY5HRL3K'},
@@ -4468,6 +4515,50 @@ function meshWeaveTexture(){
   _meshTex=t; return t;
 }
 
+let _netMeshTex = null;
+function netMeshTexture(){                     // 菱形透网（FFFROG）：透明底 + 45° 双向斜纹，网眼 ≈5cm
+  if(_netMeshTex) return _netMeshTex;
+  srand(1019);
+  const N=512, c=document.createElement('canvas'); c.width=c.height=N;
+  const g=c.getContext('2d');
+  g.clearRect(0,0,N,N);                        // 透明底：网孔真的透光
+  const P=32;                                  // 菱形网孔间距
+  g.lineCap='round';
+  for(const dir of [1,-1]){
+    for(let d=-N; d<=N; d+=P){
+      g.strokeStyle=`rgba(250,252,255,${0.82+rnd01()*0.14})`;
+      g.lineWidth=4+rnd01()*1.5;
+      g.beginPath();
+      for(let t=-P; t<=N+P; t+=8){
+        const j=(rnd01()-0.5)*2.4;              // 手工缝制感轻微抖动
+        const x=t, y=dir===1 ? t+d : N-t+d;
+        (t===-P)?g.moveTo(x,y):g.lineTo(x,y);
+      }
+      g.stroke();
+    }
+  }
+  const t=new THREE.CanvasTexture(c); t.wrapS=t.wrapT=THREE.RepeatWrapping;
+  t.repeat.set(2,2); t.encoding=THREE.sRGBEncoding; t.anisotropy=8;
+  _netMeshTex=t; return t;
+}
+
+let _perfTex = null;
+function perforatedTexture(){                 // 冲孔金属篮（ÖVNING）：规则圆孔阵列
+  if(_perfTex) return _perfTex;
+  srand(1018);
+  const N=512, c=document.createElement('canvas'); c.width=c.height=N;
+  const g=c.getContext('2d');
+  g.fillStyle='#f8f8f6'; g.fillRect(0,0,N,N);
+  const sp=32, d=11;
+  for(let row=0; row<=N/sp; row++) for(let col=0; col<=N/sp; col++){
+    const x=col*sp + (row%2? sp/2:0), y=row*sp;
+    g.fillStyle='#333835'; g.beginPath(); g.arc(x,y,d/2,0,Math.PI*2); g.fill();
+  }
+  const t=new THREE.CanvasTexture(c); t.wrapS=t.wrapT=THREE.RepeatWrapping;
+  t.repeat.set(3,2); t.encoding=THREE.sRGBEncoding; t.anisotropy=8;
+  _perfTex=t; return t;
+}
+
 
 function chairTab(K){ return (t)=>{
   if(t<=K[0][0]) return K[0][1];
@@ -5369,50 +5460,55 @@ MODELS['dyvlinge'] = (C) => {
   const blk   = C.M(0x1e2024, {rough:.52, metal:.25});
   const halfD = C.d/2;
 
-  /* ========== 靠背：后倾 24°、上窄下宽的圆润梯形大软枕（3×3 绗缝 + 4 颗包扣 + 上下两道包边缝） ========== */
-  const th = 0.42, cB = Math.cos(th), sB = Math.sin(th);
-  const BT = cm(17), BL = cm(36), BW = C.w*0.90, bev = cm(4.0);
-  const bpy = C.h - ((BL/2)*cB + (BT-2*bev)*sB);
-  const bpz = -halfD + ((BL/2-bev)*sB + bev*cB);
+  /* ========== 靠背：自坐垫后缘连续生长的大背枕（蛋壳一体感），后倾 21°、大圆角、2×2 四深纽扣 + 上下包边缝；底部扎进坐垫下方不断开。
+     注意：C.ext 的 bevel 会把轮廓向外扩整个 bevel 值（只补偿深度、不补偿截面）——
+     所以这里不靠 bevel，直接画大圆角终形轮廓（圆角 R10.5 就是蛋壳感），挤出无 bevel。 ========== */
+  const th = 0.37, cB = Math.cos(th), sB = Math.sin(th);
+  const BT = cm(21), BL = cm(33), BW = C.w*0.92;
+  const bpy = C.h - (BL*cB + BT*sB);            // 顶前角恰落 C.h(69)，底部低于座面藏入坐垫
+  const bpz = -cm(22);                          // 背面与座垫后缘齐平（-22），顶部后倾后落在 -34
   const bxf = (lx,ly,lz) => [lx, bpy + ly*cB + lz*sB, bpz - ly*sB + lz*cB];
-  const hl = BL/2, rc = cm(9.5), cw = BW/2-rc, ch = hl-rc, padPts = [];
-  for(const c of [[cw,ch,0],[-cw,ch,Math.PI/2],[-cw,-ch,Math.PI],[cw,-ch,-Math.PI/2]])
-    for(let i=0;i<=5;i++){ const a = c[2]+i/5*Math.PI/2, y = c[1]+Math.sin(a)*rc;
-      padPts.push([(c[0]+Math.cos(a)*rc)*(1-0.14*y/BL), y]); }
-  C.ext(padPts, BT, fab, 0, bpy, bpz, 'xy', bev).rotation.x = -th;
-  let p = bxf(0, 0, -cm(1.7));
-  C.rb(BW*0.72, BL*0.64, cm(7), cm(3.4), fab, p[0], p[1]-BL*0.32, p[2], 5).rotation.x = -th;
-  const weltPts = padPts.map(q=>[q[0]*1.012, q[1]*1.012]);
-  for(const lz of [cm(0.2), BT-2*bev-cm(0.4)]){
-    p = bxf(0, 0, lz);
-    C.ext(weltPts, cm(1.4), fabD, p[0],p[1],p[2], 'xy', cm(0.6)).rotation.x = -th;
-  }
-  for(const sx of [-1,0,1]) for(const sy of [-1,0,1]){
-    p = bxf(sx*cm(13), sy*cm(8.6), cm(12.25));
-    C.rb(cm(19), cm(12.5), cm(7.5), cm(3.4), fab, p[0], p[1]-cm(6.25), p[2], 4).rotation.x = -th;
+  const hw = BW/2, rc = cm(10.5), padPts = [];
+  // 圆角矩形四个弧（逆时针连续）：底右 → 顶右 → 顶左 → 底左；直边由 Shape 自动连线
+  for(const c of [[hw-rc,rc,-Math.PI/2],[hw-rc,BL-rc,0],[-hw+rc,BL-rc,Math.PI/2],[-hw+rc,rc,0]])
+    for(let i=0;i<=6;i++){ const a = c[2]+i/6*Math.PI/2, y = c[1]+Math.sin(a)*rc;
+      padPts.push([(c[0]+Math.cos(a)*rc)*(1-0.10*y/BL), y]); }   // 上窄下宽 10% 收分
+  C.ext(padPts, BT, fab, 0, bpy, bpz, 'xy').rotation.x = -th;
+  /* 包边缝：同一轮廓（不缩放）薄带，贴在前脸（z 19.5..21）。
+     注意：包边条是独立 mesh，其几何也是全轮廓——必须放在背枕原点(0,bpy,bpz)
+     再 geometry.translate 到前脸 z 位置；放在 bxf(0,0,lz) 会双重变换、整条飞离。 */
+  const w1 = C.ext(padPts, cm(1.5), fabD, 0, bpy, bpz, 'xy');
+  w1.geometry.translate(0, 0, BT-cm(1.5)); w1.rotation.x = -th;   // geometry.translate（Object3D 没有 .translate）
+  /* 2×2 深绗缝：4 块大绗缝区（嵌进背枕表面只凸 1.5cm）+ 4 颗包扣 */
+  for(const sx of [-1,1]) for(const sy of [-1,1]){
+    const p = bxf(sx*cm(10.5), cm(10+sy*10), cm(19));
+    C.rb(cm(20), cm(13), cm(7), cm(3.8), fab, p[0], p[1]-cm(6.5), p[2], 4).rotation.x = -th;
   }
   for(const sx of [-1,1]) for(const sy of [-1,1]){
-    p = bxf(sx*cm(6.5), sy*cm(4.3), cm(13.9));
+    const p = bxf(sx*cm(10.5), cm(10+sy*10), cm(22.8));
     const b = C.sph(cm(1.9), fabD, p[0],p[1],p[2], 14);
     b.rotation.x = -th; b.scale.z = 0.62;
   }
 
-  /* ========== 坐垫：厚实方圆软垫，前高后低 3.4°，3×3 绗缝 + 4 颗包扣 + 一圈包边缝，前沿留厚圆卷边 ========== */
+  /* ========== 坐垫：厚实方圆软垫，前高后低 3.4°，2×2 四纽扣 + 包边缝，前沿留厚圆卷边；顶面 = 座高 42。
+     注意：rboxGeo 在 r≈h/2 的薄板上会崩（实测 27×9.5 r4.8 → 18.2×18.4），
+     所以薄包边条用无倒角 C.box，tuft 垫取 r 明显小于 h/2 的 (27,11,26,3.5)。 ========== */
   const st = 0.06, cS = Math.cos(st), sS = Math.sin(st);
   const ST = cm(17), SD = cm(60), SW = C.w;
   const scz = halfD - (SD/2)*cS;
-  const scy = C.seatH - (ST/2)*cS - cm(4.2);
+  const scy = C.seatH - (ST/2)*cS;              // 垫顶恰落座高
   const sxf = (lx,ly,lz) => [lx, scy + ly*cS + lz*sS, scz - ly*sS + lz*cS];
   const sRb = (w,h,d,r,mat,lx,ly,lz,seg) => {
     const q = sxf(lx,ly,lz);
     C.rb(w,h,d,r,mat,q[0],q[1]-h/2,q[2],seg).rotation.x = -st;
   };
   sRb(SW-cm(0.9), ST, SD-cm(0.9), cm(5.6), fab, 0, 0, 0, 4);
-  sRb(SW, cm(1.9), SD, cm(0.95), fabD, 0, cm(2.2), 0, 3);
-  for(const sx of [-1,0,1]) for(const sz of [-1,0,1])
-    sRb(cm(23), cm(9.5), cm(18), cm(4.6), fab, sx*cm(18), cm(7.95), sz*cm(13.5), 4);
+  { const q = sxf(0, cm(2.2), 0);               // 包边条：薄板禁用 rboxGeo，用直角盒
+    C.box(SW, cm(1.9), SD, fabD, q[0], q[1]-cm(0.95), q[2]).rotation.x = -st; }
+  for(const sx of [-1,1]) for(const sz of [-1,1])
+    sRb(cm(27), cm(11), cm(26), cm(3.5), fab, sx*cm(15), cm(14), sz*cm(14), 4);
   for(const sx of [-1,1]) for(const sz of [-1,1]){
-    p = sxf(sx*cm(9), cm(10.6), sz*cm(6.75));
+    const p = sxf(sx*cm(15), cm(20.3), sz*cm(14));
     const b = C.sph(cm(1.9), fabD, p[0],p[1],p[2], 14);
     b.rotation.x = -st; b.scale.y = 0.62;
   }
@@ -5422,52 +5518,55 @@ MODELS['dyvlinge'] = (C) => {
            [cm(15.5),cm(22.2)],[cm(18.5),cm(24.0)],[cm(20.0),cm(26.0)],[cm(20.4),cm(28.0)]],
           fab, 0, 0, 0, 30);
 
-  /* ========== 旋转五金：黑色塑料轴套 + 车削感镀铬轴座（360° 旋转） ========== */
-  C.cyl(cm(4.3), cm(4.8), cm(4.2), blk, 0, cm(12.6), 0, 22);
-  C.lathe([[cm(0.1),cm(6.2)],[cm(4.9),cm(6.2)],[cm(6.4),cm(7.6)],[cm(6.5),cm(10.4)],
-           [cm(5.6),cm(12.2)],[cm(5.0),cm(13.4)],[cm(0.1),cm(13.4)]], chrome, 0, 0, 0, 28);
+  /* ========== 旋转五金：黑色塑料轴套 + 倒角镀铬底座块 ========== */
+  C.cyl(cm(4.6), cm(5.0), cm(8), blk, 0, cm(8), 0, 22);
+  C.rb(cm(11), cm(9), cm(11), cm(3.5), chrome, 0, 0, 0, 6);   // C.rb 的 x/z 是中心点，必须在椅轴中心
 
-  /* ========== 镀铬五星脚：扁刀状辐条自轴座外张下斜、末端压平落地并带黑色脚垫（无滚轮），一条正对后方防倾 ========== */
-  const R0 = cm(4.2), R1 = C.w*0.46, RL = R1-R0;
+  /* ========== 镀铬五星脚：宽扁刀状辐条自底座侧外张下斜、末端压平落地并带黑色脚垫（无滚轮） ========== */
+  const R0 = cm(5.0), R1 = C.w*0.46, RL = R1-R0;
+  /* 底边留 0.42：bevel 0.3 向外扩后仍在地板之上（黑脚垫 0..0.9 遮住间隙） */
   const legPts = [
-    [R0, cm(13.4)], [R0+RL*0.22, cm(9.6)], [R0+RL*0.52, cm(6.0)], [R0+RL*0.80, cm(3.6)],
-    [R1-cm(1.2), cm(3.0)], [R1, cm(2.7)], [R1, cm(0.7)], [R1-cm(2.0), cm(0.65)],
-    [R0+RL*0.72, cm(1.9)], [R0+RL*0.40, cm(4.0)], [R0+RL*0.14, cm(6.6)], [R0, cm(8.0)]
+    [R0, cm(8.6)], [R0+RL*0.22, cm(5.4)], [R0+RL*0.52, cm(3.0)], [R0+RL*0.80, cm(1.7)],
+    [R1-cm(2.2), cm(1.3)], [R1, cm(1.1)], [R1, cm(0.42)], [R1-cm(2.4), cm(0.42)],
+    [R0+RL*0.52, cm(0.95)], [R0+RL*0.22, cm(2.6)], [R0, cm(3.4)]
   ];
-  const legD = cm(3.9), legB = cm(0.7), zc = legD/2 - legB, rGl = R1 - cm(1.7);
+  const legD = cm(5.4), zc = legD/2, rGl = R1 - cm(1.7);
   C.rep(5, (i) => {
     const a = Math.PI*2*i/5;
-    C.ext(legPts, legD, chrome, -zc*Math.cos(a), 0, zc*Math.sin(a), 'zy', legB).rotation.y = Math.PI/2 + a;
-    C.rb(cm(3.2), cm(0.95), cm(4.2), cm(0.4), blk, -rGl*Math.sin(a), 0, -rGl*Math.cos(a)).rotation.y = a;
+    C.ext(legPts, legD, chrome, -zc*Math.cos(a), 0, zc*Math.sin(a), 'zy', cm(0.3)).rotation.y = Math.PI/2 + a;
+    C.rb(cm(3.4), cm(0.9), cm(4.4), cm(0.4), blk, -rGl*Math.sin(a), 0, -rGl*Math.cos(a)).rotation.y = a;
   });
+  /* 水平重心归零 */
+  C.g.updateMatrixWorld(true);
+  const bb = new C.THREE.Box3().setFromObject(C.g);
+  const off = new C.THREE.Vector3(); bb.getCenter(off);
+  for(const ch of C.g.children){ ch.position.x -= off.x; ch.position.z -= off.z; }
 };
 MODELS['saltsjobaden'] = (C) => {
   const cm=C.cm, W=C.w, D=C.d, H=C.h;
-  const fab  = C.M(C.col, {fabric:true, rough:.94});
+  const fab  = C.M(C.col, {fabric:true, rough:.92, sheen:.12, envI:.15});
   const fabD = C.M(C.col.clone().multiplyScalar(.9), {fabric:true, rough:.94});
-  const pipe = C.M(C.col.clone().multiplyScalar(.78), {fabric:true, rough:.95});
   const wood = C.M(C.col2 || 0xC9A575, {wood:'birch', rough:.44, clear:.34});
-  const legH=cm(17), seatH=cm(46), armW=cm(13), armH=cm(65);
-  // 四条桦木锥形腿，微外撇
+  // 四条桦木方腿微收分，0→14
   for(const sx of [-1,1]) for(const sz of [-1,1])
-    C.legT(cm(3.4), cm(2.1), legH, wood, sx*(W/2-cm(9)), sz*(D/2-cm(9)), 0.055);
-  // 箱体（软包底座）
-  C.rb(W-cm(2), seatH-legH-cm(10), D-cm(3), cm(4), fabD, 0, legH, 0, 4);
-  // 两侧扶手：等宽方枕，外侧垂直、上缘大圆角
+    C.cyl(cm(3.2), cm(2.6), cm(14), wood, sx*(W/2-cm(8)), 0, sz>0? D/2-cm(8) : -(D/2-cm(8)), 4);
+  // 箱体底座 14→30
+  C.rb(W-cm(2), cm(16), D-cm(2), cm(4), fabD, 0, cm(14), 0, 4);
+  // 扶手 12 宽，14→48 + 顶卷 r4（顶 52）
   for(const sx of [-1,1]){
-    C.rb(armW, armH-legH, D-cm(2), cm(5.5), fab, sx*(W/2-armW/2), legH, 0, 4);
-    C.rb(armW*0.9, cm(2.6), D-cm(8), cm(1.1), pipe, sx*(W/2-armW/2), armH-cm(2.6), 0, 2);
+    C.rb(cm(12), cm(34), D-cm(2), cm(4.5), fab, sx*(W/2-cm(6)), cm(14), 0, 4);
+    C.tube(D-cm(6), cm(4), fab, sx*(W/2-cm(6)), cm(48), 0, 'z');
   }
-  // 靠背板（直立，被靠垫斜倚）
-  C.rb(W-armW*2-cm(2), H-legH-cm(16), cm(12), cm(3.5), fabD, 0, legH, -D/2+cm(7), 3);
-  // 座垫：一整块 14cm 厚软包，前缘外凸
-  C.cushion(W-armW*2-cm(2), cm(14), D-cm(19), fab, 0, seatH-cm(14), cm(3), pipe);
-  // 松软靠垫：略后倾、顶部鼓、中间自然凹
-  const bw=W-armW*2-cm(4), bh=cm(44);
-  const bk=C.cushion(bw, bh, cm(17), fab, 0, seatH-cm(1), -D/2+cm(15), pipe);
-  bk.rotation.x=-0.14;
-  C.rb(bw*0.5, bh*0.86, cm(13), cm(5), fab, 0, seatH+cm(2), -D/2+cm(16), 4).rotation.x=-0.14;
+  // 背板 30→72，深 12
+  C.rb(W-cm(28), cm(42), cm(12), cm(3.5), fabD, 0, cm(30), -D/2+cm(7), 3);
+  // 座垫 69 宽×16 厚×55 深，30→46（座高）
+  C.cushion(W-cm(28), cm(16), cm(55), fab, 0, cm(30), cm(8), fabD);
+  // 松软靠垫 69 宽×36 高×18 厚，底 52 后仰 6°，顶 ~89
+  const bk=C.cushion(W-cm(26), cm(36), cm(18), fab, 0, cm(50), -D/2+cm(13), fabD);
+  bk.rotation.x=-0.08;
 };
+
+
 MODELS['orfjall'] = (C) => {
   const cm=C.cm, T=C.THREE, D=Math.PI/180;
   const FC = C.col2 ? C.col2.clone() : new T.Color(0xf2f0ea);
@@ -5597,12 +5696,13 @@ MODELS['idasen-desk'] = (C) => {
     // 上部 T 形托板
     C.rb(cm(6.0), cm(4.2), cm(46), cm(0.5), frame, x, yTop-cm(4.2), 0, 2);
   }
-  // 连接横梁（两立柱之间，靠后）
-  C.rb(legX*2-cm(9), cm(5.0), cm(4.6), cm(0.5), frame, 0, yTop-cm(11), -D/2+cm(11), 2);
-  // 桌下线槽 + 控制面板
+  // 连接横梁（穿过两立柱，中深位）
+  C.rb(legX*2, cm(5.0), cm(4.6), cm(0.5), frame, 0, yTop-cm(11), 0, 2);
+  // 桌下线槽（悬于台面下 ~9.5cm，两条吊带连台面）+ 控制面板（挂台面前沿下）
   C.rb(W*0.34, cm(6.5), cm(7.5), cm(0.5), frame, 0, yTop-cm(9.5), -D/2+cm(5.5), 2);
+  for(const sx of [-1,1]) C.rb(cm(1.5), cm(10), cm(5.0), cm(0.3), frame, sx*W*0.16, yTop-cm(10), -D/2+cm(5.5), 2);
   const panel=C.M(0x121316,{rough:.4});
-  C.rb(cm(11), cm(2.2), cm(4.0), cm(0.3), panel, W/2-cm(26), yTop-cm(2.4), D/2-cm(2.6), 2);
+  C.rb(cm(11), cm(2.2), cm(4.0), cm(0.3), panel, W/2-cm(26), yTop-cm(2.2), D/2-cm(2.6), 2);
 };
 MODELS['sniglar-crib'] = (C) => {
   const cm = C.cm;
@@ -5663,6 +5763,64 @@ MODELS['sniglar-crib'] = (C) => {
       b.rotation.x = Math.PI/2;
     }
 };
+/* ÖVNING 收纳小推车 54×33×70：官方尺寸图 o4（54×33×70，篮高 17.5，左格 16.9 / 右格 34.9 分格）
+   + o1 主图 + o2 脚轮特写 + o3 篮筐特写：白色四角柱柜身（背板 + 中隔 + 左低/右高两层板）、
+   冲孔金属篮（前 + 左侧卷边提手、左前黄色卡扣）、白色刹车脚轮×4。spec：54×33×70，$79.99/CA$99。 */
+MODELS['ovning'] = (C) => {
+  const T=C.THREE, cm=C.cm, hw=C.w/2, hd=C.d/2;
+  const body = C.M('#f4f4f1', {rough:.55});
+  const perf = perforatedTexture();
+  const basket = C.M('#93a29b', {metal:.45, rough:.55, envI:.6});
+  basket.map = perf; basket.normalMap = normalFromTexture(perf, 1.2);
+  const castM = C.M('#dcdcd6', {rough:.6});
+  const knobM = C.M('#e8b91f', {rough:.4});
+  for(const sx of [-1,1]) for(const sz of [-1,1]) C.caster(cm(5), castM, sx*cm(21.5), sz*cm(11));
+  const pb=cm(10), ph=cm(42.5);                                   // 柜身 10→52.5
+  C.box(C.w-cm(2), cm(2), C.d-cm(2), body, 0, cm(9.5), 0);      // 底托板 9.5→11.5（压在脚轮上、盖住四柱根部）
+  for(const sx of [-1,1]) for(const sz of [-1,1])
+    C.box(cm(2.2), ph, cm(2.2), body, sx*(hw-cm(1.1)), pb, sz*(hd-cm(1.1)));
+  C.box(C.w, ph, cm(1.5), body, 0, pb, -(hd-cm(0.75)));          // 背板
+  C.box(cm(1.8), ph, C.d, body, 0, pb, 0);                      // 中隔板
+  C.box(cm(26.1), cm(1.6), cm(31), body, -cm(13.95), cm(26.9), 0);   // 左格层板（顶到左外沿）
+  C.box(cm(26.1), cm(1.6), cm(31), body, cm(13.95), cm(44.9), 0);   // 右格层板（顶到右外沿）
+  // 冲孔篮 52.5→70：壁面外缩 1.2（让卷边/卡扣不超出 33cm 深）
+  const bw=cm(1.2), yb=cm(52.5), bh=cm(17.5), wz=hd-cm(1.8);   // 壁外表面 ±15.3
+  for(const sz of [-1,1]) C.box(C.w, bh, bw, basket, 0, yb, sz*wz);
+  for(const sx of [-1,1]) C.box(bw, bh, cm(31.8), basket, sx*(hw-bw/2), yb, 0);  // 侧壁端头越过立柱，压住前后柱
+  C.box(C.w, cm(1.2), C.d, basket, 0, yb, 0);                   // 篮底（满宽满深）
+  C.tube(cm(50), cm(1.0), basket, 0, cm(70), wz, 'x');         // 前卷边（顶缘 71≈101%）
+  C.tube(cm(28), cm(1.0), basket, -(hw-bw/2), cm(70), 0, 'z'); // 左卷边
+  C.tube(cm(1.6), cm(0.6), knobM, -cm(20), cm(62), wz+cm(0.3), 'z'); // 黄色小卡扣（凸出前壁 0.3）
+  C.g.updateMatrixWorld(true);
+  const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3(); bb.getCenter(off);
+  for(const ch of C.g.children){ ch.position.x-=off.x; ch.position.z-=off.z; }
+};
+
+/* IKEA PS 2026 小推车 ⌀48×89：产品图 d/e/f（四层圆托盘下大上小 + 中心立杆 + 米色带刹脚轮×4）。
+   图层（自实测图比例）：底 ⌀48 y8-20、二 ⌀38 y32-43、三 ⌀30 y55-66、顶 ⌀23 y77-89；脚轮高 8。
+   spec：48×48×89，US/CA $79.99（米色 506.210.78 / 蓝色 406.210.74）。 */
+MODELS['ps2026'] = (C) => {
+  const T=C.THREE, cm=C.cm;
+  const mat = C.M(C.col, {rough:.5, envI:.3});
+  const castM = C.M(C.col, {rough:.6});
+  const dish=(R,H,wall,y0,seg)=>{
+    const sh=new T.Shape(); sh.absarc(0,0,cm(R),0,Math.PI*2,false);
+    const ho=new T.Path(); ho.absarc(0,0,cm(R-wall),0,Math.PI*2,true);
+    sh.holes.push(ho);
+    const geo=new T.ExtrudeGeometry(sh,{depth:cm(H),bevelEnabled:false,curveSegments:seg});
+    const m=new T.Mesh(geo,mat); m.rotation.x=Math.PI/2; m.position.y=cm(y0+H);
+    m.castShadow=m.receiveShadow=true; C.g.add(m);
+    const fl=new T.Mesh(new T.CircleGeometry(cm(R-wall),seg),mat);
+    fl.rotation.x=-Math.PI/2; fl.position.y=cm(y0+1.2); fl.receiveShadow=true; C.g.add(fl);
+  };
+  for(const sx of [-1,1]) for(const sz of [-1,1]){
+    C.caster(cm(3), castM, sx*cm(15), sz*cm(15));
+    C.cyl(cm(0.9), cm(0.9), cm(5), castM, sx*cm(15), cm(3), sz*cm(15), 8);  // 支架杆顶到托盘底 8
+  }
+  C.cyl(cm(2), cm(2), cm(81), mat, 0, cm(8), 0, 14);            // 中心立杆 8→89
+  dish(24,12,1.5,8,48); dish(19,11,1.5,32,40); dish(15,11,1.5,55,32); dish(11.5,12,1.5,77,28);
+};
+
 MODELS['raskog'] = (C) => {
   const T = C.THREE, cm = C.cm, hw = C.w / 2, hd = C.d / 2, H = C.h;
   const paint = C.M(C.col, {rough:.36, metal:.22, clear:.30, clearRough:.28});
@@ -5775,9 +5933,15 @@ MODELS['figgy'] = (C) => {
   const zip  = C.M(acc.clone().multiplyScalar(.62), {rough:.45, metal:.20});
   const tagW = C.M(0xf2f0e8, {rough:.85});
   const tagG = C.M(0x3d7a4b, {rough:.85});
-  const S = (w, h, d, r, mat, x, y, z, seg) => {
-    const rr = Math.max(0.006, Math.min(r, w/4 - 0.002, h/4 - 0.002, d/2 - 0.004));
-    return C.rb(Math.max(w - 2*rr, 0.01), Math.max(h - 2*rr, 0.01), d, rr, mat, x, y + rr, z, seg);
+  /* 泡棉块：俯视圆角平板（顶/底面平整，y=底面）——不用 bevel，尺寸精确 */
+  const S = (w, h, d, r, mat, x, y, z) => {
+    r = Math.max(0.006, Math.min(r, w/2 - 0.002, d/2 - 0.002));
+    const N = 6, pts = [];
+    for(let i = 0; i < N*4; i++){
+      const a = i*Math.PI/2/N;
+      pts.push([(w/2-r)*(Math.cos(a)>=0?1:-1) + r*Math.cos(a), (d/2-r)*(Math.sin(a)>=0?1:-1) + r*Math.sin(a)]);
+    }
+    return C.ext(pts, h, mat, x, y + h, z, 'xz');
   };
   const pad = C.cm(0.6);
   const grip = (fx, fy, fz, dir) => {
@@ -5922,17 +6086,20 @@ MODELS['lunix'] = (C) => {
   // ---- 扶手 ----
   for(const sx of [-1,1])
     foam(T, T, seatD - cm(1.6), velD, OX + sx*(SOFA_W/2 - T/2), seatTop, OZ + cm(1.0));
-  // ---- 圆柱抱枕 ----
+  // ---- 圆柱抱枕 ×2：坐在座面两端（轴朝前后）。参考图里放在扶手上，
+  // 但那样总高 25.9" 超过标注口径 21.2"（=spec h 54，坐高 9.4+靠背 11.8），
+  // 所以保持顶高与靠背齐平。 ----
   for(const sx of [-1,1]){
+    const bx = OX + sx*(SOFA_W/2 - T - cylR - cm(0.3));
+    const bz = OZ - (SOFA_D/2 - T - cylR + cm(1.2));
     const cyl = new C.THREE.Mesh(
       new C.THREE.CylinderGeometry(cylR, cylR, IN(11.8) - cm(1.0), 26, 1, false), velL);
     cyl.rotation.x = Math.PI/2;
-    cyl.position.set(OX + sx*IN(13.0), seatTop + cylR, OZ - (SOFA_D/2 - T - cylR + cm(1.2)));
+    cyl.position.set(bx, seatTop + cylR, bz);
     cyl.castShadow = cyl.receiveShadow = true; C.g.add(cyl);
     for(const sz of [-1,1]){
       const cap = new C.THREE.Mesh(new C.THREE.TorusGeometry(cylR - cm(1.0), cm(0.7), 8, 24), velD);
-      cap.position.set(OX + sx*IN(13.0), seatTop + cylR,
-        OZ - (SOFA_D/2 - T - cylR + cm(1.2)) + sz*(IN(11.8)/2 - cm(0.6)));
+      cap.position.set(bx, seatTop + cylR, bz + sz*(IN(11.8)/2 - cm(0.6)));
       C.g.add(cap);
     }
   }
@@ -5964,7 +6131,9 @@ MODELS['lunix'] = (C) => {
     const mm = new C.THREE.Mesh(geo, i? velD : vel);
     mm.position.set(0, sq/2 + BV, 0);                 // 抬到地面之上
     mm.castShadow = mm.receiveShadow = true; C.g.add(mm);
-    place(mm, i? -0.42 : 0.34, -SOFA_W/2 + IN(9) + i*IN(15.5), FZ + (i? IN(4.5) : -IN(3)));
+    // i=0 的方块外移到 -SOFA_W/2+IN(4)：旋转后的角点把占地 x 撑到 ~82cm，
+    // 与右侧楔块（~75cm）一起使真实顶点 bbox 落在 92~102% 窗口
+    place(mm, i? -0.42 : 0.34, -SOFA_W/2 + IN(i? 24.5 : 4), FZ + (i? IN(4.5) : -IN(3)));
   }
 
   // 半圆柱 ×2：直边贴地、拱面朝上。
@@ -5984,19 +6153,114 @@ MODELS['lunix'] = (C) => {
     place(mm, i? 0.5 : 2.4, IN(6) + i*IN(12), FZ + (i? -IN(6) : IN(7)));
   }
 
-  // 直角三棱柱 ×2：躺平放，一块紧挨着另一块叠了半块高
+  // 直角三角板 ×2：躺平放、同位叠两层（lunix1 左下角「小车」构型里的金字塔叠法）。
+  // 位置取 (63.5, 32)cm：完全在沙发前方不重叠，旋转 0.2rad 时长边角点把占地
+  // x 撑到 ~75cm——真实顶点 bbox 的 x 宽度要落在 92~102% 窗口（151~167cm）。
   for(const i of [0,1]){
     const wg = IN(11.8);
     const mm = C.ext([[0,0],[wg,0],[0,wg]], T, i? velL : velD, 0,0,0, 'xz');
-    mm.position.set(-wg/2, T + (i? T : 0), -wg/2);    // 'xz' 的挤出方向是 -y，所以整体抬 T
+    mm.position.set(-wg/2, T + i*T, -wg/2);          // 'xz' 的挤出方向是 -y，整体抬 T（第二块再抬一层）
     mm.castShadow = mm.receiveShadow = true;
-    place(mm, i? -2.35 : 0.62, SOFA_W/2 - IN(2) + i*IN(3), FZ + (i? IN(8) : -IN(5)));
+    place(mm, 0.2, IN(25), IN(12.6));
   }
 
   /* 把整组的水平重心归到原点：2D 图例和碰撞检测都假定家具原点 = 占地中心，
-     散件挂在一侧会把重心带偏。 */
+     散件挂在一侧会把重心带偏。
+     必须按真实顶点求 bbox：Box3.setFromObject 对旋转 mesh 用的是局部包围盒的
+     8 个角点（过度估计），其中心与合并后真实顶点 bbox 的中心不一致，
+     归零会偏 1cm 量级、lunix-centered 测试会红。 */
   C.g.updateMatrixWorld(true);
-  const bb = new C.THREE.Box3().setFromObject(C.g);
+  const bb = new C.THREE.Box3();
+  C.g.traverse(o=>{
+    if(o.isMesh && o.geometry){
+      const pos = o.geometry.attributes.position;
+      const v = new C.THREE.Vector3();
+      for(let i=0; i<pos.count; i++){ v.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld); bb.expandByPoint(v); }
+    }
+  });
+  const off = new C.THREE.Vector3();
+  bb.getCenter(off);
+  for(const ch of C.g.children){ ch.position.x -= off.x; ch.position.z -= off.z; }
+};
+MODELS['epickidz12'] = (C) => {
+  /* Epic Kidz「Epic Creativity」12 件游戏沙发。12 块高密度海绵（1.9 lb/ft³，CertiPUR-US），
+     各块尺寸（cm，Celebrating With Kids 测评 + 单品页交叉验证）：
+     底座半块 ×2  84×84×11.5（两块拼成 84×168 底座）
+     背板 ×2     84w×42h×11.5d（立起）
+     拱门 ×2     84w×42h×11.5d，中开圆拱洞（洞宽 29、总高 ~33.5，可当门洞/窗）
+     半圆垫 ×2   59Ø×29.5r×11.5（平放，弧朝前）
+     端块 ×2     29w×27h×57d（侧卧，29×27 面朝前）
+     梯形楔 ×2   26w×24h（直角边在后）×57d（棱长沿前后）
+     摆官方沙发配置（plum studio 图）：底座落地、背板/拱门立起、两端端块+楔叠高 62.5，
+     两块半圆垫散在前。spec d=113.5 = 底座 84 + 半圆垫向前 29.5。 */
+  const cm = C.cm, s = cm(1), T = cm(11.5);
+  const vel  = C.M(C.col, {fabric:true, rough:.94, sheen:.22, sheenColor:0xffffff, envI:.14});
+  const velL = C.M(new C.THREE.Color(C.col).lerp(new C.THREE.Color(0xffffff), 0.06),
+                   {fabric:true, rough:.92, sheen:.26, envI:.15});
+  const B = 1;                                          // cm 倒角（布套包覆感）
+
+  // ---- 底座半块 ×2：84×84×11.5 平铺，拼成 168×84 ----
+  for(const sx of [-1,1])
+    C.rb(cm(84), T, cm(84), cm(2), vel, cm(sx*42), 0, cm(-42), 3);
+
+  // ---- 背板 ×2：84w×42h×11.5d，立在后排 ----
+  for(const sx of [-1,1])
+    C.rb(cm(84), cm(42), cm(11.5), cm(2.5), velL, cm(sx*42), T, cm(-78.25), 3);
+
+  // ---- 拱门 ×2：84×42×11.5，中开圆拱洞（局部坐标 cm，画布 82×40 留 bevel 余量）----
+  for(const sx of [-1,1]){
+    const sh = new C.THREE.Shape();
+    const w = 82, h = 40, rc = 2.5;                   // bevel 每边外扩 B → 最终 84×42
+    sh.moveTo(-w/2+rc, -h/2);
+    sh.lineTo(w/2-rc, -h/2);  sh.absarc( w/2-rc, -h/2+rc, rc, -Math.PI/2, 0);
+    sh.lineTo( w/2, h/2-rc);  sh.absarc( w/2-rc,  h/2-rc, rc, 0, Math.PI/2);
+    sh.lineTo(-w/2+rc, h/2);  sh.absarc(-w/2+rc,  h/2-rc, rc, Math.PI/2, Math.PI);
+    sh.lineTo(-w/2, -h/2+rc); sh.absarc(-w/2+rc, -h/2+rc, rc, Math.PI, Math.PI*1.5);
+    const hole = new C.THREE.Path();                    // 最终洞：宽 29、矩形段 20、上拱 r14.5，底唇 4
+    hole.moveTo(-13.5, -17); hole.lineTo(13.5, -17); hole.lineTo(13.5, 3);
+    hole.absarc(0, 3, 13.5, 0, Math.PI); hole.lineTo(-13.5, -17);
+    sh.holes.push(hole);
+    const geo = new C.THREE.ExtrudeGeometry(sh, {depth: 11.5 - 2*B, bevelEnabled: true,
+      bevelSize: B, bevelThickness: B, bevelSegments: 3, curveSegments: 20});
+    geo.computeVertexNormals();
+    geo.scale(s, s, s);
+    const mm = new C.THREE.Mesh(geo, velL);
+    mm.position.set(cm(sx*42), cm(32.5), cm(-42));      // 局部 z 0..11.5 → 世界 z -42..-30.5
+    mm.castShadow = mm.receiveShadow = true;
+    C.g.add(mm);
+  }
+
+  // ---- 半圆垫 ×2：59Ø×11.5 平放，平边贴底座前沿、弧朝前 ----
+  // 画布直径 57（r28.5）+ bevel 每边 B → 最终 59Ø，弧深 29.5
+  for(const sx of [-1,1]){
+    const pts = [[0,0],[57,0]];
+    for(let i=1; i<=24; i++){ const a = Math.PI*i/24;
+      pts.push([28.5 + 28.5*Math.cos(a), 28.5*Math.sin(a)]); }
+    const mm = C.ext(pts, 11.4, vel, sx<0? cm(-58) : cm(1), cm(10.4), 0, 'xz', B); // y 0..11.4：顶面比底座低 0.1，避免共面 z-fighting
+    mm.scale.set(s, s, s);
+  }
+
+  // ---- 端块 ×2：29w×27h×57d 侧卧，坐在底座两端上 ----
+  for(const sx of [-1,1])
+    C.rb(cm(29), cm(27), cm(57), cm(2.5), vel, cm(sx*69.5), T, cm(-55.5), 3);
+
+  // ---- 梯形楔 ×2：截面（z,y）底 55、后直角边 22、上边 12，棱长 24 沿 x；叠在端块上 ----
+  for(const sx of [-1,1]){
+    const mm = C.ext([[0,0],[55,0],[55,23],[43,23]], 24 - 2*B, velL, sx<0? cm(-82.5) : cm(58.5), cm(38.5), cm(-27), 'zy', B); // 中截面高 24（bevel 单边外扩）
+    mm.scale.set(s, s, s);
+  }
+
+  /* 水平重心归零：2D 图例和碰撞检测假定原点 = 占地中心。按真实顶点求 bbox
+     （本模型无旋转件，Box3 即可，但统一走顶点遍历最稳）。 */
+  C.g.updateMatrixWorld(true);
+  const bb = new C.THREE.Box3();
+  C.g.traverse(o=>{
+    if(o.isMesh && o.geometry){
+      const pos = o.geometry.attributes.position;
+      const v = new C.THREE.Vector3();
+      for(let i=0; i<pos.count; i++){ v.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld); bb.expandByPoint(v); }
+    }
+  });
   const off = new C.THREE.Vector3();
   bb.getCenter(off);
   for(const ch of C.g.children){ ch.position.x -= off.x; ch.position.z -= off.z; }
@@ -7054,60 +7318,49 @@ function kivikWeaveTexture(){
 MODELS['kivik'] = (C) => {
   const cm=C.cm, T=C.THREE;
   const W=C.w, D=C.d, H=C.h;
-  // 织物：密集杂色织纹；背框略深一档，与坐垫区分
   const fab  = C.M(C.col, {fabric:true, rough:.94, sheen:.20, envI:.15});
   fab.map = kivikWeaveTexture();
   const fabD = C.M(new T.Color(C.col).multiplyScalar(.88), {fabric:true, rough:.95, sheen:.14, envI:.12});
   fabD.map = kivikWeaveTexture();
   const footM = C.M(0x151412, {plastic:true, envI:.22});
-
-  const ARM=cm(24);           // 扶手宽（尺寸图 24cm）
-  const innerW = W - 2*ARM;   // 两扶手之间的内开口
-  const BASE_TOP=cm(14);      // 箱体底座顶面（比例反推 14）；坐垫顶面落在 45（尺寸图座高）
-
-  // 四条黑色小脚：分解图见四角黑色垫块，箱体坐在上面
+  const ARM=cm(24);           // 扶手宽（尺寸图 24）
+  const innerW=W-2*ARM;
+  // 四条黑色小脚 0→2
   for(const sx of [-1,1]) for(const sz of [-1,1])
     C.box(cm(9), cm(2), cm(9), footM, sx*(W/2-cm(10.5)), 0, sz*(D/2-cm(10.5)));
-
-  // 箱体底座：满宽落地，矮箱
-  C.rb(W, BASE_TOP-cm(2), D, cm(3), fab, 0, cm(2));
-
-  // 坐垫 ×2：巨厚整块软垫，顶面落在 45（座高）。手动建而不走 C.cushion：
-  // cushion 的顶枕会探出 h*0.41，31cm 厚垫会冲到 57cm。底座 14→43 + 顶枕 33→45 + 包边缝
-  const seatD=cm(63), cw=(innerW-cm(1.5))/2, sz=D/2-seatD/2-cm(0.5);
+  // 箱体底座 2→16
+  C.rb(W, cm(14), D, cm(3), fab, 0, cm(2));
+  // 扶手 2→35 + 顶卷 r7（顶 42，低于座高 45）
+  for(const sx of [-1,1]){
+    C.rb(ARM, cm(33), D, cm(3.5), fab, sx*(W/2-ARM/2), cm(2));
+    C.tube(D-cm(4), cm(7), fab, sx*(W/2-ARM/2), cm(35), 0, 'z');
+  }
+  // 坐垫 ×2：16→45（座高），深 64，前缘齐箱体前缘
+  const cw=(innerW-cm(1.5))/2, seatD=cm(64), sz=cm(15.5);
   for(const sx of [-1,1]){
     const x=sx*(cw/2+cm(0.75));
-    C.rb(cw, cm(29), seatD, cm(4.5), fab, x, BASE_TOP, sz);
-    C.rb(cw*0.94, cm(12), seatD*0.94, cm(4), fab, x, BASE_TOP+cm(19), sz);
-    C.rb(cw+cm(0.3), cm(1.1), seatD+cm(0.3), cm(0.5), fab, x, BASE_TOP+cm(10), sz);
+    C.rb(cw, cm(29), seatD, cm(4.5), fab, x, cm(16), sz);
+    C.rb(cw+cm(0.3), cm(1.2), seatD+cm(0.3), cm(0.6), fab, x, cm(34), sz);
   }
-
-  // 背框：两扶手之间，顶面 73（比靠背垫顶低 ~10，正面视角被垫遮住）
-  C.rb(innerW, cm(59), cm(17), cm(2.5), fabD, 0, BASE_TOP, -(D/2-cm(8.5)));
-
-  // 靠背垫 ×2：高 42、深 45（比例反推），整件最高的元素，顶面 ~83 略后仰
-  // （后仰绕底面中心，后上角升到 83）。mesh 只管形状+抬升，后仰交外层 Group。
-  const bw=(innerW-cm(2))/2, bcH=cm(42), bcTh=cm(45),
-        bcZ=-D/2+bcTh/2+cm(0.5);   // 背面贴沙发后背，前缘伸到座区
+  // 背框 16→72，深 17
+  C.rb(innerW, cm(56), cm(17), cm(2.5), fabD, 0, cm(16), -(D/2-cm(8.5)));
+  // 靠背垫 ×2：45 厚×42 高，底 38 后仰 3°，顶 ~83
+  const bw=(innerW-cm(2))/2, bcTh=cm(42);
   for(const sx of [-1,1]){
-    const bc=C.rb(bw, bcH, bcTh, cm(5), fab, 0, 0, 0);
+    const bc=C.rb(bw, cm(45), bcTh, cm(5), fab, 0, 0, 0);   // 底对齐：局部 y 0..45
+    bc.position.y -= cm(22.5);                              // 移到组原点居中，绕中心后仰
     const holder=new T.Group();
     C.g.remove(bc); holder.add(bc);
-    holder.position.set(sx*(bw/2+cm(1)), BASE_TOP+cm(25), bcZ);   // 底 39，顶 81，后上角 ≈83
-    holder.rotation.x=-0.05;
+    holder.position.set(sx*(bw/2+cm(1)), cm(38+22.5), -D/2+bcTh/2+cm(0.5));
+    holder.rotation.x=-0.03;
     C.g.add(holder);
   }
-
-  // 扶手 ×2：一体低箱体，落地→顶面 62，外侧与底座齐平
-  for(const sx of [-1,1])
-    C.rb(ARM, cm(60), D, cm(3), fab, sx*(W/2-ARM/2), cm(2));
-
-  // 水平重心归零（2D 图例与碰撞都假定原点 = 占地中心）
   C.g.updateMatrixWorld(true);
   const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3();
   bb.getCenter(off);
   for(const ch of C.g.children){ ch.position.x-=off.x; ch.position.z-=off.z; }
 };
+
 
 /* SÖDERHAMN 三人(198×99×83)：尺寸全部来自官方尺寸图 work/ref/soder_4_dims.png（逐箭头核对），
    无标注项见 work/briefs/soderhamn.md：扶手宽 28.5=(198-2×70-1)/2 推导；背框深 17、坐垫深 55
@@ -7117,55 +7370,53 @@ MODELS['soderhamn'] = (C) => {
   const W=C.w, D=C.d, H=C.h;
   const fab  = C.M(C.col, {fabric:true, rough:.92, sheen:.18, envI:.15});
   const fabD = C.M(new T.Color(C.col).multiplyScalar(.88), {fabric:true, rough:.95, sheen:.14, envI:.12});
-  const legM = C.M('#c9ae83', {wood:'beech', envI:.5});
-
-  const ARM=cm(28.5);          // 扶手宽：内开口放 2×70 靠背垫+1cm 缝
-  const innerW=W-2*ARM;        // 141
-  const BASE_TOP=cm(14);       // 箱顶（尺寸图 14）；座高 40（尺寸图）
-
-  // 4 条锥形细腿：高 6（尺寸图），前缩进 6（尺寸图），侧/后缩进 ~8（比例估计）
+  const legM = C.M('#3c4043', {metal:.85, rough:.4, envI:.8});
+  const ARM=cm(28.5), innerW=W-2*ARM;
+  // 锥形细金属腿 0→14（尺寸图 14），前缘内缩 6（尺寸图）
   for(const sx of [-1,1]) for(const sz of [-1,1])
-    C.legT(cm(0.9), cm(1.3), cm(6), legM, sx*(W/2-cm(8)), sz>0? D/2-cm(6) : -(D/2-cm(8)), 0);
-
-  // 箱体底座：满宽满深 6→14，圆角
-  C.rb(W, cm(8), D, cm(3), fab, 0, cm(6));
-
-  // 坐垫 ×2：14→40（厚 26）手动建；前缘齐底座前缘，深 55（比例估计）
-  const seatD=cm(55), cw=(innerW-cm(1.5))/2, sz=D/2-seatD/2;
+    C.cyl(cm(1.1), cm(1.6), cm(14), legM, sx*(W/2-cm(9)), 0, sz>0? D/2-cm(6) : -(D/2-cm(10)), 12);
+  // 箱体底座 14→22
+  C.rb(W, cm(8), D, cm(3), fab, 0, cm(14));
+  // 坐垫 ×2：22→40（座高），深 58
+  const seatD=cm(58), cw=(innerW-cm(1.5))/2, sz=D/2-seatD/2-cm(1);
   for(const sx of [-1,1]){
     const x=sx*(cw/2+cm(0.75));
-    C.rb(cw, cm(24), seatD, cm(4.5), fab, x, BASE_TOP, sz);
-    C.rb(cw*0.94, cm(12), seatD*0.94, cm(4), fab, x, BASE_TOP+cm(14), sz);
-    C.rb(cw+cm(0.3), cm(1.1), seatD+cm(0.3), cm(0.5), fab, x, BASE_TOP+cm(8), sz);
+    C.rb(cw, cm(18), seatD, cm(5), fab, x, cm(22), sz);
+    C.rb(cw+cm(0.3), cm(1.2), seatD+cm(0.3), cm(0.6), fab, x, cm(33.5), sz);
   }
-
-  // 背框：14→69（尺寸图），深 17 贴后（比例估计）
-  C.rb(innerW, cm(55), cm(17), cm(2.5), fabD, 0, BASE_TOP, -(D/2-cm(8.5)));
-
-  // 靠背垫 ×2：70×48（尺寸图）×高 40，底 41 顶 81，外层 Group 后仰 2.3°（后上角 ≈82.6=整高附近）
-  const bw=cm(70), bcH=cm(40), bcTh=cm(48),
-        bcZ=-D/2+bcTh/2+cm(0.5);
+  // 背框 22→69（尺寸图），深 16
+  C.rb(innerW, cm(47), cm(16), cm(2.5), fabD, 0, cm(22), -(D/2-cm(8)));
+  // 靠背垫 ×2：70×48（尺寸图），底 35 顶 ~83，后仰 2°
+  const bw=cm(70);
   for(const sx of [-1,1]){
-    const bc=C.rb(bw, bcH, bcTh, cm(5), fab, 0, 0, 0);
+    const bc=C.rb(bw, cm(48), cm(20), cm(5.5), fab, 0, 0, 0);
+    bc.position.y -= cm(24);
     const holder=new T.Group();
     C.g.remove(bc); holder.add(bc);
-    holder.position.set(sx*(bw/2+cm(0.5)), cm(41), bcZ);
-    holder.rotation.x=-0.04;
+    holder.position.set(sx*(bw/2+cm(0.5)), cm(35+24), -(D/2-cm(10.5)));
+    holder.rotation.x=-0.02;
     C.g.add(holder);
   }
-
-  // 扶手 ×2：软包低箱，6→54（尺寸图），顶叠薄枕
+  // 腰枕 ×2：48×26×10（尺寸图），斜倚在靠背垫前
   for(const sx of [-1,1]){
-    C.rb(ARM, cm(48), D, cm(3.5), fab, sx*(W/2-ARM/2), cm(6));
-    C.rb(ARM-cm(1), cm(5), D-cm(2), cm(3), fab, sx*(W/2-ARM/2), cm(49));
+    const lc=C.rb(cm(48), cm(26), cm(10), cm(4.5), fab, 0, 0, 0);
+    lc.position.y -= cm(13);
+    const g=new T.Group();
+    C.g.remove(lc); g.add(lc);
+    g.position.set(sx*(bw/2+cm(0.5)), cm(40+13), -cm(16)); g.rotation.x=-0.5;
+    C.g.add(g);
   }
-
-  // 水平重心归零
+  // 扶手 14→50 + 顶枕 50→54
+  for(const sx of [-1,1]){
+    C.rb(ARM, cm(36), D, cm(4), fab, sx*(W/2-ARM/2), cm(14));
+    C.rb(ARM-cm(1), cm(4), D-cm(3), cm(2), fab, sx*(W/2-ARM/2), cm(50));
+  }
   C.g.updateMatrixWorld(true);
   const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3();
   bb.getCenter(off);
   for(const ch of C.g.children){ ch.position.x-=off.x; ch.position.z-=off.z; }
 };
+
 
 /* MALM 床架 Queen(168)/King(209) 共用：尺寸图 work/ref/malm_39.png——前横档 21→38（图标 21/38），
    床头板 0→100；排骨架高/中梁/壁厚无标注，比例估计。 */
@@ -7238,35 +7489,39 @@ MODELS['pinntorp'] = (C) => {
 
 /* GLADOM 托盘桌 Ø45×53：尺寸图 work/ref/gladom_33.png——圆盘带盘沿、5 根细圆腿、
    离地 ~10 五角星交叉横撑（图里可见）；腿径/撑径/盘沿高比例估计。 */
+/* GLADOM 托盘桌 Ø45×53：v05 实拍结构（ref: work/ref/ctables/gladom_*）——
+   浅盘托盘（盘底+立沿）+ 4 圆管腿 + 底部方形框撑 + 两根对角撑（近地交叉）。 */
 MODELS['gladom'] = (C) => {
   const cm=C.cm, T=C.THREE;
-  const W=C.w, D=C.d, H=C.h;
+  const H=C.h, R=C.w/2;
   const M1 = C.M(C.col, {metal:.85, rough:.4, envI:.85});
-  const R=W/2, TOP_T=cm(2.5), legR=cm(1.25), brR=cm(0.7), lr=R-cm(3);
-  C.cyl(R, R, TOP_T, M1, 0, H-TOP_T, 0, 40);
-  C.torus(R-cm(1), cm(1.2), M1, 0, H-cm(0.8), 0, Math.PI/2);   // 水平盘沿（不转是竖环！）
-  const n=5, ang=i=>-Math.PI/2+i*2*Math.PI/n;
-  for(let i=0;i<n;i++){
-    // 外层 Group 只转竖轴定方位，mesh 只单轴外撇（不叠欧拉角）
-    const g=new T.Group(); g.rotation.y=-ang(i);   // 局部 +x 对准该腿的外撇方向
-    const m=new T.Mesh(new T.CylinderGeometry(legR, legR*1.15, H-TOP_T-cm(0.5), 10), M1);
-    m.position.set(lr, (H-TOP_T-cm(0.5))/2, 0); m.rotation.z=-0.03;
-    m.castShadow=m.receiveShadow=true; g.add(m); C.g.add(g);
-  }
-  for(let i=0;i<n;i++){   // 五角星横撑：连隔一根的腿（Group 转竖轴定向，mesh 单轴倒平）
-    const a=ang(i), b=ang((i+2)%n), y=cm(10);
-    const ax=Math.cos(a)*lr, az=Math.sin(a)*lr, bx=Math.cos(b)*lr, bz=Math.sin(b)*lr;
-    const dx=bx-ax, dz=bz-az, len=Math.sqrt(dx*dx+dz*dz);
-    const gg=new T.Group();
-    gg.position.set((ax+bx)/2, y, (az+bz)/2); gg.rotation.y=Math.atan2(dx, dz);
+  // 浅盘托盘：盘底 Ø44 (50.5→51) + 立沿 Ø45 (51→53)
+  C.cyl(R-cm(0.5), R-cm(0.5), cm(0.5), M1, 0, cm(50.5), 0, 40);
+  const rim=new T.Mesh(new T.CylinderGeometry(R, R, cm(2), 40, 1, true), M1);
+  rim.material=M1; rim.position.y=cm(52); rim.castShadow=rim.receiveShadow=true; C.g.add(rim);
+  // 4 圆管腿 Ø2 (0→51) @ 半径 20.5（lr 已是英尺，不要再套 cm）
+  M1.side = T.DoubleSide;
+  const lr=R-cm(2);
+  const ang=i=>Math.PI/4+i*Math.PI/2;
+  for(let i=0;i<4;i++) C.cyl(cm(1), cm(1), cm(51), M1, lr*Math.cos(ang(i)), 0, lr*Math.sin(ang(i)), 12);
+  // 底部框撑（4 条边）+ 2 根对角撑，y≈4.5（Group 转竖轴定向，capsule 轴线 Y 转局部 Z）
+  const brR=cm(0.9), ch=2*lr*Math.SQRT1_2, cc=lr*Math.SQRT1_2;
+  const bar=(len, x, z, theta)=>{
+    const gg=new T.Group(); gg.position.set(x, cm(4.5), z); gg.rotation.y=theta;
     const m=new T.Mesh(new T.CapsuleGeometry(brR, Math.max(0.005, len-2*brR), 4, 10), M1);
-    m.rotation.x=Math.PI/2; m.castShadow=m.receiveShadow=true;
-    gg.add(m); C.g.add(gg);
+    m.rotation.x = Math.PI/2;
+    m.castShadow=m.receiveShadow=true; gg.add(m); C.g.add(gg);
+  };
+  for(let i=0;i<4;i++){
+    const a=ang(i)+Math.PI/4;
+    bar(ch, cc*Math.cos(a), cc*Math.sin(a), -a);   // 弦向边撑
   }
+  bar(2*lr, 0, 0, Math.PI/4);      // 对角撑 1（45° 线）
+  bar(2*lr, 0, 0, 3*Math.PI/4);    // 对角撑 2（135° 线）
   C.g.updateMatrixWorld(true);
   const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3();
   bb.getCenter(off);
-  for(const ch of C.g.children){ ch.position.x-=off.x; ch.position.z-=off.z; }
+  for(const ch2 of C.g.children){ ch2.position.x-=off.x; ch2.position.z-=off.z; }
 };
 
 /* MORABO 三人沙发 206×92×81：尺寸图 v05_0815815（扶手顶 67/座高 47/底座离地 16/背垫宽 61×2）；
@@ -7275,38 +7530,35 @@ MODELS['morabo'] = (C) => {
   const cm=C.cm, T=C.THREE;
   const W=C.w, D=C.d, H=C.h;
   const M1 = C.M(C.col, {fabric:true, sheen:.15, envI:.15});
-  const chrome = C.M('#d8dadc', {metal:.95, rough:.18, envI:.95});
-  // 底座 16→38（图标 16）
+  const legM = C.M('#6b5a45', {wood:'beech', rough:.55, envI:.5});
+  // 桦木锥形圆腿 0→16（尺寸图）
+  for(const [lx,lz] of [[-78,28],[78,28],[-78,-28],[78,-28]])
+    C.cyl(cm(3.2), cm(2.4), cm(16), legM, cm(lx), 0, cm(lz), 14);
+  // 底座 16→38
   C.rb(W, cm(22), D, cm(2.5), M1, 0, cm(16), 0);
-  // 扶手 42 宽，16→67（图标 67）
-  for(const sx of [-1,1])
-    C.rb(cm(42), cm(51), D, cm(3), M1, sx*(W/2-cm(21)), cm(16), 0);
-  // 背框 122 宽×26 深，38→81（背在 -z，与 2D 图例/通用回退同向）
-  C.rb(W-cm(84), cm(43), cm(26), cm(2.5), M1, 0, cm(38), -(D/2-cm(13)));
-  // 座垫 ×2：60.5 宽，35→47.5（座高 47 图标），深 64
-  for(const sx of [-1,1])
-    C.rb(cm(60.5), cm(12.5), cm(64), cm(4.5), M1, sx*cm(30.75), cm(35), D/2-cm(32));
-  // 背垫 ×2：61 宽（图标）×30 高×20 厚，50→80，前倾 3°，3×3 拉扣
+  // 扶手 42 宽，16→61 + 顶卷 r6（顶 67 尺寸图）
   for(const sx of [-1,1]){
-    const c = C.rb(cm(61), cm(30), cm(20), cm(5), M1, 0, 0, 0, 3);
-    C.g.remove(c);
-    const g = new T.Group();
-    g.position.set(sx*cm(31), cm(50), -cm(11)); g.rotation.x=0.05;   // 单轴前倾（朝 +z）
-    c.position.set(0, cm(15), 0);
-    g.add(c);
-    for(const bx of [-cm(18),0,cm(18)]) for(const by of [-cm(9.5),0,cm(9.5)]){
-      const b = new T.Mesh(new T.SphereGeometry(cm(1.0), 10, 8), M1);
-      b.position.set(bx, by, cm(9.5)); b.castShadow=b.receiveShadow=true;
+    C.rb(cm(42), cm(45), D, cm(3), M1, sx*(W/2-cm(21)), cm(16), 0);
+    C.tube(D-cm(4), cm(6), M1, sx*(W/2-cm(21)), cm(61), 0, 'z');
+  }
+  // 背框 122 宽×24 深，38→78
+  C.rb(cm(122), cm(40), cm(24), cm(2.5), M1, 0, cm(38), -(D/2-cm(12)));
+  // 座垫 ×2：60 宽，38→47.5（座高 47），深 62
+  for(const sx of [-1,1])
+    C.rb(cm(60), cm(9.5), cm(62), cm(4.5), M1, sx*cm(30.75), cm(38), D/2-cm(31));
+  // 背垫 ×2：61×30×20（尺寸图），底 47.5 顶 ~78，后仰 3°，3×2 拉扣
+  for(const sx of [-1,1]){
+    const g=new T.Group();
+    g.position.set(sx*cm(31), cm(47.5+15), -cm(9.5)); g.rotation.x=-0.03;
+    const c=C.rb(cm(61), cm(30), cm(20), cm(5), M1, 0, 0, 0);
+    c.position.y -= cm(15);
+    C.g.remove(c); g.add(c);
+    for(const bx of [-cm(18),0,cm(18)]) for(const by of [-cm(9),0,cm(9)]){
+      const b=new T.Mesh(new T.SphereGeometry(cm(1), 10, 8), M1);
+      b.position.set(bx, by, cm(9.8)); b.castShadow=b.receiveShadow=true;
       g.add(b);
     }
     C.g.add(g);
-  }
-  // 腿 ×4：镀铬喇叭脚 0→8 + 布包腿 6.5→17.5（v00/v09）
-  for(const [lx,lz] of [[-64,33],[64,33],[-64,-28],[64,-28]]){
-    const x=cm(lx), z=cm(lz);
-    C.cyl(cm(5), cm(5), cm(0.8), chrome, x, 0, z, 20);        // 底盘
-    C.cyl(cm(2.6), cm(3.4), cm(7.2), chrome, x, cm(0.8), z, 20); // 锥脚
-    C.cyl(cm(2.2), cm(2.8), cm(11), M1, x, cm(6.5), z, 14);   // 布腿
   }
   C.g.updateMatrixWorld(true);
   const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3();
@@ -7314,43 +7566,47 @@ MODELS['morabo'] = (C) => {
   for(const ch of C.g.children){ ch.position.x-=off.x; ch.position.z-=off.z; }
 };
 
-/* FRIHETEN 转角沙发床 230×151×86：尺寸图 v05（chaise 深 151/座深 122/座高 44/3 座段深 90/
-   扶手 66/背垫 57×3 高出座面 44）；chaise 宽 95/扶手 24/背框深 24/腿为实拍比例估计（brief: friheten.md）。 */
+
+/* FRIHETEN 转角沙发床 230×151×86：对照 FRIHETEN 官方实拍（work/ref/friheten/）——3 座段+右 chaise，
+   低矮方扶手（顶 ~48-50，低于背垫）、方形薄背垫 ×3、储物底座箱坐小暗色脚上、座高 ~46-48、
+   背垫顶 = 整高 86。chaise 宽 95/扶手 24/背框深 20 为实拍比例。 */
 MODELS['friheten'] = (C) => {
   const cm=C.cm, T=C.THREE;
   const W=C.w, D=C.d, H=C.h;
   const M1 = C.M(C.col, {fabric:true, sheen:.12, envI:.15});
   const legM = C.M('#2a2c2f', {rough:.7});
-  // chaise 在 +x，背在 +z。3 座段 x -115→+20，chaise x +20→+115
-  // 底座：chaise 段 (6→38)、3 座段 (6→34)（背在 -z，与 2D 图例同向）
-  C.rb(cm(71), cm(32), D, cm(2.5), M1, cm(55.5), cm(6), 0);
-  C.rb(cm(135), cm(28), cm(90), cm(2.5), M1, cm(-47.5), cm(6), -cm(30.5));
-  // 右扶手 24 宽，跨 chaise 全深，6→66（图标）
-  C.rb(cm(24), cm(60), D, cm(3), M1, cm(103), cm(6), 0);
-  // chaise 矮背 38→60；3 座背框 34→86（图标 86）
-  C.rb(cm(71), cm(22), cm(24), cm(2.5), M1, cm(55.5), cm(38), -(D/2-cm(12)));
-  C.rb(cm(206), cm(52), cm(24), cm(2.5), M1, cm(-14), cm(34), -(D/2-cm(12)));
-  // 座垫：chaise 70×12×122 顶 44（图标）；3 座 2×57 顶 42
-  C.rb(cm(70), cm(12), cm(122), cm(4), M1, cm(55.5), cm(32), D/2-cm(61));
-  for(const cx of [-80,-15])
-    C.rb(cm(57), cm(12), cm(66), cm(4), M1, cm(cx), cm(30), -cm(18.5));
-  // 背垫 ×3：57×20×44（图标），松散斜靠、互相叠压
-  for(const [cx, ry] of [[-80,-0.05],[-20,0],[40,0.06]]){
-    const c = C.rb(cm(57), cm(44), cm(20), cm(5), M1, 0, 0, 0, 3);
+  // chaise 在 +x，背在 -z。3 座段 x -115→+20（深 90），chaise x +20→+115（深 151）
+  // 小暗色脚 0→8
+  for(const [lx,lz] of [[-103,-60],[12,-60],[103,-60],[103,55],[103,0],[-103,5]])
+    C.cyl(cm(2.2), cm(2.2), cm(8), legM, cm(lx), 0, cm(lz), 10);
+  // 底座：3 座段 8→34（深 90），chaise 段 8→36（深 151）
+  C.rb(cm(135), cm(26), cm(90), cm(2.5), M1, cm(-47.5), cm(8), -cm(30.5));
+  C.rb(cm(95), cm(28), D, cm(2.5), M1, cm(67.5), cm(8), 0);
+  // 左扶手 24 宽（深 90）8→48；右扶手跨 chaise 全深 8→50
+  C.rb(cm(24), cm(40), cm(90), cm(3), M1, -cm(103), cm(8), -cm(30.5));
+  C.rb(cm(24), cm(42), D, cm(3), M1, cm(103), cm(8), 0);
+  // 背框：3 座段 34→72，chaise 矮背 36→60，深 24
+  C.rb(cm(111), cm(38), cm(24), cm(2.5), M1, cm(-35.5), cm(34), -(D/2-cm(12)));
+  C.rb(cm(71), cm(24), cm(24), cm(2.5), M1, cm(55.5), cm(36), -(D/2-cm(12)));
+  // 座垫：3 座段 ×2 顶 46，chaise ×1 顶 48
+  for(const cx of [-62.5,-7.5])
+    C.rb(cm(55), cm(12), cm(62), cm(4), M1, cm(cx), cm(34), -cm(16));
+  C.rb(cm(68), cm(12), cm(118), cm(4), M1, cm(58), cm(36), 0);
+  // 背垫 ×3：52×42×18，底 44 顶 86，松散微偏转
+  for(const [cx, ry] of [[-62.5,-0.05],[3.5,0],[55.5,0.05]]){
+    const c = C.rb(cm(52), cm(42), cm(18), cm(5), M1, 0, 0, 0, 3);
+    c.position.y -= cm(21);
     C.g.remove(c);
     const g = new T.Group();
-    g.position.set(cm(cx), cm(42), -cm(42)); g.rotation.y=ry;
-    c.position.set(0, cm(22), 0); c.rotation.x=0.09;   // 单轴前倾（朝 +z）
+    g.position.set(cm(cx), cm(44+21), -cm(55)); g.rotation.y=ry;
     g.add(c); C.g.add(g);
   }
-  // 腿：暗色小圆柱 φ5 高 6（v03）
-  for(const [lx,lz] of [[-103,4],[12,4],[30,67],[103,67],[103,-67],[-103,-67]])
-    C.cyl(cm(2.5), cm(2.5), cm(6), legM, cm(lx), 0, cm(lz), 10);
   C.g.updateMatrixWorld(true);
   const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3();
   bb.getCenter(off);
   for(const ch of C.g.children){ ch.position.x-=off.x; ch.position.z-=off.z; }
 };
+
 
 /* UPPLAND 三人沙发 224×92×92（EKTORP 继任款）：尺寸图 v12（扶手 25/背垫 58×3/座高 47/背垫 45/裙 17，
    47+45=92 自洽）；裙摆落地无腿、卷臂为实拍特征，扶手顶 63 比例估计（brief: uppland.md）。 */
@@ -7358,26 +7614,25 @@ MODELS['uppland'] = (C) => {
   const cm=C.cm, T=C.THREE;
   const W=C.w, D=C.d, H=C.h;
   const M1 = C.M(C.col, {fabric:true, sheen:.10, envI:.15});
-  // 裙摆箱体 0→35（图标裙高 17 可见带 + 座框），落地无腿
+  // 裙摆箱体 0→35，落地无腿
   C.rb(W, cm(35), D, cm(3), M1, 0, 0, 0);
-  // 扶手 25 宽（图标）0→53 + 顶卷 r10 横贯全深（顶 63 比例估计）
+  // 卷臂：25 宽 0→53 + 顶卷 r9.5 横贯全深（顶 62.5）
   for(const sx of [-1,1]){
     C.rb(cm(25), cm(53), D, cm(4), M1, sx*(W/2-cm(12.5)), 0, 0);
-    // 顶卷：胶囊沿 z 横贯全深（中心定位，端帽正好齐前后缘），顶 63
-    C.tube(D, cm(10), M1, sx*(W/2-cm(12.5)), cm(53), 0, 'z');
+    C.tube(D-cm(3), cm(9.5), M1, sx*(W/2-cm(12.5)), cm(53), 0, 'z');
   }
-  // 背框 174 宽×24 深，35→92（图标总高）
-  C.rb(cm(174), cm(57), cm(24), cm(4), M1, 0, cm(35), -(D/2-cm(12)));
-  // 座垫 ×3：58 宽（图标），35→47（座高图标），深 68
+  // 背框 174 宽，35→84，深 24
+  C.rb(cm(174), cm(49), cm(24), cm(4), M1, 0, cm(35), -(D/2-cm(12)));
+  // 座垫 ×3：58 宽，35→47（座高），深 66
   for(const cx of [-58,0,58])
-    C.rb(cm(58), cm(12), cm(68), cm(5), M1, cm(cx), cm(35), cm(12));
-  // 背垫 ×3：58×20×45（图标），47→92，松散微前倾
+    C.rb(cm(58), cm(12), cm(66), cm(5), M1, cm(cx), cm(35), cm(13));
+  // 背垫 ×3：58×45×20，底 47 顶 92，后仰 2.5°
   for(const cx of [-58,0,58]){
-    const c = C.rb(cm(58), cm(45), cm(20), cm(6), M1, 0, 0, 0, 3);
+    const c = C.rb(cm(58), cm(45), cm(20), cm(7), M1, 0, 0, 0);
+    c.position.y -= cm(22.5);
     C.g.remove(c);
     const g = new T.Group();
-    g.position.set(cm(cx), cm(47), -cm(31)); g.rotation.x=0.07;
-    c.position.set(0, cm(22.5), 0);
+    g.position.set(cm(cx), cm(47+22.5), -cm(31)); g.rotation.x=-0.025;
     g.add(c); C.g.add(g);
   }
   C.g.updateMatrixWorld(true);
@@ -7385,6 +7640,7 @@ MODELS['uppland'] = (C) => {
   bb.getCenter(off);
   for(const ch of C.g.children){ ch.position.x-=off.x; ch.position.z-=off.z; }
 };
+
 
 /* EKHOLMA 三人沙发 207×85×94：尺寸图 v06（座高 49/扶手 70/座深 55/腿 15，49+45=94 自洽）；
    扶手宽 26/背框深 28/木腿收分方形为实拍比例估计（brief: ekholma.md）。 */
@@ -7393,27 +7649,30 @@ MODELS['ekholma'] = (C) => {
   const W=C.w, D=C.d, H=C.h;
   const M1 = C.M(C.col, {fabric:true, sheen:.10, envI:.15});
   const legM = C.M('#3a2f28', {wood:'walnut', rough:.55});
-  // 腿 ×4：4 棱收分柱（方形锥），0→15（图标腿高）
-  for(const [lx,lz] of [[-89.5,-30.5],[89.5,-30.5],[-89.5,30.5],[89.5,30.5]])
+  // 腿 ×4：4 棱收分柱（方形锥），0→15
+  for(const [lx,lz] of [[-89.5,-28.5],[89.5,-28.5],[-89.5,28.5],[89.5,28.5]])
     C.cyl(cm(5.6), cm(2.8), cm(15), legM, cm(lx), 0, cm(lz), 4);
-  // 底座 15→36（坐垫厚 13，顶 49 图标座高）
+  // 底座 15→36
   C.rb(W, cm(21), D, cm(4), M1, 0, cm(15), 0);
-  // 扶手 26 宽（比例）15→64 + 顶卷 r6（顶 70 图标）
+  // 扶手 26 宽：前面竖直、顶面宽而平（49cm）、后缘短斜，顶卷 r6
   for(const sx of [-1,1]){
-    C.rb(cm(26), cm(49), D, cm(5), M1, sx*(W/2-cm(13)), cm(15), 0);
-    C.tube(D, cm(6), M1, sx*(W/2-cm(13)), cm(64), 0, 'z');
+    // 侧面轮廓（local x=-z, y）：前竖 15→60、顶面 z+34.5→-15、后斜、底
+    const pts=[[-cm(34.5),cm(15)],[-cm(34.5),cm(60)],[cm(15),cm(60)],[cm(34.5),cm(15)]];
+    C.ext(pts, cm(26), M1, sx>0? W/2-cm(26) : -W/2, 0, 0, 'zy', cm(4));
+    C.tube(cm(56), cm(6), M1, sx*(W/2-cm(13)), cm(63), cm(1), 'z');
   }
-  // 背框 155 宽×28 深（85−55−前缘），36→88
+  // 背框 155 宽×28 深，36→88
   C.rb(cm(155), cm(52), cm(28), cm(4), M1, 0, cm(36), -(D/2-cm(14)));
-  // 座垫 ×2：77.5 宽×13 厚×55 深（图标座深），36→49
+  // 座垫 ×2：77.5 宽×13 厚×55 深，36→49
   for(const sx of [-1,1])
     C.rb(cm(77.5), cm(13), cm(55), cm(5), M1, sx*cm(38.75), cm(36), cm(13));
-  // 背垫 ×2：77.5×20×45（49→94 自洽），微前倾
+  // 背垫 ×2：77.5×45×20，底 49 顶 94，后仰 4°
   for(const sx of [-1,1]){
-    const c = C.rb(cm(77.5), cm(45), cm(20), cm(6), M1, 0, 0, 0, 3);
+    const c = C.rb(cm(77.5), cm(45), cm(20), cm(6), M1, 0, 0, 0);
+    c.position.y -= cm(22.5);
     C.g.remove(c);
     const g = new T.Group();
-    g.position.set(sx*cm(38.75), cm(49), -cm(23.5)); g.rotation.x=0.07;
+    g.position.set(sx*cm(38.75), cm(49+22.5), -cm(23.5)); g.rotation.x=-0.04;
     g.add(c); C.g.add(g);
   }
   C.g.updateMatrixWorld(true);
@@ -7422,38 +7681,39 @@ MODELS['ekholma'] = (C) => {
   for(const ch of C.g.children){ ch.position.x-=off.x; ch.position.z-=off.z; }
 };
 
-/* POÄNG 扶手椅 68×82×100：尺寸图（座深 50/座高 42）+ 无垫框架图 v19 实测结构：
-   前件=前腿+扶手一体弯木，后件=后腿+背侧柱，背框后仰 6°，弹簧钢板 77-80（brief: poang.md）。 */
+
+/* POÄNG 扶手椅 68×82×100：对照 v00/v03 实拍——每侧 Z 形一体弯木侧件
+   （前腿+底轨+后腿+扶手，前上肘部/后下圆角），前撑杆，绷板+座垫（座高 44），
+   背框后仰 18°（立柱扎根于后腿/扶手后角 + 顶档 + 背垫 + 头枕）。 */
 MODELS['poang'] = (C) => {
   const cm=C.cm, T=C.THREE;
   const M1 = C.M(C.col, {fabric:true, sheen:.10, envI:.15});
-  const frameM = C.M('#4a3325', {wood:'walnut', rough:.45, clear:.3, envI:.5});
-  const steelM = C.M('#9a9da3', {metal:.9, rough:.35});
+  const frameM = C.M('#d6c09a', {wood:'birch', rough:.5, clear:.25, envI:.5});
   const webM = C.M('#c9b189', {wood:'birch', rough:.6});
-  const F=(w,h,d,x,y,z,m)=>C.box(w,h,d,m||frameM,x,y,z);
-  // 前件：前腿 0→50 + 扶手 46→52（前伸到 z+36，端头下勾）；侧件外展到 ±31.5（宽 68）
+  const blkM = C.M('#1c1c1c', {plastic:true, rough:.8});
+  // Z 形弯木侧件（每侧）：前腿/底轨/后腿/扶手 + 两处圆角 + 脚垫
   for(const sx of [-1,1]){
-    F(cm(5), cm(50), cm(5), sx*cm(31.5), 0, cm(30));
-    F(cm(5), cm(6), cm(56), sx*cm(31.5), cm(46), cm(8));     // 扶手 -20→+36
-    F(cm(5), cm(12), cm(5), sx*cm(31.5), cm(40), cm(33.5)); // 端头下勾
+    C.box(cm(5), cm(50), cm(5), frameM, sx*cm(31.5), 0, cm(33));          // 前腿 z 30.5..35.5
+    C.box(cm(5), cm(55), cm(5), frameM, sx*cm(31.5), 0, cm(-24.5));       // 后腿 z -27..-22
+    C.box(cm(5), cm(5), cm(62), frameM, sx*cm(31.5), 0, cm(4));           // 底轨 z -27..35
+    C.box(cm(5), cm(5), cm(59.5), frameM, sx*cm(31.5), cm(50), cm(3.75)); // 扶手 z -26..33.5
+    C.rb(cm(5), cm(10), cm(10), cm(3.5), frameM, sx*cm(31.5), cm(45), cm(31.5)); // 前上肘部圆角
+    C.rb(cm(5), cm(9), cm(10), cm(3.5), frameM, sx*cm(31.5), cm(47.5), cm(-24));   // 后上圆角
+    C.box(cm(4), cm(1.2), cm(4), blkM, sx*cm(31.5), 0, cm(33));           // 前胶脚
+    C.box(cm(4), cm(1.2), cm(4), blkM, sx*cm(31.5), 0, cm(-24.5));        // 后胶脚
   }
-  // 地脚横梁 + 座下横梁
-  for(const sx of [-1,1]) F(cm(5), cm(5), cm(60), sx*cm(31.5), 0, 0);
-  for(const zz of [28,-28]) F(cm(58), cm(5), cm(5), 0, cm(25), cm(zz));
-  // 座面绷板 30→32 + 座垫 60×10×50（图标座深）32→42（图标座高）
-  C.box(cm(56), cm(2), cm(50), webM, 0, cm(30), -cm(5));
-  C.rb(cm(60), cm(10), cm(50), cm(4), M1, 0, cm(32), -cm(5));
-  // 背框总成：Group 后仰 0.10 rad（顶 z-40 仍在占地内）
-  const back = new T.Group(); back.position.set(0,0,-cm(30)); back.rotation.x=-0.10;
+  // 前撑杆（连接两前腿）
+  C.box(cm(66), cm(5), cm(5.5), frameM, 0, cm(16), cm(33));
+  // 绷板 + 座垫（顶 44 = 座高）
+  C.box(cm(64), cm(2), cm(60), webM, 0, cm(32), cm(4));        // 绷板 z -26..34
+  C.rb(cm(60), cm(10), cm(56), cm(4), M1, 0, cm(34), cm(5));   // 座垫 z -23..33
+  // 背框总成：Group 后仰 0.32 rad（≈18°），立柱下端扎入后腿/扶手后角
+  const back = new T.Group(); back.position.set(0,0,-cm(6.25)); back.rotation.x=-0.32;
   const BF=(w,h,d,x,y,z,m)=>{ const mm=C.box(w,h,d,m||frameM,x,y,z); C.g.remove(mm); back.add(mm); return mm; };
-  for(const sx of [-1,1]) BF(cm(5), cm(100), cm(5), sx*cm(31.5), 0, 0);
-  BF(cm(58), cm(5), cm(5), 0, cm(94), 0);                    // 顶档
-  BF(cm(58), cm(5), cm(5), 0, cm(58), 0);                    // 中档
-  BF(cm(54), cm(3), cm(2), 0, cm(77), 0, steelM);            // 弹簧钢板（v12 后视可见）
-  const lp = C.rb(cm(60), cm(34), cm(14), cm(5), M1, 0, cm(44), cm(5), 3);   // 下背垫 44→78
-  C.g.remove(lp); back.add(lp);
-  const hr = C.rb(cm(60), cm(22), cm(12), cm(5), M1, 0, cm(78), cm(4), 3);   // 头枕 78→100
-  C.g.remove(hr); back.add(hr);
+  for(const sx of [-1,1]) BF(cm(5), cm(62), cm(6), sx*cm(31), cm(36.5), 0); // 背立柱
+  BF(cm(64), cm(5), cm(6), 0, cm(93), 0);                      // 顶档
+  BF(cm(59.4), cm(36), cm(12), 0, cm(44.5), cm(9), M1);        // 下背垫
+  BF(cm(59.4), cm(16), cm(12), 0, cm(81), cm(9), M1);          // 头枕
   C.g.add(back);
   C.g.updateMatrixWorld(true);
   const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3();
@@ -7467,33 +7727,37 @@ MODELS['strandmon'] = (C) => {
   const cm=C.cm, T=C.THREE;
   const W=C.w, D=C.d, H=C.h;
   const M1 = C.M(C.col, {fabric:true, sheen:.12, envI:.15});
-  const legM = C.M('#3a2f28', {wood:'walnut', rough:.5});
-  // 腿 ×4：锥形圆腿 0→12（v00 深褐）
-  for(const [lx,lz] of [[-30,-36],[30,-36],[-30,36],[30,36]])
-    C.cyl(cm(3), cm(1.5), cm(12), legM, cm(lx), 0, cm(lz), 12);
-  // 底座 12→33，深 89（后缘齐占地，前缘齐座垫，v00 裙包到座前）
-  C.rb(W, cm(21), cm(89), cm(6), M1, 0, cm(12), -cm(3.5));
-  // 扶手 16 宽（(82−50)/2）12→48 + 顶卷 r7（顶 55 比例），深 80（端头齐座前）
+  const legM = C.M('#2c2622', {rough:.5});
+  // 腿 ×4：细锥形圆腿 0→13
+  for(const [lx,lz] of [[-30,-32],[30,-32],[-30,38],[30,38]])
+    C.cyl(cm(1.4), cm(2.6), cm(13), legM, cm(lx), 0, cm(lz), 10);
+  // 底座 13→33，深 89
+  C.rb(W, cm(20), cm(89), cm(6), M1, 0, cm(13), -cm(3.5));
+  // 扶手基 + 顶卷 r7（顶 54），深 84
   for(const sx of [-1,1]){
-    C.rb(cm(16), cm(36), cm(80), cm(7), M1, sx*cm(33), cm(12), -cm(8));
-    C.tube(cm(76), cm(7), M1, sx*cm(33), cm(48), -cm(8), 'z');
+    C.rb(cm(16), cm(32), cm(84), cm(6), M1, sx*cm(33), cm(13), -cm(6));
+    C.tube(cm(84), cm(7), M1, sx*cm(33), cm(47), -cm(6), 'z');
   }
-  // 座垫 54×10×58（图标座宽）33→43（图标座高），前缘齐裙边
-  C.rb(cm(54), cm(10), cm(58), cm(5), M1, 0, cm(33), cm(11));
-  // 背框总成：Group 后仰 0.08（背在 z-30）
+  // 座垫 54×10×58，33→43，前缘齐底座前缘
+  C.rb(cm(54), cm(10), cm(58), cm(5), M1, 0, cm(33), cm(12));
+  // 背总成：Group 后仰 4.5°（背在 z -30）
   const back = new T.Group(); back.position.set(0,0,-cm(30)); back.rotation.x=-0.08;
   const B=(mm)=>{ C.g.remove(mm); back.add(mm); return mm; };
-  B(C.rb(cm(54), cm(58), cm(14), cm(5), M1, 0, cm(43), 0, 3));       // 背板 43→101（图标内宽 54）
-  for(const sx of [-1,1])                                            // 翼板 58→92，与背板一体（v04 前卷）
-    B(C.rb(cm(16), cm(34), cm(20), cm(5), M1, sx*cm(22), cm(58), 0, 3));
-  for(const [bx,by] of [[-20,67],[-10,69],[0,70],[10,69],[20,67]])   // 拉扣 5 粒浅 V
-    B(C.sph(cm(0.9), M1, cm(bx), cm(by), cm(8.5), 10));
+  B(C.rb(cm(54), cm(73), cm(13), cm(5), M1, 0, cm(28), 0, 3));   // 背板 28→101（下缘埋进底座）
+  for(const sx of [-1,1]){
+    // 翼板 S 形侧面轮廓（local px=-z, py=y），沿 +x 挤出 16
+    const pts=[[cm(13),cm(42)],[cm(13),cm(92)],[cm(5),cm(100)],[cm(-2),cm(84)],[cm(4),cm(62)],[cm(8),cm(44)]];
+    B(C.ext(pts, cm(16), M1, sx>0? cm(24) : -cm(40), 0, 0, 'zy', cm(2.5)));
+  }
+  for(const [bx,by] of [[-20,70],[-10,72],[0,73],[10,72],[20,70]])   // 拉扣 5 粒横排
+    B(C.sph(cm(0.9), M1, cm(bx), cm(by), cm(6), 10));
   C.g.add(back);
   C.g.updateMatrixWorld(true);
   const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3();
   bb.getCenter(off);
   for(const ch of C.g.children){ ch.position.x-=off.x; ch.position.z-=off.z; }
 };
+
 
 /* DOCKSTA 独腿圆桌 Ø103×75：尺寸图 v03（总高 75/台面顶 73/底盘 Ø60）；
    Eames 式独腿柱身锥度与喇叭口为 v02 特写比例（brief: docksta.md）。 */
@@ -7502,10 +7766,16 @@ MODELS['docksta'] = (C) => {
   const M1 = C.M('#f7f6f2', {rough:.35, clear:.5, envI:.4});
   // 底盘 Ø60×2.5（图标）
   C.cyl(cm(30), cm(30), cm(2.5), M1, 0, 0, 0, 72);
-  // 独腿柱：实体旋转体（底 r5.2 → 中腰 r2.2 → 台下喇叭 r7.5），2.5→72.8
-  C.lathe([[cm(0.1),cm(2.5)],[cm(5.2),cm(2.5)],[cm(3.4),cm(7)],[cm(2.5),cm(20)],
-           [cm(2.2),cm(38)],[cm(2.6),cm(54)],[cm(3.8),cm(64)],[cm(7.2),cm(71.5)],[cm(7.5),cm(72.8)],[cm(0.1),cm(72.8)]],
-          M1, 0, 0, 0, 72);
+  // 独腿柱：平滑旋转轮廓（v00/v02 实拍：底盘边 r30 喇叭 → 细杆 → 凹肩 → 台下短领口 r9.5）
+  const prof=[[cm(28.5),cm(3.2)]];
+  for(let i=1;i<=14;i++){ const t=i/14;                                       // 喇叭 3.2→18
+    prof.push([cm(4.2+(30-4.2)*(1+Math.cos(Math.PI*t))/2), cm(2.5+15.5*t)]); }
+  for(let i=1;i<=8;i++){ const t=i/8;                                          // 细杆 18→45
+    prof.push([cm(4.2-0.6*t), cm(18+27*t)]); }
+  for(let i=1;i<=14;i++){ const t=i/14;                                       // 凹肩 45→66
+    prof.push([cm(3.6+5.9*(1-Math.cos(Math.PI*t))/2), cm(45+21*t)]); }
+  prof.push([cm(9.5),cm(72.8)],[cm(0.1),cm(72.8)]);
+  C.lathe(prof, M1, 0, 0, 0, 72);
   // 台面 Ø103×2.2，72.8→75（图标）
   C.cyl(cm(51.5), cm(51.5), cm(2.2), M1, 0, cm(72.8), 0, 88);
   C.g.updateMatrixWorld(true);
@@ -7566,14 +7836,14 @@ MODELS['bedmetal'] = (C) => {
   // 围框：4 根管 5 宽×12 高，3→15 + 4 角脚
   C.box(cm(5), cm(12), D-cm(6), M1, -(W/2-cm(2.5)), cm(3), 0);
   C.box(cm(5), cm(12), D-cm(6), M1,  (W/2-cm(2.5)), cm(3), 0);
-  C.box(W-cm(16), cm(12), cm(5), M1, 0, cm(3), -(D/2-cm(2.5)));
-  C.box(W-cm(16), cm(12), cm(5), M1, 0, cm(3),  (D/2-cm(2.5)));
+  C.box(W, cm(12), cm(5), M1, 0, cm(3), -(D/2-cm(2.5)));
+  C.box(W, cm(12), cm(5), M1, 0, cm(3),  (D/2-cm(2.5)));
   for(const [fx,fz] of [[-1,-1],[1,-1],[-1,1],[1,1]])
     C.box(cm(7), cm(3), cm(7), M1, fx*(W/2-cm(3.5)), 0, fz*(D/2-cm(3.5)));
   // 排骨架 ×8，15→17
   for(let i=0;i<8;i++){
     const zz = -D/2+cm(14) + i*(D-cm(28))/7;
-    C.box(W-cm(20), cm(2), cm(4), M1, 0, cm(15), zz);
+    C.box(W, cm(2), cm(4), M1, 0, cm(15), zz);
   }
   // 床垫 (W-8)×27×(D-8)，17→44
   C.rb(W-cm(8), cm(27), D-cm(8), cm(4), M2, 0, cm(17), 0, 4);
@@ -7668,6 +7938,18 @@ MODELS['idanas'] = (C) => {
   bb.getCenter(off);
   for(const ch of C.g.children){ ch.position.x-=off.x; ch.position.z-=off.z; }
 };
+
+/* 床「带床垫」版本：床架 + VALEVÅG 弹簧床垫（Queen 152×203 / King 193×203，厚 20）。
+   床垫居中放在排骨架上；床架模型末尾已把原点归到占地中心，床垫直接居中即可。 */
+function mattressOn(C, mw, md, slatTop){
+  const M = C.M('#f2efe6', {fabric:true, sheen:.05, envI:.2});
+  C.rb(C.cm(mw), C.cm(20), C.cm(md), C.cm(4), M, 0, C.cm(slatTop), 0, 3);
+}
+MODELS['malm-m']      = (C) => { MODELS['malm'](C);      mattressOn(C, 152, 203, 28); };
+MODELS['malmk-m']     = (C) => { MODELS['malm'](C);      mattressOn(C, 193, 203, 28); };
+MODELS['gullaberg-m'] = (C) => { MODELS['gullaberg'](C); mattressOn(C, 152, 203, 16); };
+MODELS['songesand-m'] = (C) => { MODELS['songesand'](C); mattressOn(C, 152, 203, 16); };
+MODELS['idanas-m']    = (C) => { MODELS['idanas'](C);    mattressOn(C, 152, 203, 46); };
 
 /* STORKLINTA 床头柜 50×48×53：尺寸图 v03（双抽 41×16×40）+ v02/v04/v05 实拍
    （MALM 继任：台面微外挑、双深拉抽、小方脚）（brief: storklinta.md）。 */
@@ -7806,16 +8088,15 @@ MODELS['besta120'] = (C) => {
 MODELS['lack_tv'] = (C) => {
   const cm=C.cm, T=C.THREE;
   const M1 = C.M(C.col, {rough:.65, envI:.12});
-  // 4 方腿 5×5 (0→10)，四角内缩（v02 方柱腿）
-  for(const [lx,lz] of [[-52.5,-12],[52.5,-12],[-52.5,12],[52.5,12]])
-    C.rb(cm(5), cm(10), cm(5), cm(0.8), M1, cm(lx), 0, cm(lz), 4);
-  // 下搁板 117×2.5×33 (16→18.5，图标搁板 16)
-  C.rb(cm(117), cm(2.5), cm(33), cm(0.4), M1, 0, cm(16), 0, 3);
-  // 厚顶 120×4×35 (32→36，v03 蜂窝芯外观平板)
-  C.rb(cm(120), cm(4), cm(35), cm(0.8), M1, 0, cm(32), 0, 4);
-  // 顶部后侧穿线孔 Ø4 暗圈（v04 走线）
+  // v05 实拍结构（work/ref/ctables/lack_tv_*）：4 根全高方腿直顶到厚顶板，
+  // 中间两层搁板（下板顶 12.5 / 中板顶 20.5），背部开放，后顶穿线孔。
+  for(const [lx,lz] of [[-56,-12.75],[56,-12.75],[-56,12.75],[56,12.75]])
+    C.rb(cm(5), cm(34), cm(5), cm(0.8), M1, cm(lx), 0, cm(lz), 4);
+  C.rb(cm(114), cm(2), cm(27.5), cm(0.4), M1, 0, cm(10.5), 0, 3);
+  C.rb(cm(114), cm(2), cm(27.5), cm(0.4), M1, 0, cm(18.5), 0, 3);
+  C.rb(cm(120), cm(2), cm(33.5), cm(0.5), M1, 0, cm(34), 0, 4);
   const holeM = C.M('#17181b', {flat:true, rough:.9});
-  C.cyl(cm(2), cm(2), cm(0.4), holeM, 0, cm(35.8), -cm(12), 28);
+  C.cyl(cm(2), cm(2), cm(0.3), holeM, 0, cm(35.8), -cm(13), 28);
   C.g.updateMatrixWorld(true);
   const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3();
   bb.getCenter(off);
@@ -8098,12 +8379,12 @@ function alexUnit(C, ox){
     C.box(cm(2.5), cm(1.5), cm(2.5), M1, cm(ox+lx), 0, cm(lz));
   C.rb(cm(36), cm(65.5), cm(57), cm(0.5), M1, cm(ox), cm(1.5), 0, 2);
   C.rb(cm(36.5), cm(1), cm(57.5), cm(0.4), M1, cm(ox), cm(67), 0, 2);
-  C.box(cm(36), cm(65.5), cm(1), M1, cm(ox), cm(1.5), -cm(28.5));
+  C.box(cm(36), cm(67), cm(1), M1, cm(ox), 0, -cm(28.5));
   // 5 抽前板 33×12 + 黑缺口拉手
   for(let i=0;i<5;i++){
     const y0 = 3.2 + i*12.7;
     C.rb(cm(33), cm(12.2), cm(1.6), cm(0.5), M1, cm(ox), cm(y0), cm(28.2), 2);
-    C.box(cm(5), cm(1.5), cm(0.5), hM, cm(ox), cm(y0+10.8), cm(29.2));
+    C.box(cm(5), cm(1.5), cm(0.5), hM, cm(ox), cm(y0+10.8), cm(28.9));
   }
 }
 
@@ -8281,58 +8562,63 @@ MODELS['tiphede'] = (C) => {
 };
 
 /* LISTERBY 茶几 140×60×37：v0/v1 实拍（雕塑感圆角台面+板条底架+微撇锥形腿）（brief: tables6.md） */
+/* LISTERBY 140×60×37：v05 实拍结构（ref: work/ref/ctables/listerby_*）——
+   全高圆腿(微收分) + 底部板条架：两根 z 向端梁固定在腿上，板条横跨两端梁，
+   板条顶离地 12.75；大圆角跑道形台面 140×60×2.5。 */
 MODELS['listerby_ct'] = (C) => {
   const cm=C.cm, T=C.THREE;
   const M1 = C.M(C.col, {wood:'beech', rough:.55, envI:.4});
-  // 雕塑感台面 140×60×4.5 (32.5→37) 大圆角
-  C.rb(cm(140), cm(4.5), cm(60), cm(15), M1, 0, cm(32.5), 0, 6);
-  // 板条底架：12 条 (x 向) @ y 12
-  for(let i=0;i<12;i++){
-    const sz = -26.4 + i*4.8;
-    C.box(cm(56), cm(2), cm(1.6), M1, 0, cm(11), cm(sz));
-  }
-  for(const dx of [-27,27]) C.box(cm(3), cm(2), cm(56), M1, cm(dx), cm(11), 0);
-  // 4 微撇锥形腿
-  for(const [lx,lz] of [[-62,-24],[62,-24],[-62,24],[62,24]])
-    C.legT(cm(1.8), cm(1.4), cm(32.5), M1, cm(lx), cm(lz), 0.05);
+  // 4 微收分圆腿 (0→34.5)，内缩 14/10
+  for(const [lx,lz] of [[-56,-20],[56,-20],[-56,20],[56,20]])
+    C.legT(cm(2.2), cm(2.9), cm(34.5), M1, cm(lx), cm(lz), 0.03);
+  // 端梁（z 向，腿位，8.75→10.75，托住板条）
+  for(const dx of [-56,56]) C.box(cm(2.5), cm(2), cm(40), M1, cm(dx), cm(8.75), 0);
+  // 13 条板条 (x 向，10.75→12.75，端头搭在端梁上)
+  for(let i=0;i<13;i++) C.box(cm(113), cm(2), cm(2.6), M1, 0, cm(10.75), cm(-19.5+i*3.3));
+  // 跑道形台面 140×60×2.5 (34.5→37)
+  C.rb(cm(140), cm(2.5), cm(60), cm(28), M1, 0, cm(34.5), 0, 8);
   C.g.updateMatrixWorld(true);
   const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3();
   bb.getCenter(off);
   for(const ch of C.g.children){ ch.position.x-=off.x; ch.position.z-=off.z; }
 };
 
-/* LACK 茶几 118×78×45 与 LACK 边桌 55×55×45：厚顶板+下搁板/方腿（brief: tables6.md） */
-function lackTable(C){
+/* LACK 茶几 118×78×45（官方尺寸图：搁板离地 20 / 顶板离地 41，4 全高方腿）
+   与 LACK 边桌 55×55×45（实拍无下搁板，同框架）（ref: work/ref/ctables/lack_ct_*） */
+function lackTable(C, withShelf){
   const cm=C.cm, T=C.THREE, w=C.w*30.48, d=C.d*30.48;
   const M1 = C.M(C.col, {rough:.55, envI:.25});
-  // 厚顶板 4 (41→45) + 下搁板 2.2 @ y 12
-  C.rb(cm(w), cm(4), cm(d), cm(0.5), M1, 0, cm(41), 0, 3);
-  C.box(cm(w-8), cm(2.2), cm(d-8), M1, 0, cm(12), 0);
-  // 4 方腿 4.5
+  // 4 全高方腿 5×5 (0→41)
   const lx = w/2-3, lz = d/2-3;
   for(const [sx,sz] of [[-1,-1],[1,-1],[-1,1],[1,1]])
-    C.box(cm(4.5), cm(39), cm(4.5), M1, cm(sx*lx), 0, cm(sz*lz));
+    C.box(cm(5), cm(41), cm(5), M1, cm(sx*lx), 0, cm(sz*lz));
+  // 厚顶板 4 (41→45) + 下搁板 2 @ 20（仅茶几）
+  C.rb(cm(w), cm(4), cm(d), cm(0.5), M1, 0, cm(41), 0, 3);
+  if(withShelf) C.box(cm(w-9.5), cm(2), cm(d-9.5), M1, 0, cm(20), 0);
   C.g.updateMatrixWorld(true);
   const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3();
   bb.getCenter(off);
   for(const ch of C.g.children){ ch.position.x-=off.x; ch.position.z-=off.z; }
 }
-MODELS['lack_ct'] = (C) => lackTable(C);
-MODELS['lack_side'] = (C) => lackTable(C);
+MODELS['lack_ct'] = (C) => lackTable(C, true);
+MODELS['lack_side'] = (C) => lackTable(C, false);
 
-/* BORGEBY 圆茶几 Ø70×42：v0 实拍（圆顶+圆环底托+3 腿）（brief: tables6.md） */
+/* BORGEBY 圆茶几 Ø70×42：v05 实拍结构（ref: work/ref/ctables/borgeby_*）——
+   圆顶 + 3 片桨形腿（外侧贴环形底架）+ 环形收纳架（环壁 4→19、底板 4→6）。 */
 MODELS['borgeby'] = (C) => {
   const cm=C.cm, T=C.THREE;
   const M1 = C.M(C.col, {wood:'birch', rough:.5, envI:.4});
   // 圆顶 Ø70×2.5 (39.5→42)
   C.cyl(cm(35), cm(35), cm(2.5), M1, 0, cm(39.5), 0, 32);
-  // 圆环底托：壁 Ø66→62 锥 + 底板
-  C.cyl(cm(32.5), cm(31), cm(6), M1, 0, cm(8), 0, 32);
-  C.cyl(cm(31), cm(31), cm(1), M1, 0, cm(7), 0, 32);
-  // 3 腿微撇 @ 120°
-  for(let i=0;i<3;i++){
-    const a = i*2.094 + 0.52;
-    C.legT(cm(2), cm(1.5), cm(39.5), M1, cm(24*Math.cos(a)), cm(24*Math.sin(a)), 0.05);
+  // 环形收纳架：壁 Ø64 (4→19) + 底板 Ø64 (4→6)
+  C.cyl(cm(32), cm(32), cm(15), M1, 0, cm(4), 0, 40);
+  C.cyl(cm(32), cm(32), cm(2), M1, 0, cm(4), 0, 40);
+  // 3 桨形腿（Group 转竖轴定向，mesh 无复合欧拉角），贴环外壁，0→39.5
+  for(const a of [-Math.PI/2, Math.PI/6, 5*Math.PI/6]){
+    const g=new T.Group(); g.position.set(cm(32.8*Math.cos(a)), 0, cm(32.8*Math.sin(a)));
+    g.rotation.y = -a;
+    const m=C.rb(cm(2.8), cm(39.5), cm(7), cm(1.2), M1, 0, 0, 0, 4); g.remove(m); g.add(m);
+    C.g.add(g);
   }
   C.g.updateMatrixWorld(true);
   const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3();
@@ -8348,19 +8634,19 @@ MODELS['vittsjo_nest'] = (C) => {
     roughness:.05, metalness:.05});
   const GT=(w,d,x,y,z)=>{ const m=new T.Mesh(new T.BoxGeometry(cm(w),cm(0.8),cm(d)),gl);
     m.position.set(cm(x),cm(y),cm(z)); m.castShadow=m.receiveShadow=true; C.g.add(m); };
-  const unit=(W,D,H,cx,cz)=>{
+  const unit=(W,D,H,cx,cz,shelf)=>{
     const px=W/2-1, pz=D/2-1;
     for(const [sx,sz] of [[-1,-1],[1,-1],[-1,1],[1,1]])
       C.rb(cm(2), cm(H-2), cm(2), cm(0.4), st, cm(cx+sx*px), 0, cm(cz+sz*pz), 3);
-    C.box(cm(W-4), cm(2), cm(2), st, cm(cx), cm(H-4), cm(cz+pz-1));
-    C.box(cm(W-4), cm(2), cm(2), st, cm(cx), cm(H-4), cm(cz-pz+1));
-    C.box(cm(2), cm(2), cm(D-4), st, cm(cx+px-1), cm(H-4), cm(cz));
-    C.box(cm(2), cm(2), cm(D-4), st, cm(cx-px+1), cm(H-4), cm(cz));
-    GT(W-2.5, D-2.5, cx, H-1, cz);
-    C.box(cm(W-8), cm(1.5), cm(D-8), st, cm(cx), cm(12), cm(cz));
+    C.box(cm(W), cm(2), cm(2), st, cm(cx), cm(H-4), cm(cz+pz-1));
+    C.box(cm(W), cm(2), cm(2), st, cm(cx), cm(H-4), cm(cz-pz-1));
+    C.box(cm(2), cm(2), cm(D), st, cm(cx+px-1), cm(H-4), cm(cz));
+    C.box(cm(2), cm(2), cm(D), st, cm(cx-px+1), cm(H-4), cm(cz));
+    GT(W-2.5, D-2.5, cx, H-1.6, cz);
+    if(shelf) C.box(cm(W-1), cm(1.5), cm(D-1), st, cm(cx), cm(12), cm(cz));
   };
-  unit(60, 50, 50, -15, 0);
-  unit(30, 40, 42, 25, 0);
+  unit(60, 50, 50, -15, 0, true);   // 大几带下搁板
+  unit(30, 40, 42, 25, -2, false);  // 小几嵌套（实拍无搁板）
   C.g.updateMatrixWorld(true);
   const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3();
   bb.getCenter(off);
@@ -8388,6 +8674,728 @@ MODELS['hektar_f'] = (C) => {
   C.cyl(cm(0.4), cm(0.4), cm(148), cordM, 0, cm(6), -cm(2.6), 8);
   // 灯源（对齐泛型 lamp 回退）
   const pt = new T.PointLight(0xffe8b8, .5, 14); pt.position.y = cm(166); C.g.add(pt);
+  C.g.updateMatrixWorld(true);
+  const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3();
+  bb.getCenter(off);
+  for(const ch of C.g.children){ ch.position.x-=off.x; ch.position.z-=off.z; }
+};
+
+let _pleatTex = null;
+function pleatedTexture(){                 // 百褶罩（ÖKENSAND/ÅRSTID）：竖向褶纹（亮暗条纹）
+  if(_pleatTex) return _pleatTex;
+  srand(1020);
+  const N=512, c=document.createElement('canvas'); c.width=c.height=N;
+  const g=c.getContext('2d');
+  g.fillStyle='#fbfaf6'; g.fillRect(0,0,N,N);
+  const P=32;                                  // 褶周期（像素）
+  for(let x=0; x<N; x++){
+    const ph=(x%P)/P;
+    const shade=1-0.24*Math.abs(1-2*ph);       // 褶谷暗、褶棱亮
+    g.fillStyle=`rgba(92,86,70,${(1-shade)*0.45})`;
+    g.fillRect(x,0,1,N);
+  }
+  const t=new THREE.CanvasTexture(c); t.wrapS=t.wrapT=THREE.RepeatWrapping;
+  t.repeat.set(12,1); t.encoding=THREE.sRGBEncoding; t.anisotropy=8;
+  _pleatTex=t; return t;
+}
+
+let _ribTex = null;
+function ribbedTexture(){                // STRANDAD 鼓罩：水平罗纹环（接近白，颜色靠材质相乘）
+  if(_ribTex) return _ribTex;
+  srand(1021);
+  const N=512, c=document.createElement('canvas'); c.width=c.height=N;
+  const g=c.getContext('2d');
+  g.fillStyle='#fbfaf6'; g.fillRect(0,0,N,N);
+  const P=20;
+  for(let y=0;y<N;y++){
+    const ph=(y%P)/P;
+    const shade=1-0.55*Math.abs(1-2*ph);
+    g.fillStyle=`rgba(104,98,84,${(1-shade)*0.85})`;
+    g.fillRect(0,y,N,1);
+  }
+  const t=new THREE.CanvasTexture(c); t.wrapS=t.wrapT=THREE.RepeatWrapping;
+  t.repeat.set(1,14); t.encoding=THREE.sRGBEncoding; t.anisotropy=8;
+  _ribTex=t; return t;
+}
+
+let _rufTex = null;
+function ruffleTexture(){                // VINDKAST 皱褶纸球：随机褶斑
+  if(_rufTex) return _rufTex;
+  srand(1022);
+  const N=512, c=document.createElement('canvas'); c.width=c.height=N;
+  const g=c.getContext('2d');
+  g.fillStyle='#f6f4ee'; g.fillRect(0,0,N,N);
+  for(let i=0;i<2600;i++){
+    const x=rnd01()*N, y=rnd01()*N, r=2+rnd01()*7;
+    const a=rnd01();
+    g.fillStyle=`rgba(${200+40*a|0},${198+40*a|0},${188+38*a|0},${0.25+rnd01()*0.4})`;
+    g.beginPath(); g.arc(x,y,r,0,6.283); g.fill();
+  }
+  const t=new THREE.CanvasTexture(c); t.wrapS=t.wrapT=THREE.RepeatWrapping;
+  t.repeat.set(3,2); t.encoding=THREE.sRGBEncoding; t.anisotropy=8;
+  _rufTex=t; return t;
+}
+
+/* 落地灯批次二（2026-09，IKEA 畅销 10 款）。
+   灯罩用 DoubleSide；发光盘/球用 emissive 材质（ensureTextured 会补贴图）。 */
+
+/* LAUTERS 三脚架落地灯 61×61×150：木质三脚 + 可抽拉调高中柱(47–59″) + 白筒罩 Ø38 */
+MODELS['lauters'] = (C) => {
+  const cm=C.cm, T=C.THREE;
+  const wood = C.M(C.col, {wood:'birch', rough:.5});
+  const cordM = C.M(0xefeee6, {rough:.7, flat:true, envI:.15});
+  const glow = new T.MeshStandardMaterial({color:0xfaf6ec, roughness:.5, metalness:0,
+    emissive:0xffe9c0, emissiveIntensity:.45, side:T.DoubleSide});
+  // 颈环盘 Ø10×2.5 @57.5（三脚挂载点）
+  C.cyl(cm(5), cm(5), cm(2.5), wood, 0, cm(57.5), 0, 24);
+  // 下盘两块（线绕盘）
+  C.cyl(cm(2.6), cm(2.6), cm(1.1), wood, 0, cm(19), 0, 16);
+  C.cyl(cm(2.6), cm(2.6), cm(1.1), wood, 0, cm(22.5), 0, 16);
+  // 中柱 Ø2.2（0→117, 贯穿下盘）+ 顶部小灯座
+  C.cyl(cm(1.1), cm(1.1), cm(117), wood, 0, cm(0), 0, 14);
+  C.cyl(cm(1.5), cm(1.5), cm(4), wood, 0, cm(117), 0, 12);
+  // 白线：沿中柱外侧下绕
+  C.tube(cm(96), cm(0.22), cordM, cm(1.5), cm(68), 0);
+  // 三脚：从颈环(r4.5, y58)到脚尖(r30.5, y0)，截面 2.4cm 圆杆
+  const UP = new T.Vector3(0,1,0);
+  for(const a of [0, 2.09, 4.19]){
+    const P1 = new T.Vector3(Math.sin(a)*cm(4.5), cm(58), Math.cos(a)*cm(4.5));
+    const P2 = new T.Vector3(Math.sin(a)*cm(34), cm(0.6), Math.cos(a)*cm(34));
+    const d = new T.Vector3().subVectors(P2, P1); const L=d.length(); d.normalize();
+    const m = new T.Mesh(new T.CylinderGeometry(cm(1.2), cm(1.05), L, 10), wood);
+    m.quaternion.setFromUnitVectors(UP, d);
+    m.position.copy(P1).addScaledVector(d, L/2);
+    m.castShadow=m.receiveShadow=true; C.g.add(m);
+  }
+  // 白筒罩 Ø38×33（117→150）
+  const shade = new T.Mesh(new T.CylinderGeometry(cm(19), cm(19), cm(33), 28, 1, true), glow);
+  shade.position.y = cm(133.5); shade.castShadow=true; C.g.add(shade);
+  const pt = new T.PointLight(0xffe8b8, .45, 12); pt.position.y = cm(133); C.g.add(pt);
+  C.g.updateMatrixWorld(true);
+  const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3();
+  bb.getCenter(off);
+  for(const ch of C.g.children){ ch.position.x-=off.x; ch.position.z-=off.z; }
+};
+
+/* ÖKENSAND 155：三根细榉木脚 + 巨型百褶锥罩(垂至近地)；罩内 3×E12 烛形灯 */
+MODELS['oekensand'] = (C) => {
+  const cm=C.cm, T=C.THREE;
+  const beech = C.M(C.col2 || 0xcbb494, {wood:'beech', rough:.5});
+  const pleatM = C.M(C.col, {rough:.9, flat:true, envI:.2});
+  pleatM.map = pleatedTexture(); pleatM.normalMap = normalFromTexture(pleatedTexture(), .8);
+  pleatM.side = T.DoubleSide;
+  // 中央轴套（藏在罩内）+ 中柱（0→40, 三脚汇合处）
+  C.cyl(cm(2.5), cm(2.5), cm(8), beech, 0, cm(38), 0, 12);
+  C.cyl(cm(1.5), cm(1.5), cm(40), beech, 0, cm(0), 0, 12);
+  // 三根细脚：从轴(r2, y40)到脚尖(r24, y0)
+  const UP = new T.Vector3(0,1,0);
+  for(const a of [0.5, 2.6, 4.7]){
+    const P1 = new T.Vector3(Math.sin(a)*cm(2), cm(40), Math.cos(a)*cm(2));
+    const P2 = new T.Vector3(Math.sin(a)*cm(24), cm(0.4), Math.cos(a)*cm(24));
+    const d = new T.Vector3().subVectors(P2, P1); const L=d.length(); d.normalize();
+    const m = new T.Mesh(new T.CylinderGeometry(cm(0.75), cm(0.6), L, 8), beech);
+    m.quaternion.setFromUnitVectors(UP, d);
+    m.position.copy(P1).addScaledVector(d, L/2);
+    m.castShadow=m.receiveShadow=true; C.g.add(m);
+  }
+  // 百褶锥罩：底 Ø41 @45 → 顶 Ø35.6 @155（顶封死）
+  C.lathe([[cm(20.5),cm(45)],[cm(18.5),cm(140)],[cm(17.8),cm(154)],[cm(0.1),cm(155)]], pleatM, 0,0,0, 36);
+  // 3× E12 烛形灯泡（近顶）
+  const glass = C.M(0xf8f6ee, {rough:.2, flat:true, envI:.4});
+  const bulbGlow = new T.MeshStandardMaterial({color:0xfff3d6, emissive:0xffe0a0, emissiveIntensity:1.2});
+  for(const a of [0.5, 2.6, 4.7]){
+    const b = new T.Mesh(new T.CylinderGeometry(cm(0.9), cm(0.7), cm(3.5), 8), glass);
+    b.position.set(Math.sin(a)*cm(5), cm(127), Math.cos(a)*cm(5)); b.castShadow=true; C.g.add(b);
+    const s = new T.Mesh(new T.SphereGeometry(cm(1.1), 10, 8), bulbGlow);
+    s.position.set(Math.sin(a)*cm(5), cm(129.5), Math.cos(a)*cm(5)); C.g.add(s);
+  }
+  const pt = new T.PointLight(0xffe8b8, .5, 16); pt.position.y = cm(110); C.g.add(pt);
+  C.g.updateMatrixWorld(true);
+  const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3();
+  bb.getCenter(off);
+  for(const ch of C.g.children){ ch.position.x-=off.x; ch.position.z-=off.z; }
+};
+
+/* LERSTA 铬色鹅颈阅读灯 25×45×132：圆盘座 + 杆 + 鹅颈 + 钟形反射罩 */
+MODELS['lersta'] = (C) => {
+  const cm=C.cm, T=C.THREE;
+  const chrome = C.M(C.col, {metal:.85, rough:.25, envI:.9});
+  const black = C.M(0x232326, {rough:.5, envI:.3});
+  // 圆盘座 Ø25.4×3 + 杆 Ø1.8（3→112）
+  C.cyl(cm(12.7), cm(12.7), cm(3), chrome, 0, 0, 0, 24);
+  C.cyl(cm(0.9), cm(0.9), cm(109), chrome, 0, cm(3), 0, 12);
+  // 鹅颈（柔性管）：升到顶 132 后向 +z 弯出再下钩
+  const curve = new T.CatmullRomCurve3([
+    new T.Vector3(0, cm(112), 0), new T.Vector3(0, cm(126), 0),
+    new T.Vector3(0, cm(132), cm(7)), new T.Vector3(0, cm(131), cm(16)),
+    new T.Vector3(0, cm(126), cm(21)), new T.Vector3(0, cm(121), cm(23))
+  ]);
+  const neck = new T.Mesh(new T.TubeGeometry(curve, 24, cm(0.55), 8), chrome);
+  neck.castShadow=true; C.g.add(neck);
+  // 钟形反射罩：挂在颈端 (z23)，口朝下（底 y105 → 顶 y121）
+  const bellM = chrome.clone(); bellM.side = T.DoubleSide;
+  C.lathe([[cm(7.5),cm(0)],[cm(7.8),cm(1.5)],[cm(6.2),cm(8)],[cm(3.2),cm(13)],[cm(1.6),cm(15.5)],[cm(0.1),cm(16)]], bellM, 0, cm(105), cm(23), 24);
+  // 颈端延伸段穿入罩内（100→121）
+  C.cyl(cm(0.55), cm(0.55), cm(21), chrome, 0, cm(100), cm(23), 10);
+  // 罩内发光
+  const glow = new T.MeshStandardMaterial({color:0xfff4dc, emissive:0xffe9c0, emissiveIntensity:1.0});
+  const s1 = new T.Mesh(new T.SphereGeometry(cm(3.4), 12, 10), glow);
+  s1.position.set(0, cm(112), cm(23)); C.g.add(s1);
+  // 杆上小开关 @60
+  C.box(cm(1.4), cm(3), cm(1.6), black, 0, cm(58), cm(0.8));
+  const pt = new T.PointLight(0xffe8b8, .4, 10); pt.position.set(0, cm(110), cm(23)); C.g.add(pt);
+  C.g.updateMatrixWorld(true);
+  const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3();
+  bb.getCenter(off);
+  for(const ch of C.g.children){ ch.position.x-=off.x; ch.position.z-=off.z; }
+};
+
+/* ÅRSTID 155：车削底座 + 两段杆 + 百褶锥形罩(底 Ø35.6→顶 Ø21) + 拉珠。占地取罩宽 36 */
+MODELS['arstid'] = (C) => {
+  const cm=C.cm, T=C.THREE;
+  const metal = C.M(C.col, {metal:.55, rough:.35, envI:.8});
+  const pleatM = C.M(C.col2 || 0xf2efe6, {rough:.9, flat:true, envI:.2});
+  pleatM.map = pleatedTexture(); pleatM.normalMap = normalFromTexture(pleatedTexture(), .8);
+  pleatM.side = T.DoubleSide;
+  // 车削底座（黄铜/镍，层叠圆盘）
+  C.lathe([[cm(0.1),cm(0)],[cm(14),cm(0.3)],[cm(14),cm(1.8)],[cm(10.5),cm(2.2)],[cm(10.5),cm(3.8)],
+           [cm(7),cm(4.2)],[cm(7),cm(6.8)],[cm(2.6),cm(7.2)],[cm(2.6),cm(10)],[cm(4),cm(10.4)],[cm(4),cm(12)]], metal, 0,0,0, 28);
+  // 杆 Ø1.8（12→121）+ 中段接环 @78
+  C.cyl(cm(0.9), cm(0.9), cm(109), metal, 0, cm(12), 0, 12);
+  const ring = new T.Mesh(new T.TorusGeometry(cm(1.1), cm(0.35), 8, 20), metal);
+  ring.rotation.x = Math.PI/2; ring.position.y = cm(78); C.g.add(ring);
+  // 拉珠（罩下前侧）
+  const chainM = C.M(0x9a8a5a, {metal:.5, rough:.4, envI:.5});
+  C.cyl(cm(0.15), cm(0.15), cm(9), chainM, cm(2.6), cm(111), cm(1.2));
+  C.sph(cm(0.5), chainM, cm(2.6), cm(110.5), cm(1.2));
+  // 百褶锥形罩：底 Ø35.6 @121 → 顶 Ø21 @155（开口）
+  const shade = new T.Mesh(new T.CylinderGeometry(cm(10.5), cm(17.8), cm(34), 28, 1, true), pleatM);
+  shade.position.y = cm(138); shade.castShadow=true; C.g.add(shade);
+  const pt = new T.PointLight(0xffe8b8, .45, 12); pt.position.y = cm(140); C.g.add(pt);
+  C.g.updateMatrixWorld(true);
+  const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3();
+  bb.getCenter(off);
+  for(const ch of C.g.children){ ch.position.x-=off.x; ch.position.z-=off.z; }
+};
+
+/* TÅGARP 上照落地灯 23×23×180：小圆底座 + 细杆 + 顶部白色抛物碗(开口朝上, Ø23) */
+MODELS['tagarp'] = (C) => {
+  const cm=C.cm, T=C.THREE;
+  const black = C.M(C.col, {rough:.45, envI:.4});
+  const white = C.M(C.col2 || 0xf2efe8, {rough:.4, flat:true, envI:.3});
+  // 圆盘座 Ø20×2.5 + 杆 Ø1.2（2.5→169）
+  C.cyl(cm(10), cm(10), cm(2.5), black, 0, 0, 0, 24);
+  C.cyl(cm(0.6), cm(0.6), cm(166.5), black, 0, cm(2.5), 0, 12);
+  // 颈锥
+  C.cyl(cm(1.4), cm(3), cm(4), black, 0, cm(169), 0, 12);
+  // 白抛物碗：底封死、口朝上（171→180）
+  white.side = T.DoubleSide;
+  C.lathe([[cm(0.1),cm(0)],[cm(6),cm(0.3)],[cm(10.5),cm(2)],[cm(11.4),cm(6)],[cm(11.45),cm(9)]], white, 0, cm(171), 0, 28);
+  // 碗内发光盘
+  const glow = new T.MeshStandardMaterial({color:0xfdf9f0, emissive:0xfff0d0, emissiveIntensity:1.0});
+  const disc = new T.Mesh(new T.CircleGeometry(cm(8), 20), glow);
+  disc.rotation.x = -Math.PI/2; disc.position.y = cm(172.5); C.g.add(disc);
+  const pt = new T.PointLight(0xfff0d0, .5, 12); pt.position.y = cm(175); C.g.add(pt);
+  C.g.updateMatrixWorld(true);
+  const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3();
+  bb.getCenter(off);
+  for(const ch of C.g.children){ ch.position.x-=off.x; ch.position.z-=off.z; }
+};
+
+/* BARLAST 150：十字薄板底座 + 细杆 + 白锥形布罩(底 Ø30.5→顶 Ø25) */
+MODELS['barlast'] = (C) => {
+  const cm=C.cm, T=C.THREE;
+  const black = C.M(C.col, {rough:.5, envI:.3});
+  const fab = C.M(0xf5f3ec, {fabric:true, rough:.95, envI:.25});
+  // 十字薄板底座（两板 33×1.5×2.2 交叉，中心在原点）+ 中心盘
+  C.box(cm(33), cm(1.5), cm(2.2), black, 0, 0, 0);
+  C.box(cm(2.2), cm(1.5), cm(33), black, 0, 0, 0);
+  C.cyl(cm(2.5), cm(2.5), cm(2), black, 0, 0, 0, 16);
+  // 杆 Ø1.3（1.5→120）
+  C.cyl(cm(0.65), cm(0.65), cm(118.5), black, 0, cm(1.5), 0, 12);
+  // 开关（贴在杆前）+ 电源线（沿后侧到地面）
+  C.box(cm(1.6), cm(3.5), cm(1.2), C.M(0x1a1a1e, {flat:true, rough:.6, envI:.2}), 0, cm(68), cm(0.6));
+  C.tube(cm(118), cm(0.18), C.M(0x1a1a1e, {flat:true, rough:.6, envI:.2}), -cm(0.9), cm(59.5), -cm(0.6));
+  // 白锥形罩：底 Ø30.5 @118 → 顶 Ø25 @150
+  const shade = new T.Mesh(new T.CylinderGeometry(cm(12.5), cm(15.25), cm(32), 28, 1, true), fab);
+  shade.position.y = cm(134); shade.castShadow=true; C.g.add(shade);
+  const pt = new T.PointLight(0xffe8b8, .4, 10); pt.position.y = cm(132); C.g.add(pt);
+  C.g.updateMatrixWorld(true);
+  const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3();
+  bb.getCenter(off);
+  for(const ch of C.g.children){ ch.position.x-=off.x; ch.position.z-=off.z; }
+};
+
+/* NYMÅNE 160：白杆 + 三筒射灯(可各自转向)；占地取头展 23 */
+MODELS['nymane'] = (C) => {
+  const cm=C.cm, T=C.THREE;
+  const white = C.M(C.col, {rough:.4, envI:.35});
+  const glow = new T.MeshStandardMaterial({color:0xfff4dc, emissive:0xffe9c0, emissiveIntensity:1.0});
+  // 圆盘座 Ø25×3 + 杆 Ø2（3→160）
+  C.cyl(cm(12.5), cm(12.5), cm(3), white, 0, 0, 0, 24);
+  C.cyl(cm(1), cm(1), cm(157), white, 0, cm(3), 0, 14);
+  // 射灯头工厂：筒 Ø7.6×16，短臂伸出，可绕竖轴转 + 下倾
+  const head = (y, rotY, tilt) => {
+    const g = new T.Group(); g.position.y = cm(y); g.rotation.y = rotY; C.g.add(g);
+    const arm = new T.Mesh(new T.CylinderGeometry(cm(0.6), cm(0.6), cm(3), 8), white);
+    arm.rotation.z = Math.PI/2; arm.position.x = cm(1.6); arm.castShadow=true; g.add(arm);
+    const hg = new T.Group(); hg.position.x = cm(3); hg.rotation.z = -tilt; g.add(hg);
+    const barrel = new T.Mesh(new T.CylinderGeometry(cm(3.8), cm(3.8), cm(16), 16), white);
+    barrel.rotation.z = Math.PI/2; barrel.castShadow=true; hg.add(barrel);
+    const mouth = new T.Mesh(new T.CircleGeometry(cm(3.4), 16), glow);
+    mouth.rotation.y = Math.PI/2; mouth.position.x = cm(8.1); hg.add(mouth);
+    const back = new T.Mesh(new T.CircleGeometry(cm(3.4), 16), white);
+    back.rotation.y = -Math.PI/2; back.position.x = cm(-8.1); hg.add(back);
+  };
+  head(148, 0.6, 0.35);    // 顶头：右前下倾
+  head(106, -2.2, 0.5);   // 中头：左下倾
+  head(72, 1.1, 0.25);    // 下头：右下倾
+  const pt = new T.PointLight(0xffe8b8, .45, 11); pt.position.y = cm(120); C.g.add(pt);
+  C.g.updateMatrixWorld(true);
+  const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3();
+  bb.getCenter(off);
+  for(const ch of C.g.children){ ch.position.x-=off.x; ch.position.z-=off.z; }
+};
+
+/* ISJAKT LED 上照/阅读 50×24×180：顶盘上照 + 前分支杆 + 横臂阅读灯，双按钮可调光 */
+MODELS['isjakt'] = (C) => {
+  const cm=C.cm, T=C.THREE;
+  const nick = C.M(C.col, {metal:.6, rough:.3, envI:.85});
+  const btn = C.M(0x55555a, {flat:true, rough:.5, envI:.3});
+  const glow = new T.MeshStandardMaterial({color:0xfdf8ee, emissive:0xffe9c0, emissiveIntensity:1.0});
+  // 圆盘座 Ø24×2.5 + 主杆 Ø1.6（2.5→178.5）
+  C.cyl(cm(12), cm(12), cm(2.5), nick, 0, 0, 0, 24);
+  C.cyl(cm(0.8), cm(0.8), cm(176), nick, 0, cm(2.5), 0, 12);
+  // 顶部上照盘：镍边 Ø24×1 + 发光面
+  C.cyl(cm(12), cm(12), cm(1), nick, 0, cm(178.5), 0, 24);
+  const topGlow = new T.Mesh(new T.CircleGeometry(cm(10.5), 24), glow);
+  topGlow.rotation.x = -Math.PI/2; topGlow.position.y = cm(179.55); C.g.add(topGlow);
+  // 分支：前侧(z+0.6)短杆(98→120) + 平横臂(0→33.5) + 末端阅读盘(Ø10, 发光面朝下)
+  C.cyl(cm(0.8), cm(0.8), cm(22), nick, 0, cm(98), cm(0.6), 12);
+  C.box(cm(33.5), cm(1.6), cm(2.2), nick, cm(16.75), cm(118.5), cm(1.5));
+  C.cyl(cm(5), cm(5), cm(1.2), nick, cm(33.5), cm(117), cm(1.5), 20);
+  // 小穿钉：贯穿横臂与阅读盘（116.5→121）
+  C.cyl(cm(0.5), cm(0.5), cm(4.5), nick, cm(33.5), cm(116.5), cm(1.5), 10);
+  const rd = new T.Mesh(new T.CircleGeometry(cm(4.2), 20), glow);
+  rd.rotation.x = Math.PI/2; rd.position.set(cm(33.5), cm(117.02), cm(1.5)); C.g.add(rd);
+  // 连接板 + 双按钮（阅读/上照各一）
+  C.box(cm(2.4), cm(9), cm(1.6), nick, 0, cm(95.5), cm(0.4));
+  C.cyl(cm(0.7), cm(0.7), cm(0.5), btn, 0, cm(102), cm(1.1));
+  C.cyl(cm(0.7), cm(0.7), cm(0.5), btn, 0, cm(99.5), cm(1.1));
+  const pt1 = new T.PointLight(0xffe8b8, .4, 12); pt1.position.y = cm(120); C.g.add(pt1);
+  const pt2 = new T.PointLight(0xffe8b8, .3, 9); pt2.position.set(cm(12), cm(170), 0); C.g.add(pt2);
+  C.g.updateMatrixWorld(true);
+  const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3();
+  bb.getCenter(off);
+  for(const ch of C.g.children){ ch.position.x-=off.x; ch.position.z-=off.z; }
+};
+
+/* NYFORS 168：环状底座 + 两段杆(54–66″) + 米白锥形罩(底 Ø38→顶 Ø24) + 拉珠。占地取罩宽 38 */
+MODELS['nyfors'] = (C) => {
+  const cm=C.cm, T=C.THREE;
+  const nick = C.M(C.col, {metal:.6, rough:.3, envI:.85});
+  const fab = C.M(C.col2 || 0xefe9db, {fabric:true, rough:.95, envI:.25});
+  const chainM = C.M(0x8a8a86, {metal:.4, rough:.4, envI:.5});
+  // 环状底座（外 Ø28 / 内 Ø18）+ 环内小方脚
+  C.lathe([[cm(9),cm(0)],[cm(14),cm(0)],[cm(14),cm(1.8)],[cm(12.5),cm(2)],[cm(9),cm(2)]], nick, 0,0,0, 28);
+  C.box(cm(5), cm(2), cm(7), nick, 0, 0, -cm(3.5));
+  // 杆 Ø1.4（2→140）+ 加粗段（140→146）
+  C.cyl(cm(0.7), cm(0.7), cm(138), nick, 0, cm(2), 0, 12);
+  C.cyl(cm(1.1), cm(1.1), cm(6), nick, 0, cm(140), 0, 12);
+  // 拉珠（前右，罩下）
+  C.cyl(cm(0.15), cm(0.15), cm(9), chainM, cm(2.2), cm(129), cm(1));
+  C.sph(cm(0.5), chainM, cm(2.2), cm(128.5), cm(1));
+  // 锥形罩：底 Ø38 @138 → 顶 Ø24 @168
+  const shade = new T.Mesh(new T.CylinderGeometry(cm(12), cm(19), cm(30), 28, 1, true), fab);
+  shade.position.y = cm(153); shade.castShadow=true; C.g.add(shade);
+  const pt = new T.PointLight(0xffe8b8, .45, 12); pt.position.y = cm(152); C.g.add(pt);
+  C.g.updateMatrixWorld(true);
+  const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3();
+  bb.getCenter(off);
+  for(const ch of C.g.children){ ch.position.x-=off.x; ch.position.z-=off.z; }
+};
+
+/* RÖDFLIK 41×25×140：圆底座 + 杆顶 J 钩弯 + 铃形罩(悬于钩前)；黄铜关节 */
+MODELS['roedflik'] = (C) => {
+  const cm=C.cm, T=C.THREE;
+  const body = C.M(C.col, {rough:.35, clear:.5, envI:.5});
+  const brass = C.M(0xc9a24d, {metal:.7, rough:.3, envI:.9});
+  const glow = new T.MeshStandardMaterial({color:0xfff4dc, emissive:0xffe9c0, emissiveIntensity:1.0});
+  // 圆盘座 Ø25.4×3 + 杆 Ø1.6（3→118）
+  C.cyl(cm(12.7), cm(12.7), cm(3), body, 0, 0, 0, 24);
+  C.cyl(cm(0.8), cm(0.8), cm(115), body, 0, cm(3), 0, 12);
+  // J 钩弯：升到顶 140 后向 +z 弯出再下钩
+  const curve = new T.CatmullRomCurve3([
+    new T.Vector3(0, cm(118), 0), new T.Vector3(0, cm(132), 0),
+    new T.Vector3(0, cm(140), cm(7)), new T.Vector3(0, cm(139), cm(15.5)),
+    new T.Vector3(0, cm(134), cm(19.5))
+  ]);
+  const hook = new T.Mesh(new T.TubeGeometry(curve, 24, cm(0.8), 8), body);
+  hook.castShadow=true; C.g.add(hook);
+  // 黄铜关节（弯折处）
+  C.cyl(cm(1.3), cm(1.3), cm(4), brass, 0, cm(134), cm(6.5), 12);
+  // 铃形罩：挂在钩尖端 (z19.5)，口朝下（底 y118 → 顶 y134）
+  const bellM = body.clone(); bellM.side = T.DoubleSide;
+  C.lathe([[cm(7.5),cm(0)],[cm(7.8),cm(1.5)],[cm(6),cm(8)],[cm(3),cm(12)],[cm(1.5),cm(15)],[cm(0.1),cm(15.5)]], bellM, 0, cm(118), cm(19.5), 24);
+  // 罩内发光
+  const s1 = new T.Mesh(new T.SphereGeometry(cm(3.2), 12, 10), glow);
+  s1.position.set(0, cm(126), cm(19.5)); C.g.add(s1);
+  const pt = new T.PointLight(0xffe8b8, .4, 10); pt.position.set(0, cm(124), cm(19.5)); C.g.add(pt);
+  C.g.updateMatrixWorld(true);
+  const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3();
+  bb.getCenter(off);
+  for(const ch of C.g.children){ ch.position.x-=off.x; ch.position.z-=off.z; }
+};
+
+/* 落地灯批次三（2026-09，IKEA 畅销 10 款：simrishamn/strandad/sambord/ps2026/evedal/
+   flyghoejd/kinnahult/kloeving/uppvind/vindkast） */
+
+/* SIMRISHAMN 三球落地灯 31×31×158：U 形铬架 + 三根立杆(间隔 20cm) + 3 只乳白球(E12×3)，
+   最高球顶 157.5(62″)；杆顶 ~81/60/150 */
+MODELS['simrishamn'] = (C) => {
+  const cm=C.cm, T=C.THREE;
+  const chrome = C.M(C.col, {metal:.85, rough:.25, envI:.9});
+  const globeM = new T.MeshStandardMaterial({color:0xf7f5ef, roughness:.4, metalness:0,
+    emissive:0xffe9c0, emissiveIntensity:.35});
+  // 圆盘底座 Ø30.5×2.5
+  C.cyl(cm(15.25), cm(15.25), cm(2.5), chrome, 0, 0, 0, 28);
+  // 三根立杆（左 x-10 →81；中 x0 →60；右 x+10 →150）
+  C.cyl(cm(0.8), cm(0.8), cm(98.5), chrome, -cm(10), cm(2.5), 0, 10);
+  C.cyl(cm(0.8), cm(0.8), cm(123.5), chrome, 0, cm(2.5), 0, 10);
+  C.cyl(cm(0.8), cm(0.8), cm(148.5), chrome, cm(10), cm(2.5), 0, 10);
+  // U 形弯连接外侧两杆（底部）
+  const u = new T.CatmullRomCurve3([
+    new T.Vector3(-cm(10), cm(24), 0), new T.Vector3(-cm(10), cm(9), 0),
+    new T.Vector3(-cm(5.5), cm(3.4), 0), new T.Vector3(cm(5.5), cm(3.4), 0),
+    new T.Vector3(cm(10), cm(9), 0), new T.Vector3(cm(10), cm(24), 0)
+  ]);
+  const um = new T.Mesh(new T.TubeGeometry(u, 20, cm(0.8), 8), chrome);
+  um.castShadow=true; C.g.add(um);
+  // 三只乳白球（Ø7.5，E12 乳玻）
+  C.sph(cm(3.75), globeM, -cm(10), cm(105), 0, 16);
+  C.sph(cm(3.75), globeM, 0, cm(130), 0, 16);
+  C.sph(cm(3.75), globeM, cm(10), cm(154.75), 0, 16);
+  const pt = new T.PointLight(0xffe8b8, .3, 12); pt.position.set(0, cm(120), 0); C.g.add(pt);
+  C.g.updateMatrixWorld(true);
+  const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3();
+  bb.getCenter(off);
+  for(const ch of C.g.children){ ch.position.x-=off.x; ch.position.z-=off.z; }
+};
+
+/* STRANDAD 百褶鼓罩落地灯 24×21×112：三细黑腿(顶视展 ~23) + 水平罗纹白鼓罩(Ø20×87) */
+MODELS['strandad'] = (C) => {
+  const cm=C.cm, T=C.THREE;
+  const black = C.M(C.col2, {rough:.5, envI:.3});
+  const pleat = C.M(C.col, {fabric:true, rough:.9, envI:.12});
+  pleat.map = ribbedTexture(); pleat.normalMap = normalFromTexture(ribbedTexture(), 1.3);
+  // 环形底座（腿站在环上）
+  C.torus(cm(10.5), cm(0.5), black, 0, cm(0.5), 0, Math.PI/2);
+  // 三条细腿（环面向上汇聚到 r2 @23）
+  C.rep(3, i=>{
+    const a = i*Math.PI*2/3 + Math.PI/2;
+    const x1=Math.sin(a)*cm(11), z1=Math.cos(a)*cm(11);
+    const x2=Math.sin(a)*cm(2),  z2=Math.cos(a)*cm(2);
+    const y1=cm(1), dy=cm(22);
+    const L=Math.hypot(x2-x1, dy, z2-z1);
+    const mm=new T.Mesh(new T.CylinderGeometry(cm(0.4), cm(0.4), L, 8), black);
+    const dir=new T.Vector3(x2-x1, dy, z2-z1).normalize();
+    mm.quaternion.setFromUnitVectors(new T.Vector3(0,1,0), dir);
+    mm.position.set((x1+x2)/2, (y1+cm(23))/2, (z1+z2)/2); // y1=1 → 顶23
+    mm.castShadow=true; C.g.add(mm);
+  });
+  // 顶部毂盘
+  C.cyl(cm(2.6), cm(2.6), cm(1.6), black, 0, cm(22.4), 0, 14);
+  // 罗纹鼓罩（Ø20, 23→110）
+  const drum = new T.Mesh(new T.CylinderGeometry(cm(10), cm(10), cm(87), 40, 1, true), pleat);
+  drum.material.side = T.DoubleSide;
+  drum.position.set(0, cm(66.5), 0); drum.castShadow=true; C.g.add(drum);
+  // 顶/底箍圈
+  const rimT = new T.Mesh(new T.TorusGeometry(cm(10), cm(0.4), 8, 32), black);
+  rimT.rotation.x = Math.PI/2; rimT.position.y = cm(110); C.g.add(rimT);
+  const rimB = new T.Mesh(new T.TorusGeometry(cm(10), cm(0.4), 8, 32), black);
+  rimB.rotation.x = Math.PI/2; rimB.position.y = cm(23); C.g.add(rimB);
+  // 罩内 E26 球
+  const glow = new T.MeshStandardMaterial({color:0xfff4dc, emissive:0xffe9c0, emissiveIntensity:.55});
+  const s1 = new T.Mesh(new T.SphereGeometry(cm(3.5), 14, 10), glow);
+  s1.position.set(0, cm(88), 0); C.g.add(s1);
+  const pt = new T.PointLight(0xffe8b8, .35, 12); pt.position.set(0, cm(86), 0); C.g.add(pt);
+  C.g.updateMatrixWorld(true);
+  const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3();
+  bb.getCenter(off);
+  for(const ch of C.g.children){ ch.position.x-=off.x; ch.position.z-=off.z; }
+};
+
+/* SAMBORD 落地阅读灯 56×24×114：黑盘座(Ø23) + 直杆 + 弧形臂(左伸 38) + 乳白钟罩(Ø13, GU10) */
+MODELS['sambord'] = (C) => {
+  const cm=C.cm, T=C.THREE;
+  const black = C.M(C.col, {rough:.5, envI:.35});
+  const white = C.M(C.col2, {rough:.55, clear:.3, envI:.4});
+  // 圆盘座 Ø23×2.5
+  C.cyl(cm(11.5), cm(11.5), cm(2.5), black, 0, 0, 0, 24);
+  // 直杆（2.5→100）
+  C.cyl(cm(0.7), cm(0.7), cm(97.5), black, 0, cm(2.5), 0, 10);
+  // 弧形阅读臂：升到 114 后向左弯，尖端 (-38, 107)
+  const curve = new T.CatmullRomCurve3([
+    new T.Vector3(0, cm(96), 0), new T.Vector3(0, cm(114), 0),
+    new T.Vector3(-cm(9), cm(113.5), 0), new T.Vector3(-cm(24), cm(110), 0),
+    new T.Vector3(-cm(38), cm(106.5), 0)
+  ]);
+  const arm = new T.Mesh(new T.TubeGeometry(curve, 24, cm(0.7), 8), black);
+  arm.castShadow=true; C.g.add(arm);
+  // 乳白钟罩（Ø13, 口朝下；挂在臂尖端，底 96 → 顶 107）
+  const bellM = white.clone(); bellM.side = T.DoubleSide;
+  C.lathe([[cm(6.5),cm(0)],[cm(6.6),cm(1.2)],[cm(5.2),cm(6)],[cm(2.6),cm(9.6)],[cm(0.9),cm(10.8)],[cm(0.15),cm(11.2)]], bellM, -cm(38), cm(96), 0, 24);
+  // GU10
+  const glow = new T.MeshStandardMaterial({color:0xfff4dc, emissive:0xffe9c0, emissiveIntensity:1.0});
+  const s1 = new T.Mesh(new T.CylinderGeometry(cm(1.5), cm(1.5), cm(3.2), 12), glow);
+  s1.position.set(-cm(38), cm(101), 0); C.g.add(s1);
+  const pt = new T.PointLight(0xffe8b8, .4, 10); pt.position.set(-cm(38), cm(99), 0); C.g.add(pt);
+  C.g.updateMatrixWorld(true);
+  const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3();
+  bb.getCenter(off);
+  for(const ch of C.g.children){ ch.position.x-=off.x; ch.position.z-=off.z; }
+};
+
+/* IKEA PS 2026 落地灯 74×28×183（限量设计款，深红）：喇叭座 + 粗杆 + 顶横臂(左伸 52) + 漏斗罩(GU10) */
+MODELS['ps2026l'] = (C) => {
+  const cm=C.cm, T=C.THREE;
+  const body = C.M(C.col, {rough:.28, clear:.5, envI:.55});
+  // 喇叭形底座（r14 → r2.5，高 7）
+  C.lathe([[cm(2.5),cm(0)],[cm(8),cm(1.5)],[cm(14),cm(4.2)],[cm(14),cm(4.8)],[cm(2.5),cm(5.2)]], body, 0, 0, 0, 48);
+  // 粗杆（Ø4, 7→168）
+  C.cyl(cm(2), cm(2), cm(163), body, 0, cm(5), 0, 24);
+  // 顶部横臂（向左，尖端 -52）
+  const curve = new T.CatmullRomCurve3([
+    new T.Vector3(0, cm(168), 0), new T.Vector3(-cm(20), cm(169.5), 0),
+    new T.Vector3(-cm(40), cm(169.5), 0), new T.Vector3(-cm(52), cm(168.5), 0)
+  ]);
+  const arm = new T.Mesh(new T.TubeGeometry(curve, 28, cm(1.7), 14), body);
+  arm.castShadow=true; C.g.add(arm);
+  // 漏斗形罩（臂尖端，口朝下；底 156 → 顶 167，底 Ø15）
+  const shM = body.clone(); shM.side = T.DoubleSide;
+  C.lathe([[cm(7.5),cm(0)],[cm(7.6),cm(1.2)],[cm(4),cm(5.5)],[cm(1.2),cm(9.5)],[cm(0.6),cm(10.5)]], shM, -cm(52), cm(156), 0, 36);
+  // GU10
+  const glow = new T.MeshStandardMaterial({color:0xfff4dc, emissive:0xffe9c0, emissiveIntensity:1.0});
+  const s1 = new T.Mesh(new T.CylinderGeometry(cm(1.3), cm(1.3), cm(3), 12), glow);
+  s1.position.set(-cm(52), cm(160), 0); C.g.add(s1);
+  const pt = new T.PointLight(0xffe8b8, .45, 10); pt.position.set(-cm(52), cm(159), 0); C.g.add(pt);
+  C.g.updateMatrixWorld(true);
+  const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3();
+  bb.getCenter(off);
+  for(const ch of C.g.children){ ch.position.x-=off.x; ch.position.z-=off.z; }
+};
+
+/* EVEDAL 玻璃罩落地灯 41×41×145：黑盘座(Ø33) + 橡木杆 + 灰绿玻璃穹顶(Ø41) + 黄铜拉珠 */
+MODELS['evedal'] = (C) => {
+  const cm=C.cm, T=C.THREE;
+  const black = C.M(0x1c1d20, {rough:.5, envI:.3});
+  const oak = C.M(C.col2, {wood:'oak', rough:.6});
+  const brass = C.M(0xb08d3f, {metal:.7, rough:.35, envI:.9});
+  const white = C.M(0xf5f2ea, {rough:.5, envI:.3});
+  const glass = C.M(C.col, {rough:.15, metal:.05, envI:.9});
+  glass.transparent = true; glass.opacity = .82; glass.side = T.DoubleSide; glass.depthWrite = false;
+  // 圆盘座 Ø33×2.5
+  C.cyl(cm(16.5), cm(16.5), cm(2.5), black, 0, 0, 0, 48);
+  // 橡木杆（2.5→118）
+  C.cyl(cm(1.8), cm(1.8), cm(115.5), oak, 0, cm(2.5), 0, 16);
+  // 黄铜箍
+  C.cyl(cm(2.4), cm(2.4), cm(1.4), brass, 0, cm(118), 0, 12);
+  // 穹底乳白盘（E26 位置，小）
+  C.cyl(cm(8), cm(8), cm(1), white, 0, cm(119.4), 0, 24);
+  // 灰绿玻璃穹顶（Ø41，119.4→141.5；lathe 自下而上）
+  const dome = new T.Mesh(new T.LatheGeometry([
+    new T.Vector2(cm(20.5), cm(0)), new T.Vector2(cm(20.5), cm(10)),
+    new T.Vector2(cm(19.5), cm(14)), new T.Vector2(cm(16), cm(18)),
+    new T.Vector2(cm(9), cm(20.4)), new T.Vector2(cm(2.5), cm(21)),
+    new T.Vector2(cm(0.1), cm(21.2))
+  ], 56), glass);
+  dome.position.set(0, cm(119.4), 0); dome.castShadow=true; C.g.add(dome);
+  // 顶部黄铜盖
+  C.cyl(cm(2.5), cm(2.5), cm(1.2), brass, 0, cm(140.6), 0, 12);
+  // 黄铜拉珠链（盘下垂 6）
+  C.cyl(cm(0.12), cm(0.12), cm(6), brass, 0, cm(113.4), 0, 6);
+  C.sph(cm(0.5), brass, 0, cm(113), 0, 10);
+  // 罩内 E26
+  const glow = new T.MeshStandardMaterial({color:0xfff4dc, emissive:0xffe9c0, emissiveIntensity:.5});
+  const s1 = new T.Mesh(new T.SphereGeometry(cm(3), 14, 10), glow);
+  s1.position.set(0, cm(121), 0); C.g.add(s1);
+  const pt = new T.PointLight(0xffe8b8, .4, 12); pt.position.set(0, cm(123), 0); C.g.add(pt);
+  C.g.updateMatrixWorld(true);
+  const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3();
+  bb.getCenter(off);
+  for(const ch of C.g.children){ ch.position.x-=off.x; ch.position.z-=off.z; }
+};
+
+/* FLYGHÖJD 落地灯 36×36×142：黄铜锥形座 + 细杆 + 圆鼓罩(Ø35.5, 两种布色) */
+MODELS['flyghoejd'] = (C) => {
+  const cm=C.cm, T=C.THREE;
+  const brass = C.M(0xb08d3f, {metal:.75, rough:.3, envI:.9});
+  const shade = C.M(C.col, {fabric:true, rough:.95, envI:.12});
+  // 黄铜锥形座（r11.5 → r2, 高 6）
+  C.lathe([[cm(2),cm(0)],[cm(7),cm(1.6)],[cm(11.5),cm(5)],[cm(11.5),cm(5.6)],[cm(1.1),cm(6)]], brass, 0, 0, 0, 40);
+  // 杆：下段随罩色（6→85）、上段黄铜（85→122）
+  const poleLow = C.M(C.col, {fabric:true, rough:.95, envI:.12});
+  C.cyl(cm(0.9), cm(0.9), cm(79), poleLow, 0, cm(6), 0, 12);
+  C.cyl(cm(0.9), cm(0.9), cm(37), brass, 0, cm(85), 0, 12);
+  // 杆顶/罩底黄铜箍
+  C.cyl(cm(1.5), cm(1.5), cm(1.2), brass, 0, cm(121), 0, 12);
+  // 鼓罩（Ø35.5 → 顶 Ø33, 122→142）
+  const drum = new T.Mesh(new T.CylinderGeometry(cm(14.5), cm(17.75), cm(20), 40, 1, true), shade);
+  drum.material.side = T.DoubleSide;
+  drum.position.set(0, cm(132), 0); drum.castShadow=true; C.g.add(drum);
+  // 罩顶黄铜环
+  const rim = new T.Mesh(new T.TorusGeometry(cm(14.5), cm(0.35), 8, 28), brass);
+  rim.rotation.x = Math.PI/2; rim.position.y = cm(142); C.g.add(rim);
+  // 罩内 E26
+  const glow = new T.MeshStandardMaterial({color:0xfff4dc, emissive:0xffe9c0, emissiveIntensity:.5});
+  const s1 = new T.Mesh(new T.SphereGeometry(cm(2.6), 14, 10), glow);
+  s1.position.set(0, cm(131), 0); C.g.add(s1);
+  const pt = new T.PointLight(0xffe8b8, .4, 12); pt.position.set(0, cm(129), 0); C.g.add(pt);
+  C.g.updateMatrixWorld(true);
+  const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3();
+  bb.getCenter(off);
+  for(const ch of C.g.children){ ch.position.x-=off.x; ch.position.z-=off.z; }
+};
+
+/* KINNAHULT 车削落地灯 38×38×150：圆木座(Ø30.5) + 车削杆(3 珠) + 锥形鼓罩(底 Ø38) */
+MODELS['kinnahult'] = (C) => {
+  const cm=C.cm, T=C.THREE;
+  const ash = C.M(C.col2, {wood:'birch', rough:.55});
+  const shade = C.M(C.col, {fabric:true, rough:.95, envI:.12});
+  // 圆盘座 Ø30.5×3
+  C.cyl(cm(15.25), cm(15.25), cm(3), ash, 0, 0, 0, 32);
+  // 车削杆（3→128）
+  C.cyl(cm(1.6), cm(1.6), cm(125), ash, 0, cm(3), 0, 12);
+  // 三枚车削珠
+  C.sph(cm(2.2), ash, 0, cm(96), 0, 14);
+  C.sph(cm(2.2), ash, 0, cm(104), 0, 14);
+  C.sph(cm(2.2), ash, 0, cm(112), 0, 14);
+  C.sph(cm(2.2), ash, 0, cm(120), 0, 14);
+  // 锥形鼓罩（底 Ø38 → 顶 Ø30, 128→150）
+  const drum = new T.Mesh(new T.CylinderGeometry(cm(15), cm(19), cm(22), 40, 1, true), shade);
+  drum.material.side = T.DoubleSide;
+  drum.position.set(0, cm(139), 0); drum.castShadow=true; C.g.add(drum);
+  // 罩顶面
+  C.cyl(cm(15), cm(15), cm(0.6), shade, 0, cm(149.4), 0, 28);
+  // 罩内 E26
+  const glow = new T.MeshStandardMaterial({color:0xfff4dc, emissive:0xffe9c0, emissiveIntensity:.5});
+  const s1 = new T.Mesh(new T.SphereGeometry(cm(3), 14, 10), glow);
+  s1.position.set(0, cm(140), 0); C.g.add(s1);
+  const pt = new T.PointLight(0xffe8b8, .4, 12); pt.position.set(0, cm(138), 0); C.g.add(pt);
+  C.g.updateMatrixWorld(true);
+  const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3();
+  bb.getCenter(off);
+  for(const ch of C.g.children){ ch.position.x-=off.x; ch.position.z-=off.z; }
+};
+
+/* KLÖVING 双头射灯落地灯 28×28×147：黑盘座(Ø28) + 杆 + 上/中两只可转铃罩(GU10×2) */
+MODELS['kloeving'] = (C) => {
+  const cm=C.cm, T=C.THREE;
+  const black = C.M(C.col, {rough:.45, envI:.4});
+  const canM = black.clone(); canM.side = T.DoubleSide;
+  // 灯罐：矮圆柱（直壁 r5.5 h13）+ 顶盖 + 钮；pivot 在罐顶（向下挂）
+  const mkCan = (x, y, z, tiltX, tiltZ) => {
+    const grp = new T.Group();
+    grp.position.set(x, y, z);
+    grp.rotation.x = tiltX; grp.rotation.z = tiltZ;
+    const body = new T.Mesh(new T.CylinderGeometry(cm(5.5), cm(5.5), cm(13), 20), canM);
+    body.position.y = -cm(6.5); body.castShadow=true; grp.add(body);
+    const cap = new T.Mesh(new T.CylinderGeometry(cm(3.2), cm(5.5), cm(2.2), 20), canM);
+    cap.position.y = -cm(14.1); cap.castShadow=true; grp.add(cap);
+    const knob = new T.Mesh(new T.SphereGeometry(cm(0.9), 10, 8), canM);
+    knob.position.y = -cm(15.6); grp.add(knob);
+    C.g.add(grp);
+    return grp;
+  };
+  // 圆盘座 Ø28×2
+  C.cyl(cm(14), cm(14), cm(2), black, 0, 0, 0, 28);
+  // 杆（2→137）
+  C.cyl(cm(0.8), cm(0.8), cm(135), black, 0, cm(2), 0, 12);
+  // 顶关节球 + 顶罐（微前倾，pivot 138）
+  C.sph(cm(1.4), black, 0, cm(137.5), 0, 12);
+  mkCan(0, cm(138), 0, 0.22, 0);
+  // 中部短臂（左）+ 第二罐（斜向左下，pivot 104）
+  C.tube(cm(4), cm(0.7), black, -cm(2), cm(104), 0, 'x');
+  C.sph(cm(1.2), black, -cm(4.2), cm(104), 0, 10);
+  mkCan(-cm(4.2), cm(103.5), 0, 0.0, -0.75);
+  // GU10 ×2（罐内底部）
+  const glow = new T.MeshStandardMaterial({color:0xfff4dc, emissive:0xffe9c0, emissiveIntensity:1.0});
+  const s1 = new T.Mesh(new T.CylinderGeometry(cm(1.3), cm(1.3), cm(3), 12), glow);
+  s1.position.set(0, cm(126), 0); C.g.add(s1);
+  const s2 = new T.Mesh(new T.CylinderGeometry(cm(1.3), cm(1.3), cm(3), 12), glow);
+  s2.position.set(-cm(9), cm(96), 0); C.g.add(s2);
+  const pt = new T.PointLight(0xffe8b8, .3, 9); pt.position.set(0, cm(124), 0); C.g.add(pt);
+  const pt2 = new T.PointLight(0xffe8b8, .25, 9); pt2.position.set(-cm(9), cm(93), 0); C.g.add(pt2);
+  C.g.updateMatrixWorld(true);
+  const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3();
+  bb.getCenter(off);
+  for(const ch of C.g.children){ ch.position.x-=off.x; ch.position.z-=off.z; }
+};
+
+/* UPPVIND 黄铜框架落地灯 43×26×150：椭圆铜板座 + 回形针框架 + 白色方罩(43×26) */
+MODELS['uppvind'] = (C) => {
+  const cm=C.cm, T=C.THREE;
+  const brass = C.M(C.col2, {metal:.75, rough:.3, envI:.9});
+  const white = C.M(C.col, {fabric:true, rough:.95, envI:.12});
+  // 椭圆板座（Ø36×23×3）
+  const base = C.cyl(cm(13), cm(13), cm(3), brass, 0, 0, 0, 32);
+  base.scale.set(1.4, 1, 0.88);
+  // 回形针框架：单条扁铜条弯成的窄环（两立杆 ±4.5, 上下横条连接）
+  C.box(cm(1.6), cm(110), cm(4), brass, -cm(4.5), cm(3), 0);
+  C.box(cm(1.6), cm(110), cm(4), brass, cm(4.5), cm(3), 0);
+  C.box(cm(10.6), cm(1.6), cm(4), brass, 0, cm(112), 0);
+  C.box(cm(10.6), cm(1.6), cm(4), brass, 0, cm(3), 0);
+  // 顶中央块 + 短杆（113.6→122）
+  C.box(cm(4), cm(4), cm(4), brass, 0, cm(113.6), 0);
+  C.cyl(cm(0.6), cm(0.6), cm(9), brass, 0, cm(118), 0, 10);
+  // 白色方罩（43×30×26, 122→150）
+  C.rb(cm(43), cm(28), cm(26), cm(1.2), white, 0, cm(122), 0);
+  // 罩内 E26
+  const glow = new T.MeshStandardMaterial({color:0xfff4dc, emissive:0xffe9c0, emissiveIntensity:.5});
+  const s1 = new T.Mesh(new T.SphereGeometry(cm(2.6), 14, 10), glow);
+  s1.position.set(0, cm(135), 0); C.g.add(s1);
+  const pt = new T.PointLight(0xffe8b8, .4, 12); pt.position.set(0, cm(133), 0); C.g.add(pt);
+  C.g.updateMatrixWorld(true);
+  const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3();
+  bb.getCenter(off);
+  for(const ch of C.g.children){ ch.position.x-=off.x; ch.position.z-=off.z; }
+};
+
+/* VINDKAST 皱褶纸球落地灯 40×40×145：圆环座(Ø35.5) + 细杆 + 皱褶纸球(Ø38) */
+MODELS['vindkast'] = (C) => {
+  const cm=C.cm, T=C.THREE;
+  const white = C.M(C.col, {rough:.6, envI:.25});
+  // 圆环底座（Ø35.5，r0.7）
+  C.torus(cm(17.75), cm(0.7), white, 0, cm(0.7), 0, Math.PI/2);
+  // 细杆（1→106）
+  C.cyl(cm(0.9), cm(0.9), cm(105), white, 0, cm(1), 0, 10);
+  // 皱褶纸球（Ø38-40，106→145）：球面顶点做确定性径向皱褶位移
+  const ruf = C.M(C.col, {rough:.9, envI:.1});
+  ruf.map = ruffleTexture(); ruf.normalMap = normalFromTexture(ruffleTexture(), 1.3);
+  const rg = new T.SphereGeometry(cm(19.5), 48, 32);
+  {
+    srand(1023);
+    const pos = rg.attributes.position, nor = rg.attributes.normal;
+    const v = new T.Vector3();
+    for(let i=0; i<pos.count; i++){
+      v.fromBufferAttribute(pos, i);
+      const th = Math.atan2(v.z, v.x), ph = Math.acos(v.y / Math.max(1e-6, v.length()));
+      // 多频正弦褶：模拟揉皱纸的瓣状起伏
+      const d = 1 + 0.05*Math.sin(11*th + 2.1) * Math.sin(7*ph + 1.3)
+                 + 0.035*Math.sin(23*th + 5.2) * Math.sin(17*ph + 0.7)
+                 + 0.02*Math.sin(41*th) * Math.cos(31*ph);
+      v.multiplyScalar(d);
+      pos.setXYZ(i, v.x, v.y, v.z);
+    }
+    rg.computeVertexNormals();
+  }
+  const rball = new T.Mesh(rg, ruf);
+  rball.position.set(0, cm(125.5), 0); rball.castShadow=true; C.g.add(rball);
+  // 罩内 E26
+  const glow = new T.MeshStandardMaterial({color:0xfff4dc, emissive:0xffe9c0, emissiveIntensity:.5});
+  const s1 = new T.Mesh(new T.SphereGeometry(cm(4), 14, 10), glow);
+  s1.position.set(0, cm(125.5), 0); C.g.add(s1);
+  const pt = new T.PointLight(0xffe8b8, .4, 12); pt.position.set(0, cm(124), 0); C.g.add(pt);
   C.g.updateMatrixWorld(true);
   const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3();
   bb.getCenter(off);
@@ -8503,39 +9511,40 @@ MODELS['ekorre'] = (C) => {
   // 摇轨 ×2（∪ 形弧，长 70，中点近地，端头翘起）
   const rock=seg2pts([
     ['L',[-35,9.5]],
-    ['Q',[-35,9.5],[-17,1.0],[0,0.6]],
-    ['Q',[0,0.6],[17,1.0],[35,9.5]],
+    ['Q',[-35,9.5],[-17,0.6],[0,0.2]],
+    ['Q',[0,0.2],[17,0.6],[35,9.5]],
     ['L',[35,13.5]],
-    ['Q',[35,13.5],[17,5.0],[0,4.6]],
-    ['Q',[0,4.6],[-17,5.0],[-35,13.5]],
+    ['Q',[35,13.5],[17,4.6],[0,4.2]],
+    ['Q',[0,4.2],[-17,4.6],[-35,13.5]],
   ]);
   ex(rock, cm(4.5), wood, 0, 0, cm(10));
   ex(rock, cm(4.5), wood, 0, 0, -cm(14.5));
-  // 黑胶脚垫 ×4（摇轨端头下方）
+  // 黑胶脚垫 ×4（摇轨端头下缘，略探出端头）
   for(const sx of [-1,1]) for(const sz of [-1,1])
-    C.box(cm(4.5), cm(2.5), cm(4.5), blk, sx*cm(33.75), cm(7), sz*cm(12.25));
-  // 下横梁（连接两摇轨，腿底坐于其上）
-  C.box(cm(4.5), cm(4.5), cm(20), wood, cm(-8), cm(5), 0);
-  // 坐板（延伸到尾部承托靠背）+ 半圆靠背
-  C.rb(cm(30), cm(3), cm(20), cm(1.2), red, cm(-9), cm(26.5), 0);
+    C.box(cm(4.5), cm(2.5), cm(4.5), blk, sx*cm(33.75), cm(7), sz*cm(11.75));
+  // 下横梁 ×2（两端贯入摇轨，前后腿底坐于其上）
+  C.box(cm(8), cm(4.5), cm(25), wood, cm(13), cm(5), 0);
+  C.box(cm(6), cm(4.5), cm(25), wood, cm(-18.5), cm(5), 0);
+  // 坐板（两端贯入侧板）+ 半圆靠背（直径≈座深）
+  C.rb(cm(30), cm(3), cm(26.4), cm(1.2), red, cm(-9), cm(26.5), 0);
   const bs=[]; for(let i=0;i<=12;i++){ const a=Math.PI*i/12;
-    bs.push([7.5*Math.cos(a), 29.5+7.5*Math.sin(a)]); }
-  ex(bs, cm(2.5), red, cm(-24.5), 0, 0, 'zy');
+    bs.push([8.5*Math.cos(a), 27+8.5*Math.sin(a)]); }
+  ex(bs, cm(2.5), red, cm(-22.5), 0, 0, 'zy');
   // 横向把手（穿过颈后）
   C.tube(cm(27), cm(1.6), wood, cm(9), cm(39.5), 0, 'z');
   // 鹿角 ×2（基座条 + 三指，只绕竖轴转，前倾 70° / 后倾 110°）
   const ant=(z,ang)=>{ const grp=new T.Group(); C.g.add(grp);
     const addG=(m)=>{ m.castShadow=m.receiveShadow=true; grp.add(m); };
-    const b=new T.Mesh(new T.BoxGeometry(cm(5),cm(2.4),cm(4.4)), wood);
-    b.position.set(cm(2.5),cm(1.2),0); addG(b);
+    const b=new T.Mesh(new T.BoxGeometry(cm(12),cm(2.4),cm(4.4)), wood);
+    b.position.set(cm(6),cm(1.2),0); addG(b);   // 基座条加长，三指嵌入条内
     for(const fy of [-1.4,0,1.4]){
       const f=new T.Mesh(new T.CapsuleGeometry(cm(1.1),cm(3.6),4,12), wood);
       f.rotation.z=Math.PI/2; f.position.set(cm(8.1),cm(2.4),cm(fy)); addG(f); }
-    grp.position.set(cm(19), cm(41.5), cm(z)); grp.rotation.z=ang; };
-  ant(cm(10.8), 70*Math.PI/180);
-  ant(-cm(10.8), 110*Math.PI/180);
-  // 口部吊环（挂在口孔下）
-  C.torus(cm(2.2), cm(0.45), blk, cm(33.5), cm(20), 0);
+    grp.position.set(cm(19), cm(40), z); grp.rotation.z=ang; }   // z 已是英尺;
+  ant(cm(11.5), 70*Math.PI/180);
+  ant(-cm(11.5), 110*Math.PI/180);
+  // 口部吊环（挂在口孔下，贴前侧板）
+  C.torus(cm(2.2), cm(0.45), blk, cm(33.5), cm(21.9), cm(12.9));
   // 水平重心归零（2D 图例/碰撞以占地中心为原点）
   C.g.updateMatrixWorld(true);
   const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3(); bb.getCenter(off);
@@ -8574,8 +9583,8 @@ MODELS['hape-horse'] = (C) => {
     ['L',[-24,25]],
     ['Q',[-24,25],[-28,22.5],[-29.5,17]],
     ['Q',[-29.5,17],[-31.5,10],[-33.8,5.5]],
-    ['Q',[-33.8,5.5],[-24,1.2],[-8,0.4]],
-    ['Q',[-8,0.4],[6,0.4],[20,1.8]],
+    ['Q',[-33.8,5.5],[-24,0.8],[-8,0]],
+    ['Q',[-8,0],[6,0],[20,1.8]],
     ['Q',[20,1.8],[26,3.5],[27.5,6]],
     ['Q',[27.5,6],[27,9],[25,13]],
     ['Q',[25,13],[23,17],[22,20]],
@@ -8604,17 +9613,20 @@ MODELS['hape-horse'] = (C) => {
   ex(mOut.concat(mIn), cm(1.8), red, 0, 0, -cm(14.25));
   // 黑珠子眼睛
   for(const sz of [-1,1]) C.sph(cm(1.1), blk, cm(25.5), cm(38.5), sz*cm(13));
-  // 红色座板（延伸到尾部承托靠背）+ 半圆木质靠背
-  C.rb(cm(26), cm(1.6), cm(24), cm(0.8), red, cm(-9), cm(25), 0);
+  // 红色座板（两端插入侧板）+ 半圆木质靠背
+  C.rb(cm(26), cm(1.6), cm(27), cm(0.8), red, cm(-9), cm(25), 0);
+  // 半圆木质靠背（坐在座板后缘，宽度≈座深）
   const bs=[]; for(let i=0;i<=12;i++){ const a=Math.PI*i/12;
-    bs.push([7.5*Math.cos(a), 26.6+7.5*Math.sin(a)]); }
+    bs.push([10*Math.cos(a), 26.6+10*Math.sin(a)]); }
   ex(bs, cm(1.8), wood, cm(-21.5), 0, 0, 'zy');
-  // 横向把手（架在靠背顶上）+ 端头圆钮
-  C.tube(cm(25), cm(1.5), wood, cm(-21.5), cm(34.4), 0, 'z');
-  for(const sz of [-1,1]) C.knob(cm(2), wood, cm(-21.5), cm(34.4), sz*cm(12.2));
-  // 座下两根横梁（透过镂空可见）
-  C.tube(cm(20), cm(1.1), wood, cm(8), cm(17), 0, 'z');
-  C.tube(cm(20), cm(1.1), wood, cm(-17), cm(17), 0, 'z');
+  // 颈部握杆 ×2（从两侧板颈处向外伸出，孩子握持位）+ 端头圆钮
+  for(const sz of [-1,1]){
+    C.tube(cm(11.5), cm(1.5), wood, cm(10), cm(40), sz*cm(15.75), 'z');
+    C.knob(cm(1.6), wood, cm(10), cm(40.5), sz*cm(21));
+  }
+  // 座下竖直木条 ×4（每侧板前后各一，从座板下缘垂到镂空区）
+  for(const sz of [-1,1]) for(const xc of [-1,-19])
+    C.box(cm(2.4), cm(13.5), cm(0.8), wood, cm(xc), cm(11.5), sz*cm(13.2));
   // 水平重心归零
   C.g.updateMatrixWorld(true);
   const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3(); bb.getCenter(off);
@@ -8635,10 +9647,13 @@ MODELS['kiddiecouch'] = (C) => {
   // 上層坐垫 ×2（内收、大圆角 = 蓬松；顶面正好 30.5cm）
   C.rb(cm(80.6), cm(14), cm(80.8), cm(4), vel, -cm(42.55), base, 0);
   C.rb(cm(80.6), cm(14), cm(80.8), cm(4), vel, +cm(42.55), base, 0);
-  // 三角靠背垫 ×2：截面在 z-y 面（'zy' 沿 x 拉伸），后立面 + 前下斜面
-  const prof=[[-30.9,30.8],[-30.2,43],[-38,56.5],[-41.5,57.8],[-41.9,30.8]].map(p=>[-cm(p[0]),cm(p[1])]);
-  C.ext(prof, cm(32.5), vel, -cm(33.25), 0, 0, 'zy');
-  C.ext(prof, cm(32.5), vel, +cm(0.75), 0, 0, 'zy');
+  // 三角靠背垫 ×2：截面在 z-y 面（'zy' 沿 x 拉伸，world z=-px）。
+  // 01_main/13_side 实拍：前立面竖直（顶前角大圆角），顶窄带微后仰，斜面在背面落到座面。
+  // 顶高 57.6+倒角0.8 = 58.4 正好 spec 总高；底边 30.4 陷进座面（顶 30.5）无 z-fighting。
+  const prof=[[-30.5,30.4],[-30.5,55.6],[-30.74,56.5],[-31.4,57.16],[-32.3,57.4],
+              [-35.5,57.6],[-40.8,30.4]].map(p=>[cm(p[0]),cm(p[1])]);
+  C.ext(prof, cm(32.5), vel, -cm(33.6), 0, 0, 'zy', cm(0.8));
+  C.ext(prof, cm(32.5), vel, +cm(1.1), 0, 0, 'zy', cm(0.8));
   // 水平重心归零
   C.g.updateMatrixWorld(true);
   const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3(); bb.getCenter(off);
@@ -8742,29 +9757,160 @@ MODELS['strider12'] = (C) => {
 };
 
 // ===== SPORTSLIG 迷你足球门储物箱（90.2×52.7×52.7cm，蓝框白网） =====
+/* IKEA SPORTSLIG 布艺折叠迷你球门（90.2×52.7×52.7cm，三角棱柱）：
+   前面 90×52.7 球门口（蓝布立柱+上沿带，z=0 面），白色横杆 y≈47.7（轴 x，两端白布套+蓝端帽+挂扣），
+   整面白色斜网从横杆落到后底沿（z=-52.7），两侧三角网，蓝布斜边带，蓝色布底。立起来可当储物箱。
+   轴约定：宽 90.2 沿 x，深 52.7 沿 z */
+MODELS['tramp60'] = (C) => {
+  /* FFFROG 60" 室内儿童蹦床：官方 140×140×170cm（环 Ø140 为占地）
+   · 6 弯腿 + 黑脚垫 → 铬环 Ø135(y26) → 蓝护垫环 Ø124(y33) → 黑弹面 Ø106(y40)
+   · 6 网柱 + 顶蓝垫环 y112（外圈橙色波浪饰带）+ 白菱形透网(前开口) + 深红拉链门帘拱
+   · 顶部：两根竖直铬支杆(y112→166) + 三根蓝色包棉体操杠（离网环 13.7/16.5/19.2"）
+   · 附件：彩虹吊床(中杠)、吊环×2、红沙包、红拱、篮球筐+老虎挂饰、篮球、6 沙滩球 */
+  const c = C.cm, T = C.THREE;
+  const chrome = C.m.chrome || C.M('#c6cad0', {metal:.94, rough:.14, envI:.95});
+  const black  = C.m.black  || C.M('#24262a', {metal:.5, rough:.44, envI:.5});
+  const padM   = C.M(C.col,  {fabric:true, rough:.9});
+  const postM  = C.M(C.col2, {plastic:true, rough:.55});
+  const matM   = C.M('#1c1e20', {fabric:true, rough:.95});
+  const gateM  = C.M('#4a2424', {plastic:true, rough:.6});
+  const zipM   = C.M('#c0392b', {plastic:true, rough:.5});
+  const bagM   = C.M('#d8442c', {leather:true});
+  const ringM  = C.M('#e8a020', {plastic:true});
+  const trimM  = C.M('#e8a020', {plastic:true, rough:.6});
+  const tigerM = C.M('#f0a030', {fabric:true, rough:.9});
+  const ballM  = C.M('#e07828', {plastic:true});
+  const whiteF = C.M('#f4f4f0', {fabric:true, rough:.9});
+  /* 6 弯腿：竖管 + 斜管 + 黑脚垫（脚垫 R55 在环内） */
+  for(const a of [0,60,120,180,240,300]){
+    const lg = new T.Group(); lg.rotation.y = -a*Math.PI/180; C.g.add(lg);
+    const leg=(mm,px,py)=>{ mm.castShadow=mm.receiveShadow=true; mm.position.set(px,py,0); lg.add(mm); };
+    leg(new T.Mesh(new T.CylinderGeometry(c(5),c(5),c(1.5),16), black), c(55), c(0.75));
+    leg(new T.Mesh(new T.CylinderGeometry(c(2),c(2),c(12),10), chrome), c(55), c(6));
+    const dc = new T.Mesh(new T.CylinderGeometry(c(2),c(2),c(17.6),10), chrome);
+    dc.rotation.z = -Math.atan2(10,14); leg(dc, c(60), c(19));
+  }
+  C.torus(c(67.5), c(2.5), chrome, 0, c(26), 0, Math.PI/2);            // 铬环框架
+  C.torus(c(62), c(7), padM, 0, c(33), 0, Math.PI/2);                  // 蓝护垫环
+  C.cyl(c(53), c(53), c(1.2), matM, 0, c(39.5), 0);                    // 黑色弹面
+  for(const a of [68,112,172,232,292,332]){                 // 6 网柱（门前一对在 68/112）
+    const r = a*Math.PI/180;
+    C.cyl(c(3), c(3), c(73.2), postM, c(62)*Math.cos(r), c(39.2), c(62)*Math.sin(r)); // 底部插进蓝垫 0.5（垫顶 39.7），顶部插进顶环
+  }
+  C.torus(c(62), c(3.5), postM, 0, c(112), 0, Math.PI/2);              // 顶蓝垫环（网柱顶）
+  C.torus(c(63), c(1.1), trimM, 0, c(112.4), 0, Math.PI/2);            // 橙色波浪饰带（简化为环形带）
+  /* 白菱形透网：开口圆柱，前部 ±22° 让出门口 */
+  const netM = C.M('#f4f6f8', {fabric:true, rough:.9});
+  netM.map = netMeshTexture(); netM.transparent = true; netM.opacity = .95;   // 透明菱形透网
+  netM.side = T.DoubleSide; netM.userData.noNrm = true; netM.depthWrite = false;
+  const net = new T.Mesh(new T.CylinderGeometry(c(61.5), c(61.5), c(72), 48, 1, true,
+    T.MathUtils.degToRad(22), T.MathUtils.degToRad(316)), netM);
+  net.castShadow = false; net.receiveShadow = false; net.position.set(0, c(76), 0); C.g.add(net);
+  /* 拉链门帘：深红布拱门（前，网柱 68°/112° 之间）+ 红拉链带 */
+  for(const sx of [-1,1]) C.box(c(2.2), c(64.8), c(2.2), gateM, sx*c(21), c(39.2), c(57.5)); // 底插进垫面，顶 104 与拱脚齐平
+  const arch = new T.Mesh(new T.TorusGeometry(c(21), c(1.6), 8, 24, Math.PI), gateM);
+  arch.castShadow = arch.receiveShadow = true; arch.position.set(0, c(104), c(57.5)); C.g.add(arch);
+  C.box(c(44), c(58), c(1), gateM, 0, c(40.5), c(57.5));               // 门帘布面
+  C.box(c(1), c(58), c(0.8), zipM, c(20.5), c(40.5), c(57.5));         // 拉链带
+  /* 顶部：两根竖直铬支杆 + 三根蓝色包棉体操杠（杠中心离网环顶 13.7/16.5/19.2"） */
+  for(const sx of [-1,1]){
+    C.cyl(c(2.2), c(2.2), c(52), chrome, sx*c(63), c(112), 0);
+    C.cyl(c(3), c(3), c(2.5), chrome, sx*c(63), c(164), 0);            // 端帽
+  }
+  for(const by of [146.8, 153.9, 160.8]){
+    C.tube(c(127), c(2.6), postM, 0, c(by), 0, 'x');                  // 蓝色包棉杠
+    for(const sx of [-1,1]) C.cyl(c(2.9), c(2.9), c(5), chrome, sx*c(63), c(by), 0); // 铬挂套
+  }
+  /* 吊床：6 条彩虹吊带自中杠垂到红色小坐台（前右） */
+  const swCols = ['#e8453c','#f0922e','#f2d02e','#4caf50','#3d7de0','#8e4ec8'];
+  const swg = new T.Group(); swg.position.set(c(12), c(88), c(18)); swg.rotation.x = -0.273; C.g.add(swg);
+  for(let i=0;i<6;i++){
+    const s = new T.Mesh(new T.CylinderGeometry(c(0.75), c(0.75), c(72), 8), C.M(swCols[i], {fabric:true, rough:.9}));
+    s.position.set(c(-3 + i*1.2), c(31), 0); s.castShadow = true; swg.add(s);
+  }
+  const swSeat = new T.Mesh(new T.CylinderGeometry(c(8.5), c(8.5), c(2.5), 24), C.M('#d0342c', {fabric:true, rough:.9}));
+  swSeat.position.set(0, -c(1.25), 0); swSeat.castShadow = true; swg.add(swSeat);
+  /* 体操吊环 ×2（橙圈 + 黑带，吊于中杠左侧） */
+  for(const rx of [-18, -2]){
+    const rg = new T.Mesh(new T.TorusGeometry(c(9), c(2.2), 10, 28), ringM);
+    rg.castShadow = true; rg.position.set(c(rx), c(122), 0); C.g.add(rg);
+    for(const sx of [-5.5, 5.5]) C.box(c(1.5), c(44.9), c(1.5), black, c(rx+sx), c(109), 0);
+  }
+  /* 沙包（红皮革 + 黑环带，4 条黑带吊于中杠前左，斜出） */
+  C.cyl(c(12.5), c(12.5), c(55), bagM, -c(32), c(53), c(40));
+  C.cyl(c(12.7), c(12.7), c(4), black, -c(32), c(100), c(40));
+  const bagg = new T.Group(); bagg.position.set(c(-32), c(108), c(40)); bagg.rotation.x = -0.717; C.g.add(bagg);
+  for(const [bx,bz] of [[-4.5,-2.8],[4.5,-2.8],[-4.5,2.8],[4.5,2.8]]){
+    const s = new T.Mesh(new T.CylinderGeometry(c(0.8), c(0.8), c(46), 8), black);
+    s.position.set(c(bx), c(23), c(bz)); bagg.add(s);
+  }
+  /* 红拱（深红平衡拱，立于弹面门前偏右） */
+  for(const sx of [-1,1]) C.box(c(2.4), c(55), c(2.4), gateM, c(12) + sx*c(16), c(40), c(42));
+  const rarch = new T.Mesh(new T.TorusGeometry(c(16), c(1.8), 8, 24, Math.PI), gateM);
+  rarch.castShadow = rarch.receiveShadow = true; rarch.position.set(c(12), c(95), c(42)); C.g.add(rarch);
+  /* 篮球筐（红筐+白网，挂于前右网）+ 老虎挂饰 */
+  const hx = c(43.4), hz = c(43.4);
+  const hoop = new T.Mesh(new T.TorusGeometry(c(9.5), c(1.8), 8, 28), C.M('#d0342c', {plastic:true}));
+  hoop.castShadow = true; hoop.position.set(hx, c(92), hz); hoop.rotation.y = Math.PI/4; C.g.add(hoop);
+  const hnet = new T.Mesh(new T.CylinderGeometry(c(8.5), c(2.5), c(11), 16, 1, true), netM);
+  hnet.position.set(hx, c(86.5), hz); C.g.add(hnet);
+  const tg = new T.Group(); tg.position.set(c(41), c(106), c(41)); tg.rotation.y = Math.PI/4; C.g.add(tg);
+  const tHead = new T.Mesh(new T.SphereGeometry(c(7), 20, 14), tigerM); tHead.scale.z = 0.35; tg.add(tHead);
+  for(const sx of [-1,1]){
+    const ear = new T.Mesh(new T.SphereGeometry(c(2.4), 10, 8), tigerM); ear.position.set(c(sx*5.5), c(6.5), -c(0.5)); tg.add(ear);
+    const eye = new T.Mesh(new T.SphereGeometry(c(0.9), 8, 6), black); eye.position.set(c(sx*2.8), c(1.5), c(3)); tg.add(eye);
+  }
+  const muzzle = new T.Mesh(new T.SphereGeometry(c(3.2), 12, 8), whiteF); muzzle.position.set(0, -c(2.5), c(3.2)); tg.add(muzzle);
+  /* 篮球 + 6 个沙滩球（弹面上） */
+  C.sph(c(6), ballM, c(28), c(46.7), c(28));
+  const balls = [['#60c848',-25,25],['#3890e0',0,35],['#8048c8',18,10],
+                 ['#e0c020',-8,-5],['#e878a0',30,-20],['#e8e8e8',-35,-15]];
+  for(const [col,bx,bz] of balls) C.sph(c(5.5), C.M(col, {plastic:true}), c(bx), c(46.2), c(bz));
+  /* 水平重心归零 */
+  C.g.updateMatrixWorld(true);
+  const bb = new T.Box3().setFromObject(C.g);
+  const off = new T.Vector3(); bb.getCenter(off);
+  for(const ch of C.g.children){ ch.position.x -= off.x; ch.position.z -= off.z; }
+};
 MODELS['sportslig'] = (C) => {
   const cm=C.cm, T=C.THREE;
-  const blue = C.M('#0a70b0', {plastic:true, rough:.45, clear:.25, envI:.3});
-  const netM = C.M('#f5f7f9', {fabric:true, rough:.9, envI:.1});
-  netM.transparent=true; netM.opacity=.32; netM.side=T.DoubleSide;
-  const S=cm(52.7);
-  // 前面框（开口）：上/下/左右立柱
-  C.box(cm(2.6),cm(2.6),S,blue, cm(44),cm(50.1),0);
-  C.box(cm(2.6),cm(2.6),S,blue, cm(44),cm(5),0);
-  for(const sz of [-1,1]) C.box(cm(2.6),cm(46.4),cm(2.6),blue, cm(44),cm(5),sz*cm(25.05));
-  // 背面框
-  C.box(cm(2.6),cm(2.6),S,blue, -cm(44),cm(50.1),0);
-  C.box(cm(2.6),cm(2.6),S,blue, -cm(44),cm(5),0);
-  for(const sz of [-1,1]) C.box(cm(2.6),cm(46.4),cm(2.6),blue, -cm(44),cm(5),sz*cm(25.05));
-  // 四条长轨（上二下二）
-  for(const sy of [51.4, 6.3]) for(const sz of [-1,1])
-    C.tube(cm(85),cm(1.3),blue, 0,cm(sy), sz*cm(25.05),'x');
-  // 网（背板，ZY 面）
-  const net=new T.Mesh(new T.PlaneGeometry(cm(48),cm(43.5)),netM);
-  net.rotation.y=Math.PI/2; net.position.set(-cm(44),cm(28),0); net.castShadow=false; C.g.add(net);
-  // 四角支脚（y 底面 = 0）
-  for(const sx of [-1,1]) for(const sz of [-1,1])
-    C.box(cm(2.6),cm(5),cm(2.6),blue, sx*cm(42),0, sz*cm(24));
+  const fab  = C.M(C.col, {fabric:true, rough:.85, envI:.15});
+  const netM = C.M('#f2f5f7', {fabric:true, rough:.9, envI:.1});
+  netM.map=meshWeaveTexture(); netM.side=T.DoubleSide;
+  netM.transparent=true; netM.opacity=.5;
+  const white = C.M('#f4f6f8', {fabric:true, rough:.8, envI:.15});
+  // 斜面方向：(z 0, y 46.5) → (z -52.7, y 0.8)，长 69.5
+  const slopeAng = Math.PI - Math.atan2(52.7, 45.7);   // 绕 x 旋转把 +y_local 映射到 (0,-0.655,-0.756)
+  // 蓝色布底（圆角浅盘）：宽 90.2 沿 x，深 52.7 沿 z
+  C.box(cm(90.2),cm(0.6),cm(52.7),fab, 0,0,-cm(26.35));   // 布底（box 不 bevel，尺寸精确）
+  C.box(cm(90.2),cm(4),cm(2.4),fab, 0,0,-cm(1.2));        // 前底沿起的布边
+  // 前面框：左右立柱 + 上沿带（前面开口面 z=0）
+  for(const sx of [-1,1]) C.box(cm(6),cm(46.8),cm(2.4),fab, sx*cm(42.1),cm(0.6),-cm(1.2));
+  C.box(cm(84.2),cm(5.3),cm(2.4),fab, 0,cm(47.4),-cm(1.2));
+  // 白色横杆（轴 x）+ 两端白布套 + 蓝端帽；整体后移 2.7 使布套前缘齐前面开口面
+  C.tube(cm(88.6),cm(2.2),white, 0,cm(47.7),-cm(2.7),'x');
+  for(const sx of [-1,1]){
+    C.tube(cm(16),cm(2.7),white, sx*cm(34),cm(47.7),-cm(2.7),'x');
+    C.tube(cm(2),cm(2.5),fab, sx*cm(41),cm(47.7),-cm(2.7),'x'); }
+  // 横杆挂扣（拉网蓝布带）
+  for(const sx of [-1,1]) C.box(cm(1.2),cm(5),cm(1.2),fab, sx*cm(20),cm(42.7),-cm(2.4));
+  // 斜网（整面，横杆 → 后底沿）
+  const net=new T.Mesh(new T.PlaneGeometry(cm(86),cm(69.5),12,10),netM);
+  net.rotation.x=-slopeAng;
+  net.position.set(0,cm(23.65),-cm(26.35)); net.castShadow=false; C.g.add(net);
+  // 两侧三角网（前面柱顶 → 后底 → 前底）
+  for(const sx of [-1,1]){
+    const sh=new T.Shape();
+    sh.moveTo(cm(0),cm(52.7)); sh.lineTo(-cm(52.7),cm(0.2)); sh.lineTo(cm(0),cm(0.2)); sh.closePath();
+    const m=new T.Mesh(new T.ShapeGeometry(sh,8),netM);
+    m.rotation.y=-Math.PI/2; m.position.x=sx*cm(44.5); m.castShadow=false; C.g.add(m); }
+  // 斜边蓝布带（两侧，沿斜边的胶囊管）
+  for(const sx of [-1,1]){
+    const m=new T.Mesh(new T.CapsuleGeometry(cm(1.6),cm(57.8),4,14),fab);
+    m.rotation.x=-slopeAng; m.position.set(sx*cm(44.0),cm(24.6),-cm(26.0));
+    m.castShadow=m.receiveShadow=true; C.g.add(m); }
+  // 后底沿蓝布带
+  C.box(cm(88),cm(4.5),cm(2.4),fab, 0,cm(0.6),-cm(51.5));
   C.g.updateMatrixWorld(true);
   const bb=new C.THREE.Box3().setFromObject(C.g), off=new C.THREE.Vector3(); bb.getCenter(off);
   for(const ch of C.g.children){ ch.position.x-=off.x; ch.position.z-=off.z; }
@@ -8825,63 +9971,157 @@ MODELS['mala'] = (C) => {
   const bb=new C.THREE.Box3().setFromObject(C.g), off=new C.THREE.Vector3(); bb.getCenter(off);
   for(const ch of C.g.children){ ch.position.x-=off.x; ch.position.z-=off.z; }
 };
-// ===== RIGGA 高度可调移动挂衣架（111×51.1×145cm，白色钢架+脚轮） =====
+// ===== RIGGA 高度可调移动挂衣架（111×51.1×145cm，白色钢架+外弯腿+脚轮） =====
+// 实际结构（对照 PE727742/PE558487）：2 根立柱在短边中段（z=0），顶一根 x 向挂衣杆
+// （两端伸出立柱外 5.5）；底部 100×40 框（y15）内嵌 3 根 x 向格杆（即「4 层」）；
+// 4 条腿从框角向外弯下到脚轮——占地 111×51.1 是脚轮外缘。
+/* LÄTT 儿童桌+2椅（套装 119×48×48）：桌 63×48×45（松木方框+白色面板，4 全高方腿），
+   椅 28×28×48、座高 28（白座板+白背顶板，中间镂空）。两椅对称摆桌短边两侧、椅背朝外。
+   轴向：桌长边沿 x；椅背朝 ±x（s=+1 右椅椅背朝 +x）。 */
+MODELS['laett'] = (C) => {
+  const cm=C.cm, T=C.THREE;
+  const pine  = C.M(C.col, {wood:'pine', rough:.62, envI:.5});
+  const panel = C.M(C.col2, {rough:.8, envI:.15});
+  const steel = C.M('#c9ccd2', {metal:.9, rough:.35, envI:.85});
+  // —— 桌（63×48×45，中心原点）——
+  for(const [lx,lz] of [[-28.5,-21],[28.5,-21],[-28.5,21],[28.5,21]])
+    C.box(cm(3), cm(43), cm(3), pine, cm(lx), 0, cm(lz));
+  // 桌下围板环 36.6→42.6（外 63×48，条宽 6）
+  for(const sz of [-21,21])   C.box(cm(63), cm(6), cm(6), pine, 0, cm(36.6), cm(sz));
+  for(const sx of [-28.5,28.5]) C.box(cm(6), cm(6), cm(36), pine, cm(sx), cm(36.6), 0);
+  // 桌面框边 42.6→45（内框 50×35，框条宽 6.5，微倒角）
+  for(const sz of [-20.75,20.75]) C.rb(cm(63), cm(2.4), cm(6.5), cm(0.5), pine, 0, cm(42.6), cm(sz), 2);
+  for(const sx of [-28.25,28.25]) C.rb(cm(6.5), cm(2.4), cm(35), cm(0.5), pine, cm(sx), cm(42.6), 0, 2);
+  // 白色顶板 50×35（顶面 44.8，低于框边 0.2）
+  C.box(cm(50), cm(1.4), cm(35), panel, 0, cm(43.4), 0);
+  // 桌角螺丝（角腿外侧面 y≈40）
+  for(const [sx,sz] of [[-1,1],[1,1],[-1,-1],[1,-1]]){
+    const m = C.cyl(cm(1.1), cm(1.1), cm(0.4), steel, cm(sx*30.2), cm(39.8), cm(sz*21), 12);
+    m.rotation.z = Math.PI/2;
+  }
+  // —— 椅（28×28×48，中心 x=±45.5，s=±1 椅背朝外）——
+  for(const s of [-1,1]){
+    const cx = 45.5*s;
+    for(const [lx,lz] of [[-11.5,-11.5],[11.5,-11.5],[-11.5,11.5],[11.5,11.5]])
+      C.box(cm(2.6), cm(27), cm(2.6), pine, cm(cx+lx), 0, cm(lz));
+    // 座圈 25.6→28（外 28×28，条宽 3.4）
+    for(const sz of [-12.3,12.3]) C.box(cm(28), cm(2.4), cm(3.4), pine, cm(cx), cm(25.6), cm(sz));
+    for(const sx2 of [-12.3,12.3]) C.box(cm(3.4), cm(2.4), cm(21.2), pine, cm(cx+sx2), cm(25.6), 0);
+    // 白座板 20.4×20.4（顶面 27.9）
+    C.box(cm(20.4), cm(1.3), cm(20.4), panel, cm(cx), cm(26.6), 0);
+    // 椅背：立柱 25.6→48 + 顶梁 45.4→48 + 白背顶板 42→48
+    for(const sz of [-11.5,11.5]) C.rb(cm(2.6), cm(22.4), cm(2.6), cm(0.4), pine, cm(cx+s*12.7), cm(25.6), cm(sz), 2);
+    C.rb(cm(2.6), cm(2.6), cm(25.8), cm(0.4), pine, cm(cx+s*12.7), cm(45.4), 0, 2);
+    C.box(cm(1.3), cm(6), cm(21.2), panel, cm(cx+s*11.4), cm(42), 0);
+    // 椅背立柱外侧螺丝
+    for(const sz of [-11.5,11.5]){
+      const m = C.cyl(cm(1), cm(1), cm(0.4), steel, cm(cx+s*14.1), cm(30), cm(sz), 12);
+      m.rotation.z = Math.PI/2;
+    }
+  }
+  // 水平重心归零（对称件，理论上≈0，保险起见）
+  C.g.updateMatrixWorld(true);
+  const bb=new T.Box3();
+  C.g.traverse(o=>{ if(o.isMesh&&o.geometry){
+    const pos=o.geometry.attributes.position, v=new T.Vector3();
+    for(let i=0;i<pos.count;i++){ v.fromBufferAttribute(pos,i).applyMatrix4(o.matrixWorld); bb.expandByPoint(v); }
+  }});
+  const off=new T.Vector3(); bb.getCenter(off);
+  for(const ch of C.g.children){ ch.position.x-=off.x; ch.position.z-=off.z; }
+};
+
 MODELS['rigga'] = (C) => {
   const cm=C.cm, T=C.THREE;
   const wte = C.M('#f2f3f4', {metal:.35, rough:.45, envI:.5});
   const cst = C.M('#c8cacc', {metal:.6, rough:.5, envI:.6});
-  const px=cm(54.1), pz=cm(23.05);
-  // 四立柱
-  for(const sx of [-1,1]) for(const sz of [-1,1])
-    C.cyl(cm(1.4),cm(1.4),cm(145),wte, sx*px,0, sz*pz);
-  // 顶层矩形框（挂衣杆 + 后横杆）
-  C.tube(cm(108.2),cm(1.25),wte, 0,cm(143.5),0,'x');
-  C.tube(cm(46.1),cm(1.25),wte, 0,cm(143.5),0,'z');
-  // 中层可调横杆（三层）
-  C.tube(cm(108.2),cm(1.1),wte, 0,cm(100),0,'x');
-  C.tube(cm(108.2),cm(1.1),wte, 0,cm(62),0,'x');
-  C.tube(cm(108.2),cm(1.1),wte, 0,cm(28),0,'x');
-  // 底部框 + 四个脚轮
-  C.tube(cm(108.2),cm(1.2),wte, 0,cm(4.5),0,'x');
-  C.tube(cm(46.1),cm(1.2),wte, 0,cm(4.5),0,'z');
+  const drk = C.M('#4a4c52', {metal:.4, rough:.5, envI:.4});
+  const FX=cm(50), FZ=cm(20);                // 框半宽/半深（100×40）
+  // 两根立柱：框顶 → 挂衣杆中心
+  for(const sx of [-1,1])
+    C.cyl(cm(1.25),cm(1.25),cm(128.7),wte, sx*FX, cm(15), 0);
+  // 顶部镀铬套管（立柱穿杆处）
+  for(const sx of [-1,1])
+    C.cyl(cm(1.45),cm(1.45),cm(1.8),cst, sx*FX, cm(142.3), 0);
+  // 顶部挂衣杆（两端伸出立柱外 5.5）
+  C.tube(cm(111),cm(1.3),wte, 0, cm(143.7), 0, 'x');
+  // 底部框（y15）
+  C.tube(cm(100),cm(1.1),wte, 0, cm(13.9),  FZ, 'x');
+  C.tube(cm(100),cm(1.1),wte, 0, cm(13.9), -FZ, 'x');
+  C.tube(cm(40), cm(1.1),wte,  FX, cm(13.9), 0, 'z');
+  C.tube(cm(40), cm(1.1),wte, -FX, cm(13.9), 0, 'z');
+  // 框内 3 根 x 向格杆（挂衣杆 + 3 根 = 「4 层」）
+  for(const bz of [-13.3, 0, 13.3])
+    C.tube(cm(92),cm(1.0),wte, 0, cm(12.9), cm(bz), 'x');
+  // 4 条外弯腿：框角 → 外弯 → 脚轮（占地 111×51.1 含脚轮外缘）
   for(const sx of [-1,1]) for(const sz of [-1,1]){
-    const w=new T.Mesh(new T.CylinderGeometry(cm(2.8),cm(2.8),cm(4.5),18),cst);
-    w.rotation.z=Math.PI/2; w.position.set(sx*cm(52),cm(2.8),sz*pz);
-    w.castShadow=true; C.g.add(w); }
+    const p0=new T.Vector3(sx*FX, cm(15), sz*FZ);
+    const p1=new T.Vector3(sx*cm(54.3), cm(11.5), sz*cm(23.05));
+    const p2=new T.Vector3(sx*cm(54.3), cm(5.0), sz*cm(23.05));
+    const leg=new T.Mesh(new T.TubeGeometry(new T.QuadraticBezierCurve3(p0,p1,p2), 12, cm(1.2), 10), wte);
+    leg.castShadow=leg.receiveShadow=true; C.g.add(leg);
+    const cx=sx*cm(54.3), cz=sz*cm(23.05);
+    const wheel=new T.Mesh(new T.CylinderGeometry(cm(2.5),cm(2.5),cm(2.4),18),wte);
+    wheel.rotation.z=Math.PI/2; wheel.position.set(cx,cm(2.5),cz);
+    wheel.castShadow=true; C.g.add(wheel);
+    const cap=new T.Mesh(new T.CylinderGeometry(cm(1.1),cm(1.1),cm(2.5),14),drk);
+    cap.rotation.z=Math.PI/2; cap.position.set(cx,cm(2.5),cz);
+    cap.castShadow=true; C.g.add(cap); }
   C.g.updateMatrixWorld(true);
   const bb=new C.THREE.Box3().setFromObject(C.g), off=new C.THREE.Vector3(); bb.getCenter(off);
   for(const ch of C.g.children){ ch.position.x-=off.x; ch.position.z-=off.z; }
 };
 
 // ===== NIPÅSEN 门厅衣帽架带换鞋凳（79×35×190cm，黑色钢架） =====
+// 实际结构（对照 PE965439/PE965440）：圆角顶框（2 条拱形侧框 + 顶杆），2 根中段立柱，
+// 两排扁平挂钩条（各 3 组三钩 = 18 钩），条板换鞋凳（顶 58.2），网格鞋架（顶 36）。
 MODELS['nipasen'] = (C) => {
   const cm=C.cm, T=C.THREE;
-  const blk  = C.M('#2a2b2d', {metal:.5, rough:.5, envI:.5});
-  const seat = C.M('#f0f0ec', {plastic:true, rough:.55, envI:.25});
-  const px=cm(36.2), pz=cm(15.2);
-  // 四立柱
-  for(const sx of [-1,1]) for(const sz of [-1,1])
-    C.cyl(cm(1.25),cm(1.25),cm(188),blk, sx*px,0, sz*pz);
-  // 顶板
-  C.box(cm(79),cm(1.8),cm(35),blk, 0,cm(185),0);
-  // 顶板前缘三个挂钩
-  for(const hx of [-25,0,25]){
-    const bar=new T.Mesh(new T.CylinderGeometry(cm(0.9),cm(0.9),cm(5.5),12),blk);
-    bar.rotation.x=Math.PI/2; bar.position.set(cm(hx),cm(180),cm(12.5));
-    bar.castShadow=true; C.g.add(bar);
-    const tip=new T.Mesh(new T.SphereGeometry(cm(1.3),10,8),blk);
-    tip.position.set(cm(hx),cm(177.8),cm(16));
-    tip.castShadow=true; C.g.add(tip); }
-  // 第二层搁板
-  C.box(cm(79),cm(1.5),cm(35),blk, 0,cm(140),0);
-  // 换鞋凳：白色座面 + 黑框
-  C.box(cm(79),cm(3.5),cm(30),seat, 0,cm(41.5),0);
-  for(const sz of [-1,1]){
-    C.tube(cm(77),cm(1),blk, 0,cm(38.5),sz*cm(14),'x');
-  }
-  C.tube(cm(30),cm(1),blk, 0,cm(38.5),0,'z');
-  // 鞋架层板
-  C.box(cm(75),cm(1.2),cm(28),blk, 0,cm(13),0);
+  const blk  = C.M('#2a2b2d', {metal:.35, rough:.5, envI:.45});
+  const blkL = C.M('#333438', {metal:.4, rough:.55, envI:.4});
+  const msh  = C.M('#43454b', {metal:.65, rough:.5, envI:.55, flat:true, map:meshWeaveTexture()});
+  msh.normalMap = normalFromTexture(meshWeaveTexture(), 1.0);
+  // 两条拱形侧框（前立柱 → 圆角 → 顶 → 圆角 → 后立柱，通到地面）
+  for(const sx of [-1,1]){
+    const px = sx*cm(38.35);
+    const pts = [];
+    for(let i=0;i<=4;i++) pts.push(new T.Vector3(px, cm(178.5*i/4), cm(16.35)));
+    for(let i=1;i<=5;i++){ const th=i*Math.PI/10;
+      pts.push(new T.Vector3(px, cm(178.5+9.5*Math.sin(th)), cm(6.85+9.5*Math.cos(th)))); }
+    for(let i=1;i<=3;i++) pts.push(new T.Vector3(px, cm(188), cm(6.85-13.7*i/3)));
+    for(let i=1;i<=5;i++){ const th=Math.PI/2+i*Math.PI/10;
+      pts.push(new T.Vector3(px, cm(178.5+9.5*Math.sin(th)), cm(-6.85+9.5*Math.cos(th)))); }
+    for(let i=0;i<=4;i++) pts.push(new T.Vector3(px, cm(178.5*i/4), cm(-16.35)));
+    const arch=new T.Mesh(new T.TubeGeometry(new T.CatmullRomCurve3(pts), 48, cm(1.15), 10), blk);
+    arch.castShadow=arch.receiveShadow=true; C.g.add(arch); }
+  // 顶杆（顶 190）
+  C.tube(cm(76.7),cm(1.15),blk, 0, cm(188.85), 0, 'x');
+  // 两根中段立柱（座面 → 顶杆下缘）
+  for(const sx of [-1,1]) C.cyl(cm(1.15),cm(1.15),cm(129.5),blk, sx*cm(13.17), cm(58.2), 0);
+  // 中段立柱顶部小安装板
+  for(const sx of [-1,1]) C.box(cm(2.5),cm(1.5),cm(3.5),blkL, sx*cm(13.17), cm(186.2), 0);
+  // 两排挂钩条：扁条（3 段，被中段立柱打断）+ 每组 3 个 J 钩
+  const segs=[[-37.2,-14.32],[-14.32,14.32],[14.32,37.2]];
+  for(const by of [171, 134.6]){
+    for(const [a,b] of segs) C.box(cm(b-a),cm(7.2),cm(2.2),blkL, cm((a+b)/2), cm(by-3.6), 0);
+    for(const mx of [-26.33, 0, 26.33]){
+      C.box(cm(2.8),cm(7),cm(1.2),blk, cm(mx), cm(by-3.5), cm(1.1));
+      for(const ho of [-2.6, 0, 2.6]){
+        const s = ho===0 ? 1 : 0.82;
+        const pts=[ new T.Vector3(0,0,0), new T.Vector3(0,cm(5.5),0) ];
+        for(let i=1;i<=9;i++){ const th=Math.PI-(270*Math.PI/180)*i/9;
+          pts.push(new T.Vector3(0, cm(5.5+1.8*Math.sin(th)), cm(1.8+1.8*Math.cos(th)))); }
+        const hook=new T.Mesh(new T.TubeGeometry(new T.CatmullRomCurve3(pts), 10, cm(0.55), 8), blk);
+        hook.scale.set(s,s,s);
+        hook.position.set(cm(mx+ho*s), cm(by+1), cm(2.3+1.0*s));
+        hook.rotation.y = ho===0 ? 0 : (ho<0 ? -0.35 : 0.35);
+        hook.castShadow=true; C.g.add(hook); }
+    } }
+  // 换鞋凳：框（顶 54.8）+ 6 条黑板座面（顶 58.2）
+  for(const sz of [-1,1]) C.box(cm(79),cm(1.4),cm(2),blk, 0, cm(53.4), sz*cm(16.35));
+  for(const sx of [-1,1]) C.box(cm(2),cm(1.4),cm(32.7),blk, sx*cm(38.35), cm(53.4), 0);
+  for(let i=0;i<6;i++) C.box(cm(79),cm(3.4),cm(5.2),blkL, 0, cm(54.8), cm(-14.25+i*5.7));
+  // 网格鞋架（顶 36）
+  C.box(cm(70.4),cm(1.5),cm(29),msh, 0, cm(34.5), 0);
   C.g.updateMatrixWorld(true);
   const bb=new C.THREE.Box3().setFromObject(C.g), off=new C.THREE.Vector3(); bb.getCenter(off);
   for(const ch of C.g.children){ ch.position.x-=off.x; ch.position.z-=off.z; }
@@ -8889,94 +10129,138 @@ MODELS['nipasen'] = (C) => {
 
 // ===== Micro Mini 三轮滑板车（39×28×66cm，12" 前轮×2 + 8" 后轮） =====
 MODELS['micro-mini'] = (C) => {
+  // 对照官网 PDP 图：透明前轮(12 辐灰轮毂+彩环) / 三叉 m-cro 星形前叉 / 泪滴形踏板 /
+  // 双段立杆（下彩上铝+黑折叠夹）/ T 形车把（银横杆+彩握把）/ 深色后轮+刹车护罩
   const cm=C.cm, T=C.THREE;
-  const colm = C.M(C.col, {plastic:true, rough:.4, clear:.35, envI:.3});
+  const colm = C.M(C.col, {plastic:true, rough:.38, clear:.4, envI:.3});
+  const clear = C.M('#e9f1f5', {plastic:true, rough:.12, envI:.55});
+  clear.transparent=true; clear.opacity=.3; clear.depthWrite=false;
+  const rim  = C.M('#9aa0a6', {plastic:true, rough:.5, envI:.25});
   const alum = C.M('#c9cdd2', {metal:.8, rough:.35, envI:.8});
   const dark = C.M('#22242a', {plastic:true, rough:.55, envI:.2});
-  const wheel=(x,y,z,r,w,mat)=>{
-    const m=new T.Mesh(new T.CylinderGeometry(r,r,w,26),mat);
-    m.rotation.x=Math.PI/2; m.position.set(x,y,z);
-    m.castShadow=m.receiveShadow=true; C.g.add(m); return m; };
-  // 前两轮 Ø12（彩）+ 后轮 Ø8（彩）
-  wheel(cm(14),cm(6), cm(5.5), cm(6),cm(2.4),colm);
-  wheel(cm(14),cm(6),-cm(5.5), cm(6),cm(2.4),colm);
-  wheel(cm(-12),cm(4),0, cm(4),cm(3.2),colm);
-  // 轮毂（深）
-  for(const [x,y,z,r] of [[14,6,5.5,2],[14,6,-5.5,2],[-12,4,0,1.6]])
-    wheel(cm(x),cm(y),cm(z), cm(r),cm(3.6),dark);
-  // 轮辐（每轮 5 根）
-  const spokes=(x,y,z,r,wd)=>{ for(let i=0;i<5;i++){ const a=Math.PI*2*i/5;
-    const sp=new T.Mesh(new T.BoxGeometry(r*0.72,cm(1),wd),dark);
-    sp.position.set(x+Math.cos(a)*r*0.55, y+Math.sin(a)*r*0.55, z);
-    sp.rotation.z=a; sp.castShadow=true; C.g.add(sp); } };
-  spokes(cm(14),cm(6), cm(5.5), cm(5.2),cm(2.5));
-  spokes(cm(14),cm(6),-cm(5.5), cm(5.2),cm(2.5));
-  spokes(cm(-12),cm(4),0, cm(3.4),cm(3.3));
-  // 踏面 + 前缘加强条
-  C.box(cm(28),cm(1.8),cm(11.4),colm, cm(7),cm(10.2),0);
-  C.box(cm(5),cm(1.2),cm(10.5),colm, cm(20.5),cm(12),0);
-  // 前护罩（彩色叉架）+ 两侧翼片
-  C.box(cm(3),cm(5.5),cm(12.5),colm, cm(11.5),cm(11.5),0);
-  for(const sz of [-1,1]) C.box(cm(5),cm(4),cm(1.4),colm, cm(11),cm(13.5),sz*cm(7.6));
-  // 后刹车脚踏尾翼 + 踏板
-  C.box(cm(1.8),cm(6),cm(7.5),colm, cm(-15),cm(8.5),0);
-  C.box(cm(5),cm(0.9),cm(7),dark, cm(-11.5),cm(8.2),0);
-  // 立管：下段彩 + 上段铝 + 折叠夹
-  C.tube(cm(18),cm(1.5),colm, cm(13),cm(21),0,'y');
-  C.tube(cm(32),cm(1.1),alum, cm(13.4),cm(46),0,'y');
-  wheel(cm(13.2),cm(30),0, cm(1.9),cm(3.4),dark);
-  // T 形车把（顶面 66）+ 握把
-  C.tube(cm(26),cm(0.9),alum, cm(14),cm(65.1),0,'z');
-  for(const sz of [-1,1]) C.tube(cm(9),cm(1.35),colm, cm(14),cm(65.1),sz*cm(9.5),'z');
+  const cyl=(x,y,z,r,w,mat)=>{ const m=new T.Mesh(new T.CylinderGeometry(r,r,w,26),mat);
+    m.rotation.x=Math.PI/2; m.position.set(x,y,z); m.castShadow=m.receiveShadow=true; C.g.add(m); return m; };
+  // —— 前两轮 Ø12：透明胎壳 + 彩环 + 灰 12 辐 + 银毂
+  for(const sz of [-1,1]){
+    cyl(cm(14),cm(6),sz*cm(5.5), cm(6),cm(2.4),clear);
+    cyl(cm(14),cm(6),sz*cm(5.5), cm(5.75),cm(0.9),colm);
+    cyl(cm(14),cm(6),sz*cm(5.5), cm(4.6),cm(0.6),rim);
+    for(let i=0;i<12;i++){ const a=Math.PI*2*i/12;
+      const sp=new T.Mesh(new T.BoxGeometry(cm(3.4),cm(0.6),cm(1.7)),rim);
+      sp.position.set(cm(14+Math.cos(a)*3.3),cm(6+Math.sin(a)*3.3),sz*cm(5.5));
+      sp.rotation.z=a; sp.castShadow=true; C.g.add(sp); }
+    cyl(cm(14),cm(6),sz*cm(5.5), cm(1.4),cm(3),alum);
+  }
+  // —— 后轮 Ø8 深色 + 银毂
+  cyl(cm(-12),cm(4),0, cm(4),cm(3.2),dark);
+  cyl(cm(-12),cm(4),0, cm(1.1),cm(3.4),alum);
+  // —— 三叉星形前叉：底横档 + 圆顶 + 两条张开前臂（单轴 z 旋转）+ 徽章
+  C.rb(cm(10),cm(2.6),cm(9.5),cm(1.3),colm, cm(2),cm(9.0),0);         // 底横档（轮间宽档）
+  C.rb(cm(7),cm(5.5),cm(6.5),cm(1.8),colm, cm(4),cm(10.5),0);         // 圆顶（立杆下方）
+  for(const sz of [-1,1]){
+    const arm=C.rb(cm(8),cm(4.6),cm(4.0),cm(1.8),colm, 0,0,0);
+    arm.rotation.z=-48*Math.PI/180; arm.position.set(cm(12.6),cm(6.6),sz*cm(3.6));
+    C.g.add(arm);
+  }
+  C.box(cm(5),cm(4),cm(7),dark, cm(8),cm(4.5),0);                      // 黑色轮轴托架
+  const badge=new T.Mesh(new T.CylinderGeometry(cm(1.6),cm(1.6),cm(0.35),20),dark);
+  badge.rotation.z=Math.PI/2; badge.position.set(cm(1.9),cm(11.2),0);
+  badge.castShadow=badge.receiveShadow=true; C.g.add(badge);         // m-cro 徽章（朝向 -x）
+  // 立杆靴套（黑）
+  const boot=new T.Mesh(new T.CylinderGeometry(cm(2.3),cm(2.6),cm(3),22),dark);
+  boot.position.set(cm(9),cm(15.2),0); boot.castShadow=boot.receiveShadow=true; C.g.add(boot);
+  // —— 泪滴形踏板（前宽后窄，顶面 11.9）
+  const dk=[[13.5,0],[13,2.8],[11.5,4.6],[9,5.7],[2,5.4],[-4,5.1],[-9,4.4],[-14,3.6],[-17.5,2.2],[-18.8,0],[-17.5,-2.2],[-14,-3.6],[-9,-4.4],[-4,-5.1],[2,-5.4],[9,-5.7],[11.5,-4.6],[13,-2.8],[9,-5.7],[2,-5.4],[-4,-5.1],[-9,-4.4],[-14,-3.6],[-17.5,-2.2]].map(p=>new T.Vector3(p[0],p[1],0));
+  C.ext(dk, cm(1.8), colm, cm(0),cm(11.9),0, 'xz');
+  // 后刹车脚踏（深色，叠在后轮上）
+  C.box(cm(5.5),cm(1),cm(8),dark, cm(-14.5),cm(11.9),0);
+  // 后轮刹车护罩（弧形 C 形，顶过轮面）
+  const fa=[]; for(let i=0;i<=10;i++){ const a=(155-i*130/10)*Math.PI/180; fa.push(new T.Vector3(4.9*Math.cos(a),4.9*Math.sin(a),0)); }
+  for(let i=0;i<=10;i++){ const a=(25+i*130/10)*Math.PI/180; fa.push(new T.Vector3(3.4*Math.cos(a),3.4*Math.sin(a),0)); }
+  C.ext(fa, cm(8.6), dark, cm(-12),cm(4),-cm(4.3));
+  // —— 立杆：下段彩 + 黑折叠夹 + 上段铝
+  C.tube(cm(29),cm(1.6),colm, cm(9),cm(24.5),0,'y');
+  C.rb(cm(3.6),cm(4.4),cm(4.2),cm(0.9),dark, cm(9),cm(39.5),0);
+  C.tube(cm(24),cm(1.15),alum, cm(9),cm(53),0,'y');
+  const knob=cyl(cm(9),cm(41.5),cm(2.5), cm(1.1),cm(1.6),dark);
+  // —— T 形车把：银横杆 + 彩握把 + 端盖（顶面 66）
+  C.tube(cm(26.8),cm(0.85),alum, cm(9),cm(64.5),0,'z');
+  for(const sz of [-1,1]){
+    C.tube(cm(7.5),cm(1.45),colm, cm(9),cm(64.5),sz*cm(8.25),'z');
+    cyl(cm(9),cm(64.5),sz*cm(12.9), cm(1.6),cm(1.8),colm);
+  }
   C.g.updateMatrixWorld(true);
   const bb=new C.THREE.Box3().setFromObject(C.g), off=new C.THREE.Vector3(); bb.getCenter(off);
   for(const ch of C.g.children){ ch.position.x-=off.x; ch.position.z-=off.z; }
 };
 
 // ===== Razor Jr. Lil' Kick 三轮滑板车（56.4×36.8×66cm，3 岁+） =====
+/* Razor Jr. Lil' Kick 三轮车：双前轮 Ø15 + 后轮 Ø13 透明五瓣轮、波纹橡胶叉臂、银色弯车架、蓝色踏板+后防翻翼
+   官方 56.5×36.5×65cm；照片实测：前轮轴距 33cm（轮心 ±16.5），前轮 Ø≈15、后轮 Ø≈13 */
 MODELS['lilkick'] = (C) => {
   const cm=C.cm, T=C.THREE;
   const colm = C.M(C.col, {plastic:true, rough:.42, clear:.3, envI:.3});
   const alum = C.M('#c9cdd2', {metal:.8, rough:.35, envI:.8});
-  const tire = C.M('#e8edf2', {plastic:true, rough:.3, clear:.6, envI:.4});
-  const wheel=(x,y,z,r,w,mat,hubR)=>{
-    const m=new T.Mesh(new T.CylinderGeometry(r,r,w,26),mat);
-    m.rotation.x=Math.PI/2; m.position.set(x,y,z);
-    m.castShadow=m.receiveShadow=true; C.g.add(m);
-    if(hubR){ const h=new T.Mesh(new T.CylinderGeometry(hubR,hubR,w*1.15,18),colm);
-      h.rotation.x=Math.PI/2; h.position.set(x,y,z); h.castShadow=true; C.g.add(h); }
-    return m; };
-  // 前两轮 Ø14 透明+彩毂 + 后轮 Ø14 加宽
-  wheel(cm(20),cm(7), cm(7.5), cm(7),cm(2.4),tire,cm(3));
-  wheel(cm(20),cm(7),-cm(7.5), cm(7),cm(2.4),tire,cm(3));
-  wheel(cm(-18),cm(7),0, cm(7),cm(3.4),tire,cm(3.2));
-  // 踏面 + 后翘尾翼
-  C.box(cm(30),cm(2.2),cm(10),colm, cm(1),cm(10.4),0);
-  C.box(cm(2),cm(10),cm(9),colm, cm(-15.2),cm(12.6),0);
-  // 防翻倒后臂（银，两段弯管）
-  const dtube=(x1,y1,x2,y2,r,mat)=>{
-    const dx=x2-x1, dy=y2-y1, len=Math.sqrt(dx*dx+dy*dy);
-    const m=new T.Mesh(new T.CapsuleGeometry(r,Math.max(0.005,len-2*r),4,14),mat);
-    m.position.set((x1+x2)/2,(y1+y2)/2,0);
-    m.rotation.z=Math.atan2(dy,dx)-Math.PI/2;
-    m.castShadow=true; C.g.add(m); return m; };
-  dtube(cm(8),cm(11.5),cm(-4),cm(8.5),cm(1.5),alum);
-  dtube(cm(-4),cm(8.5),cm(-18),cm(7),cm(1.5),alum);
-  // 前叉 + U 形护圈
-  dtube(cm(8),cm(11.5),cm(20),cm(7),cm(1.2),alum);
-  for(const sz of [-1,1]) dtube(cm(14.5),cm(7.5),cm(14.5),cm(13.5),cm(0.7),colm);
-  dtube(cm(14.5),cm(7.2),cm(18.5),cm(7.2),cm(0.7),colm);
-  // 立管 + 折叠关节
-  dtube(cm(9),cm(12),cm(10),cm(63),cm(1.3),alum);
-  const joint=new T.Mesh(new T.SphereGeometry(cm(2.1),16,12),colm);
-  joint.position.set(cm(9.2),cm(16),0); joint.castShadow=true; C.g.add(joint);
-  // T 形车把：彩主杆 + 银色端杆 + 彩握把（顶面 66）
-  C.tube(cm(24),cm(1.2),colm, cm(10),cm(64.8),0,'z');
+  const tire = C.M('#e8edf2', {plastic:true, rough:.3, envI:.4});
+  tire.transparent=true; tire.opacity=.32; tire.depthWrite=false;
+  const dark = C.M('#22242a', {plastic:true, rough:.5, envI:.2});
+  const bolt = C.M('#b8bcc2', {metal:.85, rough:.3, envI:.8});
+  const deco = C.M('#4fc3e8', {plastic:true, rough:.5, envI:.25});
+  // —— 透明五瓣轮（半径 R，局部 z 轴，Group 内构建）——
+  const wheel=(x,z,R,rotY)=>{
+    const w=new T.Group();
+    const msh=(g,mat)=>{ const m=new T.Mesh(g,mat); m.castShadow=m.receiveShadow=true; w.add(m); return m; };
+    const tM=msh(new T.CylinderGeometry(R,R,cm(2.5),28),tire); tM.rotation.x=Math.PI/2;
+    for(const sz of [-1,1]) msh(new T.TorusGeometry(R-cm(1.3),cm(0.55),8,28),colm).position.set(0,0,sz*cm(0.95));
+    for(let i=0;i<5;i++){
+      const th=(90+i*72)*Math.PI/180;
+      const p=msh(new T.CapsuleGeometry(cm(0.7),cm(1.9),4,10),colm);
+      p.rotation.z=Math.PI/2-th; p.position.set(0.43*R*Math.cos(th), 0.43*R*Math.sin(th), 0); }
+    const hub=msh(new T.CylinderGeometry(0.26*R,0.26*R,cm(2.5),20),colm); hub.rotation.x=Math.PI/2;
+    const slv=msh(new T.CylinderGeometry(cm(0.7),cm(0.7),cm(3.1),12),dark); slv.rotation.x=Math.PI/2;
+    const btl=msh(new T.CylinderGeometry(cm(0.6),cm(0.6),cm(3.3),12),bolt); btl.rotation.x=Math.PI/2;
+    w.position.set(x,R,z); if(rotY) w.rotation.y=rotY; C.g.add(w); return w; };
+  wheel(cm(17), cm(16.5), cm(7.5), 0);       // 前轮左（Ø15）
+  wheel(cm(17),-cm(16.5), cm(7.5), 0);       // 前轮右
+  wheel(cm(-25.5), 0, cm(6.5), Math.PI/2);   // 后轮（Ø13）
+  // —— 前轮轴（银，z ±17.75）+ 左蓝星形旋钮 / 右银螺栓帽（端面齐平 ±18.25）——
+  C.tube(cm(35.5),cm(0.8),alum, cm(17),cm(7.5),0,'z');
+  C.box(cm(1.7),cm(1.7),cm(1.2),colm, cm(17),cm(6.65),-cm(17.65));
+  C.box(cm(1.3),cm(1.3),cm(1.0),bolt, cm(17),cm(7.0), cm(17.75));
+  // —— 波纹橡胶叉臂（两条，靴座前下 → 两轮轴，沿曲线加 3 道波纹环）——
+  const tube3=(pts,r,mat,ribs)=>{
+    const cv=new T.CatmullRomCurve3(pts.map(p=>new T.Vector3(p[0],p[1],p[2])));
+    const m=new T.Mesh(new T.TubeGeometry(cv,28,r,10),mat); m.castShadow=m.receiveShadow=true; C.g.add(m);
+    if(ribs) for(const t of [0.26,0.5,0.74]){
+      const p=cv.getPointAt(t);
+      const s=new T.Mesh(new T.SphereGeometry(r*1.24,12,9),mat); s.position.copy(p); s.castShadow=true; C.g.add(s); } };
+  for(const sz of [-1,1])
+    tube3([[cm(14.5),cm(11.5),sz*cm(2.8)],[cm(15.5),cm(9.5),sz*cm(8)],[cm(16.4),cm(8.4),sz*cm(13.8)],[cm(17),cm(7.5),sz*cm(16.3)]],
+          cm(0.95),colm,true);
+  // —— 银色弯车架（立管底 → 踏板下 → 后轴）——
+  tube3([[cm(14.5),cm(11),0],[cm(5),cm(9),0],[cm(-10),cm(8.4),0],[cm(-20),cm(7.2),0],[cm(-25.5),cm(6.5),0]],cm(1.05),alum);
+  // —— 立管（银）+ 蓝色靴座 + 银色徽章 + 底座蓝圈 ——
+  C.tube(cm(50.5),cm(1.0),alum, cm(14.5),cm(38.25),0,'y');      // y 13..63.5
+  C.rb(cm(4.8),cm(5.6),cm(6.8),cm(1.5),colm, cm(14.5),cm(8.8),0);  // 靴座 y 8.8..14.4
+  C.tube(cm(2.2),cm(1.35),colm, cm(14.5),cm(8.1),0,'y');          // 底座蓝圈
+  const bd=new T.Mesh(new T.CylinderGeometry(cm(1.1),cm(1.1),cm(0.3),16),bolt);
+  bd.rotation.z=Math.PI/2; bd.position.set(cm(16.6),cm(11.2),0);
+  bd.castShadow=true; C.g.add(bd);
+  // —— 蓝色防滑踏板（顶 13.4，加宽 18cm，前宽后窄）——
+  const dp=[[9.8,0],[8.6,3.2],[5.8,6.2],[1.8,7.8],[-8.2,7.8],[-18.2,6.4],[-20.3,3.6],[-20.3,0],[-20.3,-3.6],[-18.2,-6.4],[-8.2,-7.8],[1.8,-7.8],[5.8,-6.2],[8.6,-3.2]];
+  C.ext(dp.map(p=>[cm(p[0]),cm(p[1])]), cm(1.6), colm, 0,cm(11.8),0,'xz',cm(1.2));
+  C.rb(cm(12),cm(0.25),cm(5.5),cm(2.2),deco, cm(-6),cm(12.95),0);  // Razor jr 浅色椭圆贴
+  // —— 后防翻翼（蓝色叶片，后轮上方，基部嵌入轮顶弧）——
+  const fp=[[-21.5,11.2],[-23.5,19.5],[-27,23],[-29.5,16.5],[-28.5,11.2]];
+  C.ext(fp.map(p=>[cm(p[0]),cm(p[1])]), cm(1.4), colm, 0,0,0,'xy',cm(1.0));
+  // —— T 把：银横杆 + 蓝中套 + 蓝握把（顶 65）——
+  C.tube(cm(24),cm(0.8),alum, cm(14.5),cm(63.4),0,'z');
+  C.tube(cm(12.5),cm(1.75),colm, cm(14.5),cm(63.4),0,'z');
   for(const sz of [-1,1]){
-    C.tube(cm(4),cm(1),alum, cm(10),cm(64.8),sz*cm(14),'z');
-    C.tube(cm(6),cm(1.5),colm, cm(10),cm(64.8),sz*cm(14.5),'z'); }
+    C.tube(cm(6.2),cm(1.55),colm, cm(14.5),cm(63.4),sz*cm(9.1),'z');
+    C.tube(cm(1.4),cm(1.75),colm, cm(14.5),cm(63.4),sz*cm(11.6),'z'); }
   C.g.updateMatrixWorld(true);
-  const bb=new C.THREE.Box3().setFromObject(C.g), off=new C.THREE.Vector3(); bb.getCenter(off);
+  const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3(); bb.getCenter(off);
   for(const ch of C.g.children){ ch.position.x-=off.x; ch.position.z-=off.z; }
 };
 /* Giantex 7ft 圆形蹦床：黑色弹面 + 蓝色 PE 护垫环 + 3 组 A 字架 + 网 + 绿色底座 */
@@ -9167,6 +10451,7 @@ function mergeByMaterial(root, minMeshes){
     for(const m of b.list){
       const src = m.geometry.index ? m.geometry.toNonIndexed() : m.geometry.clone();
       src.applyMatrix4(new THREE.Matrix4().multiplyMatrices(inv, m.matrixWorld));
+
       geos.push(src);
       if(m.parent) m.parent.remove(m);
     }
