@@ -806,6 +806,7 @@ const CATALOG = [
  {id:'bt-board-0', cat:'平衡 / 感统', name:'The Balance Board 平衡板 · 波罗的海桦木', w:50.8,d:27.9,h:10.2, price:99, caNA:true, color:'#e6d9bd', kind:'wobble', wood:'birch', model:'bt-board', url:'https://blueberryandthird.com/products/the-balance-board', note:'波罗的海桦木胶合板平衡板（美国俄亥俄手作，2-7岁 / 150lbs）：上层微圆角平板+下半椭球摇摆底座（单点触地），前后左右摇晃练前庭感/核心/重心转移；无加拿店面（caNA）'},
  {id:'lt-sportszone-0', cat:'运动器材', name:'Little Tikes 3-in-1 Sports Zone · 三合一运动站', w:87.6, d:36.8, h:62.2, price:48.99, priceCA:69.97, color:'#7ac143', color2:'#e03a2f', kind:'sportsZone', model:'lt-sportszone', url:'https://www.littletikes.com/products/sportszone', note:'12-36月三合一活动站：足球门（红拱架+白鳞格网）+篮球（黄杆/绿篮板+LED记分屏+橙筐，高度可调）+保龄球（5瓶+橙球）+蓝接球碗；踢球/投掷/滚动练大运动与手眼协调；美$48.99（littletikes.com），加$69.97（Walmart.ca）'},
  {id:'lt-walker-0', cat:'学步车', name:'Little Tikes Light n Go 3-in-1 Activity Walker', w:53.8, d:43.7, h:42.4, price:39.99, caNA:true, color:'#97c93d', color2:'#ef8f1f', kind:'walker', model:'lt-walker', url:'https://www.littletikes.com/products/light-n-go-3-in-1-activity-walker', note:'9-36月三合一：活动桌(9-12m)→学步车→高边桌；两侧青柠色拱形框架+顶部橙把手+4蓝轮+中央白色活动面板（3齿轮+发光泡+3数字键）+前部字母滚筒；推步/扶走练行走与大运动；美$39.99（littletikes.com）；无加拿大渠道（caNA）'},
+ {id:'cove-0', cat:'户外玩乐', name:'Step2 Cascading Cove 沙水两用桌', w:107.95, d:61, h:58.4, price:111.99, priceCA:149.97, color:'#2e8fc7', color2:'#c9bda3', kind:'sandTable', model:'cove', url:'https://www.step2.com/products/cascading-cove-sand-water-table', note:'1.5+岁户外沙水两用桌：沙箱+水渠分列两侧、中央塑模车桥分隔、双侧排水塞、可当车赛垫的绿色盖垫；感官/大运动/手眼协调；含42"遮阳伞（可拆，未建模）+6件玩沙组；美$111.99（step2.com），加$149.97（Amazon.ca）'},
  {id:'giantex7-blue', cat:'运动器材', name:'Giantex 7ft 圆形蹦床带安全网 · Blue', w:221.6,d:221.6,h:185.4, price:199.99, priceCA:259.99, color:'#3d6cb4', col2:'#46b13c', kind:'trampoline', model:'giantex7', note:'直径 7.3ft，高 6.1ft（含网架），3 组 A 字架 + PE 护垫 + 绿色底座，3 岁+', url:'https://www.giantex.com/products/7-ft-kids-trampoline-with-safety-enclosure-net'},
  {id:'giantex7-green', cat:'运动器材', name:'Giantex 7ft 圆形蹦床带安全网 · Green', w:221.6,d:221.6,h:185.4, price:199.99, priceCA:259.99, color:'#3f9e3a', col2:'#46b13c', kind:'trampoline', model:'giantex7', note:'直径 7.3ft，高 6.1ft（含网架），3 组 A 字架 + PE 护垫 + 绿色底座，3 岁+', url:'https://www.giantex.com/products/7-ft-kids-trampoline-with-safety-enclosure-net'},
  {id:'giantex7-yellow', cat:'运动器材', name:'Giantex 7ft 圆形蹦床带安全网 · Yellow', w:221.6,d:221.6,h:185.4, price:189.99, priceCA:259.99, color:'#e8b524', col2:'#46b13c', kind:'trampoline', model:'giantex7', note:'直径 7.3ft，高 6.1ft（含网架），3 组 A 字架 + PE 护垫 + 绿色底座，3 岁+', url:'https://www.giantex.com/products/7-ft-kids-trampoline-with-safety-enclosure-net'},
@@ -1352,7 +1353,7 @@ function furnShape(it, spec){
     el('line',{x1:0,y1:-dp/2+3,x2:0,y2:dp/2-3,stroke:'rgba(0,0,0,.28)','stroke-width':1.4,'stroke-dasharray':'6 4'},body);
   } else
   // 新品类 2D 俯视图例
-  if(['shelf','crib','cart','deskSitStand','swivelChair','playCouch','tableFold','tableDrawer','rocking','xylophone','wobble','sportsZone','walker'].includes(kind)){
+  if(['shelf','crib','cart','deskSitStand','swivelChair','playCouch','tableFold','tableDrawer','rocking','xylophone','wobble','sportsZone','walker','sandTable'].includes(kind)){
     const dk2='rgba(0,0,0,.30)', lt2='rgba(255,255,255,.22)';
     if(kind==='shelf'){
       R(-wf/2,-df/2,wf,df,2,col,{stroke:'rgba(0,0,0,.45)','stroke-width':1.2});
@@ -1394,6 +1395,13 @@ function furnShape(it, spec){
       for(const sx of [-1,1]) for(const sz of [-1,1])
         el('circle',{cx:sx*wf*0.38*S, cy:sz*df*0.36*S, r:Math.max(2.5,df*0.075*S), fill:dk2},body);
       el('line',{x1:-wf*0.30*S,y1:-df*0.42*S,x2:wf*0.30*S,y2:-df*0.42*S,stroke:dk2,'stroke-width':1.6},body);
+    } else if(kind==='sandTable'){
+      // 沙水台：圆角大框 + 中央分隔道 + 4 角排水塞
+      R(-wf/2,-df/2,wf,df, Math.min(wf,df)*0.10*S, col,{stroke:'rgba(0,0,0,.45)','stroke-width':1.2});
+      el('path',{d:'M0,'+(-df*0.42*S)+' Q '+(wf*0.06*S)+' 0 0,'+(df*0.42*S),
+        fill:'none',stroke:dk2,'stroke-width':Math.max(2,df*0.05*S)},body);
+      for(const sx of [-1,1]) for(const sz of [-1,1])
+        el('circle',{cx:sx*wf*0.40*S, cy:sz*df*0.38*S, r:Math.max(2.5,df*0.05*S), fill:dk2},body);
     } else if(kind==='sportsZone'){
       // 三合一运动站：圆角框 + 左小拱（球门）+ 中竖杆（篮架）+ 右三小瓶（保龄球）
       R(-wf/2,-df/2,wf,df, Math.min(wf,df)*0.12*S, col,{stroke:'rgba(0,0,0,.45)','stroke-width':1.2});
@@ -4459,6 +4467,42 @@ function carpetTexture(){
   t.repeat.set(6,6); t.encoding=THREE.sRGBEncoding; t.anisotropy=8;
   _carpetTex=t; return t;
 }
+/* 细颗粒砂（沙水台沙盘床）：米黄底 + 密集双色颗粒 */
+let _sandTex = null;
+function sandTexture(){
+  if(_sandTex) return _sandTex;
+  srand(1026);
+  const N=256, c=document.createElement('canvas'); c.width=c.height=N;
+  const g=c.getContext('2d');
+  g.fillStyle='#e6d3a2'; g.fillRect(0,0,N,N);
+  for(let i=0;i<5200;i++){
+    const x=rnd01()*N, y=rnd01()*N, r=0.6+rnd01()*1.1;
+    g.fillStyle = rnd01()<0.5 ? 'rgba(196,168,116,.55)' : 'rgba(246,234,196,.6)';
+    g.beginPath(); g.arc(x,y,r,0,6.29); g.fill();
+  }
+  const t=new THREE.CanvasTexture(c);
+  t.wrapS=t.wrapT=THREE.RepeatWrapping; t.repeat.set(4,4);
+  t.encoding=THREE.sRGBEncoding; t.anisotropy=8;
+  _sandTex=t; return t;
+}
+/* 米色斑点塑料（沙水台腿、户外玩具件）：浅底 + 细密斑点 */
+let _speckleTex = null;
+function speckleTexture(){
+  if(_speckleTex) return _speckleTex;
+  srand(1027);
+  const N=256, c=document.createElement('canvas'); c.width=c.height=N;
+  const g=c.getContext('2d');
+  g.fillStyle='#f6f4ee'; g.fillRect(0,0,N,N);
+  for(let i=0;i<2600;i++){
+    const x=rnd01()*N, y=rnd01()*N, r=0.4+rnd01()*1.0;
+    g.fillStyle = rnd01()<0.5 ? 'rgba(120,116,104,.30)' : 'rgba(80,96,88,.22)';
+    g.beginPath(); g.arc(x,y,r,0,6.29); g.fill();
+  }
+  const t=new THREE.CanvasTexture(c);
+  t.wrapS=t.wrapT=THREE.RepeatWrapping; t.repeat.set(2,2);
+  t.encoding=THREE.sRGBEncoding; t.anisotropy=8;
+  _speckleTex=t; return t;
+}
 /* 金属烤漆（铁床架/推车）：细橘皮 + 偶发轻微流平痕 */
 function powderCoatTexture(){
   if(_powderTex) return _powderTex;
@@ -4743,7 +4787,7 @@ function texScaled(base, ftSize, per){
 const _furnMatCache=new Map();
 const FURN_SOFT = ['sofa','sofaL','armchair','playCouch','bed','stool','officeChair','swivelChair','chair'];
 const FURN_CASE = ['bookcase','shelf','dresser','nightstand','shoeCab','tvBench','desk','deskSitStand',
-                   'sideTable','coffeeTable','tableRect','tableRound','tableFold','tableDrawer','crib','box','rocking','xylophone','wobble'];
+                   'sideTable','coffeeTable','tableRect','tableRound','tableFold','tableDrawer','crib','box','rocking','xylophone','wobble','sandTable'];
 const FURN_METAL= ['bedMetal','cart'];
 function furnMats(spec, col){
   const kind = spec.kind || 'box';
@@ -10256,6 +10300,57 @@ MODELS['lt-walker'] = (C) => {
   for(const ch of C.g.children){ ch.position.x-=off4.x; ch.position.z-=off4.z; }
 };
 
+/* Step2 Cascading Cove 沙水两用桌（850999，对照 work/ref/cascadingcove/cove_001.png / cove_003.png，全部 cm→C.cm→英尺）：
+   蓝色双仓盆体（左沙床/右水渠，中央车桥分隔）+ 4 米色斑点腿 + 4 角排水塞 + 红色 Step2 logo + 侧面饰脊。
+   23H×42.5W×24D = 58.4×108×61cm（桌体；42" 遮阳伞可拆未建模，note 已注明）。 */
+MODELS['cove'] = (C) => {
+  const cm=C.cm, T=C.THREE;
+  const BLUE=C.M('#2e8fc7',{plastic:true, rough:.42, clear:.35});
+  const DBLUE=C.M('#1a6f9e',{plastic:true, rough:.55});
+  const LEG=C.M('#c9bda3',{plastic:true, rough:.85, clear:0});
+  const SAND=C.M('#e6d3a2',{flat:true, rough:.95, clear:0});
+  SAND.map=sandTexture(); SAND.normalMap=normalFromTexture(sandTexture(),.5);
+  const WATER=C.M('#8fd0ea',{flat:true, rough:.10, envI:.4});
+  WATER.transparent=true; WATER.opacity=.55;
+  const RED=C.M('#d8342c',{plastic:true, rough:.5});
+  // —— 4 米色斑点腿（8×8 截面，0..46，顶在盆底）——
+  for(const sx of [-48,48]) for(const sz of [-24,24])
+    C.box(cm(8), cm(46), cm(8), LEG, cm(sx), 0, cm(sz));
+  // —— 蓝色盆沿：外 108×61（r8）内挖 92×45（r4）的环，46..58.4 ——
+  const rrect=(sh,w,d,r)=>{ const x=w/2-r, y=d/2-r;
+    sh.absarc(x,y,r,-Math.PI/2,0); sh.absarc(-x,y,r,0,Math.PI/2);
+    sh.absarc(-x,-y,r,Math.PI/2,Math.PI); sh.absarc(x,-y,r,Math.PI,Math.PI*1.5); };
+  const osh=new T.Shape(); rrect(osh, cm(108), cm(61), cm(8));
+  const hsh=new T.Path(); rrect(hsh, cm(92), cm(45), cm(4));
+  osh.holes.push(hsh);
+  const rim=new T.Mesh(new T.ExtrudeGeometry(osh,{depth:cm(12.4), bevelEnabled:false}), BLUE);
+  rim.rotation.x=-Math.PI/2; rim.position.y=cm(46);
+  rim.castShadow=rim.receiveShadow=true; C.g.add(rim);
+  // —— 内腔底（深蓝，46.5..52）——
+  C.rb(cm(92), cm(5.5), cm(45), cm(4), DBLUE, 0, cm(46.5), 0);
+  // —— 左沙床 / 右水渠（面高 52，低于盆沿 6.4）——
+  C.box(cm(44), cm(1.6), cm(45), SAND, cm(-24), cm(52), 0);
+  C.box(cm(44), cm(0.8), cm(45), WATER, cm(24), cm(52), 0);
+  // —— 中央塑模车桥分隔（直桥身 + 水渠上小拱桥）——
+  C.rb(cm(6), cm(2), cm(45), cm(2), DBLUE, 0, cm(52), 0);
+  C.rb(cm(10), cm(1.6), cm(7), cm(2), BLUE, cm(2), cm(53.6), cm(-8));
+  // —— 4 排水塞（长边盆沿上，顶 ≤58.4）——
+  for(const sx of [-46,46]) for(const sz of [-26.5,26.5])
+    C.cyl(cm(2), cm(2), cm(0.5), LEG, cm(sx), cm(57.9), cm(sz), 16);
+  // —— 红色 Step2 logo（前沿正中）+ 侧面双横饰脊 ——
+  C.rb(cm(5), cm(3.5), cm(0.6), cm(1), RED, 0, cm(53), cm(30.1));
+  for(const z of [-30.2, 30.2]) for(const y of [49.5, 53.5])
+    C.box(cm(96), cm(1.2), cm(0.8), DBLUE, 0, cm(y), cm(z));
+  // 水平重心归零（真实顶点 bbox）
+  C.g.updateMatrixWorld(true);
+  const bb5=new T.Box3();
+  C.g.traverse(o=>{ if(o.isMesh&&o.geometry){
+    const pos=o.geometry.attributes.position, v=new T.Vector3();
+    for(let i=0;i<pos.count;i++){ v.fromBufferAttribute(pos,i).applyMatrix4(o.matrixWorld); bb5.expandByPoint(v); } } });
+  const off5=new T.Vector3(); bb5.getCenter(off5);
+  for(const ch of C.g.children){ ch.position.x-=off5.x; ch.position.z-=off5.z; }
+};
+
 /* LÄTT 儿童桌+2椅（套装 119×48×48）：桌 63×48×45（松木方框+白色面板，4 全高方腿），
    椅 28×28×48、座高 28（白座板+白背顶板，中间镂空）。两椅对称摆桌短边两侧、椅背朝外。
    轴向：桌长边沿 x；椅背朝 ±x（s=+1 右椅椅背朝 +x）。 */
@@ -12678,6 +12773,25 @@ async function run3DTest(){
     T('lt-walker-centered', Math.abs(lwFit.ct.x)<0.03 && Math.abs(lwFit.ct.z)<0.03,
       'LT 学步车水平重心 ('+lwFit.ct.x.toFixed(2)+', '+lwFit.ct.z.toFixed(2)+')');
     T('lt-walker-on-floor', lwFit.minY>-0.02, 'LT 学步车最低点 y='+lwFit.minY.toFixed(3));
+    const cov=CATALOG.find(c=>c.id==='cove-0');
+    const covFit = (()=>{
+      const g=furn3D({uid:-118,ref:cov.id,x:0,y:0,rot:0}, cov);
+      g.updateMatrixWorld(true);
+      const b=new THREE.Box3().setFromObject(g);
+      const sz=new THREE.Vector3(), ct=new THREE.Vector3(); b.getSize(sz); b.getCenter(ct);
+      let tri=0; g.traverse(o=>{ if(o.isMesh&&o.geometry&&o.geometry.attributes.position) tri+=o.geometry.attributes.position.count/3; });
+      disposeOwned(g);
+      return {sz, ct, fx:sz.x/cm2ft(cov.w), fz:sz.z/cm2ft(cov.d), fy:sz.y/cm2ft(cov.h), minY:b.min.y, tri};
+    })();
+    T('cove-fits-footprint', covFit.fx<=1.02 && covFit.fz<=1.02 && covFit.fy<=1.02,
+      'Cascading Cove 填充率 '+[covFit.fx,covFit.fz,covFit.fy].map(v=>(v*100).toFixed(0)+'%').join('/')+
+      '（声明 '+cov.w+'×'+cov.d+'×'+cov.h+'cm，不含遮阳伞）');
+    T('cove-footprint-not-inflated', covFit.fx>=0.92 && covFit.fz>=0.92,
+      '不能虚报占地：'+[covFit.fx,covFit.fz].map(v=>(v*100).toFixed(0)+'%').join('/'));
+    T('cove-centered', Math.abs(covFit.ct.x)<0.03 && Math.abs(covFit.ct.z)<0.03,
+      'Cascading Cove 水平重心 ('+covFit.ct.x.toFixed(2)+', '+covFit.ct.z.toFixed(2)+')');
+    T('cove-on-floor', covFit.minY>-0.02, 'Cascading Cove 最低点 y='+covFit.minY.toFixed(3));
+    T('cove-tri-ok', covFit.tri>500 && covFit.tri<40000, '三角面 '+covFit.tri.toFixed(0));
     const hw=CATALOG.find(c=>c.id==='hw-02e');
     T('hw02e-costs-money', !isBuiltIn(hw) && !!priceOf(hw,'usd') && hasLightCtl(hw),
       '计价 '+fmtPrice(hw,'usd')+' 且有调光控件');
