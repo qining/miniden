@@ -10352,72 +10352,120 @@ MODELS['lt-sportszone'] = (C) => {
    + 中央白色活动面板（3齿轮+发光泡+3数字键，朝孩子侧 -z）+ 前部橙色字母滚筒。
    官方产品尺寸 21.2"W×17.2"L×16.7"H = 53.8×43.7×42.4cm（三模式最大包络）；9-36月。 */
 MODELS['busplay'] = (C) => {
-  // Costway 5-in-1 巴士滑梯游戏屋：巴士舱(x -76) + 3段滑梯(前) + 婴儿秋千(x 77,架宽150) + 篮球架(车顶79cm) + 爬行洞
+  // Costway 5-in-1：青巴士舱（侧板开窗+爬洞）+ 白色弯滑梯（斜向左前 35°）+ 橙车门/轮
+  // + 右端 A 形秋千架（白顶杆+摇篮座椅+香蕉摇轨）+ 车顶白色篮筐（顶 87≈官方）
   const T=C.THREE, cm=C.cm;
   const TEAL  =C.M('#0f7f8b',{plastic:true, rough:.5, envI:.2});
   const ORANGE=C.M('#f07818',{plastic:true, rough:.5, envI:.18});
   const WHITE =C.M('#eef1f0',{plastic:true, rough:.6, envI:.15});
-  const HOOPW =C.M('#f5f7f6',{plastic:true, rough:.6, envI:.12});
   const DARK  =C.M('#1c2528',{flat:true, rough:1, envI:.05});
-  // ---------- 巴士舱：中心(-76, 0, -25)，57×47×55 + 顶盖 ----------
-  const bus=new T.Group(); bus.position.set(cm(-76),0,cm(-25));
-  const bmain=C.rb(cm(57),cm(55),cm(47),cm(4),TEAL,0,0,0,24);
-  const broof=C.rb(cm(53),cm(8),cm(43),cm(3),TEAL,0,cm(55),0,24);
-  const door =C.rb(cm(16),cm(26),cm(1.4),cm(1),ORANGE,cm(-2),cm(8),-cm(23.5),16);
-  const dwin =C.rb(cm(10),cm(12),cm(0.6),cm(0.5),DARK,cm(-2),cm(22),-cm(24.2),10);
-  // 侧车轮环：TorusGeometry 默认在 XY 面（面向±z）——正好是侧轮朝向，保持不转
-  const ring=C.torus(cm(15),cm(3.5),TEAL,cm(-15),cm(19),cm(23.5));
-  const wheelIn=C.sph(cm(8),DARK,cm(-15),cm(19),cm(23.0),16); wheelIn.scale.set(1,1,0.25);
-  // 爬行洞：与车轮环同侧(+z)，靠近滑梯出口；面向±z
-  const hole=C.torus(cm(11),cm(2.5),TEAL,cm(18),cm(22),cm(23.5));
-  const holeIn=C.sph(cm(8.5),DARK,cm(18),cm(22),cm(23.2),16); holeIn.scale.set(1,1,0.25);
-  // 篮球架：屋顶前部支撑 + 白篮板(58..82，顶82≈官方79+盘) + 顶盘
-  const hpost=C.box(cm(4),cm(10),cm(4),TEAL,cm(18),cm(55),0);
-  const hboard=C.box(cm(2),cm(22),cm(22),HOOPW,cm(18),cm(60),0);
-  const htray =C.rb(cm(14),cm(2),cm(10),cm(0.8),HOOPW,cm(18),cm(80),0,10);
-  const cap=C.rb(cm(20),cm(4),cm(10),cm(1.5),TEAL,cm(-12),cm(63),cm(8),12);
-  [bmain,broof,door,dwin,ring,wheelIn,hole,holeIn,hpost,hboard,htray,cap].forEach(m=>bus.add(m));
+  const rrect=(sh,w,h,r,y0=0)=>{ const x=w/2-r, y=y0+h-r, b=y0+r;
+    sh.absarc(x,y,r,-Math.PI/2,0); sh.absarc(-x,y,r,0,Math.PI/2);
+    sh.absarc(-x,b,r,Math.PI/2,Math.PI); sh.absarc(x,b,r,Math.PI,Math.PI*1.5); };
+  const cpath=(cx,cy,r)=>{ const p=new T.Path(); p.absarc(cm(cx),cm(cy),cm(r),0,Math.PI*2,false); return p; };
+
+  // ========== 巴士舱：中心 (10,0,0)，60×42×55 ==========
+  const bus=new T.Group(); bus.position.set(cm(10),0,0);
+  const side=()=>{ const sh=new T.Shape(); rrect(sh, cm(60), cm(55), cm(6));
+    const win=new T.Path(); const x=cm(8), y0=cm(30);
+    win.absarc(x+cm(3.5),y0+cm(15.5),cm(3.5),-Math.PI/2,0);
+    win.absarc(x+cm(10.5),y0+cm(15.5),cm(3.5),0,Math.PI/2);
+    win.absarc(x+cm(10.5),y0+cm(3.5),cm(3.5),Math.PI/2,Math.PI);
+    win.absarc(x+cm(3.5),y0+cm(3.5),cm(3.5),Math.PI,Math.PI*1.5);
+    sh.holes.push(win);
+    sh.holes.push(cpath(38,21,11.5));
+    return sh; };
+  for(const sz of [cm(19.5),-cm(22.5)]){
+    const g=new T.ExtrudeGeometry(side(),{depth:cm(3),bevelEnabled:false});
+    const mm=new T.Mesh(g,TEAL); mm.position.z=sz; mm.castShadow=mm.receiveShadow=true; bus.add(mm);
+  }
+  // 顶：白顶板 + 青边框
+  const roof=C.rb(cm(56),cm(4),cm(38),cm(2),WHITE,-cm(2),cm(54),-cm(1),20);
+  bus.add(roof);
+  const rimf=C.box(cm(58),cm(3),cm(42),TEAL,0,cm(52.5),0); bus.add(rimf);
+  // 橙车门（前=-x）+ 车窗
+  const door=C.rb(cm(2.5),cm(26),cm(16),cm(1),ORANGE,-cm(29.5),cm(8),0,16);
+  bus.add(door);
+  const dwin=C.rb(cm(0.8),cm(9),cm(10),cm(0.4),DARK,-cm(30.6),cm(26),0,10);
+  bus.add(dwin);
+  // 爬洞内筒（深灰圆柱贯通两侧）+ 地板
+  const tun=C.cyl(cm(9),cm(9),cm(36),DARK,cm(38),cm(0),0,20);
+  tun.rotation.z=Math.PI/2; tun.position.y=cm(21); bus.add(tun);
+  bus.add(C.box(cm(56),cm(2),cm(38),ORANGE,0,cm(2),0));          // 地板
+  // 车轮 ×4（深灰，底部内缩）
+  for(const sx of [-1,1]) for(const sz of [-1,1])
+    { const w=C.cyl(cm(5),cm(5),cm(3),DARK,sx*cm(22),cm(0),sz*cm(18),16);
+      w.rotation.z=Math.PI/2; w.position.y=cm(5); bus.add(w); }
   C.g.add(bus);
-  // ---------- 滑梯：3段（-70,52 → -20,18 → +20,5 → +55,0.6），表面33宽；整体斜向+z(31°)远离秋千 ----------
-  const slideRoot=new T.Group(); slideRoot.position.set(cm(-5),0,cm(-10)); slideRoot.rotation.y=-0.55;
-  const slide=(x0,y0,x1,y1,withCap)=>{
-    const dx=x1-x0, dy=y1-y0, len=Math.hypot(dx,dy), ang=Math.atan2(dy,dx);
-    const seg=new T.Group();
-    seg.position.set(cm(x0),cm(y0),0);
-    seg.rotation.z=ang;
-    const surf=C.box(cm(len),cm(2),cm(33),WHITE,cm(len/2),0,0);
-    const r1=C.box(cm(len+2),cm(7),cm(3),TEAL,cm(len/2),cm(1.5),cm(17.5));
-    const r2=C.box(cm(len+2),cm(7),cm(3),TEAL,cm(len/2),cm(1.5),-cm(17.5));
-    const end=withCap?C.box(cm(4),cm(9),cm(37),ORANGE,cm(len),cm(1),0):null;
-    [surf,r1,r2].forEach(m=>seg.add(m)); if(end) seg.add(end);
-    slideRoot.add(seg);
+
+  // ========== 滑梯：从车顶左缘出发，4 段下弯，末端橙边板+端面挡板 ==========
+  // 关键：内部段全部向右（dx>0）建，整组 rotation.y=π 镜像到左侧。
+  // 若直接 dx<0 建，atan2 落在第三象限会让局部 +y 轴旋成朝下（厚度翻转、末段插地 10cm）。
+  const slide=new T.Group(); slide.position.set(cm(-18),cm(55),0);
+  slide.rotation.y=Math.PI - 45*Math.PI/180;   // 135°：run 朝 -x/-z（前左），宽度铺深
+  const seg=(x0,y0,x1,y1,withEnd)=>{
+    const dx=x1-x0, dy=y1-y0, len=Math.hypot(dx,dy);
+    const g=new T.Group(); g.position.set(cm(x0),cm(y0),0);
+    g.rotation.z=Math.atan2(dy,dx);   // dx>0 → 小负角 → +y 朝上
+    g.add(C.box(cm(len),cm(1.8),cm(30),WHITE,cm(len/2),0,0));           // 滑面
+    g.add(C.box(cm(len+1),cm(6),cm(3),TEAL,cm(len/2),cm(1.2),cm(16.5)));  // 侧栏
+    g.add(C.box(cm(len+1),cm(6),cm(3),TEAL,cm(len/2),cm(1.2),-cm(16.5)));
+    if(withEnd){ // 末段：橙色边板 + 端面挡板
+      g.add(C.box(cm(len+1),cm(4),cm(4),ORANGE,cm(len/2),cm(0.5),cm(18.5)));
+      g.add(C.box(cm(len+1),cm(4),cm(4),ORANGE,cm(len/2),cm(0.5),-cm(18.5)));
+      g.add(C.rb(cm(6),cm(10),cm(41),cm(3),ORANGE,cm(len-1),0,0,12));    // 端面挡板
+    }
+    slide.add(g);
   };
-  slide(-70,52,-20,18,false);
-  slide(-20,18,20,5,false);
-  slide(20,5,55,0.6,true);
-  C.g.add(slideRoot);
-  // ---------- 秋千：白 A 架(x 77，架宽150) + 顶杆 + 摇摆底座 + 座 ----------
-  const sw=new T.Group(); sw.position.set(cm(77),0,0);
-  const postL=C.rb(cm(14),cm(60),cm(6),cm(2),WHITE,0,0,cm(-72),20);
-  const postR=C.rb(cm(14),cm(60),cm(6),cm(2),WHITE,0,0,cm(72),20);
-  const topbar=C.cyl(cm(1.2),cm(1.2),cm(144),WHITE,0,0,0,16);
-  topbar.position.y=cm(60); topbar.rotation.x=Math.PI/2;
-  // 摇摆底座：半圆截面(平面朝下)×44，挤出后 rotateY(90°) 使长度沿 x
+  seg(0,0,26,-15);
+  seg(26,-15,48,-34);
+  seg(48,-34,66,-46,true);
+  seg(66,-46,76,-53,true);
+  C.g.add(slide);
+
+  // ========== 秋千（右端，偏 +z）：A 形架 ×2 + 白顶杆 + 摇篮座 + 香蕉摇轨 ==========
+  const sw=new T.Group(); sw.position.set(cm(91),0,cm(43.5));
+  const aprof=()=>{ const sh=new T.Shape();
+    sh.moveTo(cm(-4),0); sh.lineTo(cm(11),0); sh.lineTo(cm(8),cm(58));
+    sh.lineTo(cm(-8),cm(58)); sh.closePath();
+    const w=new T.Path(); const x=cm(4.5), y0=cm(14);
+    w.absarc(x,y0+cm(15),cm(4.5),-Math.PI/2,0);
+    w.absarc(x+cm(4.5),y0+cm(15),cm(4.5),0,Math.PI/2);
+    w.absarc(x+cm(4.5),y0+cm(4.5),cm(4.5),Math.PI/2,Math.PI);
+    w.absarc(x,y0+cm(4.5),cm(4.5),Math.PI,Math.PI*1.5);
+    sh.holes.push(w);
+    return sh; };
+  for(const sz of [cm(24),-cm(27)]){
+    const g=new T.ExtrudeGeometry(aprof(),{depth:cm(12),bevelEnabled:false});
+    const mm=new T.Mesh(g,TEAL); mm.position.z=sz; mm.castShadow=mm.receiveShadow=true; sw.add(mm);
+  }
+  // 白顶杆（微弯：两段）
+  const bar1=C.cyl(cm(2),cm(2),cm(26),WHITE,0,0,cm(-11),12); bar1.rotation.x=Math.PI/2; bar1.position.y=cm(57); sw.add(bar1);
+  const bar2=C.cyl(cm(2),cm(2),cm(26),WHITE,0,0,cm(12),12);  bar2.rotation.x=Math.PI/2; bar2.position.y=cm(58.5); sw.add(bar2);
+  // 摇篮座：白壳 + 白靠背 + 橙 T 护栏
+  sw.add(C.rb(cm(26),cm(6),cm(24),cm(3),WHITE,0,cm(22),0,16));
+  const back=C.rb(cm(4),cm(20),cm(18),cm(1.5),WHITE,0,cm(26),0,16);
+  back.rotation.z=-0.18; back.position.x=cm(-11); sw.add(back);
+  sw.add(C.box(cm(12),cm(3),cm(24),ORANGE,cm(8),cm(28),0));
+  sw.add(C.box(cm(3),cm(10),cm(3),ORANGE,cm(8),cm(28),0));
+  // 香蕉摇轨（半圆管，弧面朝下）
   const rock=(()=>{ const sh=new T.Shape();
-    sh.absarc(0,0,cm(5),0,Math.PI,false);
-    const g=new T.ExtrudeGeometry(sh,{depth:cm(44),bevelEnabled:false});
+    sh.absarc(0,0,cm(6),Math.PI,0,false); sh.closePath();
+    const g=new T.ExtrudeGeometry(sh,{depth:cm(52),bevelEnabled:false});
     g.rotateY(Math.PI/2);
-    const m=new T.Mesh(g,WHITE); m.position.set(cm(-22),0,0);
+    const m=new T.Mesh(g,WHITE); m.position.set(cm(-26),cm(6),0);
     m.castShadow=m.receiveShadow=true; return m; })();
-  // 座：白靠背 + 橙座板 + 橙T安全护栏 + 吊带
-  const back=C.rb(cm(4),cm(24),cm(20),cm(1.5),WHITE,0,cm(22),0,16);
-  const seat=C.box(cm(29),cm(3),cm(35),ORANGE,0,cm(20),0);
-  const strap=C.box(cm(3),cm(10),cm(30),ORANGE,cm(14.5),cm(22),0);
-  const chL=C.box(cm(0.8),cm(18),cm(1.2),WHITE,-cm(10),cm(40),cm(-10),8);
-  const chR=C.box(cm(0.8),cm(18),cm(1.2),WHITE,cm(10),cm(40),cm(10),8);
-  [postL,postR,topbar,rock,back,seat,strap,chL,chR].forEach(m=>sw.add(m));
+  sw.add(rock);
   C.g.add(sw);
-  // ---------- 水平重心归零（含旋转件，按真实顶点）----------
+
+  // ========== 车顶篮筐（白杆 + 白盘 + 橙环，顶 87）==========
+  const hoop=new T.Group(); hoop.position.set(cm(22),0,0);
+  hoop.add(C.box(cm(3),cm(25),cm(3),WHITE,0,cm(57),0));
+  hoop.add(C.rb(cm(20),cm(3),cm(14),cm(2),WHITE,0,cm(81.5),0,16));
+  hoop.add(C.torus(cm(5.5),cm(0.9),ORANGE,0,cm(80.5),0));
+  C.g.add(hoop);
+
+  // 水平重心归零（真实顶点）
   C.g.updateMatrixWorld(true);
   const bb=new T.Box3(); const v=new T.Vector3();
   C.g.traverse(o=>{ if(o.isMesh&&o.geometry){ const pos=o.geometry.attributes.position;
@@ -10426,7 +10474,6 @@ MODELS['busplay'] = (C) => {
   for(const ch of C.g.children){ ch.position.x-=c0.x; ch.position.z-=c0.z; }
   return C.g;
 };
-
 MODELS['bigset'] = (C) => {
   // Superspace The Big Set：24片巨幅磁力片平叠收纳(105×51.6×19.4)。展示 14 层代表性面板：
   // 方50×50 / 方窗 / 长方100×50 / 长方窗 / 三角50边 / 梯形底100顶50高43.3
@@ -10540,30 +10587,37 @@ MODELS['cove'] = (C) => {
   const WATER=C.M('#8fd0ea',{flat:true, rough:.10, envI:.4});
   WATER.transparent=true; WATER.opacity=.55;
   const RED=C.M('#d8342c',{plastic:true, rough:.5});
-  // —— 4 米色斑点腿（8×8 截面，0..46，顶在盆底）——
+  // —— 4 米色锥腿（上细下粗，0..46，顶在盆底；角部内收 6cm）——
   for(const sx of [-48,48]) for(const sz of [-24,24])
-    C.box(cm(8), cm(46), cm(8), LEG, cm(sx), 0, cm(sz));
-  // —— 蓝色盆沿：外 108×61（r8）内挖 92×45（r4）的环，46..58.4 ——
+    C.cyl(cm(4.5), cm(5.8), cm(46), LEG, cm(sx), 0, cm(sz), 16);
+  // —— 蓝色盆沿：外 108×61（r10）内挖 92×45（r6）的环，46..58.4 ——
   const rrect=(sh,w,d,r)=>{ const x=w/2-r, y=d/2-r;
     sh.absarc(x,y,r,-Math.PI/2,0); sh.absarc(-x,y,r,0,Math.PI/2);
     sh.absarc(-x,-y,r,Math.PI/2,Math.PI); sh.absarc(x,-y,r,Math.PI,Math.PI*1.5); };
-  const osh=new T.Shape(); rrect(osh, cm(108), cm(61), cm(8));
-  const hsh=new T.Path(); rrect(hsh, cm(92), cm(45), cm(4));
+  const osh=new T.Shape(); rrect(osh, cm(108), cm(61), cm(10));
+  const hsh=new T.Path(); rrect(hsh, cm(92), cm(45), cm(6));
   osh.holes.push(hsh);
   const rim=new T.Mesh(new T.ExtrudeGeometry(osh,{depth:cm(12.4), bevelEnabled:false}), BLUE);
   rim.rotation.x=-Math.PI/2; rim.position.y=cm(46);
   rim.castShadow=rim.receiveShadow=true; C.g.add(rim);
+  // —— 四角厚圆角帽（塑模转角件）——
+  for(const sx of [-1,1]) for(const sz of [-1,1])
+    C.rb(cm(13), cm(12.4), cm(13), cm(3), BLUE, sx*cm(47.5), cm(46), sz*cm(23.5));
   // —— 内腔底（深蓝，46.5..52）——
-  C.rb(cm(92), cm(5.5), cm(45), cm(4), DBLUE, 0, cm(46.5), 0);
-  // —— 左沙床 / 右水渠（面高 52，低于盆沿 6.4）——
-  C.box(cm(44), cm(1.6), cm(45), SAND, cm(-24), cm(52), 0);
-  C.box(cm(44), cm(0.8), cm(45), WATER, cm(24), cm(52), 0);
-  // —— 中央塑模车桥分隔（直桥身 + 水渠上小拱桥）——
-  C.rb(cm(6), cm(2), cm(45), cm(2), DBLUE, 0, cm(52), 0);
-  C.rb(cm(10), cm(1.6), cm(7), cm(2), BLUE, cm(2), cm(53.6), cm(-8));
-  // —— 4 排水塞（长边盆沿上，顶 ≤58.4）——
-  for(const sx of [-46,46]) for(const sz of [-26.5,26.5])
-    C.cyl(cm(2), cm(2), cm(0.5), LEG, cm(sx), cm(57.9), cm(sz), 16);
+  C.rb(cm(92), cm(5.5), cm(45), cm(5), DBLUE, 0, cm(46.5), 0);
+  // —— 左沙床（面高 52，贴内腔壁）/ 右水槽（贴壁、略低于沙面）——
+  C.box(cm(43), cm(1.6), cm(44.5), SAND, cm(-24), cm(52), 0);
+  C.box(cm(43), cm(1.0), cm(44.5), WATER, cm(24), cm(51.6), 0);
+  // —— 中央分隔桥（接前后盆沿，中间留 4.4cm 落水槽）——
+  C.rb(cm(5), cm(6.4), cm(20), cm(2), DBLUE, 0, cm(52), cm(12.6));
+  C.rb(cm(5), cm(6.4), cm(20), cm(2), DBLUE, 0, cm(52), cm(-12.6));
+  // —— 盆沿顶面 4 米色圆钉（杯架/伞孔位，高出沿 0.4）——
+  for(const sx of [-1,1]) for(const sz of [-1,1])
+    C.cyl(cm(2), cm(2), cm(0.4), LEG, sx*cm(44), cm(58.4), sz*cm(25.5), 16);
+  // —— 红色 Step2 logo（前沿正中）+ 侧面双横饰脊 ——
+  C.rb(cm(5), cm(3.5), cm(0.6), cm(1), RED, 0, cm(53), cm(30.1));
+  for(const z of [-30.2, 30.2]) for(const y of [49.5, 53.5])
+    C.box(cm(96), cm(1.2), cm(0.8), DBLUE, 0, cm(y), cm(z));
   // —— 红色 Step2 logo（前沿正中）+ 侧面双横饰脊 ——
   C.rb(cm(5), cm(3.5), cm(0.6), cm(1), RED, 0, cm(53), cm(30.1));
   for(const z of [-30.2, 30.2]) for(const y of [49.5, 53.5])
