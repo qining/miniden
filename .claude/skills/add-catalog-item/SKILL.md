@@ -250,3 +250,5 @@ python3 .claude/skills/add-catalog-item/check-item.py --regress
 | 手摆相机后画布是空的 | `OrbitControls.update()` 把相机拉回去了 → 先同步 `controls.target` 再 `update()` |
 | 成品比 spec 大一圈 | `C.ext(..., bevel)` 的 `bevelSize` 是**向外扩**的：轮廓要先减掉倒角量。深度它已经补偿了，截面没有 |
 | 折线管件像一串香肠 | `C.tube` 的胶囊端帽收在端点上，首尾相接会在每个折点掐出腰 → 每段 `C.tube(L + 2r, ...)` 让相邻段搭接 |
+| C.cyl 想当「中心在某高度」的横杆/顶杆 | C.cyl 是**底对齐**（add 时 y+h/2）：把中心高直接传给 y，144cm 杆被抬到 132cm（bbox 爆 155%）| 调用后 `m.position.y=cm(中心高)` 再转，或传 `中心高−len/2` |
+| work/ 里堆满一次性探针 HTML（用户要手动清理）| 每次调试都在 version 控制目录里新建探针页、用完不删；放 /tmp 又因相对 `lib/` 路径失效不可复用 | 复用**一个**探针模板：planner.html 副本放 work/ + lib 改 `../lib`，同一命令末尾立即 `rm`；探针无输出先查页面目录与 lib 相对路径是否匹配 |
