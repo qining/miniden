@@ -809,6 +809,7 @@ const CATALOG = [
  {id:'cove-0', cat:'户外玩乐', name:'Step2 Cascading Cove 沙水两用桌', w:107.95, d:61, h:58.4, price:111.99, priceCA:149.97, color:'#2e8fc7', color2:'#c9bda3', kind:'sandTable', model:'cove', url:'https://www.step2.com/products/cascading-cove-sand-water-table', note:'1.5+岁户外沙水两用桌：沙箱+水渠分列两侧、中央塑模车桥分隔、双侧排水塞、可当车赛垫的绿色盖垫；感官/大运动/手眼协调；含42"遮阳伞（可拆，未建模）+6件玩沙组；美$111.99（step2.com），加$149.97（Amazon.ca）'},
  {id:'roadster-0', cat:'床 / 床头柜', name:'Step2 Roadster 赛车床（幼儿→单人床两用）· 红', w:218.4, d:119.4, h:40.6, price:349.99, priceCA:429.00, color:'#b3121c', color2:'#f5f5f2', kind:'bed', model:'roadster', url:'https://www.step2.com/products/roadster-toddler-to-twin-bed', note:'3+ 岁低床（床沿高 40.6cm，无床头架）：跑车造型——大轮毂×4、圆形大灯、引擎盖白条、前格栅、车门内嵌板+通风格；幼儿模式（64"×36"=162.6×91.4cm，婴儿床床垫）可加装侧板扩展为单人床（86"×47"，本条目占地取扩展后最大值 218.4×119.4×40.6cm）；美$349.99（step2.com），加$429.00（Walmart.ca）'},
  {id:'lilclimb-0', cat:'儿童 / 爬爬架', name:"Delta Children's Lil' Climber 三合一攀爬架", w:181.6, d:63.5, h:68.6, price:149.99, caNA:true, color:'#f0e7cf', color2:'#9fd0c4', kind:'pikler', model:'lilclimb', url:'https://www.deltachildren.com/products/lil-climber-gym-indoor-climbing-gym-playground-for-kids', note:'6个月-3岁蒙特梭利三合一（可拆可组）：A 字三角攀爬梯(27"高,8横档)+岩壁/滑梯双向板(71.5"长,5彩色抓握点)+圆顶拱门(抓杆×5+手柄洞)；白蜡木框架+柔彩横杆(薄荷绿/粉/黄)；25"W×27"H×71.5"D=63.5×68.6×181.6cm；23.5lbs；承重 200lbs(单孩 69lbs)；美$149.99（deltachildren.com；Walmart $129.99），加拿大无售（caNA）'},
+ {id:'nuby-ballpit-0', cat:'儿童 / 球池', name:"Nuby Kids' Ball Pit 球池(200球) · Aqua", w:90, d:90, h:27, price:99.99, caNA:true, color:'#a9b4ad', color2:'#3ec9c0', kind:'ballPit', model:'nubybp', url:'https://us.nuby.com/products/kids-ball-pit-with-200-balls', note:'软布圆桶：直径90cm(35.4")，软壁可倚靠、可机洗，含200球(白/水绿/浅灰)；高27cm（官方未公布高度，由官方商品图几何测量）；10个月+；美$99.99（us.nuby.com，原价$134.99），加拿大无售（caNA）'},
  {id:'hidesc-0', cat:'儿童 / 爬爬架', name:'Little Tikes Hide & Seek 攀爬滑梯秋千组', w:135.9, d:132.1, h:104.1, price:169.99, priceCA:169.96, caVar:true, color:'#e6d5ac', color2:'#b3121c', kind:'playset', model:'hidesc', url:'https://www.littletikes.com/products/hide-seek-climber-swing', note:'2-5 岁：拱门攀爬平台+红色滑梯(28")+匍匐钻洞(藏猫猫)+树形秋千架(蓝吊椅+安全带式)；53.5"L×52"W×41"H=135.9×132.1×104.1cm（含秋千）；美$169.99（含秋千版，littletikes.com；基础版$147.99），加$169.96（Well.ca，为基础版故 caVar）'},
  {id:'mckinney-0', cat:'儿童厨房', name:'KidKraft McKinney 幼儿玩具厨房 · 薄荷绿', w:80, d:34.3, h:83.8, price:70.99, caNA:true, color:'#a9d8c0', color2:'#e8a866', kind:'playKitchen', model:'mckinney', url:'https://www.target.com/p/kidkraft-mckinney-toddler-mid-century-modern-play-kitchen/-/A-53511595', note:'2-5岁中世纪风玩具厨房（Target 限定薄荷绿款）：微波炉+四眼灶+烤箱+冰箱门+2抽+水槽龙头+上排翻门；3 种玩法（煮/洗/收纳）；31.5"L×13.5"W×33"H=80×34.3×83.8cm，台面高18"；美$70.99（Target），加拿大无售（caNA）'},
  {id:'giantex7-blue', cat:'运动器材', name:'Giantex 7ft 圆形蹦床带安全网 · Blue', w:221.6,d:221.6,h:185.4, price:199.99, priceCA:259.99, color:'#3d6cb4', col2:'#46b13c', kind:'trampoline', model:'giantex7', note:'直径 7.3ft，高 6.1ft（含网架），3 组 A 字架 + PE 护垫 + 绿色底座，3 岁+', url:'https://www.giantex.com/products/7-ft-kids-trampoline-with-safety-enclosure-net'},
@@ -1426,6 +1427,14 @@ function furnShape(it, spec){
       for(let i=1;i<=3;i++){
         el('line',{x1:wf/2-30*S,y1:-df/2+df*i/4,x2:wf/2-4*S,y2:-df/2+df*i/4,stroke:dk2,'stroke-width':1.6},body);
       }
+    } else if(kind==='ballPit'){
+      // 球池：外圆(桶壁)+内圆(口缘)+散落小球
+      el('circle',{cx:0,cy:0,r:wf/2*S,fill:col,stroke:'rgba(0,0,0,.45)','stroke-width':1.6},body);
+      el('circle',{cx:0,cy:0,r:(wf/2-3)*S,fill:'rgba(0,0,0,.07)'},body);
+      const dp=[[-1.2,-1.4],[1.1,-1.7],[-0.4,-0.3],[1.6,0.4],[-1.9,0.6],[0.5,1.5],[-0.9,1.9],[2.0,1.2],[-2.2,-0.5],[0.2,-2.3]];
+      for(const [qx,qy] of dp){
+        el('circle',{cx:qx*S*(wf/14),cy:qy*S*(df/14),r:0.55*S,fill:'rgba(0,0,0,.35)'},body);
+      }
     } else if(kind==='sandTable'){
       // 沙水台：圆角大框 + 中央分隔道 + 4 角排水塞
       R(-wf/2,-df/2,wf,df, Math.min(wf,df)*0.10*S, col,{stroke:'rgba(0,0,0,.45)','stroke-width':1.2});
@@ -1688,7 +1697,7 @@ function vOverlap(sa,sb){
 }
 function obbCorners(it,spec){
   // 圆形家具（圆桌/转椅/圆几）按内接方近似，避免方角误报碰撞
-  const round = spec.w===spec.d && ['tableRound','sideTable','lamp','officeChair','stool'].includes(spec.kind);
+  const round = spec.w===spec.d && ['tableRound','sideTable','lamp','officeChair','stool','ballPit'].includes(spec.kind);
   const k = round? 0.72 : 1;
   const wf=cm2ft(spec.w)/2*k, df=cm2ft(spec.d)/2*k, r=it.rot*Math.PI/180;
   const c=Math.cos(r), s=Math.sin(r);
@@ -4842,7 +4851,7 @@ function texScaled(base, ftSize, per){
    之前这里只有 `new MeshStandardMaterial({color, roughness:.85})`——
    25 个 kind 全是无贴图纯色板。 */
 const _furnMatCache=new Map();
-const FURN_SOFT = ['sofa','sofaL','armchair','playCouch','bed','stool','officeChair','swivelChair','chair'];
+const FURN_SOFT = ['sofa','sofaL','armchair','playCouch','bed','stool','officeChair','swivelChair','chair','ballPit'];
 const FURN_CASE = ['bookcase','shelf','dresser','nightstand','shoeCab','tvBench','desk','deskSitStand',
                    'sideTable','coffeeTable','tableRect','tableRound','tableFold','tableDrawer','crib','box','rocking','xylophone','wobble','sandTable','playKitchen'];
 const FURN_METAL= ['bedMetal','cart'];
@@ -10657,6 +10666,40 @@ MODELS['lilclimb'] = (C) => {
     for(let i=0;i<pos.count;i++){ v.fromBufferAttribute(pos,i).applyMatrix4(o.matrixWorld); bb9.expandByPoint(v); } } });
   const off9=new T.Vector3(); bb9.getCenter(off9);
   for(const ch of C.g.children){ ch.position.x-=off9.x; ch.position.z-=off9.z; }
+};
+
+/* Nuby Kids' Ball Pit（对照 work/ref/ballpit/nb_3，cm→C.cm→英尺）：
+   软布圆桶(lathe: 外壁鼓腹+口缘厚2cm) + 70颗球(3cm,白4/水绿2/浅灰1,锥形堆放)。
+   占地 90×90×27，球堆示意密度（官方200颗）。 */
+MODELS['nubybp'] = (C) => {
+  const cm=C.cm, T=C.THREE;
+  srand(1030);
+  const FAB=C.M('#a9b4ad',{fabric:true, rough:.95, envI:.12, sheen:.18, sheenColor:'#dfe6e0'});
+  // 软桶：外壁自底向上(鼓腹)→口缘2cm厚→内壁回到底
+  const prof=[
+    [0,0],[42,0],[44,6],[45.5,18],[44.5,27],
+    [41.5,27],[40,18],[38.5,6],[37,2.5],[25,2.5],[0,2.5]
+  ].map(p=>new T.Vector2(cm(p[0]), cm(p[1])));
+  const bucket=new T.Mesh(new T.LatheGeometry(prof, 48), FAB);
+  bucket.castShadow=bucket.receiveShadow=true; C.g.add(bucket);
+  const WHITE=C.M('#f7f6f2',{rough:.28, clear:.4, envI:.3});
+  const TEAL=C.M('#3ec9c0',{rough:.28, clear:.4, envI:.3});
+  const GRAY=C.M('#c9cdd2',{rough:.3, clear:.35, envI:.3});
+  const pick=[WHITE,WHITE,WHITE,WHITE,TEAL,TEAL,GRAY];
+  for(let i=0;i<140;i++){
+    const r=Math.sqrt(rnd01())*36, th=rnd01()*Math.PI*2;
+    const y=3.8+Math.pow(1-r/38,1.4)*(13+4*rnd01());
+    C.sph(cm(3.3), pick[Math.floor(rnd01()*pick.length)],
+      cm(r*Math.cos(th)), cm(y), cm(r*Math.sin(th)), 10);
+  }
+  // 水平重心归零（真实顶点 bbox）
+  C.g.updateMatrixWorld(true);
+  const bb10=new T.Box3();
+  C.g.traverse(o=>{ if(o.isMesh&&o.geometry){
+    const pos=o.geometry.attributes.position, v=new T.Vector3();
+    for(let i=0;i<pos.count;i++){ v.fromBufferAttribute(pos,i).applyMatrix4(o.matrixWorld); bb10.expandByPoint(v); } } });
+  const off10=new T.Vector3(); bb10.getCenter(off10);
+  for(const ch of C.g.children){ ch.position.x-=off10.x; ch.position.z-=off10.z; }
 };
 
 /* LÄTT 儿童桌+2椅（套装 119×48×48）：桌 63×48×45（松木方框+白色面板，4 全高方腿），
