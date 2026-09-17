@@ -44,6 +44,7 @@ roadmap.md（状态推进）→ 代码 + AGENTS.md 沉淀
 | [0003](decisions/0003-input-channels-layered.md) | 户型输入通道四层递进 | 2026-09-17 |
 | [0004](decisions/0004-single-file-artifact.md) | 单文件产物架构（esbuild 源→HTML） | 2026-09-17 |
 | [0005](decisions/0005-project-schema-v1.md) | Project 文档 = id 寻址 JSON（schema v1） | 2026-09-17 |
+| [0006](decisions/0006-product-positioning.md) | 产品调性：homeowner 面向、快捷 = time-to-insight（用户不建模/概念以分钟计）、扩展代码优先（skill 是交付物非依赖）、范围内精度拉满；施工图域不做 | 2026-09-17 |
 
 ### design/
 | 文档 | 状态 |
