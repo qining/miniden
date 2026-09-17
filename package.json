@@ -3,9 +3,15 @@
   "private": true,
   "description": "MiniDen — 自家房子的迷你模型，看家具放不放得下（单文件构建：npm run build → dist/planner.html）",
   "scripts": {
-    "build": "node build.mjs"
+    "build": "node build.mjs",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "fixtures": "node scripts/make-fixtures.mjs"
   },
   "devDependencies": {
-    "esbuild": "^0.28.2"
+    "@types/node": "^26.6.1",
+    "esbuild": "^0.28.2",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.1"
   }
 }
