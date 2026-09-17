@@ -364,8 +364,8 @@
   <div class="panelTab" id="propsTab" title="展开属性面板">◂ 属性 / 清单</div>
 </div>
 
-<script src="file:///Users/dako/orca/workspaces/planner/add-catalog/lib/three.min.js"></script>
-<script src="file:///Users/dako/orca/workspaces/planner/add-catalog/lib/OrbitControls.js"></script>
+<script src="../lib/three.min.js"></script>
+<script src="../lib/OrbitControls.js"></script>
 <script>
 'use strict';
 /* =====================================================================
@@ -718,6 +718,36 @@ const CATALOG = [
  {id:'gullaberg_qm', cat:'床 / 婴儿床', name:'GULLABERG 床架+VALEVÅG 床垫 Queen', w:163,d:210,h:113, price:698, color:'#d9d4ca', kind:'bed', model:'gullaberg-m', note:'分售加总：床架 $299 + VALEVÅG Queen 床垫 $399'},
  {id:'songesand_qm', cat:'床 / 婴儿床', name:'SONGESAND 床架+VALEVÅG 床垫 Queen', w:165,d:208,h:95, price:648, color:'#8b6f52', kind:'bed', model:'songesand-m', note:'分售加总：床架 $249 + VALEVÅG Queen 床垫 $399'},
  {id:'idanas_qm', cat:'床 / 婴儿床', name:'IDANÄS 软包床+VALEVÅG 床垫 Queen', w:159,d:224,h:121, price:948, color:'#8f96a3', kind:'bed', model:'idanas-m', note:'分售加总：床架 $549 + VALEVÅG Queen 床垫 $399'},
+ {id:'sap-aq-m', cat:'床 / 婴儿床', name:'SAPIENS Apple 蒙氏地板床 Queen · 枫木', w:157,d:208,h:31, price:1257, priceCA:1499, color:'#e7d5ac', kind:'bed', model:'sapiens-apple', wood:'birch', url:'https://sapienschild.com/products/apple-queen-montessori-floor-bed', note:'SAPIENS CHILD(温哥华)蒙氏地板床：实木胶合板、无腿落地；头半高栏+直板床头、脚半低栏；承重 200lb，床垫另购'},
+ {id:'sap-aq-b', cat:'床 / 婴儿床', name:'SAPIENS Apple 蒙氏地板床 Queen · 桦木', w:157,d:208,h:31, price:922, priceCA:1099, color:'#f1e6cd', kind:'bed', model:'sapiens-apple', wood:'birch', url:'https://sapienschild.com/products/apple-queen-montessori-floor-bed', note:'SAPIENS CHILD(温哥华)蒙氏地板床：实木胶合板、无腿落地；头半高栏+直板床头、脚半低栏；承重 200lb，床垫另购'},
+ {id:'sap-cq-m', cat:'床 / 婴儿床', name:'SAPIENS Cherry 蒙氏地板床 Queen · 枫木', w:157,d:208,h:43, price:1257, priceCA:1499, color:'#e7d5ac', kind:'bed', model:'sapiens-cherry', wood:'birch', url:'https://sapienschild.com/products/cherry-queen-montessori-floor-bed', note:'SAPIENS CHILD(温哥华)蒙氏地板床：实木胶合板、无腿落地；头半高栏+弧形床头、脚半低栏；承重 200lb，床垫另购。高 43cm 为同系列 Cherry 推断值（网站未单列 Queen 高度）'},
+ {id:'sap-cq-b', cat:'床 / 婴儿床', name:'SAPIENS Cherry 蒙氏地板床 Queen · 桦木', w:157,d:208,h:43, price:922, priceCA:1099, color:'#f1e6cd', kind:'bed', model:'sapiens-cherry', wood:'birch', url:'https://sapienschild.com/products/cherry-queen-montessori-floor-bed', note:'SAPIENS CHILD(温哥华)蒙氏地板床：实木胶合板、无腿落地；头半高栏+弧形床头、脚半低栏；承重 200lb，床垫另购。高 43cm 为同系列 Cherry 推断值（网站未单列 Queen 高度）'},
+ {id:'sap-cf-m', cat:'床 / 婴儿床', name:'SAPIENS Cherry 蒙氏地板床 Full · 枫木', w:143,d:194.7,h:43, price:871, priceCA:1039, color:'#e7d5ac', kind:'bed', model:'sapiens-cherry', wood:'birch', url:'https://sapienschild.com/products/cherry-full-montessori-floor-bed', note:'SAPIENS CHILD(温哥华)蒙氏地板床：实木胶合板、无腿落地；头半高栏+弧形床头、脚半低栏；承重 200lb，床垫另购'},
+ {id:'sap-cf-b', cat:'床 / 婴儿床', name:'SAPIENS Cherry 蒙氏地板床 Full · 桦木', w:143,d:194.7,h:43, price:704, priceCA:839, color:'#f1e6cd', kind:'bed', model:'sapiens-cherry', wood:'birch', url:'https://sapienschild.com/products/cherry-full-montessori-floor-bed', note:'SAPIENS CHILD(温哥华)蒙氏地板床：实木胶合板、无腿落地；头半高栏+弧形床头、脚半低栏；承重 200lb，床垫另购'},
+ {id:'sap-cfs-m', cat:'床 / 婴儿床', name:'SAPIENS Cherry 蒙氏地板床 Full 带置物架 · 枫木', w:143,d:217.6,h:43, price:938, priceCA:1119, color:'#e7d5ac', kind:'bed', model:'sapiens-cherry', wood:'birch', spShelves:1, url:'https://sapienschild.com/products/cherry-full-montessori-floor-bed-with-shelves', note:'SAPIENS CHILD(温哥华)蒙氏地板床：头半高栏+弧形床头、脚半低栏，脚端双层白色置物架（伸出床体~22cm，已含在占地长度内）；床垫另购。长度 217.6cm 为对标 Apple 同配置推断值'},
+ {id:'sap-cfs-b', cat:'床 / 婴儿床', name:'SAPIENS Cherry 蒙氏地板床 Full 带置物架 · 桦木', w:143,d:217.6,h:43, price:771, priceCA:919, color:'#f1e6cd', kind:'bed', model:'sapiens-cherry', wood:'birch', spShelves:1, url:'https://sapienschild.com/products/cherry-full-montessori-floor-bed-with-shelves', note:'SAPIENS CHILD(温哥华)蒙氏地板床：头半高栏+弧形床头、脚半低栏，脚端双层白色置物架（伸出床体~22cm，已含在占地长度内）；床垫另购。长度 217.6cm 为对标 Apple 同配置推断值'},
+ {id:'sap-af-m', cat:'床 / 婴儿床', name:'SAPIENS Apple 蒙氏地板床 Full · 枫木', w:143,d:194.7,h:31, price:871, priceCA:1039, color:'#e7d5ac', kind:'bed', model:'sapiens-apple', wood:'birch', url:'https://sapienschild.com/products/apple-full-montessori-floor-bed', note:'SAPIENS CHILD(温哥华)蒙氏地板床：实木胶合板、无腿落地；头半高栏+直板床头、脚半低栏；承重 200lb，床垫另购'},
+ {id:'sap-af-b', cat:'床 / 婴儿床', name:'SAPIENS Apple 蒙氏地板床 Full · 桦木', w:143,d:194.7,h:31, price:704, priceCA:839, color:'#f1e6cd', kind:'bed', model:'sapiens-apple', wood:'birch', url:'https://sapienschild.com/products/apple-full-montessori-floor-bed', note:'SAPIENS CHILD(温哥华)蒙氏地板床：实木胶合板、无腿落地；头半高栏+直板床头、脚半低栏；承重 200lb，床垫另购'},
+ {id:'sap-afs-m', cat:'床 / 婴儿床', name:'SAPIENS Apple 蒙氏地板床 Full 带置物架 · 枫木', w:143,d:217.6,h:31, price:938, priceCA:1119, color:'#e7d5ac', kind:'bed', model:'sapiens-apple', wood:'birch', spShelves:1, url:'https://sapienschild.com/products/apple-full-montessori-floor-bed-with-shelves', note:'SAPIENS CHILD(温哥华)蒙氏地板床：头半高栏+直板床头、脚半低栏，脚端双层白色置物架（伸出床体~22cm，已含在占地长度内）；床垫另购'},
+ {id:'sap-afs-b', cat:'床 / 婴儿床', name:'SAPIENS Apple 蒙氏地板床 Full 带置物架 · 桦木', w:143,d:217.6,h:31, price:771, priceCA:919, color:'#f1e6cd', kind:'bed', model:'sapiens-apple', wood:'birch', spShelves:1, url:'https://sapienschild.com/products/apple-full-montessori-floor-bed-with-shelves', note:'SAPIENS CHILD(温哥华)蒙氏地板床：头半高栏+直板床头、脚半低栏，脚端双层白色置物架（伸出床体~22cm，已含在占地长度内）；床垫另购'},
+ {id:'sap-atr-m', cat:'床 / 婴儿床', name:'SAPIENS Apple 蒙氏地板床 Twin 带护栏 · 枫木', w:105.3,d:194.7,h:31, price:737, priceCA:879, color:'#e7d5ac', kind:'bed', model:'sapiens-apple', wood:'birch', url:'https://sapienschild.com/products/apple-montessori-floor-bed-with-rails', note:'SAPIENS CHILD(温哥华)蒙氏地板床：头半高栏+直板床头、脚半低栏；承重 200lb，床垫另购'},
+ {id:'sap-atr-b', cat:'床 / 婴儿床', name:'SAPIENS Apple 蒙氏地板床 Twin 带护栏 · 桦木', w:105.3,d:194.7,h:31, price:612, priceCA:729, color:'#f1e6cd', kind:'bed', model:'sapiens-apple', wood:'birch', url:'https://sapienschild.com/products/apple-montessori-floor-bed-with-rails', note:'SAPIENS CHILD(温哥华)蒙氏地板床：头半高栏+直板床头、脚半低栏；承重 200lb，床垫另购'},
+ {id:'sap-ats-m', cat:'床 / 婴儿床', name:'SAPIENS Apple 蒙氏地板床 Twin 护栏+置物架 · 枫木', w:105.3,d:217,h:31, price:779, priceCA:929, color:'#e7d5ac', kind:'bed', model:'sapiens-apple', wood:'birch', spShelves:1, url:'https://sapienschild.com/products/apple-twin-montessori-floor-bed-with-rails-shelves', note:'SAPIENS CHILD(温哥华)蒙氏地板床：头半高栏+直板床头、脚半低栏，脚端双层白色置物架（伸出床体~22cm，已含在占地长度内）；床垫另购'},
+ {id:'sap-ats-b', cat:'床 / 婴儿床', name:'SAPIENS Apple 蒙氏地板床 Twin 护栏+置物架 · 桦木', w:105.3,d:217,h:31, price:653, priceCA:779, color:'#f1e6cd', kind:'bed', model:'sapiens-apple', wood:'birch', spShelves:1, url:'https://sapienschild.com/products/apple-twin-montessori-floor-bed-with-rails-shelves', note:'SAPIENS CHILD(温哥华)蒙氏地板床：头半高栏+直板床头、脚半低栏，脚端双层白色置物架（伸出床体~22cm，已含在占地长度内）；床垫另购'},
+ {id:'sap-ct-m', cat:'床 / 婴儿床', name:'SAPIENS Cherry 蒙氏地板床 Twin · 枫木', w:105.3,d:194.7,h:43, price:737, priceCA:879, color:'#e7d5ac', kind:'bed', model:'sapiens-cherry', wood:'birch', url:'https://sapienschild.com/products/cherry-twin-montessori-floor-bed', note:'SAPIENS CHILD(温哥华)蒙氏地板床：头半高栏+弧形床头、脚半低栏；承重 200lb，床垫另购'},
+ {id:'sap-ct-b', cat:'床 / 婴儿床', name:'SAPIENS Cherry 蒙氏地板床 Twin · 桦木', w:105.3,d:194.7,h:43, price:612, priceCA:729, color:'#f1e6cd', kind:'bed', model:'sapiens-cherry', wood:'birch', url:'https://sapienschild.com/products/cherry-twin-montessori-floor-bed', note:'SAPIENS CHILD(温哥华)蒙氏地板床：头半高栏+弧形床头、脚半低栏；承重 200lb，床垫另购'},
+ {id:'sap-cts-m', cat:'床 / 婴儿床', name:'SAPIENS Cherry 蒙氏地板床 Twin 带置物架 · 枫木', w:105.3,d:217.6,h:43, price:779, priceCA:929, color:'#e7d5ac', kind:'bed', model:'sapiens-cherry', wood:'birch', spShelves:1, url:'https://sapienschild.com/products/cherry-twin-montessori-floor-bed-with-shelves', note:'SAPIENS CHILD(温哥华)蒙氏地板床：头半高栏+弧形床头、脚半低栏，脚端双层白色置物架（伸出床体~22cm，已含在占地长度内）；床垫另购'},
+ {id:'sap-cts-b', cat:'床 / 婴儿床', name:'SAPIENS Cherry 蒙氏地板床 Twin 带置物架 · 桦木', w:105.3,d:217.6,h:43, price:653, priceCA:779, color:'#f1e6cd', kind:'bed', model:'sapiens-cherry', wood:'birch', spShelves:1, url:'https://sapienschild.com/products/cherry-twin-montessori-floor-bed-with-shelves', note:'SAPIENS CHILD(温哥华)蒙氏地板床：头半高栏+弧形床头、脚半低栏，脚端双层白色置物架（伸出床体~22cm，已含在占地长度内）；床垫另购'},
+ {id:'sap-ajs-m', cat:'床 / 婴儿床', name:'SAPIENS Apple 蒙氏地板床 Junior 护栏+置物架 · 枫木', w:74,d:188,h:31, price:586, priceCA:699, color:'#e7d5ac', kind:'bed', model:'sapiens-apple', wood:'birch', spShelves:1, url:'https://sapienschild.com/products/apple-junior-montessori-floor-bed-with-rails-shelves', note:'SAPIENS CHILD(温哥华)蒙氏地板床（中童 Junior，配 68×160cm 床垫）：头半高栏+直板床头、脚半低栏，脚端双层白色置物架（伸出床体~22cm，已含在占地长度 188cm 内）；床垫另购'},
+ {id:'sap-ajs-b', cat:'床 / 婴儿床', name:'SAPIENS Apple 蒙氏地板床 Junior 护栏+置物架 · 桦木', w:74,d:188,h:31, price:511, priceCA:609, color:'#f1e6cd', kind:'bed', model:'sapiens-apple', wood:'birch', spShelves:1, url:'https://sapienschild.com/products/apple-junior-montessori-floor-bed-with-rails-shelves', note:'SAPIENS CHILD(温哥华)蒙氏地板床（中童 Junior，配 68×160cm 床垫）：头半高栏+直板床头、脚半低栏，脚端双层白色置物架（伸出床体~22cm，已含在占地长度 188cm 内）；床垫另购'},
+ {id:'sap-cjs-m', cat:'床 / 婴儿床', name:'SAPIENS Cherry 蒙氏地板床 Junior 带置物架 · 枫木', w:74,d:188,h:39, price:586, priceCA:699, color:'#e7d5ac', kind:'bed', model:'sapiens-cherry', wood:'birch', spShelves:1, url:'https://sapienschild.com/products/cherry-junior-montessori-floor-bed-with-shelves', note:'SAPIENS CHILD(温哥华)蒙氏地板床（中童 Junior，配 68×160cm 床垫）：头半高栏+弧形床头、脚半低栏，脚端双层白色置物架（伸出床体~22cm，已含在占地长度 188cm 内）；床垫另购'},
+ {id:'sap-cjs-b', cat:'床 / 婴儿床', name:'SAPIENS Cherry 蒙氏地板床 Junior 带置物架 · 桦木', w:74,d:188,h:39, price:511, priceCA:609, color:'#f1e6cd', kind:'bed', model:'sapiens-cherry', wood:'birch', spShelves:1, url:'https://sapienschild.com/products/cherry-junior-montessori-floor-bed-with-shelves', note:'SAPIENS CHILD(温哥华)蒙氏地板床（中童 Junior，配 68×160cm 床垫）：头半高栏+弧形床头、脚半低栏，脚端双层白色置物架（伸出床体~22cm，已含在占地长度 188cm 内）；床垫另购'},
+ {id:'sap-ac-m', cat:'床 / 婴儿床', name:'SAPIENS Apple 蒙氏地板床 Crib 带护栏 · 枫木', w:74,d:136,h:31, price:486, priceCA:579, color:'#e7d5ac', kind:'bed', model:'sapiens-apple', wood:'birch', url:'https://sapienschild.com/products/apple-crib-montessori-floor-bed-with-rails', note:'SAPIENS CHILD(温哥华)蒙氏地板床（Crib 婴儿规格，配 67-71×129-132cm 床垫）：无腿落地、头半高栏+直板床头、脚半低栏，底座为穿孔板；承重 200lb，床垫另购'},
+ {id:'sap-ac-b', cat:'床 / 婴儿床', name:'SAPIENS Apple 蒙氏地板床 Crib 带护栏 · 桦木', w:74,d:136,h:31, price:426, priceCA:508, color:'#f1e6cd', kind:'bed', model:'sapiens-apple', wood:'birch', url:'https://sapienschild.com/products/apple-crib-montessori-floor-bed-with-rails', note:'SAPIENS CHILD(温哥华)蒙氏地板床（Crib 婴儿规格，配 67-71×129-132cm 床垫）：无腿落地、头半高栏+直板床头、脚半低栏，底座为穿孔板；承重 200lb，床垫另购'},
+ {id:'sap-acs-m', cat:'床 / 婴儿床', name:'SAPIENS Apple 蒙氏地板床 Crib 护栏+置物架 · 枫木', w:74,d:158,h:31, price:520, priceCA:620, color:'#e7d5ac', kind:'bed', model:'sapiens-apple', wood:'birch', spShelves:1, url:'https://sapienschild.com/products/apple-montessori-floor-bed-with-rails-and-shelves', note:'SAPIENS CHILD(温哥华)蒙氏地板床（Crib 婴儿规格）：无腿落地、头半高栏+直板床头、脚半低栏+双层白色置物架；床垫另购。占地长度 158cm 为推算值（Crib 床体 136cm + 置物架伸出~22cm，网站未单列）'},
+ {id:'sap-acs-b', cat:'床 / 婴儿床', name:'SAPIENS Apple 蒙氏地板床 Crib 护栏+置物架 · 桦木', w:74,d:158,h:31, price:461, priceCA:549, color:'#f1e6cd', kind:'bed', model:'sapiens-apple', wood:'birch', spShelves:1, url:'https://sapienschild.com/products/apple-montessori-floor-bed-with-rails-and-shelves', note:'SAPIENS CHILD(温哥华)蒙氏地板床（Crib 婴儿规格）：无腿落地、头半高栏+直板床头、脚半低栏+双层白色置物架；床垫另购。占地长度 158cm 为推算值（Crib 床体 136cm + 置物架伸出~22cm，网站未单列）'},
+ {id:'utaker', cat:'床 / 婴儿床', name:'UTÅKER 叠拼床架 Twin ×2', w:100,d:195,h:46, price:199, priceCA:279, color:'#e9d8ab', kind:'bed', model:'utaker', wood:'pine', url:'https://www.ikea.com/us/en/p/utaker-stackable-bed-pine-30360487/', note:'IKEA 2件套：叠起=一张 Twin 低日床（46cm 高，本条目占地）；拆开=两张单人低床（各 23cm 高）或当沙发/沙发床；松木，圆角立柱带提手孔、双层横档+木排骨架；需另购 2 张 Twin 床垫（97×189cm）'},
+
  {id:'storklinta_ns', cat:'床头柜', name:'STORKLINTA 床头柜', w:50,d:48,h:53, price:79.99, priceCA:79.99, color:'#f0ece4', kind:'nightstand', model:'storklinta', url:'https://www.ikea.com/us/en/p/storklinta-2-drawer-chest-white-with-2-drawers-90559296/', note:'MALM床头柜继任款'},
  {id:'nordli_ns', cat:'床头柜', name:'NORDLI 床头柜(窄40)', w:40,d:47,h:54, price:99.99, priceCA:149, color:'#f0ece4', kind:'nightstand', model:'nordli', url:'https://www.ikea.com/us/en/p/nordli-2-drawer-chest-white-30589079/', note:'适合窄位'},
  {id:'vikhammer', cat:'床头柜', name:'VIKHAMMER 床头柜', w:60,d:39,h:65, price:99.99, priceCA:129, color:'#3e4249', kind:'nightstand', model:'vikhammer', url:'https://www.ikea.com/us/en/p/vikhammer-nightstand-black-90388978/'},
@@ -802,15 +832,15 @@ const CATALOG = [
  {id:'sportslig', cat:'运动器材', name:'IKEA SPORTSLIG 迷你足球门储物箱', w:90.2,d:52.7,h:52.7, price:29.99, caNA:true, color:'#0a70b0', kind:'goal', model:'sportslig', note:'90cm 款，蓝色布艺框架 + 白色网 + 白横杆，可折叠，立起来可当球类储物箱', url:'https://www.ikea.com/us/en/p/sportslig-ball-storage-goal-70504238/'},
  {id:'mala', cat:'儿童游乐架', name:'IKEA MÅLA 儿童画架（白板）', w:66,d:48.3,h:111.8, price:29.99, priceCA:39.99, color:'#e4ccad', kind:'easel', model:'mala', note:'A 型松木画架，白色写字板 + 红色五金', url:'https://www.ikea.com/us/en/p/mala-easel-softwood-30488966/'},
  {id:'laett-0', cat:'儿童桌 / 椅', name:'LÄTT 儿童桌 + 2 椅 · 白/松木', w:119,d:48,h:48, seatH:28, price:49.99, priceCA:49.99, color:'#e3c592', color2:'#f2efe6', kind:'tableRect', wood:'pine', model:'laett', url:'https://www.ikea.com/us/en/p/laett-childrens-table-and-2-chairs-white-pine-50178411/', note:'桌椅套装：桌 63×48×45（松木方框+白色三聚氰胺面板），椅 28×28×48、座高 28；两椅对称摆在桌短边两侧（整套占地 119×48）'},
-  {id:'hape-xylo-0', cat:'音乐 / 乐器', name:'Hape Rainbow Xylophone 木琴 · 彩虹5音', w:27.5,d:13.7,h:4.3, price:33.99, priceCA:29.99, color:'#2ea3d8', color2:'#d9b98c', kind:'xylophone', wood:'birch', model:'hape-xylo', url:'https://global.hape.com/rainbow-xylophone-e0606', note:'木质5音木琴+2蓝槌（E0606，12月+）：蓝最长到红最短五根音条横排，D形提手底座可拎走，槌有收纳槽；颜色与音高识别、节奏与手部精细动作启蒙'},
+  {id:'hape-xylo-0', cat:'音乐 / 乐器', name:'Hape Rainbow Xylophone 木琴 · 彩虹5音', w:27.5,d:13.7,h:9.5, price:33.99, priceCA:29.99, color:'#2ea3d8', color2:'#d9b98c', kind:'xylophone', wood:'birch', model:'hape-xylo', url:'https://global.hape.com/rainbow-xylophone-e0606', note:'木质5音木琴+2蓝槌（E0606，12月+）：蓝最长到红最短五根音条横排，左端竖直 D 形提手片（圆角矩形把手孔）可拎走；颜色与音高识别、节奏与手部精细动作启蒙；官方标尺寸 4.3 仅指底座，本条目 h 取含 D 提手的总高 9.5'},
  {id:'bt-board-0', cat:'平衡 / 感统', name:'The Balance Board 平衡板 · 波罗的海桦木', w:50.8,d:27.9,h:10.2, price:99, caNA:true, color:'#e6d9bd', kind:'wobble', wood:'birch', model:'bt-board', url:'https://blueberryandthird.com/products/the-balance-board', note:'波罗的海桦木胶合板平衡板（美国俄亥俄手作，2-7岁 / 150lbs）：上层微圆角平板+下半椭球摇摆底座（单点触地），前后左右摇晃练前庭感/核心/重心转移；无加拿店面（caNA）'},
  {id:'lt-sportszone-0', cat:'运动器材', name:'Little Tikes 3-in-1 Sports Zone · 三合一运动站', w:87.6, d:36.8, h:62.2, price:48.99, priceCA:69.97, color:'#7ac143', color2:'#e03a2f', kind:'sportsZone', model:'lt-sportszone', url:'https://www.littletikes.com/products/sportszone', note:'12-36月三合一活动站：足球门（红拱架+白鳞格网）+篮球（黄杆/绿篮板+LED记分屏+橙筐，高度可调）+保龄球（5瓶+橙球）+蓝接球碗；踢球/投掷/滚动练大运动与手眼协调；美$48.99（littletikes.com），加$69.97（Walmart.ca）'},
  {id:'lt-walker-0', cat:'学步车', name:'Little Tikes Light n Go 3-in-1 Activity Walker', w:53.8, d:43.7, h:42.4, price:39.99, caNA:true, color:'#97c93d', color2:'#ef8f1f', kind:'walker', model:'lt-walker', url:'https://www.littletikes.com/products/light-n-go-3-in-1-activity-walker', note:'9-36月三合一：活动桌(9-12m)→学步车→高边桌；两侧青柠色拱形框架+顶部橙把手+4蓝轮+中央白色活动面板（3齿轮+发光泡+3数字键）+前部字母滚筒；推步/扶走练行走与大运动；美$39.99（littletikes.com）；无加拿大渠道（caNA）'},
- {id:'cove-0', cat:'户外玩乐', name:'Step2 Cascading Cove 沙水两用桌', w:107.95, d:61, h:58.4, price:111.99, priceCA:149.97, color:'#2e8fc7', color2:'#c9bda3', kind:'sandTable', model:'cove', url:'https://www.step2.com/products/cascading-cove-sand-water-table', note:'1.5+岁户外沙水两用桌：沙箱+水渠分列两侧、中央塑模车桥分隔、双侧排水塞、可当车赛垫的绿色盖垫；感官/大运动/手眼协调；含42"遮阳伞（可拆，未建模）+6件玩沙组；美$111.99（step2.com），加$149.97（Amazon.ca）'},
+ {id:'cove-0', cat:'户外玩乐', name:'Step2 Cascading Cove 沙水两用桌', w:107.95, d:61, h:58.4, price:111.99, priceCA:149.97, color:'#2e8fc7', color2:'#c9bda3', kind:'sandTable', model:'cove', url:'https://www.step2.com/products/cascading-cove-sand-water-table', note:'1.5+岁户外沙水两用桌：沙箱+水渠分列两侧、中央塑模车桥分隔、双侧排水塞、可当车赛垫的绿色盖垫（附件，未建模）；感官/大运动/手眼协调；含42"遮阳伞（可拆，未建模）+6件玩沙组；美$111.99（step2.com），加$149.97（Amazon.ca）'},
  {id:'roadster-0', cat:'床 / 床头柜', name:'Step2 Roadster 赛车床（幼儿→单人床两用）· 红', w:218.4, d:119.4, h:40.6, price:349.99, priceCA:429.00, color:'#b3121c', color2:'#f5f5f2', kind:'bed', model:'roadster', url:'https://www.step2.com/products/roadster-toddler-to-twin-bed', note:'3+ 岁低床（床沿高 40.6cm，无床头架）：跑车造型——大轮毂×4、圆形大灯、引擎盖白条、前格栅、车门内嵌板+通风格；幼儿模式（64"×36"=162.6×91.4cm，婴儿床床垫）可加装侧板扩展为单人床（86"×47"，本条目占地取扩展后最大值 218.4×119.4×40.6cm）；美$349.99（step2.com），加$429.00（Walmart.ca）'},
  {id:'lilclimb-0', cat:'儿童 / 爬爬架', name:"Delta Children's Lil' Climber 三合一攀爬架", w:181.6, d:63.5, h:68.6, price:149.99, caNA:true, color:'#f0e7cf', color2:'#9fd0c4', kind:'pikler', model:'lilclimb', url:'https://www.deltachildren.com/products/lil-climber-gym-indoor-climbing-gym-playground-for-kids', note:'6个月-3岁蒙特梭利三合一（可拆可组）：A 字三角攀爬梯(27"高,8横档)+岩壁/滑梯双向板(71.5"长,5彩色抓握点)+圆顶拱门(抓杆×5+手柄洞)；白蜡木框架+柔彩横杆(薄荷绿/粉/黄)；25"W×27"H×71.5"D=63.5×68.6×181.6cm；23.5lbs；承重 200lbs(单孩 69lbs)；美$149.99（deltachildren.com；Walmart $129.99），加拿大无售（caNA）'},
- {id:'busplay-0', cat:'户外玩乐', name:'Costway 5-in-1 巴士滑梯游戏屋 · Teal', w:205, d:150, h:87, price:145.99, caNA:true, color:'#0f7f8b', color2:'#f07818', kind:'playset', model:'busplay', url:'https://www.costway.com/5-in-1-kids-slide-and-swing-set-kids-slide-with-mini-bus-and-basketball-hoop.html', note:'18月+（承重30kg）：巴士驾驶舱(带圆形爬行洞+侧车轮环) + 132cm加长滑梯 + 婴儿秋千(白A架+摇摆底座,座高23cm) + 篮球架(79cm) + 205×150×87cm，17kg；PP/PE；美$145.99（costway.com），加拿大无售（caNA）'},
- {id:'bigset-0', cat:'儿童 / 磁力片', name:"Superspace Big Set 巨幅磁力片(24片) · Blue", w:200.5, d:53, h:50.4, price:429, caNA:true, color:'#2088cc', color2:'#5d6b70', kind:'magTiles', model:'bigset', url:'https://www.getsuperspace.com/products/the-big-set', note:'3-10+岁“真人可钻”巨型磁力片：10方(50×50)+2方窗+6三角(50边)+1长方(100×50)+1长方窗/门+4梯形(底100/顶50/高43.3)；再生塑料Eco Felt软面+1.2cm厚；模型=组装小屋(6片)+19备片平叠，占地200.5×53×50.4cm；整套平叠收纳105×51.6×19.4cm(41.34×20.32×7.64")，13.3kg；美$429（getsuperspace.com），加拿大无售（caNA）'},
+ {id:'busplay-0', cat:'户外玩乐', name:'Costway 5-in-1 巴士滑梯游戏屋 · Teal', w:205, d:150, h:87, price:145.99, caNA:true, color:'#0f7f8b', color2:'#f07818', kind:'playset', model:'busplay', url:'https://www.costway.com/5-in-1-kids-slide-and-swing-set-kids-slide-with-mini-bus-and-basketball-hoop.html', note:'18月+（承重30kg）：巴士驾驶舱(侧面大圆环=爬行洞兼投篮目标，车顶白洗盆) + 132cm加长滑梯(橙色脚板) + 婴儿秋千(宽白摇摆底座+2白开槽立柱+1青A架+白拱杆+爱心座+橙T护栏,座高23cm) + 篮球(地上)；无独立篮球架杆，87cm高来自青A架顶；205×150×87cm，17kg；PP/PE；美$145.99（costway.com），加拿大无售（caNA）'},
+ {id:'bigset-0', cat:'儿童 / 磁力片', name:"Superspace Big Set 巨幅磁力片(24片) · Blue", w:200.5, d:53, h:50.4, price:429, caNA:true, color:'#2088cc', color2:'#5d6b70', kind:'magTiles', model:'bigset', url:'https://www.getsuperspace.com/products/the-big-set', note:'3-10+岁“真人可钻”巨型磁力片：10方(50×50)+2方窗+6三角(50边)+1长方(100×50)+1长方窗/门+4梯形(底100/顶50/高43.3)；再生塑料Eco Felt软面+1.2cm厚；模型=组装小屋(5片)+19备片平叠，占地200.5×53×50.4cm；整套平叠收纳105×51.6×19.4cm(41.34×20.32×7.64")，13.3kg；美$429（getsuperspace.com），加拿大无售（caNA）'},
  {id:'nuby-ballpit-0', cat:'儿童 / 球池', name:"Nuby Kids' Ball Pit 球池(200球) · Aqua", w:90, d:90, h:27, price:99.99, caNA:true, color:'#a9b4ad', color2:'#3ec9c0', kind:'ballPit', model:'nubybp', url:'https://us.nuby.com/products/kids-ball-pit-with-200-balls', note:'软布圆桶：直径90cm(35.4")，软壁可倚靠、可机洗，含200球(白/水绿/浅灰)；高27cm（官方未公布高度，由官方商品图几何测量）；10个月+；美$99.99（us.nuby.com，原价$134.99），加拿大无售（caNA）'},
  {id:'hidesc-0', cat:'儿童 / 爬爬架', name:'Little Tikes Hide & Seek 攀爬滑梯秋千组', w:135.9, d:132.1, h:104.1, price:169.99, priceCA:169.96, caVar:true, color:'#e6d5ac', color2:'#b3121c', kind:'playset', model:'hidesc', url:'https://www.littletikes.com/products/hide-seek-climber-swing', note:'2-5 岁：拱门攀爬平台+红色滑梯(28")+匍匐钻洞(藏猫猫)+树形秋千架(蓝吊椅+安全带式)；53.5"L×52"W×41"H=135.9×132.1×104.1cm（含秋千）；美$169.99（含秋千版，littletikes.com；基础版$147.99），加$169.96（Well.ca，为基础版故 caVar）'},
  {id:'mckinney-0', cat:'儿童厨房', name:'KidKraft McKinney 幼儿玩具厨房 · 薄荷绿', w:80, d:34.3, h:83.8, price:70.99, caNA:true, color:'#a9d8c0', color2:'#e8a866', kind:'playKitchen', model:'mckinney', url:'https://www.target.com/p/kidkraft-mckinney-toddler-mid-century-modern-play-kitchen/-/A-53511595', note:'2-5岁中世纪风玩具厨房（Target 限定薄荷绿款）：微波炉+四眼灶+烤箱+冰箱门+2抽+水槽龙头+上排翻门；3 种玩法（煮/洗/收纳）；31.5"L×13.5"W×33"H=80×34.3×83.8cm，台面高18"；美$70.99（Target），加拿大无售（caNA）'},
@@ -1234,7 +1264,7 @@ function wallPolys(){
 const CALIB = location.hash==='#calib' || location.hash==='#calibimg';
 if(CALIB) document.body.classList.add('calib');   // 锁死旧版侧栏宽度，见 body.calib 那几条样式
 const IMGONLY = location.hash==='#calibimg';   // 只渲染底图（用于两层绝对位置对比）
-const CAL = {img:'work/clean_plan.jpg', w:591, h:480}; // 干净图纸叠底：1px = 1/11.2 ft，原点对齐
+const CAL = {img:'clean_plan.jpg', w:591, h:480}; // 干净图纸叠底：1px = 1/11.2 ft，原点对齐
 function build2D(){
   svg.innerHTML='';
   svg.setAttribute('viewBox', `${vb.x} ${vb.y} ${vb.w} ${vb.h}`);
@@ -1404,7 +1434,7 @@ function furnShape(it, spec){
       el('line',{x1:-wf*0.30*S,y1:-df*0.42*S,x2:wf*0.30*S,y2:-df*0.42*S,stroke:dk2,'stroke-width':1.6},body);
     } else if(kind==='playset'){
       // 巴士滑梯游戏屋俯视：巴士(前,+y) + 直滑梯(中部条带) + 摇摆秋千(后,-y) 成一线
-      el('rect',{x:-wf/2*S,y:-df/2*S,width:wf*S,height:df*S,rx:5*S,
+      el('rect',{x:-wf/2*S,y:-df/2*S,width:wf*S,height:df*S,rx:3,
         fill:col, stroke:dk2, 'stroke-width':1.6},body);
       const xB0=-wf/2+0.4, xB1=-wf/2+1.9, xS0=wf/2-2.1, xS1=wf/2-0.4;   // 巴士 | 滑梯 | 秋千 (ft)
       // 巴士体（偏前 +y）
@@ -1422,7 +1452,7 @@ function furnShape(it, spec){
         fill:'rgba(0,0,0,.25)', stroke:dk2, 'stroke-width':1.4},body);
     } else if(kind==='pikler'){
       // Lil' Climber 三合一俯视：左梯(两撇开侧轨+8横杆) + 中滑道(通深条带) + 右拱(两弧带+5横杆)
-      el('rect',{x:-wf/2*S,y:-df/2*S,width:wf*S,height:df*S,rx:5*S,
+      el('rect',{x:-wf/2*S,y:-df/2*S,width:wf*S,height:df*S,rx:3,
         fill:col, stroke:dk2, 'stroke-width':1.6},body);
       const xL=-wf/2+0.4, xS=xL+1.2, xA=wf/2-1.4, xR=wf/2-0.4;        // 梯 | 滑道 | 拱 (ft)
       const yLo=cm2ft(22.5), yHi=cm2ft(30);
@@ -7648,6 +7678,87 @@ MODELS['malm'] = (C) => {
   for(const ch of C.g.children){ ch.position.x-=off.x; ch.position.z-=off.z; }
 };
 
+/* IKEA UTÅKER 叠拼床架（US Twin：叠起 100×195×46 / 单张 23；对照 work/ref/utaker/ut_01 尺寸线图+ut_02/03 特写）：
+   每半张=4 圆角矩形腿(17) + 上下两层侧横档(6.5/5) + 端板×2 + 4 圆角立柱(高10→23，提手孔未建模) + 木排骨(沿宽向)；
+   两半叠起=46cm。横档厚/立柱截面/排骨间距为估计值。 */
+MODELS['utaker'] = (C) => {
+  const cm=C.cm, T=C.THREE;
+  const W=C.w, D=C.d;
+  const M = C.M(C.col, {wood:'pine', envI:.55, clear:.15});
+  const half=(oy)=>{
+    for(const sx of[-1,1])for(const sz of[-1,1])
+      C.rb(cm(4.5), cm(17), cm(5.5), cm(1.2), M, sx*(W/2-cm(3.2)), oy, sz*(D/2-cm(3.8)));
+    for(const sx of[-1,1]){
+      C.box(cm(4.5), cm(6.5), D, M, sx*(W/2-cm(2.25)), oy+cm(16), 0);
+      C.box(cm(4.5), cm(5), D, M, sx*(W/2-cm(2.25)), oy+cm(8.5), 0);
+    }
+    for(const sz of[-1,1]){
+      C.box(W-cm(9), cm(6.5), cm(4.5), M, 0, oy+cm(16), sz*(D/2-cm(2.25)));
+      C.box(W-cm(9), cm(5), cm(4.5), M, 0, oy+cm(8.5), sz*(D/2-cm(2.25)));
+    }
+    for(const sx of[-1,1])for(const sz of[-1,1])
+      C.rb(cm(7), cm(13), cm(6), cm(2.5), M, sx*(W/2-cm(3.5)), oy+cm(10), sz*(D/2-cm(3.5)));
+    const n=44, span=D-cm(14);
+    for(let i=0;i<n;i++)
+      C.box(W-cm(13), cm(1.3), cm(2.2), M, 0, oy+cm(21.7), -(span/2)+span*i/(n-1));
+  };
+  half(0); half(cm(23));
+  C.g.updateMatrixWorld(true);
+  const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3();
+  bb.getCenter(off);
+  for(const ch of C.g.children){ ch.position.x-=off.x; ch.position.z-=off.z; }
+};
+
+/* SAPIENS CHILD 蒙氏地板床（Vancouver, BC；对照 work/ref/sapiens/*）：
+   apple=直板床头 / cherry=弧形床头。无腿胶合板托盘箱：底座箱 + 床头板（苹果直/樱桃拱）+
+   双侧栏（头部 58% 高栏 H → 台阶 → 脚部低栏 0.52H 延伸到底）+ 低端板；
+   spShelves=1 时脚端加双层白色置物架（伸出床体~22.5cm）。提手孔/穿孔底座未建模；不含床垫。 */
+function sapiensBuild(C, curved){
+  const cm=C.cm, T=C.THREE;
+  const W=C.w, D=C.d, H=C.h;
+  const sh = !!(C.spec && C.spec.spShelves);
+  const M = C.M(C.col, {wood:'birch', envI:.55, clear:.2});
+  const Msh = C.M('#f6f3ec', {rough:.75});
+  const Th=cm(4);
+  const Hlo=H*0.52;
+  const Lsh = sh? cm(22.5) : 0;
+  const Lbox = D-Lsh;
+  const stepX = -D/2 + Lbox*0.58;
+  C.box(W, cm(4.5), D, M, 0, 0, 0);                                        // 底座箱
+  // 内垫板：crib 实拍为均布圆孔穿孔板，大尺寸同系列；模型以双向细格条近似
+  const n1=Math.max(6,Math.round((Lbox-cm(10))/cm(7)));
+  for(let i=0;i<=n1;i++)
+    C.box(W-cm(10), cm(1.2), cm(2), M, 0, cm(4.5), -D/2+cm(5)+(Lbox-cm(10))*i/n1);
+  const n2=Math.max(4,Math.round((W-cm(12))/cm(8)));
+  for(let i=0;i<=n2;i++)
+    C.box(cm(2), cm(1.2), Lbox-cm(10), M, -W/2+cm(6)+(W-cm(12))*i/n2, cm(4.5), -D/2+cm(5)+(Lbox-cm(10))/2);
+  if(!curved){
+    C.rb(W, H, Th, cm(1.5), M, 0, 0, -D/2+Th/2);                            // 苹果：直板床头
+  } else {
+    const pts=[[0,0],[W,0],[W,H*0.9]];
+    for(let i=1;i<=10;i++) pts.push([W*(1-i/10), H*0.9 + H*0.1*Math.sin(Math.PI*i/10)]);
+    C.ext(pts, Th, M, -W/2, 0, -D/2, 'xy');                                 // 樱桃：弧形床头（xy 沿 z 拉伸 Th）
+  }
+  for(const sz of[-1,1]){                                                  // 双侧栏（沿 z 长向）：高段+低段
+    const zh=sz*(W/2-Th/2);
+    C.box(Th, H-Hlo, Lbox*0.58, M, zh, Hlo, -D/2+Lbox*0.29);
+    C.box(Th, Hlo, D/2-stepX, M, zh, 0, (stepX+D/2)/2);
+  }
+  C.box(W-cm(8), Hlo, Th, M, 0, 0, -D/2+Lbox-Th/2);                        // 床体脚端低板（沿 z 长向的末端）
+  if(sh){                                                                  // 双层白色置物架（床体脚端向外伸出）
+    const shX=D/2-Lsh/2;
+    C.box(W-cm(10), cm(2.5), Lsh-cm(3), Msh, 0, Hlo-cm(2.5), shX);
+    C.box(W-cm(10), cm(2.5), Lsh-cm(3), Msh, 0, cm(4.5), shX);
+    C.box(W-cm(10), Hlo, cm(2.5), Msh, 0, 0, D/2-cm(1.25));
+  }
+  C.g.updateMatrixWorld(true);
+  const bb=new T.Box3().setFromObject(C.g), off=new T.Vector3();
+  bb.getCenter(off);
+  for(const ch of C.g.children){ ch.position.x-=off.x; ch.position.z-=off.z; }
+}
+MODELS['sapiens-apple'] = (C) => sapiensBuild(C, false);
+MODELS['sapiens-cherry'] = (C) => sapiensBuild(C, true);
+
 /* BILLY 书柜 80×28×202：尺寸图 work/ref/billy_35.png——内宽 76、前脚 9、基座 8、
    中板距顶 94、顶层距顶 13（图标）；板厚 1.6/隔板 1.9（BILLY 标准）；另两块层板位置比例估计。 */
 MODELS['billy'] = (C) => {
@@ -10212,7 +10323,7 @@ MODELS['hape-xylo'] = (C) => {
   const wood = C.M(C.col2, {wood:'birch', rough:.6});
   const white = C.M('#f5f3ec', {rough:.5});
   const mal   = C.M('#3aa7d9', {plastic:true, rough:.4});
-  // ---- 底座：外轮廓 = 两个半圆盖（半径 d/2）+ 上下直边；提手切槽 = 左盖上的椭圆孔 ----
+  // ---- 底座：外轮廓 = 两个半圆盖（半径 d/2）+ 上下直边 ----
   const Rw=cm(6.9), Rd=cm(6.85);
   const pts=[];
   const arc=(cx0,a0,a1,n)=>{ for(let i=0;i<=n;i++){ const a=a0+(a1-a0)*i/n;
@@ -10220,16 +10331,29 @@ MODELS['hape-xylo'] = (C) => {
   arc( Rw,-Math.PI/2, Math.PI/2, 24);      // 右盖（下→上）
   arc(-Rw, Math.PI/2, Math.PI*1.5, 24);     // 左盖（上→下）
   const sh = new T.Shape(pts.map(p=>new T.Vector2(p[0],p[1])));
-  const hole=new T.Path();
-  for(let i=0;i<=24;i++){ const a=2*Math.PI*i/24;
-    const x=cm(-9.5)+cm(1.8)*Math.cos(a), y=cm(4.3)*Math.sin(a);
-    i? hole.lineTo(x,y) : hole.moveTo(x,y); }
-  sh.holes.push(hole);
   const geo=new T.ExtrudeGeometry(sh,{depth:cm(2),bevelEnabled:false});
   geo.rotateX(Math.PI/2);                      // 挤出沿 -y（shape y→世界 z），顶面在 position.y
   const base=new T.Mesh(geo,wood);
   base.position.set(0,cm(2),0); base.castShadow=base.receiveShadow=true;
   C.g.add(base);
+  // ---- 左端竖直 D 形提手片（实拍：竖立在左端、面朝前(z)、圆角矩形把手孔；官方 4.3 仅指底座，本片取总高 9.2 ≤ spec 9.5）----
+  // profile 在 x-y 平面（x=宽 6.2、y=高），沿 z 居中挤出 2cm；不用 rotateY（方向容易错）
+  const dpts=[[-13.5,0.3],[-13.5,6.1]].map(p=>[cm(p[0]),cm(p[1])]);
+  for(let i=1;i<=10;i++) dpts.push([cm(-13.5+6.2*(i/10)), cm(6.1+3.1*Math.sin(Math.PI*i/10))]); // 顶半圆（左→右，峰 9.2）
+  dpts.push([cm(-7.3),cm(6.1)],[cm(-7.3),cm(0.3)]);                                              // 右侧→底边（自动闭合）
+  const dsh=new T.Shape(dpts.map(p=>new T.Vector2(p[0],p[1])));
+  const hx=-10.4;                                                          // 把手孔：宽 3.4 高 3.6 圆角 1.2（cm，片身中下）
+  const hole=new T.Path();
+  hole.moveTo(cm(hx-0.5),cm(1.0));
+  hole.lineTo(cm(hx+0.5),cm(1.0));  hole.quadraticCurveTo(cm(hx+1.7),cm(1.0), cm(hx+1.7),cm(2.2));
+  hole.lineTo(cm(hx+1.7),cm(3.4));  hole.quadraticCurveTo(cm(hx+1.7),cm(4.6), cm(hx+0.5),cm(4.6));
+  hole.lineTo(cm(hx-0.5),cm(4.6));  hole.quadraticCurveTo(cm(hx-1.7),cm(4.6), cm(hx-1.7),cm(3.4));
+  hole.lineTo(cm(hx-1.7),cm(2.2));  hole.quadraticCurveTo(cm(hx-1.7),cm(1.0), cm(hx-0.5),cm(1.0));
+  dsh.holes.push(hole);
+  const dgeo=new T.ExtrudeGeometry(dsh,{depth:cm(2),bevelEnabled:false});   // 沿 +z 挤出
+  const dpl=new T.Mesh(dgeo,wood);
+  dpl.position.set(0,0,-cm(1)); dpl.castShadow=dpl.receiveShadow=true;      // z -1..+1 居中，底面贴地
+  C.g.add(dpl);
   // ---- 五根音条（z 轴长轴，近端对齐 z=-5.5）+ 条顶 2 白桩 ----
   const bars=[
     [-6,11,'#2ea3d8'], [-3,9,'#7ac244'], [0,7.5,'#f5c33b'],
@@ -10377,98 +10501,101 @@ MODELS['busplay'] = (C) => {
   const ORANGE=C.M('#f07818',{plastic:true, rough:.5, envI:.18});
   const WHITE =C.M('#eef1f0',{plastic:true, rough:.6, envI:.15});
   const DARK  =C.M('#1c2528',{flat:true, rough:1, envI:.05});
+  const BALLM =C.M('#9c4a2f',{flat:true, rough:.9, envI:.1});
 
-  // ========== 巴士舱（组心 (-72,0,15)，体 58×46×42）==========
-  const bus=new T.Group(); bus.position.set(cm(-72),0,cm(15)); C.g.add(bus);
-  bus.add(C.rb(cm(58),cm(46),cm(42),cm(6),TEAL,0,cm(6),0,24));           // 车身
-  bus.add(C.box(cm(26),cm(22),cm(2),DARK,cm(27),cm(24),0));              // 后开口（深）
-  // 侧面：橙面板 + 橙小窗（左 -z 侧）
-  bus.add(C.box(cm(20),cm(14),cm(1.5),ORANGE,-cm(4),cm(26),-cm(22)));
-  bus.add(C.box(cm(7),cm(5),cm(1.5),ORANGE,-cm(18),cm(40),-cm(22)));
-  // 前侧大圆爬洞环（青 torus，轴朝 z）
-  bus.add(C.torus(cm(13),cm(3.5),TEAL,cm(12),cm(20),-cm(21.5),0));
-  // 车轮 ×4
-  for(const sx of [-1,1]) for(const sz of [-1,1]){
-    const w=C.cyl(cm(5),cm(5),cm(3),DARK,sx*cm(20),cm(0),sz*cm(15),16);
-    w.rotation.x=Math.PI/2; w.position.y=cm(5); bus.add(w);
-  }
-  // 白色洗盆（车体中上：短柱 + 浅碗）
-  bus.add(C.cyl(cm(2),cm(2),cm(8),WHITE,0,cm(52),cm(4),10));
-  bus.add(C.cyl(cm(10),cm(10),cm(4.5),WHITE,0,cm(60),cm(4),20));
-  bus.add(C.cyl(cm(7.5),cm(7.5),cm(1),DARK,0,cm(60.4),cm(4),16));
-  // 篮球架（前上：白杆 + 白盘 + 橙环，顶 ≈87）
-  bus.add(C.box(cm(3),cm(30),cm(3),WHITE,-cm(22),cm(52),cm(8)));
-  bus.add(C.cyl(cm(9),cm(9),cm(1.8),WHITE,-cm(22),cm(82.5),cm(8),20));
-  bus.add(C.torus(cm(6),cm(0.9),ORANGE,-cm(22),cm(83.6),cm(8),0));
-  const rim=bus.children[bus.children.length-1]; rim.rotation.x=Math.PI/2;
-
-  // ========== 滑梯：3 段下弯（全部 dx>0 烘焙，无组旋转），宽 45，z 偏前 ==========
-  const seg=(x0,y0,x1,y1,sideH,end)=>{
-    const dx=x1-x0, dy=y1-y0, len=Math.hypot(dx,dy);
-    const RM=new T.Matrix4().makeTranslation(cm((x0+x1)/2),cm((y0+y1)/2),cm(40))
-      .multiply(new T.Matrix4().makeRotationZ(Math.atan2(dy,dx)));
-    const part=(a,b,c,ox,oy,oz,mat)=>{
-      const g2=new T.BoxGeometry(cm(a),cm(b),cm(c));
-      g2.applyMatrix4(new T.Matrix4().makeTranslation(cm(ox),cm(oy),cm(oz||0)));
-      g2.applyMatrix4(RM);
-      const mm=new T.Mesh(g2,mat); mm.castShadow=mm.receiveShadow=true; C.g.add(mm); };
-    part(len,2,45,0,0,0,WHITE);                       // 滑面
-    part(len+2,sideH,4,0,2,20.5,TEAL);                // 侧栏（顶沿上立）
-    part(len+2,sideH,4,0,2,-20.5,TEAL);
-    if(end){
-      part(len,7,5,0,2,21.5,ORANGE);                  // 橙下侧板
-      part(len,7,5,0,2,-21.5,ORANGE);
-      part(2,11,45,cm(len)*0+ (len),2,0,WHITE);       // 末端白色挡板（垂直于滑道）
+  // 3D 段滑梯（沿任意空间方向的烘焙盒，无组旋转）
+  const slideSeg=(P0,P1,width,feet)=>{
+    const dx=P1[0]-P0[0], dy=P1[1]-P0[1], dz=P1[2]-P0[2];
+    const len=Math.hypot(dx,dy,dz);
+    const dir=new T.Vector3(dx,dy,dz).normalize();
+    const up=new T.Vector3(0,1,0);
+    const side=new T.Vector3().crossVectors(dir,up).normalize();
+    const vup=new T.Vector3().crossVectors(side,dir);
+    const M=new T.Matrix4().makeBasis(dir,vup,side);
+    M.setPosition(cm((P0[0]+P1[0])/2),cm((P0[1]+P1[1])/2),cm((P0[2]+P1[2])/2));
+    const part=(bw,bh,bd,ox,oy,oz,mat)=>{
+      const g2=new T.BoxGeometry(cm(bw),cm(bh),cm(bd));
+      g2.applyMatrix4(new T.Matrix4().makeTranslation(cm(ox),cm(oy),cm(oz)));
+      g2.applyMatrix4(M);
+      const mm=new T.Mesh(g2,mat); mm.castShadow=mm.receiveShadow=true; C.g.add(mm);
+    };
+    part(len,2,width,0,-1,0,WHITE);                  // 白色滑面
+    part(len+2,11,4,0,4.5,width/2-2,TEAL);           // 两侧青栏（上立）
+    part(len+2,11,4,0,4.5,-(width/2-2),TEAL);
+    if(feet){                                        // 末端橙色脚板（贴地）
+      part(18,5,width*0.42, len/2-8, -2.5,  width/2-width*0.21, ORANGE);
+      part(18,5,width*0.42, len/2-8, -2.5, -(width/2-width*0.21), ORANGE);
     }
   };
-  seg(-42,48, 2,30, 14,false);
-  seg( 2,30,35,12, 10,false);
-  seg(35,12,52, 9,  7,true);
+  // 两点间烘焙圆柱（拱杆/吊带）
+  const tube3=(P0,P1,r,mat)=>{
+    const d=new T.Vector3(P1[0]-P0[0],P1[1]-P0[1],P1[2]-P0[2]);
+    const len=d.length(); if(len<1e-4) return; d.normalize();
+    const geo=new T.CylinderGeometry(cm(r),cm(r),cm(len),12);
+    geo.applyQuaternion(new T.Quaternion().setFromUnitVectors(new T.Vector3(0,1,0),d));
+    geo.translate(cm((P0[0]+P1[0])/2),cm((P0[1]+P1[1])/2),cm((P0[2]+P1[2])/2));
+    const mm=new T.Mesh(geo,mat); mm.castShadow=mm.receiveShadow=true; C.g.add(mm);
+  };
+  // 带孔平板（profile 在 x-y，沿 +z 挤出；z=底位置）
+  const slab=(shape,depth,mat,x,y,z)=>{
+    const geo=new T.ExtrudeGeometry(shape,{depth:cm(depth),bevelEnabled:false,curveSegments:14});
+    geo.computeVertexNormals();
+    const mm=new T.Mesh(geo,mat); mm.position.set(cm(x),cm(y),cm(z));
+    mm.castShadow=mm.receiveShadow=true; C.g.add(mm); return mm;
+  };
 
-  // ========== 摇摆秋千（组心 (72,0,-50)）==========
-  const sw=new T.Group(); sw.position.set(cm(72),0,cm(-62)); C.g.add(sw);
-  // 白色弧摇轨（浅弧板，弧面朝下，宽 60 × 厚 6）
-  const rp=new T.Shape();
-  for(let i=0;i<=12;i++){ const a=(-30.3+60.6*i/12)*Math.PI/180;
-    const x=60.25*Math.sin(a), y=60.25-60.25*Math.cos(a);
-    if(i===0) rp.moveTo(cm(x),cm(y)); else rp.lineTo(cm(x),cm(y)); }
-  rp.lineTo(cm(30),cm(10)); rp.lineTo(cm(-30),cm(10)); rp.closePath();
-  { const g2=new T.ExtrudeGeometry(rp,{depth:cm(6),bevelEnabled:false});
-    const mm=new T.Mesh(g2,WHITE); mm.position.z=-cm(3);
-    mm.castShadow=mm.receiveShadow=true; sw.add(mm); }
-  // 青 A 板 ×2（圆拱顶 + 椭圆长孔），立在摇轨两端
-  const aprof=()=>{ const sh=new T.Shape();
-    sh.moveTo(-cm(8),0); sh.lineTo(-cm(8),cm(50));
-    sh.absarc(0,cm(50),cm(8),Math.PI,0,true); sh.lineTo(cm(8),0); sh.closePath();
-    const p=new T.Path(); p.absellipse(0,cm(30),cm(3.2),cm(16),0,Math.PI*2,false);
-    sh.holes.push(p); return sh; };
-  for(const sx of [-25,25]){
-    const g2=new T.ExtrudeGeometry(aprof(),{depth:cm(6),bevelEnabled:false});
-    const mm=new T.Mesh(g2,TEAL); mm.position.set(cm(sx),cm(10),-cm(3));
-    mm.castShadow=mm.receiveShadow=true; sw.add(mm);
+  // ========== 巴士（居中 x70-130 z25-80，体 y8-48）==========
+  C.rb(cm(60),cm(40),cm(55),cm(9),TEAL, cm(70),cm(8),cm(25),4);         // 车身
+  C.box(cm(60),cm(5),cm(55),TEAL, cm(70),cm(48),cm(25));               // 顶
+  C.torus(cm(13),cm(3.5),TEAL, cm(100),cm(26),cm(80),0);               // 正面大爬洞环（篮球目标）
+  C.rb(cm(3),cm(15),cm(18),cm(1.5),ORANGE, cm(130),cm(24),cm(40),2);   // 右窗
+  C.rb(cm(3),cm(15),cm(18),cm(1.5),ORANGE, cm(70),cm(24),cm(40),2);    // 左窗
+  for(const wx of [80,120]) for(const wz of [33,72]){                  // 车轮 ×4
+    const w=C.cyl(cm(5),cm(5),cm(3),DARK, cm(wx),cm(0),cm(wz),14);
+    w.rotation.x=Math.PI/2; w.position.y=cm(5);
   }
-  // 白拱立柱 ×2（前/后，z ±14）+ 椭圆孔
-  const wprof=()=>{ const sh=new T.Shape();
-    sh.moveTo(-cm(5),0); sh.lineTo(-cm(5),cm(55));
-    sh.absarc(0,cm(55),cm(5),Math.PI,0,true); sh.lineTo(cm(5),0); sh.closePath();
-    const p=new T.Path(); p.absellipse(0,cm(28),cm(2),cm(11),0,Math.PI*2,false);
-    sh.holes.push(p); return sh; };
-  for(const sz of [14,-14]){
-    const g2=new T.ExtrudeGeometry(wprof(),{depth:cm(8),bevelEnabled:false});
-    const mm=new T.Mesh(g2,WHITE); mm.position.set(0,cm(8),cm(sz-4));
-    mm.castShadow=mm.receiveShadow=true; sw.add(mm);
+  // 洗盆：车顶左前，青短柱 + 白托盘 + 小嘴（洗盆是车顶最显眼的件）
+  C.cyl(cm(2),cm(2),cm(6),TEAL, cm(85),cm(53),cm(70),10);
+  C.rb(cm(18),cm(3.5),cm(13),cm(1.2),WHITE, cm(76),cm(59),cm(63),3);
+  C.box(cm(3),cm(4),cm(3),WHITE, cm(78),cm(55),cm(70));
+  // 注：产品无独立篮球架杆（实拍无）。87cm 高度来自青 A 架；“篮球”= 巴士侧面大圆环当投篮目标 + 地上的球
+
+  // ========== 滑梯（前左，自巴士 75,48,70 斜向前下到 40,7,142）==========
+  slideSeg([75,48,44],[58,28,69],45,false);
+  slideSeg([58,28,69],[46,13,92],45,false);
+  slideSeg([46,13,92],[40,7,108],45,true);
+
+  // ========== 秋千（后右：宽白摇摆底座 + 两白开槽立柱 + 青 A 架 + 白拱杆 + 爱心座）==========
+  C.rb(cm(65),cm(8),cm(50),cm(3.5),WHITE, cm(135),cm(0),cm(0),4);       // 摇摆底座
+  for(const px of [145,185]){                                          // 两白立柱（圆头 + 竖向开槽）
+    const sh=new T.Shape();
+    sh.moveTo(cm(-7),0); sh.lineTo(cm(-7),cm(46));
+    sh.absarc(0,cm(46),cm(7),Math.PI,0,true); sh.lineTo(cm(7),0); sh.closePath();
+    const slot=new T.Path(); slot.absellipse(0,cm(26),cm(2.2),cm(13),0,Math.PI*2,false);
+    sh.holes.push(slot);
+    slab(sh,6,WHITE, px,8,22);
   }
-  // 白弯顶杆（半圆环，连两拱顶）
-  const bar=new T.Mesh(new T.TorusGeometry(cm(12),cm(1.4),10,24,Math.PI),WHITE);
-  bar.rotation.y=Math.PI/2; bar.position.set(0,cm(58),0);
-  bar.castShadow=true; sw.add(bar);
-  // 吊座：2 白带 + 白吊桶 + 白靠背 + 橙 T 护栏
-  for(const sx of [-7,7]) sw.add(C.cyl(cm(1.2),cm(1.2),cm(18),WHITE,cm(sx),cm(40),0,8));
-  sw.add(C.rb(cm(22),cm(12),cm(16),cm(3),WHITE,0,cm(26),0,16));
-  { const back=C.rb(cm(18),cm(15),cm(3),cm(1.2),WHITE,0,cm(34),-cm(7.5),14);
-    back.rotation.x=0.12; sw.add(back); }
-  sw.add(C.box(cm(20),cm(3),cm(3.5),ORANGE,0,cm(33),cm(8)));
-  sw.add(C.box(cm(3),cm(9),cm(3),ORANGE,0,cm(31),cm(8)));
+  { const sh=new T.Shape();                                            // 青 A 架（全组最高件，顶≈87；下宽上窄 + 大孔 + 顶圆孔）
+    sh.moveTo(cm(-12),0); sh.lineTo(cm(-6),cm(85)); sh.lineTo(cm(6),cm(85)); sh.lineTo(cm(12),0); sh.closePath();
+    const h1=new T.Path(); h1.moveTo(cm(-5),cm(8)); h1.lineTo(cm(5),cm(8)); h1.lineTo(cm(5),cm(48)); h1.lineTo(cm(-5),cm(48)); h1.closePath(); sh.holes.push(h1);
+    const h2=new T.Path(); h2.absellipse(0,cm(72),cm(4),cm(4),0,Math.PI*2,false); sh.holes.push(h2);
+    slab(sh,8,TEAL, 197,0,21);
+  }
+  tube3([130,53,52],[158,66,42],1.8,WHITE);                            // 白拱杆（巴士顶→立柱→A 架顶，升弧）
+  tube3([158,66,42],[182,77,32],1.8,WHITE);
+  tube3([182,77,32],[197,85,25],1.8,WHITE);
+  // 吊座（爱心 + 橙 T 护栏），悬于两立柱之间
+  C.rb(cm(16),cm(6),cm(14),cm(2),WHITE, cm(157),cm(20),cm(18),3);
+  const back=C.rb(cm(15),cm(15),cm(3),cm(1.2),WHITE, cm(157.5),cm(26),cm(16.5),3); back.rotation.x=0.1;
+  C.sph(cm(1.6),WHITE, cm(163),cm(36),cm(17.8),10);                    // 爱心
+  C.sph(cm(1.6),WHITE, cm(167),cm(36),cm(17.8),10);
+  C.box(cm(2.6),cm(3.5),cm(1.2),WHITE, cm(165),cm(33.5),cm(17.8));
+  C.box(cm(14),cm(3),cm(3.5),ORANGE, cm(165),cm(27),cm(30));           // 橙 T 护栏
+  C.box(cm(3),cm(8),cm(3),ORANGE, cm(165),cm(21),cm(30));
+  tube3([158,26,24],[150,46,24],1,WHITE);                              // 吊带
+  tube3([172,26,24],[180,46,24],1,WHITE);
+  // 篮球（地上，巴士前）
+  C.sph(cm(5.5),BALLM, cm(50),cm(5.5),cm(115),16);
 
   // 水平重心归零（真实顶点）
   C.g.updateMatrixWorld(true);
@@ -10714,10 +10841,11 @@ MODELS['mckinney'] = (C) => {
   C.box(cm(26), cm(12), cm(2.5), WHITE, cm(65), cm(27), cm(32.3));
   C.box(cm(26), cm(12), cm(2.5), WHITE, cm(65), cm(15), cm(32.3));
   for(const y of [31, 19]) C.box(cm(7), cm(1.5), cm(0.5), DARK, cm(65), cm(y), cm(33.7));
-  // —— 不锈钢水槽 + 弯头龙头（竖管+横胶囊）——
-  C.cyl(cm(5.5), cm(4.5), cm(1.4), STEEL, cm(60), cm(45.7), cm(20), 20);
-  C.tube(cm(13), cm(0.9), STEEL, cm(60), cm(52.2), cm(26.5), 'y');
-  C.tube(cm(5), cm(0.9), STEEL, cm(62.5), cm(58.2), cm(26.5), 'x');
+  // —— 不锈钢水槽 + 弯头龙头（对照 mk_2：水槽在台面右侧、龙头立在盆后、弯管朝前伸到盆上方）——
+  C.cyl(cm(5.5), cm(4.5), cm(1.4), STEEL, cm(66), cm(45.7), cm(18), 20);
+  C.cyl(cm(4.6), cm(4.6), cm(1.0), STEEL, cm(66), cm(46.0), cm(18), 16);
+  C.tube(cm(11), cm(0.9), STEEL, cm(66), cm(50.2), cm(5), 'y');     // 竖管：台面(45.7)→~55.6
+  C.tube(cm(11), cm(0.9), STEEL, cm(66), cm(55.6), cm(10.5), 'z');  // 弯管朝前，末端正对盆心(18)
   // 水平重心归零（真实顶点 bbox）
   C.g.updateMatrixWorld(true);
   const bb6=new T.Box3();
@@ -13227,7 +13355,6 @@ window.addEventListener('hashchange', ()=>location.reload()); // hash 切换时�
 const _origDraw = drawFurniture;
 drawFurniture = function(){ _origDraw(); if(three && is3D()) sync3D(); };
 </script>
-
 <script>
 (function(){
   const id=location.hash.replace("#threeview:","");
