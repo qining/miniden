@@ -13,12 +13,27 @@ import { readFileSync, writeFileSync, mkdirSync, rmSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import esbuild from 'esbuild';
+import { bundleSchema } from './scripts/build-schema.mjs';
 
 const root = dirname(fileURLToPath(import.meta.url));
 const TMP = join(root, 'build', 'tmp');
 const DIST = join(root, 'dist');
 
 const html = readFileSync(join(root, 'planner.html'), 'utf8');
+
+// --- S1 Phase 2a：校验嵌入的 schema 块 == src/schema/ 最新编译（单一事实来源）---
+const freshSchema = await bundleSchema();
+const SCHEMA_START = '<script id="miniden-schema">\n';
+const SCHEMA_END = '\n</script><!-- /miniden-schema -->';
+const sa = html.indexOf(SCHEMA_START);
+if (sa < 0) throw new Error('planner.html 缺 <script id="miniden-schema">（跑 npm run schema:build）');
+const sb = html.indexOf(SCHEMA_END, sa);
+const embedded = html.slice(sa + SCHEMA_START.length, sb);
+if (embedded !== freshSchema) {
+  console.error('✗ 嵌入的 schema 块与 src/schema/ 最新编译不一致。跑 `npm run schema:build` 后重试。');
+  process.exit(1);
+}
+console.log('  schema: 嵌入块与 src/schema/ 最新编译一致');
 
 // --- 抽取内联脚本（唯一的裸 <script> 标签）---
 const START = '<script>\n';

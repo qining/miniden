@@ -6,7 +6,8 @@
     "build": "node build.mjs",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "fixtures": "node scripts/make-fixtures.mjs"
+    "fixtures": "node scripts/make-fixtures.mjs",
+    "schema:build": "node scripts/build-schema.mjs"
   },
   "devDependencies": {
     "@types/node": "^26.6.1",

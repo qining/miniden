@@ -170,14 +170,18 @@ open('/tmp/planner_check.js','w').write(m.group(1))
 python3 - <<'PYEOF'
 import re
 s = open('planner.html').read()
-for f, mark in [('work/t_walledit.html', r'window\.__ERRS'), ('work/t_3d.html', r'window\.__E3')]:
+for f, mark in [('work/t_walledit.html', r'window\.__ERRS'), ('work/t_3d.html', r'window\.__E3'),
+                ('work/t_pt.html', r'window\.__EPT')]:
     m = re.search(r"(\n<script>\n" + mark + r".*?</script>\n</body>)", open(f).read(), re.S)  # 抽出测试脚本
     open(f, 'w').write(s.replace('</body>', m.group(1), 1)
       .replace("'work/clean_plan.jpg'", "'clean_plan.jpg'")   # 测试页在 work/ 下，改相对路径
       .replace("lib/three.min.js", "../lib/three.min.js")
       .replace("lib/OrbitControls.js", "../lib/OrbitControls.js"))
 PYEOF
+node build.mjs    # dist 变体（t_*_dist.html）由 build.mjs 自动生成：bench 一律从 SOURCE 测试台抽取
 ```
+
+**dist 测试台的 bench 永远从 source 测试台（work/t_*.html）抽，绝不要从 dist 文件自身抽**。注入后对 bench 跑一遍 `node --check`（便宜，能抓出注入污染）。
 
 ### 运行
 
@@ -266,6 +270,8 @@ sips -z 高 宽 /tmp/x.png --out /tmp/x_big.png               # 放大
 | macOS **没有 `timeout` 命令** | rc=127，命令根本没跑，`echo done` 掩盖了失败，看到的是旧文件 | 不要用 `timeout`；检查 rc |
 | 测试页是改动前生成的副本 | 测出旧行为，浪费一轮调试 | 每次改完 planner.html 都重新生成测试页 |
 | 批量 replace 时文本已漂移 | 静默 MISS | 每次 replace 都统计 miss 数并打印 |
+| 用 Python **`re.sub`** 做注入/替换，而替换文本里含 **`$'`** | `$` 序列是 re.sub 的反引用：`$'` 展开为「匹配点之后的整个字符串」——测试台里 `'…CA$'`（字符串以 $ 结尾）被替换成 `</html>`，单引号串跨行 → 整个 bench SyntaxError、一行都不跑，症状是 `NO TEST OUTPUT` 且无任何报错 | 文本注入一律用 `str.replace`；注入后对产物跑 `node --check`（dist 测试台 bench 被这样污染过一次，排查了一整轮才定位） |
+| 从 dist 文件自身抽 bench 再重注入 dist | 传播旧污染（bench 一旦被 `$'` 展开腐化，每次「从自身重抽」都把它原样带进新产物） | bench 只从 source 测试台抽（build.mjs 已这样做；ad-hoc 脚本别另起炉灶） |
 
 ### 5.2 浏览器/three.js 类
 

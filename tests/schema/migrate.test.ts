@@ -109,9 +109,9 @@ describe('migrate → docToLegacy ≡ eff*（合成 USERGEO：覆盖/隐藏/新�
     expect(doc.hidden.walls).toContain('w11');   // hiddenW [10]（'w' 段）
     expect(doc.hidden.solids).toContain('s6'); // hiddenP [5]
     expect(doc.hidden.doors).toContain('d4');  // hiddenD [3]
-    // 新增（userIndex 保留原数组下标）
+    // 新增（userIndex 保留原数组下标；SYN 有 4 段用户段，其中 3 段非窗）
     const uWall = doc.walls.filter(w => w.src === 'user');
-    expect(uWall).toHaveLength(1);
+    expect(uWall).toHaveLength(3);
     expect(uWall[0].userIndex).toBe(0);
     const uWin = doc.windows.filter(w => w.src === 'user');
     expect(uWin).toHaveLength(1);
