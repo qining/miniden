@@ -239,6 +239,7 @@ python3 .claude/skills/add-catalog-item/check-item.py --regress
 | 两个配色缩略图长一样 | 光照过曝（`physicallyCorrectLights=false` 时 three 会乘 π） |
 | 改尺寸后包围盒跟着变，调不拢 | 散件位置从 `spec.w/d` 反推了 |
 | T 脚/条形部件方向错 90° | 只看正面 3/4 图建模 | brief 写死轴向，侧视角渲染图核对 |
+| 床/柜侧栏与前后板轴向写反 | 床长轴 = z(d)、宽 = x(w)：侧栏沿 z、床头/脚板跨 x；`C.box(w,h,d)` 容易把 len 写进第一参 | brief 先写死「长轴=z」；侧栏永远 `C.box(Th, h, len_z, …, ±(W/2−Th/2), …, z_c)`，床头/脚板跨 x 放 z=±D/2（UTÅKER、SAPIENS 连犯两次） |
 | 占地缺了伸展部分（臂灯只占机身） | 采集只录了机身 w/d | 核对官方 Length/reach，spec 错了就改目录条目 |
 | 斜网/斜面整体高出占地一截 | 单 mesh 同时设 rotation.x/y/z：Euler XYZ 序按 Rz→Ry→Rx 复合，宽边也被倾斜 | 复合姿态拆成父子：子 mesh 只做一个轴的旋转，父 Group 做另一个（ SPORTSLIG 斜网用 group 绕 x 倾 + 内部绕 y 转） |
 | 杆/管被抬到离地一米多 | C.box/C.cyl/C.rb 的 y 是**底对齐**：横放圆柱底 = 中心高 − len/2（len 是杆长不是半径），曾把 88cm 横杆写到 y 89cm | 先算中心高再减半个杆长：`C.cyl(r,r,len,mat,x, cy-len/2, z)` 再 `rotation.x=π/2` |
