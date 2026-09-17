@@ -25,6 +25,7 @@
 | `.claude/skills/add-catalog-item/check-item.py` | 单件体检 + 全量回归：`python3 .claude/skills/add-catalog-item/check-item.py <条目id>` / `--regress` |
 | `.agents/skills` → `../.claude/skills` | **给 pi coding agent 用的软链**（git 存 mode 120000）。pi 只扫 `.agents/skills`，不认 `.claude/`；Claude Code 反过来不认 `.agents/`。软链让两边共用同一份文件，改一处两边同时生效 |
 | `work/t_walledit.html` `work/t_3d.html` `work/t_pt.html` | 三个自动化测试台（§3） |
+| `build.mjs` + `package.json` | E1 构建管线：esbuild 把内联脚本 + lib/ 捆成单文件 `dist/planner.html`，并自动重新生成三个 `*_dist` 测试台（§5.7） |
 | `work/headful_test.py` | 真显卡光追验证（§5.5） |
 | `work/layouts/*.json` | 4 套压力测试布局 |
 
@@ -120,7 +121,11 @@ m = re.search(r'<script>\n(.*?)</script>', html, re.S)
 open('/tmp/planner_check.js','w').write(m.group(1))
 " && node --check /tmp/planner_check.js && echo "SYNTAX OK"
 
-# 3) 交互测试台（46 条断言，见 §3）
+# 2b) 构建单文件产物（E1 起）：node build.mjs
+#     → dist/planner.html（内联 three/OrbitControls 的单文件）+ 自动重新生成三个 *_dist 测试台
+#     改完 planner.html 之后必跑（dist 是构建产物，不同步就是过期副本）
+
+# 3) 交互测试台（46 条断言，见 §3；dist 变体同断言，见 §5.7）
 # 4) 校准回归（§1.1）
 # 5) 视觉验证（截图 + 放大目检，见 §4）
 # 5b) UI 改动（样式/组件/交互流程）：跑七道验收关（见 §8.4），
@@ -153,6 +158,11 @@ open('/tmp/planner_check.js','w').write(m.group(1))
 
 **`t_pt` 的 `pt-kallax-visible` 探针会偶发全黑**（均值 0 / 标准差 0，headless 瞬态）：
 单跑一次 FAIL 时**原样重跑一次**再下结论，不要按它改代码。
+
+**dist 变体**（E1 起，2026-09）：`build.mjs` 会自动把三个测试脚本注入 **dist/planner.html**
+生成 `work/t_walledit_dist.html` / `t_3d_dist.html` / `t_pt_dist.html`（不入库，每次构建重新生成，
+永不过期）。验收口径：source 变体与 dist 变体**必须同样全绿**——dist 绿了才说明模块化
+重构（后续 S/E 系列）没有改变行为。经典脚本→ESM 的坑见 §5.7。
 
 ### 重新生成（改了 planner.html 之后必做）
 
@@ -581,6 +591,24 @@ WebGL2 更没有。所以这是「用 GPU 的通用计算单元跑软件光追�
 
 判断缩略图是否有内容要**解码后数不透明像素**，不能看 PNG 字节数：简单形状压得极小，
 1.9KB 也可能是张正常的图。
+
+### 5.7 经典脚本 → ESM（2026-09 E1 实测踩的 6 个坑）
+
+E1 把 `planner.html` 的内联脚本搬进 esbuild 管线（bundle 出单文件 dist，行为必须逐字节等价）。
+classic script 和 ESM 的**作用域语义差异**是全部麻烦的来源，六个坑都真的发生过：
+
+| 坑 | 症状 | 修法 |
+|---|---|---|
+| **classic 顶层名有两层暴露**：var/function → window 属性；let/const → 全局词法环境（跨 script 共享但**不在** window）。ESM 把两层都变私有 | 注入脚本（测试台）报 `state is not defined` | 构建末生成 globalThis 镜像，覆盖**全部**顶层声明（只镜像 var/function 不够——`state`/`wallEdit` 都是 let） |
+| **块注释里的 C 风格代码被逐行正则误当声明**（如 `const float PI`） | 幻影名在运行时 ReferenceError，**未捕获异常杀死整个 IIFE**，它后面的名字全部镜像不上（症状：早声明的名字在、晚声明的不在，且无任何报错——异常发生在 IIFE 内部） | 扫描前先剥块注释（把注释体换成等长空行，保持行号对齐）+ 每条镜像语句用 typeof 守护 |
+| **一次性赋值快照对「会被重新绑定的 let」永久失效**（`three`：模块求值末是 null，场景异步建好后才重新赋值；`saveGeo`/`drawFurniture` 同理） | 注入脚本读到的永远是旧值（null）——`Cannot read properties of null (reading 'controls')` | 镜像用 `Object.defineProperty` + **getter 闭包**：每次外部访问都读当前模块绑定（活绑定） |
+| **getter-only 镜像挡住写入方**：sloppy classic script 对无 setter 的全局属性赋值**静默失败**（不报错！） | 测试脚本 `uidSeq++` 不生效 → 两个家具拿到**同一个 uid** → furnMap 互相覆盖（场景只剩一件、位置错到另一件）→ 拾取/拖动全挂，且无任何报错 | var/let/function 名必须带 **setter 闭包**（`set: v => { name = v }`——闭包写模块绑定合法）；const 保持 getter-only（原 classic 里给 const 赋值本来就会 TypeError） |
+| **`THREE` 本身也是外部脚本的裸名**（原由 three.min.js UMD 挂到 window） | 测试台报 `THREE is not defined` | 入口前言加 `globalThis.THREE = threeLib`（threeLib = UMD 的 module.exports，可变对象，OrbitControls 能挂上去） |
+| **顶层函数重复声明**（classic 里合法：后声明者胜出；ESM 里 SyntaxError） | esbuild 直接报语法错，构建失败 | 构建前 dedupe：只保留最后一个声明（复刻 classic 语义）。结束行判定用代码风格规则（col-0 的 `}`），不用花括号扫描器（正则字面量/字符串会让它失同步） |
+
+排查这一类问题的关键手法：**mirror 块首尾各插一条 console.log 标记** + 在 bundle **之前**注入
+console 转发器（error/warn 都要，转发器在 bundle 之后注册会漏掉 bundle 内部的同步异常）。
+「早名字在、晚名字不在 + 无报错」这个组合特征 = 块中间被未捕获异常截断。
 
 ## 7. 代码结构地图
 
