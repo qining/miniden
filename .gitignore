@@ -29,3 +29,12 @@ work/_*.py
 work/ref/check_*.png
 work/_check_item_*.html
 __pycache__/
+
+# E1 build
+node_modules/
+dist/
+build/tmp/
+work/t_*_dist.html
+work/t_walledit_dist.html
+work/t_3d_dist.html
+work/t_pt_dist.html

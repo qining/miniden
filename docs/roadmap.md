@@ -2,7 +2,7 @@
 
 状态：`todo` → `doing` → `done(<commit>)`。
 依赖关系：S1 是一切的前提；E 系列（工程）与 S 系列（产品）可交替推进，
-但 E1（esbuild 模块化）建议先于 S1 的 schema 模块落地（schema 直接写 TS）。
+但 E1（esbuild 模块化）已迈出第一步（2026-09-17）：**管线等价性证明完成**（dist 单文件与 source 逐字节等价：calib md5 + 三台测试台全绿，见 AGENTS §5.7）；后续 src/ 模块化时直接写 TS。
 
 > **调性（ADR-0006，一切取舍的最高判据）**：给 homeowner 做简单规划；
 > 「快捷」= **time-to-insight**（用户不建模；形成「我家」的概念以分钟计；
@@ -46,7 +46,7 @@
 
 | # | 工作项 | 状态 |
 |---|---|---|
-| E1 | **esbuild「源模块 → 单文件」**：`src/` 模块化（textures→geometry→… 增量迁移），`three@0.147.0` 转 npm 依赖内联 | todo |
+| E1 | **esbuild「源模块 → 单文件」**：step 1 完成（`build.mjs`：planner.html 内联脚本 + lib/ 内联 → dist/planner.html 单文件，**行为逐字节等价**已证明：calib md5 + t_walledit 111/111 + t_3d 65/65，classic→ESM 六个坑沉淀在 AGENTS §5.7；three 用**本地 lib/**而非 npm——零版本漂移，待 src/ 模块化时再转 npm）；剩：`src/` 增量模块化（textures→geometry→…） | 进行中 |
 | E2 | **TypeScript**：schema/geometry 先行，`tsc --noEmit` 门禁 | todo（与 E1 交织） |
 | E3 | **JSON Schema + 迁移链**：`validate()`/`migrate()`，schema 文件即文档 | todo（= S1 的实现载体） |
 | E4 | **vitest 单测**：纯函数层（schema/geometry/`fmtLen`/吸附/`ptPickGrid`），目标行覆盖 >80% | todo |
