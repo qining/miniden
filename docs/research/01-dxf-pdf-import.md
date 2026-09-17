@@ -1,6 +1,6 @@
 # R1. DXF / PDF 向量导入深潜
 
-日期：2026-07（研究，未实施）· 对应 roadmap S5/S6 · 关联 ADR-0003
+日期：2026-09（研究，未实施）· 对应 roadmap S5/S6 · 关联 ADR-0003
 
 ## 1. DXF 解析：dxf-parser 1.1.2
 
@@ -29,7 +29,7 @@
 
 ### 单位自动检测（照抄酷家乐 + 加固）
 
-酷家乐帮助中心（2026-07 抓取）的实际规则：
+酷家乐帮助中心（2026-09 抓取）的实际规则：
 1. 支持 mm / m / 英尺 / 英寸 绘制的图纸，**导入时自动检测 CAD 单位**，导入弹窗二次确认
 2. 经验判据：**测墙厚 ≈240 → mm；≈24 → cm**（240mm 标准砖墙）；不是支持单位就用 SC 命令缩放
 3. 文件限制：免费档 **DWG ≤5MB / DXF ≤10MB**，付费档 30MB；多户型文件弹选择框；
@@ -99,5 +99,5 @@
 ## 来源
 
 - dxf-parser README / wiki Example-Output（cdn.jsdelivr.net/npm/dxf-parser@1.1.2）
-- pdf.js 源码 `src/display/api.js`、`src/shared/util.js`（github master，2026-07 抓取）
-- 酷家乐帮助中心：上传户型 CAD 要求 / 如何提高图纸识别效率 / 如何导入 CAD / 如何清理 CAD 图纸（kujiale.com/hc，2026-07 抓取）
+- pdf.js 源码 `src/display/api.js`、`src/shared/util.js`（github master，2026-09 抓取）
+- 酷家乐帮助中心：上传户型 CAD 要求 / 如何提高图纸识别效率 / 如何导入 CAD / 如何清理 CAD 图纸（kujiale.com/hc，2026-09 抓取）

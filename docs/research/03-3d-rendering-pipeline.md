@@ -1,6 +1,6 @@
 # R3. 3D 渲染管线（WebGL2 → WebGPU 的抉择）
 
-日期：2026-07（研究，未实施）· 关联 ADR-0004 · 服务 roadmap S4 与长期画质升级
+日期：2026-09（研究，未实施）· 关联 ADR-0004 · 服务 roadmap S4 与长期画质升级
 
 ## 1. 现状管线（已建成，M2 真机实测）
 
@@ -15,7 +15,7 @@
 实测（Apple M2，246k 三角形/31 灯）：草稿 120spp 60s，精细 900spp 398s
 ```
 
-## 2. 浏览器硬件光追：不存在（2026-07）
+## 2. 浏览器硬件光追：不存在（2026-09）
 
 - **WebGPU 规范（2026-09-15 CRD）没有 ray query / acceleration structure**
   （全文检索确认：只有 GPUQuerySet 这类统计查询）
@@ -26,9 +26,9 @@
 - **结论**：浏览器里的 RT 只能是**软件 BVH**（我们的现状就是正解）。
   重新评估时机：gpuweb #535 有实质进展（进入 Milestone 3 或 spec 草案）
 
-## 3. three.js WebGPURenderer 现状（2026-07）
+## 3. three.js WebGPURenderer 现状（2026-09）
 
-- **已「production-ready」**（社区共识，bitsoulhosting 2026-07 评测等）：
+- **已「production-ready」**（社区共识，bitsoulhosting 2026 评测等）：
   - 浏览器支持面：WebGPU 已在 **Chrome / Edge / Safari 26 / Firefox 141+
     （Windows）/ 145+（Apple Silicon macOS）** 默认启用——「覆盖绝大多数」
   - three.js r184/r185：`import from 'three/webgpu'` + **TSL**（`three/tsl`）
@@ -60,7 +60,7 @@
 ## 4. 降噪升级选项（WebGL2 内可做的）
 
 - **现状 À-Trous**（空间域保边，确定性，零依赖）——保留
-- **OIDN（Open Image Denoise，神经降噪）进浏览器的三个实现**（2026-07 搜索）：
+- **OIDN（Open Image Denoise，神经降噪）进浏览器的三个实现**（2026-09 搜索）：
   | 库 | 引擎 | 特点 |
   |---|---|---|
   | `pmndrs/denoiser`（DennisSmolek/Denoiser） | **onnxruntime-web + WebGPU EP**，前后处理 WGSL compute | 「~1080p 单次推理」；需 WebGPU |
@@ -85,7 +85,7 @@
 
 - W3C WebGPU spec（2026-09-15 CRD 全文索引检索）；gpuweb issue #535
 - wgpu wiki「Ray tracing」（factory.ai 镜像）
-- threejs.org manual/docs WebGPURenderer；bitsoulhosting 2026-07 评测；
+- threejs.org manual/docs WebGPURenderer；bitsoulhosting 2026 评测；
   three.js issue #33194；threejs-skills.com 迁移指南
 - pmndrs/denoiser、pissang/oidn-web、DennisSmolek/Denoiser（GitHub README）
 - polyhaven.com（CC0 许可、EXR 下载）

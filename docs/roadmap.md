@@ -14,6 +14,10 @@
 | R4 | 家具目录与商品数据：竞品目录结构、GLTF vs 程序化建模（单文件约束下）、IKEA/零售商数据源 | done | research/04 |
 | R5 | 编辑器 UX：墙体编辑模式（段式 vs 对象式）、吸附、undo/redo 设计、多户型管理 | done | research/05 |
 | R6 | 持久化与同步：localStorage→IndexedDB、导入导出、云同步选项 | done | research/06 |
+| R7 | 整体架构：planner.html 区块实测解剖（MODELS=327KB/47%）→ 目标模块图（schema/geo/data/models/render*/ui，无环依赖）+ 线程模型 + 迁移不变量 | done | research/07 |
+| R8 | 家具库 scalability：增长成本模型（变体 0KB/新家族 2.5KB）；四个真瓶颈（单文件软顶~3-5MB、GPU 三角负载先触顶、卡片 UI、**work/ 644MB 入库**）；规模路线图（500→1,500→10k+） | done | research/08 |
+| R9 | UI 整体风格：现状盘点（截图实测）vs 竞品坐标（P5D 亮色/HBM 渲染即产品/酷家乐深色 pro）→ 提案 **Warm Dark** + design token 初稿 + 组件清单 + 三步执行序 | done | research/09 |
+| R10 | UI 改动验收标准：五道关（行为断言/calib 不变性/**黄金截图 `#ui` 新门禁**/交互体检/卫生含 token 纪律）+ 用户报障处理流 + 明确不验收项 | done | research/10 |
 
 ## 产品功能（S 系列，顺序 = 依赖序）
 
@@ -27,6 +31,7 @@
 | S6 | **PDF 向量导入**：operatorList → 线段聚类 → 文档；扫描件检测降级 | todo | 依赖 S1 + R1 |
 | S7 | **图片底图 + 磁吸描摹**（OpenCV.js） | todo | 依赖 S1 + R2 |
 | S8 | **ML 识别**（云端 API / Vloor） | todo | 最后 |
+| S9 | **UI Warm Dark 重构**（R9 方案）：token 先行（零视觉变化）→ 换值（暖底/accent 收敛）→ 品牌位 MiniDen | todo | 依赖 E16（先有黄金门禁再动样式） |
 
 ## 工程（E 系列）
 
@@ -58,11 +63,13 @@
 | E12 | PWA/service worker | todo |
 | E13 | 包体预算进 CI（796KB 基线） | todo（E5 的扩展） |
 | E14 | 启动性能标记（首帧/目录渲染） | todo |
-| E15 | `work/` 665MB 研究产物：ref/ 图片 LFS 或独立 repo | todo |
+| E15 | `work/` 644MB 研究产物治理：**ref/ 保留入库**（建模 source of truth），过程产物（check_*.png/tv_*.png）移出跟踪或 LFS；交付后清理政策写进 AGENTS（R8 §3.4） | todo |
+| E16 | **UI 黄金截图门禁**（R10）：`#ui` hash 模式 + 8 张黄金基线 + 像素 diff 工具（本地 ≤0.3% / CI 确定性 md5） | todo | S9 的前置 |
 
 ## 已完成（本次会话前）
 
 - 13 件大玩具/家具入目录 + SAPIENS 系列 29 件（275 条目，20 类）
 - 三测试台 208 断言 + calib md5 门禁全绿
 - 命名决定（ADR-0001）+ 文档体系建立（本目录）
-- **R1–R6 研究全部完成**（research/ 六篇，2026-07）——实施（S/E 系列）的前置研究就绪
+- **R1–R10 研究全部完成**（research/ 十篇，2026-09）——实施（S/E 系列）的前置研究就绪
+- 日期勘误：早期文档误写的 2026-07 全部订正为 2026-09（实际写作日期）

@@ -39,11 +39,11 @@ roadmap.md（状态推进）→ 代码 + AGENTS.md 沉淀
 ### decisions/
 | # | 标题 | 日期 |
 |---|---|---|
-| [0001](decisions/0001-miniden-naming.md) | 项目命名：planner → MiniDen | 2026-07-17 |
-| [0002](decisions/0002-geometric-primitives.md) | 几何原语是存储，近似只在消费端 | 2026-07-17 |
-| [0003](decisions/0003-input-channels-layered.md) | 户型输入通道四层递进 | 2026-07-17 |
-| [0004](decisions/0004-single-file-artifact.md) | 单文件产物架构（esbuild 源→HTML） | 2026-07-17 |
-| [0005](decisions/0005-project-schema-v1.md) | Project 文档 = id 寻址 JSON（schema v1） | 2026-07-17 |
+| [0001](decisions/0001-miniden-naming.md) | 项目命名：planner → MiniDen | 2026-09-17 |
+| [0002](decisions/0002-geometric-primitives.md) | 几何原语是存储，近似只在消费端 | 2026-09-17 |
+| [0003](decisions/0003-input-channels-layered.md) | 户型输入通道四层递进 | 2026-09-17 |
+| [0004](decisions/0004-single-file-artifact.md) | 单文件产物架构（esbuild 源→HTML） | 2026-09-17 |
+| [0005](decisions/0005-project-schema-v1.md) | Project 文档 = id 寻址 JSON（schema v1） | 2026-09-17 |
 
 ### design/
 | 文档 | 状态 |
@@ -60,3 +60,7 @@ roadmap.md（状态推进）→ 代码 + AGENTS.md 沉淀
 | 04 | [目录与商品数据](research/04-catalog-and-product-data.md) | IKEA 无官方 API（只有社区逆向）→ 保持 Chrome 渲染抓取；程序化建模 vs GLTF 的体积算术（30-50MB vs 796KB）→ 程序化是差异化，不换方向 |
 | 05 | [编辑器 UX](research/05-editor-ux.md) | 存储对象式（wall 实体+子件 = schema v1）/ 几何求值段式（展开给现有渲染管线）= 文档层升级、渲染层不动；undo/redo = 文档快照环（KB 级 doc，50 档）；窗户「选墙放窗」交互要点 |
 | 06 | [持久化与同步](research/06-persistence-and-sync.md) | localStorage → IndexedDB 门面（E10）；导出 = JSON(+ZIP 底图)；云同步 v2+（CRUD 起步，Yjs 留作未来）；隐私底线：户型数据默认只在本机 |
+| 07 | [整体架构](research/07-architecture.md) | 实测解剖：MODELS 327KB = JS 的 47%；目标模块图（schema→geo→data/models→render*→ui→main，无环）；worker 线程模型；迁移不变量清单（calib md5/种子/版本号） |
+| 08 | [家具库 scalability](research/08-catalog-scalability.md) | 增长成本：配色变体 0KB / 新家族 2.5KB；先触顶的是 **GPU 三角负载**不是文件（对策：LOD 分级/实例化/单件 40k 硬顶）；1,500+ 条目后走「目录扩展包」；新发现 work/ 644MB 入库需治理 |
+| 09 | [UI 整体风格](research/09-ui-style.md) | 现状 = 冷调深色 pro-tool（截图实测）；竞品坐标：P5D 亮色 consumer / HBM 渲染即产品 / 酷家乐深色 pro；提案 **Warm Dark**（暖炭黑 + 单 accent + token 表）；token 先行三步执行序 |
+| 10 | [UI 验收标准](research/10-ui-acceptance.md) | 五道关：行为断言 / calib 不变性 / **黄金截图（`#ui` 新门禁，8 状态）** / 交互体检（键盘等）/ 卫生（token 纪律 + 体积预算）；明确不验收项（跨浏览器像素/响应式/a11y 全项） |

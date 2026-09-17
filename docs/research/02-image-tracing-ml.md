@@ -1,6 +1,6 @@
 # R2. 图片描摹 / ML 识别
 
-日期：2026-07（研究，未实施）· 对应 roadmap S7/S8 · 关联 ADR-0003
+日期：2026-09（研究，未实施）· 对应 roadmap S7/S8 · 关联 ADR-0003
 
 ## 1. P2：图片底图 + 磁吸描摹（浏览器内，OpenCV.js）
 
@@ -41,7 +41,7 @@
 
 ### 2.2 产品级现状：Vloor（Floorplanner 的第三方服务）
 
-**API 实测**（Floorplanner 官方文档 `floorplanner.readme.io`，2026-07 抓取，
+**API 实测**（Floorplanner 官方文档 `floorplanner.readme.io`，2026-09 抓取，
 文档提供 llms.txt + .md 版本）：
 
 ```
