@@ -21,7 +21,7 @@
 
 import type { Geom, Pt } from './primitives';
 
-export type WallKind = 'wall' | 'thin' | 'opening';   // opening = 链上无门扇的缺口（S5 DXF 导入可能产生）
+export type WallKind = 'wall' | 'thin' | 'opening' | 'passage';   // opening=门洞(t:'d')，passage=开口(t:'o')，thin=细线(t:'i')
 export type WindowStyle = 'fixed' | 'slide' | 'casement' | 'awning';
 export type DoorKind = 'swing' | 'double' | 'slide' | 'bifold';
 export type FixtureType = 'counter' | 'basin' | 'toilet' | 'tub' | 'shower' | 'mirror';
@@ -300,7 +300,7 @@ export function projectSchema(): object {
           { type: 'object', required: ['t', 'pts'], properties: { t: { const: 'poly' }, pts: { type: 'array', minItems: 3, items: { type: 'array', minItems: 2, maxItems: 2, items: { type: 'number' } } } } },
         ],
       },
-      wall: { type: 'object', required: ['id', 'kind', 'geom'], properties: { id: { type: 'string' }, kind: { enum: ['wall', 'thin'] }, geom: { $ref: '#/definitions/geom' }, thick: { type: 'number', exclusiveMinimum: 0 } } },
+      wall: { type: 'object', required: ['id', 'kind', 'geom'], properties: { id: { type: 'string' }, kind: { enum: ['wall', 'thin', 'opening', 'passage'] }, geom: { $ref: '#/definitions/geom' }, thick: { type: 'number', exclusiveMinimum: 0 } } },
       window: {
         type: 'object',
         required: ['id', 'geom', 'pos', 'width', 'sill', 'head', 'style', 'frame', 'glass'],

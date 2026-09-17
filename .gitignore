@@ -38,3 +38,4 @@ work/t_*_dist.html
 work/t_walledit_dist.html
 work/t_3d_dist.html
 work/t_pt_dist.html
+src/schema/dist-schema.js

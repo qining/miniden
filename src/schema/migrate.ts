@@ -26,7 +26,7 @@ import { blankDoc, nextId } from './project';
 
 export interface LegacySeg {
   x1: number; y1: number; x2: number; y2: number;   // ft
-  t: 'w' | 'g' | 'd' | 'i';
+  t: 'w' | 'g' | 'd' | 'o' | 'i';   // o = 开口（用户手绘，与门洞 'd' 的区别：3D 无过梁）
   wd?: number;          // 图纸 px（缺省按类型：墙 6.5 / 窗 3.5）
   fc?: boolean;         // 落地（全高）
   slider?: boolean;     // 推拉
@@ -149,11 +149,14 @@ export function migrateLegacyToV1(geo: LegacyGeo, user: LegacyUserGeo = EMPTY_US
       });
     } else if (s.t === 'g') {
       windows.push(winFromSeg(s, i, 'builtin', sc));
-    } else { // 'd'：缺口。v1 链上保留为 opening 实体（门扇另在 doors[]）
+    } else { // 'd'/'o'：缺口。v1 链上保留为实体（门扇另在 doors[]）；
+      // 重放路径会把用户开口段物化进内置列表，wd 必须保留否则重放丢字段
       walls.push({
         id: `w${i + 1}`,
-        kind: 'opening',
+        kind: s.t === 'd' ? 'opening' : 'passage',
         geom: segGeom(s),
+        thick: s.wd != null ? s.wd / sc : undefined,
+        wdPx: s.wd ?? undefined,
         src: 'builtin',
         chainIndex: i,
       });
@@ -171,7 +174,7 @@ export function migrateLegacyToV1(geo: LegacyGeo, user: LegacyUserGeo = EMPTY_US
     } else {
       walls.push({
         id: nextId(doc, 'wall'),
-        kind: s.t === 'i' ? 'thin' : 'wall',
+        kind: s.t === 'i' ? 'thin' : s.t === 'd' ? 'opening' : s.t === 'o' ? 'passage' : 'wall',
         geom: segGeom(s),
         thick: s.wd != null ? s.wd / sc : undefined,
         wdPx: s.wd ?? undefined,
@@ -299,12 +302,14 @@ export function docToLegacy(doc: ProjectDoc): LegacyProjection {
   const hiddenDoor = new Set(doc.hidden.doors);
   const hiddenSol = new Set(doc.hidden.solids);
 
-  // 链：内置按 chainIndex 排序（= 原数组序），用户追加在后（原 USERGEO.walls 序）
+  // 链：内置在前（按 chainIndex = 原数组序），用户在后（按 userIndex = 原 USERGEO.walls 序）；
+  // 窗与墙在**同一索引空间**内交错（legacy effWalls 把窗 inline 在原位，用户窗不能掉到队尾）
   const chain: (Wall | Window)[] = [...doc.walls, ...doc.windows];
   chain.sort((a, b) => {
-    const ab = a.src === 'builtin' ? (a.chainIndex ?? 0) : Number.MAX_SAFE_INTEGER;
-    const bb = b.src === 'builtin' ? (b.chainIndex ?? 0) : Number.MAX_SAFE_INTEGER;
-    return ab - bb;
+    const as = a.src === 'builtin' ? 0 : 1, bs = b.src === 'builtin' ? 0 : 1;
+    const ai = a.src === 'builtin' ? (a.chainIndex ?? 0) : (a.userIndex ?? 0);
+    const bi = b.src === 'builtin' ? (b.chainIndex ?? 0) : (b.userIndex ?? 0);
+    return (as - bs) || (ai - bi);
   });
   for (const e of chain) {
     const isWin = !('kind' in e);
@@ -328,7 +333,7 @@ export function docToLegacy(doc: ProjectDoc): LegacyProjection {
       const g = geomToSeg(w.geom);
       walls.push({
         x1: g.x1, y1: g.y1, x2: g.x2, y2: g.y2,
-        t: w.kind === 'thin' ? 'i' : w.kind === 'opening' ? 'd' : 'w',
+        t: w.kind === 'thin' ? 'i' : w.kind === 'opening' ? 'd' : w.kind === 'passage' ? 'o' : 'w',
         ...(w.thick != null ? { wd: w.wdPx ?? (doc.sc ? w.thick * doc.sc : undefined) } : {}),
         _src: w.src === 'user' ? 'u' : 'b',
         _i: w.chainIndex ?? (w.userIndex as number),

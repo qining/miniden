@@ -4,11 +4,15 @@
 
    生成 legacy-geo.json：
    - legacy: 内置几何原文（WALLS/INNER/DOORS/FIXED/LABELS/FX/PATIO/ISL，SC 换算后 ft）
-   - effEmpty: 空 USERGEO 时 effWalls/effFixed/effDoors 的输出（基线）
-   - effUser: 合成 USERGEO（覆盖/隐藏/新增）时的 eff* 输出（迁移等价性的对照基准）
+   - effEmpty: 空 USERGEO 时 legacy eff* 的输出（基线）
+   - effUser: 合成 USERGEO（覆盖/隐藏/新增，含用户手绘 'd'/'o' 开口段）时的 eff* 输出
+     （迁移等价性的对照基准）
 
    提取的是**原始脚本行**（几何块是纯数据+纯函数，无 DOM 依赖），
-   在 vm 沙箱里执行后序列化。输出无时间戳——重复生成逐字节相同。
+   在 vm 沙箱里执行后序列化。eff* 用下方内联的 **legacy 参考实现**（S1 Phase 2a
+   之前的行为）——它是等价性测试的独立 oracle，不能从 planner.html 提取
+   （现在的 eff* 已经是文档驱动，用它做 oracle 就是自己验证自己）。
+   输出无时间戳——重复生成逐字节相同。
    ===================================================================== */
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -36,26 +40,57 @@ function extractBalanced(startLine) {
 }
 
 const idx = (re) => lines.findIndex(l => re.test(l));
-if ([1, idx(/^const DIMTXT/), idx(/^const GEO_VERSION /), idx(/^let USERGEO = /), idx(/^const USERGEO_VERSION /), idx(/^function effWalls/), idx(/^function effFixed/), idx(/^function effDoors/)].some(i => i < 0)) {
+if ([1, idx(/^const DIMTXT/), idx(/^const GEO_VERSION /), idx(/^let USERGEO = /), idx(/^const USERGEO_VERSION /)].some(i => i < 0)) {
   console.error('fixture 提取锚点缺失——planner.html 结构变了，检查脚本');
   process.exit(1);
 }
 
 // 块 1：脚本头 + 完整几何数据块（SC → DIMTXT）
 const block1 = lines.slice(0, idx(/^const DIMTXT/) + 1).join('\n');
+
+/* legacy eff* 参考实现（S1 Phase 2a 之前的行为；等价性测试的唯一 oracle）。
+   与 planner.html 当前实现无关。若未来 legacy 语义有变，这里必须同步。 */
+const LEGACY_EFF = `
+function effWalls(){
+  if(CALIB) return WALLS;
+  const out=[];
+  WALLS.forEach((s,i)=>{ if(USERGEO.hiddenW.includes(i)) return;
+    const o=USERGEO.ovW[i];
+    out.push(Object.assign({}, s, o||{}, {_src:'b', _i:i})); });
+  USERGEO.walls.forEach((s,i)=>out.push(Object.assign({}, s, {_src:'u', _i:i})));
+  return out;
+}
+function effFixed(){
+  if(CALIB) return FIXED;
+  const out=[];
+  FIXED.forEach((f,i)=>{ if(USERGEO.hiddenP.includes(i)) return;
+    const o=USERGEO.ovP[i];
+    out.push(o?Object.assign({},f,{poly:o,_src:'b',_i:i}):Object.assign({},f,{_src:'b',_i:i})); });
+  USERGEO.polys.forEach((p,i)=>out.push({name:'', poly:p.pts, fill:'#0c0d0f', _src:'u', _i:i}));
+  return out;
+}
+function effDoors(){
+  if(CALIB) return [];
+  const out=[];
+  DOORS.forEach((d,i)=>{ if(USERGEO.hiddenD.includes(i)) return;
+    const o=USERGEO.ovD[i]; out.push(Object.assign({},d,o||{},{_src:'b',_i:i})); });
+  USERGEO.doors.forEach((d,i)=>out.push(Object.assign({},d,{_src:'u',_i:i})));
+  return out;
+}`;
+
 const extra = [
   lines[idx(/^const GEO_VERSION /)],
   lines[idx(/^let USERGEO = /)],
   lines[idx(/^const USERGEO_VERSION /)],
-  extractBalanced(idx(/^function effWalls/)),
-  extractBalanced(idx(/^function effFixed/)),
-  extractBalanced(idx(/^function effDoors/)),
+  LEGACY_EFF,
 ].join('\n');
 
 const SYN_CODE = `({
   walls: [
     { x1: 5, y1: 5, x2: 9, y2: 5, t: 'w' },
     { x1: 20, y1: 30, x2: 24, y2: 30, t: 'g', wd: 3.5 },
+    { x1: 20, y1: 31, x2: 23, y2: 31, t: 'd' },          // 用户手绘门洞（t 必须保真回投）
+    { x1: 25, y1: 31, x2: 27, y2: 31, t: 'o', wd: 3.5 },  // 用户手绘开口（d≠o 语义：3D 过梁只给 'd'）
   ],
   polys: [
     { name: '测试柱', pts: [[10, 10], [11.5, 10], [11.5, 11.5], [10, 11.5]] },
