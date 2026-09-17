@@ -1,10 +1,10 @@
 # R4. 家具目录与商品数据
 
-日期：2026-07（研究）· 关联：catalog/ 模块、275 条目现状
+日期：2026-09（研究）· 关联：catalog/ 模块、275 条目现状
 
 ## 1. 商品数据来源（以 IKEA 为主目录）
 
-- **IKEA 没有官方公开开发者 API**（2026-07 多源确认：api-evangelist/ikea
+- **IKEA 没有官方公开开发者 API**（2026-09 多源确认：api-evangelist/ikea
   「IKEA does not publish an official public developer API」；内部 Knowledge
   Hub `knowledge.ikea.net` 不对公众开放）
 - **社区逆向 OpenAPI**（`idelsink/ikea-openapi`，MIT）：
@@ -44,5 +44,5 @@
 
 ## 来源
 
-- apis.io / api-evangelist/ikea / idelsink/ikea-openapi（2026-07 抓取）
+- apis.io / api-evangelist/ikea / idelsink/ikea-openapi（2026-09 抓取）
 - 竞品：AGENTS.md §2 与 research doc §2（前次调研）；酷家乐帮助中心
