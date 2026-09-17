@@ -38,7 +38,7 @@
 | S7 | **图片底图 + 磁吸描摹**（OpenCV.js） | todo | 依赖 S1 + R2 |
 | S8 | **ML 识别**（自家云函数，非 Vloor——R2） | v2+ | 调性校准：ML 重，仅当 P0–P2 覆盖不足 |
 | S9 | **UI Warm Dark 重构**（R9 方案）：token 先行（零视觉变化）→ 换值（暖底/accent 收敛）→ 品牌位 MiniDen + 渐进披露（日常操作表层/pro 操作第二层） | todo | 依赖 E16（先有黄金门禁再动样式） |
-| S10 | **目录扩展协议**（调性：扩展代码优先，skill 是交付物不是依赖）：① 目录条目 JSON schema（稳定）② 建模指南人读版（从 skill 提炼：modelCtx API + 建模三律）③ check-item CLI 化（增/验/删，无 AI 可用）④ 目录扩展包格式（外部 json+js 包，UI 可加载，R8） | todo | 依赖 S1；skill 本身保留在 repo 作为交付物（README 说明） |
+| S10 | **目录扩展协议**（调性：扩展代码优先，skill 是交付物不是依赖）：① 目录条目 JSON schema（稳定）② 建模指南人读版（从 skill 提炼：modelCtx API + 建模三律）③ check-item CLI 化（增/验/删，无 AI 可用）④ 目录扩展包格式（外部 json+js 包，UI 可加载，R8） | todo（**验收基准 = R8-5K 五条**：规划规模 **5,000 件**，用户决策 2026-09-17；实现可后置，但 R8-5K-2 的 schema 预留须从 S1 起生效） | 依赖 S1；skill 本身保留在 repo 作为交付物（README 说明） |
 
 ## 工程（E 系列）
 
@@ -47,9 +47,9 @@
 | # | 工作项 | 状态 |
 |---|---|---|
 | E1 | **esbuild「源模块 → 单文件」**：step 1 完成（`build.mjs`：planner.html 内联脚本 + lib/ 内联 → dist/planner.html 单文件，**行为逐字节等价**已证明：calib md5 + t_walledit 111/111 + t_3d 65/65，classic→ESM 六个坑沉淀在 AGENTS §5.7；three 用**本地 lib/**而非 npm——零版本漂移，待 src/ 模块化时再转 npm）；剩：`src/` 增量模块化（textures→geometry→…） | 进行中 |
-| E2 | **TypeScript**：schema/geometry 先行，`tsc --noEmit` 门禁 | todo（与 E1 交织） |
-| E3 | **JSON Schema + 迁移链**：`validate()`/`migrate()`，schema 文件即文档 | todo（= S1 的实现载体） |
-| E4 | **vitest 单测**：纯函数层（schema/geometry/`fmtLen`/吸附/`ptPickGrid`），目标行覆盖 >80% | todo |
+| E2 | **TypeScript**：schema 层已完成（`src/schema/`，tsc strict 干净 + 31 单测，S1 Phase 1）；其余模块随 E1 模块化推进 | 进行中 |
+| E3 | **JSON Schema + 迁移链**：Phase 1 已完成（validate()/migrate()/JSON Schema draft-07 导出，等价性硬验收 31 单测绿）；Phase 2 = planner.html 接入（见 S1） | 进行中 |
+| E4 | **vitest 单测**：vitest 接入完成 + schema 层 31 单测（含等价性/可重放性/原语误差）；其余纯函数（`fmtLen`/吸附/`ptPickGrid`）随模块化补齐 | 进行中 |
 | E5 | **GitHub Actions CI**：tsc → eslint → vitest → build → headless 三测试台 + **calib md5 门禁**（macOS 路径先参数化） | todo |
 
 **P1 —— 质量 + 快捷（ADR-0006：快捷是一等特征）**
@@ -80,5 +80,6 @@
 - 三测试台 208 断言 + calib md5 门禁全绿
 - 命名决定（ADR-0001）+ 文档体系建立（本目录）
 - **R1–R10 研究全部完成**（research/ 十篇，2026-09）——实施（S/E 系列）的前置研究就绪
+- **R8-5K 规模要求（2026-09-17，用户决策）**：目录规划规模定为 **5,000 件**；五条硬要求写入 R8 §5（数据/模型代码出文件、schema 预留、场景预算解耦、缩略图零预生成、验证分层），S10 验收基准
 - **ADR-0006 产品调性 + 路线图重新校准**（2026-09-17）：time-to-insight 定义、S4 拆分、S8→v2+、S10/E14/E17 新增；R10 v2（交互流程 + 人眼可见性）
 - 日期勘误：早期文档误写的 2026-07 全部订正为 2026-09（实际写作日期）
