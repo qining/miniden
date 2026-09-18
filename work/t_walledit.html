@@ -253,6 +253,11 @@
     <button class="btn" id="dSide">换开向</button>
     <button class="btn" id="dWood">深木色</button>
   </span>
+  <span id="winCtl" style="visibility:hidden">
+    <button class="btn" id="wWinStyle">类型：固定</button>
+    <button class="btn" id="wWinFull">普通窗</button>
+    <button class="btn" id="wWinFrame">黑钢框</button>
+  </span>
   <select id="wType" title="墙类型">
     <option value="w">实墙</option><option value="g">玻璃/窗</option>
     <option value="d">门洞</option><option value="o">开口</option>
@@ -1335,6 +1340,30 @@ function build2D(){
     if(s.t!=='g') continue;
     el('line',{x1:s.x1*S,y1:s.y1*S,x2:s.x2*S,y2:s.y2*S,class:'glass','stroke-width':s.wd||3.5},root);
     el('line',{x1:s.x1*S,y1:s.y1*S,x2:s.x2*S,y2:s.y2*S,stroke:'#cfe6ff','stroke-width':1},root);
+    if(!CALIB){ // S2 款式符号：fixed=无附加；slide=双扇平行线；casement=中缝铰链开扇+弧；awning=上横档刻度
+      const w = entById(s._id);
+      const st = (w&&w.style)||'fixed';
+      if(st!=='fixed'){
+        const dx=s.x2-s.x1, dy=s.y2-s.y1, L=Math.hypot(dx,dy)||1;
+        const px=-dy/L, py=dx/L, o=((s.wd||3.5)*0.75+1.5)*S;
+        if(st==='slide'){
+          el('line',{x1:s.x1*S+px*o,y1:s.y1*S+py*o,x2:s.x2*S+px*o,y2:s.y2*S+py*o,stroke:'#5f9fd8','stroke-width':1.2,'stroke-linecap':'butt'},root);
+        } else if(st==='casement'){
+          const hx=(s.x1+dx*0.5)*S, hy=(s.y1+dy*0.5)*S;
+          const R=Math.max(6/S, (L*0.5-3/S))*S;
+          const a0=Math.atan2(dy,dx), a1=a0+0.61;
+          const x0=hx+Math.cos(a0)*R, y0=hy+Math.sin(a0)*R;
+          const x1=hx+Math.cos(a1)*R, y1=hy+Math.sin(a1)*R;
+          el('line',{x1:hx,y1:hy,x2:x0,y2:y0,stroke:'#5f9fd8','stroke-width':1.2,'stroke-linecap':'butt'},root);
+          el('path',{d:`M ${x0} ${y0} A ${R} ${R} 0 0 1 ${x1} ${y1}`,fill:'none',stroke:'#5f9fd8','stroke-width':1,'stroke-dasharray':'3 2'},root);
+        } else if(st==='awning'){
+          for(const t of [0.33,0.67]){
+            const mx=(s.x1+dx*t)*S, my=(s.y1+dy*t)*S, o2=o*0.6;
+            el('line',{x1:mx-px*o2,y1:my-py*o2,x2:mx+px*o2,y2:my+py*o2,stroke:'#5f9fd8','stroke-width':1.2,'stroke-linecap':'butt'},root);
+          }
+        }
+      }
+    }
   }
   if(!CALIB) drawFixtures(root);
   // 西北落地窗带钢梁位置（黑方块示意）
@@ -2230,10 +2259,22 @@ function updateWallBarFromSel(){
       wMsg((srcU(s.id)?'自定义门':'内置门')+' · '+DK_NAMES[d.kind]+' ｜ 门宽可直接输入 · 拖门身=滑动 · 拖端点/方向键=调宽（Shift 粗调） · Delete 删除'); }
     return;
   }
-  if(s && s.kind==='w'){ const seg=selWallSeg();
-    if(seg){ $('#wType').value=seg.t; $('#wThick').value=wdToCm(seg.wd);
+  $('#winCtl').style.visibility = (s && s.kind==='w' && (()=>{const e=entById(s.id); return e&&e.id[0]==='n';})())?'visible':'hidden';
+  if(s && s.kind==='w'){
+    const e=entById(s.id), isWin=!!(e&&e.id[0]==='n');
+    const seg=selWallSeg();
+    if(seg){
+      $('#wType').value=seg.t; $('#wThick').value=wdToCm(seg.wd);
       const L=Math.hypot(seg.x2-seg.x1,seg.y2-seg.y1);
-      wMsg((srcU(s.id)?'自定义墙':'内置墙')+' · 长 '+lenLabel(L)+' · 厚 '+wdToCm(seg.wd)+'cm ｜ 拖圆点=改端点 · 拖墙身=平移 · Delete=删除'); }
+      if(isWin){
+        $('#wWinStyle').textContent='类型：'+WS_NAMES[e.style];
+        $('#wWinFull').textContent=e.fullHeight?'落地玻璃':'普通窗';
+        $('#wWinFrame').textContent=isDarkFrame(e.frame)?'黑钢框':'白框';
+        wMsg((srcU(s.id)?'自定义窗':'内置窗')+' · '+WS_NAMES[e.style]+(e.fullHeight?' · 落地':'')+' · 长 '+lenLabel(L)+' ｜ 换类型=点「类型」 · 落地/框色=点按钮 · 拖墙身=平移 · Delete=删除');
+      } else {
+        wMsg((srcU(s.id)?'自定义墙':'内置墙')+' · 长 '+lenLabel(L)+' · 厚 '+wdToCm(seg.wd)+'cm ｜ 拖圆点=改端点 · 拖墙身=平移 · Delete=删除');
+      }
+    }
   } else if(s && s.kind==='p'){
     wMsg((srcU(s.id)?'自定义柱/异形墙':'内置结构（柱/厚墙块）')+' ｜ 拖圆点=移顶点 · 拖黄方块=插入顶点 · Alt+点顶点=删顶点 · Delete=删除');
   } else wMsg(wallEdit.tool==='wall'?'连续点击画墙（磁吸端点/墙线，放大后更精密，Shift=完全自由）；双击/回车/再点末点=结束；Backspace=撤销上一点':
@@ -3119,6 +3160,7 @@ function buildStatic3D(){
     specularIntensity:.05, envMapIntensity:.10});   // 哑光乳胶漆：几乎不反光
   const matGlass = new THREE.MeshPhysicalMaterial({color:0xa8c8e8, transparent:true, opacity:.18, roughness:.05, metalness:.1});
   const matFrame = new THREE.MeshStandardMaterial({color:0x1b1d20, roughness:.45, metalness:.5});
+  const _frMats={}; const frameMat=(col)=>{ if(!_frMats[col]) _frMats[col]=new THREE.MeshStandardMaterial({color:new THREE.Color(col), roughness:.4, metalness:(col==='#17181b')?0.5:0.12}); return _frMats[col]; };
   const matDark = new THREE.MeshStandardMaterial({color:0x2a2d33, roughness:.8, side:THREE.DoubleSide});
   // 地板
   const shape = new THREE.Shape();
@@ -3191,9 +3233,12 @@ function buildStatic3D(){
       continue;
     }
     if(s.t==='g'){
-      if(s.fc){
+      const wDoc = entById(s._id);                          // S2：文档窗实体（style/fullHeight/frame）
+      const wStyle = (wDoc&&wDoc.style) || (s.slider?'slide':'fixed');
+      const wFH = wDoc? !!wDoc.fullHeight : !!s.fc;
+      if(wFH){
         const blk = new THREE.MeshStandardMaterial({color:0x17181b, roughness:.4, metalness:.55});
-        if(s.slider){
+        if(wStyle==='slide'){
           // 阳台推拉门：下方门扇 + 顶部 30cm 亮子，全黑钢框
           const TR=0.98;                                   // 亮子高 30cm
           const dh=CEIL_H-TR;
@@ -3216,19 +3261,50 @@ function buildStatic3D(){
         const g = wallMesh(s, CEIL_H-0.1, .1, matGlass); if(g){ g.castShadow=false; scene.add(g); }
         continue;
       }
-      // 普通窗：窗台墙(0-2.2) + 玻璃(2.2-7.4) + 过梁墙(7.5-顶)
-      const sill = wallMesh(s, 2.2, .32, matWall, true); if(sill) scene.add(sill);
-      const head = wallMesh(s, CEIL_H-7.5, .32, matWall, true); if(head){ head.position.y=7.5+(CEIL_H-7.5)/2; scene.add(head); }
-      const gl = wallMesh(s, 5.2, .1, matGlass); if(gl){ gl.castShadow=false; gl.position.y=2.25+2.6; scene.add(gl); }
-      const r1 = wallMesh(s, .12, .3, matFrame); if(r1){ r1.position.y=2.28; scene.add(r1); }
-      const r2 = wallMesh(s, .12, .3, matFrame); if(r2){ r2.position.y=7.42; scene.add(r2); }
+      // 普通窗：窗台墙 + 玻璃 + 过梁墙；框色/款式随文档（S2：固定/推拉/平开/上悬）
+      const matF = frameMat((wDoc&&wDoc.frame) || '#1b1d20');
+      const sillH = (wDoc&&wDoc.sill!=null)? wDoc.sill : 2.2;
+      const headH = (wDoc&&wDoc.head!=null)? wDoc.head : 7.4;
+      const glH = Math.max(1, headH-sillH-0.1);
       const dx=s.x2-s.x1, dy=s.y2-s.y1, L=Math.hypot(dx,dy);
-      const n = Math.max(1,Math.round(L/4));
-      for(let i=0;i<=n;i++){
-        const t=i/n;
-        const mm = new THREE.Mesh(new THREE.BoxGeometry(.13,5.2,.18), matFrame);
-        mm.position.set(s.x1+dx*t, 4.85, s.y1+dy*t); mm.castShadow=true;
-        scene.add(mm);
+      const sub=(a,b)=>({x1:s.x1+dx*a, y1:s.y1+dy*a, x2:s.x1+dx*b, y2:s.y1+dy*b});
+      const sill = wallMesh(s, sillH, .32, matWall, true); if(sill) scene.add(sill);
+      const head = wallMesh(s, CEIL_H-(headH+0.1), .32, matWall, true); if(head){ head.position.y=headH+0.1+(CEIL_H-headH-0.1)/2; scene.add(head); }
+      const r1 = wallMesh(s, .12, .3, matF); if(r1){ r1.position.y=sillH+0.02; scene.add(r1); }
+      const r2 = wallMesh(s, .12, .3, matF); if(r2){ r2.position.y=headH-0.02; scene.add(r2); }
+      const gl = wallMesh(s, glH, .1, matGlass); if(gl){ gl.castShadow=false; gl.position.y=sillH+0.05+glH/2; scene.add(gl); }
+      const midY = sillH+0.05+glH/2;
+      const mull=(t,w,h,ty)=>{ const mm=new THREE.Mesh(new THREE.BoxGeometry(w,h,.18), matF);
+        mm.position.set(s.x1+dx*t, ty, s.y1+dy*t); mm.castShadow=true; scene.add(mm); };
+      if(wStyle==='fixed'){
+        const n = Math.max(1,Math.round(L/4));
+        for(let i=0;i<=n;i++){
+          const t=i/n;
+          const mm = new THREE.Mesh(new THREE.BoxGeometry(.13,glH,.18), matF);
+          mm.position.set(s.x1+dx*t, midY, s.y1+dy*t); mm.castShadow=true;
+          scene.add(mm);
+        }
+      } else if(wStyle==='slide'){
+        const gf=0.06/L;
+        for(const side of [0,1]){
+          const a=side?0.5+gf/2:0, b=side?1:0.5-gf/2;
+          const leaf=sub(a,b);
+          mull(a+.002,.12,glH, midY); mull(b-.002,.12,glH, midY);
+          for(const ty of [sillH+0.09, headH-0.09]){ const rl=wallMesh(leaf,.09,.12,matF); if(rl){ rl.position.y=ty; scene.add(rl); } }
+        }
+      } else if(wStyle==='casement'){
+        const gf=0.04/L;
+        for(const side of [0,1]){
+          const a=side?0.5+gf/2:0.01, b=side?0.99:0.5-gf/2;
+          const leaf=sub(a,b);
+          mull(a+0.008,.09,glH-0.2, midY); mull(b-0.008,.09,glH-0.2, midY);
+          for(const ty of [sillH+0.09, headH-0.09]){ const rl=wallMesh(leaf,.09,.11,matF); if(rl){ rl.position.y=ty; scene.add(rl); } }
+        }
+        mull(0.5,.13,glH, midY);
+        const hd2=new THREE.Mesh(new THREE.BoxGeometry(.05,.5,.05), matF);
+        hd2.position.set(s.x1+dx*0.62, sillH+1.5, s.y1+dy*0.62); scene.add(hd2);
+      } else if(wStyle==='awning'){
+        const tb=wallMesh(s,.12,.14,matF); if(tb){ tb.position.y=sillH+glH*0.66; scene.add(tb); }
       }
       continue;
     }
@@ -13136,6 +13212,22 @@ $('#dKind').onclick=()=>{ $('#dKind').blur(); doorMut(d=>{ d.kind = d.kind==='sw
 $('#dHinge').onclick=()=>{ $('#dHinge').blur(); doorMut(d=>{ d.hinge = d.hinge?0:1; }); };
 $('#dSide').onclick=()=>{ $('#dSide').blur(); doorMut(d=>{ d.side = -d.side; }); };
 $('#dWood').onclick=()=>{ $('#dWood').blur(); doorMut(d=>{ d.wood = !d.wood; }); };
+const WS_NAMES={fixed:'固定', slide:'推拉', casement:'平开', awning:'上悬'};
+const DARK_FRAMES=['#17181b','#1b1d20','#1c2528','#2b2f36'];
+const isDarkFrame=(c)=>!c || DARK_FRAMES.includes(c);
+function winSelEnt(){ const s=wallEdit.sel; if(!s||s.kind!=='w') return null;
+  const e=entById(s.id); return (e&&e.id[0]==='n')?e:null; }
+$('#wWinStyle').onclick=()=>{ $('#wWinStyle').blur(); const e=winSelEnt(); if(!e) return;
+  const order=['fixed','slide','casement','awning']; e.style=order[(order.indexOf(e.style)+1)%4];
+  geoChanged(); updateWallBarFromSel(); };
+$('#wWinFull').onclick=()=>{ $('#wWinFull').blur(); const e=winSelEnt(); if(!e) return;
+  e.fullHeight=!e.fullHeight;
+  if(e.fullHeight){ e.sill=0; e.head=DOC.ceilingH; } else { e.sill=2.2; e.head=7.4; }
+  geoChanged(); updateWallBarFromSel(); };
+$('#wWinFrame').onclick=()=>{ $('#wWinFrame').blur(); const e=winSelEnt(); if(!e) return;
+  const was=isDarkFrame(e.frame);
+  e.frame=was?'#f2f1ec':'#17181b'; e.steel=was?false:true;
+  geoChanged(); updateWallBarFromSel(); };
 $('#wDelete').onclick=()=>{ $('#wDelete').blur(); deleteSel(); };
 $('#wRestore').onclick=()=>{ if(confirm('恢复全部内置墙体/结构/门到原始状态？（你新画的墙、柱、门会保留）')){
   restoreBuiltins();
@@ -13979,6 +14071,40 @@ async function runWETest(){
     document.querySelector('#ptCancel').click();
     T('ptdlg-cancel-closes', getComputedStyle(document.querySelector('#ptModal')).display==='none');
     state.ptQ='normal';
+
+    // ===== S2：窗户实体（款式/通高/框色） =====
+    const bedWin = DOC.windows.find(w=>!w.fullHeight && !w.steel);
+    T('win-exists-in-doc', !!bedWin && bedWin.style==='fixed' && isDarkFrame(bedWin.frame), bedWin && bedWin.id);
+    const [wx,wy] = SPT(((159.07+159.71)/2)/11.2, ((77+104)/2)/11.2);
+    fire('pointerdown', wx, wy); await tick();
+    fire('pointerup', wx, wy); await tick();
+    T('win-select', wallEdit.sel && wallEdit.sel.id===bedWin.id, wallEdit.sel && wallEdit.sel.id);
+    T('win-ctl-visible', document.querySelector('#winCtl').style.visibility==='visible');
+    document.querySelector('#wWinStyle').click(); await tick();
+    T('win-style-slide', bedWin.style==='slide' && /推拉/.test(document.querySelector('#wWinStyle').textContent));
+    T('win-2d-slide-symbol', document.querySelectorAll('#svg2d line[stroke="#5f9fd8"]').length>=2);
+    document.querySelector('#wWinStyle').click(); await tick();
+    T('win-style-casement', bedWin.style==='casement');
+    T('win-2d-casement-arc', !!document.querySelector('#svg2d path[stroke-dasharray="3 2"]'));
+    document.querySelector('#wWinStyle').click(); await tick();
+    T('win-style-awning', bedWin.style==='awning');
+    T('win-2d-awning-ticks', document.querySelectorAll('#svg2d line[stroke="#5f9fd8"]').length===3);  // 阳台slide 1 线 + 卧室awning 2 刻度
+    document.querySelector('#wWinStyle').click(); await tick();
+    T('win-style-cycles-back', bedWin.style==='fixed');
+    document.querySelector('#wWinFrame').click(); await tick();
+    T('win-frame-white', bedWin.frame==='#f2f1ec' && bedWin.steel===false && /白框/.test(document.querySelector('#wWinFrame').textContent));
+    document.querySelector('#wWinFrame').click(); await tick();
+    T('win-frame-dark-back', bedWin.frame==='#17181b' && bedWin.steel===true);
+    document.querySelector('#wWinFull').click(); await tick();
+    T('win-full-on', bedWin.fullHeight===true && bedWin.sill===0 && bedWin.head===DOC.ceilingH);
+    document.querySelector('#wWinFull').click(); await tick();
+    T('win-full-off', bedWin.fullHeight===false && Math.abs(bedWin.sill-2.2)<0.01);
+    const [qx,qy]=SPT(260/11.2,147.4/11.2);
+    fire('pointerdown',qx,qy); await tick(); fire('pointerup',qx,qy); await tick();
+    T('win-ctl-hidden-on-wall', document.querySelector('#winCtl').style.visibility==='hidden');
+    resetOv(); await tick();
+    const bedWin2 = DOC.windows.find(w=>!w.fullHeight && !w.steel);
+    T('win-restore-pristine', bedWin2 && bedWin2.style==='fixed' && bedWin2.fullHeight===false && isDarkFrame(bedWin2.frame));
 
   }catch(e){ log.push('EXC '+e.message+' | '+(e.stack||'').split('\n')[1]); }
   log.push('ERRS: '+JSON.stringify(window.__ERRS));
