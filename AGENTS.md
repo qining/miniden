@@ -90,9 +90,9 @@ md5 -q /tmp/ckc.png
 | 常量 | 作用 | 何时 bump |
 |---|---|---|
 | `GEO_VERSION`(=3) | 家具存档 `planner_v1` 的版本闸门 | 户型坐标系变动 |
-| `USERGEO_VERSION`(=1) | 用户墙体编辑 `planner_userGeo_v1` | **内置 WALLS/FIXED 条目顺序或增删变动时** |
+| `DOC_DATA_VERSION` | 户型文档 `planner_doc_v1` 的数据版本（旧 `planner_userGeo_v1` 自动一次性迁移进来） | **内置实体结构/几何变动时**（旧文档按版本丢弃、回退 freshDoc） |
 
-`USERGEO.hiddenW/ovW/hiddenP/ovP/hiddenD/ovD` 都是**按数组下标寻址**的。往 `WALLS` 中间插一段墙就会让用户的覆盖错位。当初这两个共用一个常量，bump 一次会连带清空用户手工录入的自定义家具（不可找回），已解耦。
+**持久化是单键**：`planner_doc_v1` = 完整 `ProjectDoc`（内置+用户实体都在文档里，id 寻址）。编辑内置实体 = 直写文档实体（不再走 ov* 覆盖层）；删除内置 = 记入 `doc.hidden.*`。旧的 `planner_v1`（家具）与 `planner_userGeo_v1`（只读迁移源）分开。历史上「用户编辑按数组下标寻址」的坑（`USERGEO.ovW[i]`，往 `WALLS` 中间插墙就错位）已随 S1 Phase 2b 彻底消除。
 
 ### 1.3 用户明确说过的偏好
 
@@ -270,7 +270,7 @@ sips -z 高 宽 /tmp/x.png --out /tmp/x_big.png               # 放大
 | macOS **没有 `timeout` 命令** | rc=127，命令根本没跑，`echo done` 掩盖了失败，看到的是旧文件 | 不要用 `timeout`；检查 rc |
 | 测试页是改动前生成的副本 | 测出旧行为，浪费一轮调试 | 每次改完 planner.html 都重新生成测试页 |
 | 批量 replace 时文本已漂移 | 静默 MISS | 每次 replace 都统计 miss 数并打印 |
-| 用 Python **`re.sub`** 做注入/替换，而替换文本里含 **`$'`** | `$` 序列是 re.sub 的反引用：`$'` 展开为「匹配点之后的整个字符串」——测试台里 `'…CA$'`（字符串以 $ 结尾）被替换成 `</html>`，单引号串跨行 → 整个 bench SyntaxError、一行都不跑，症状是 `NO TEST OUTPUT` 且无任何报错 | 文本注入一律用 `str.replace`；注入后对产物跑 `node --check`（dist 测试台 bench 被这样污染过一次，排查了一整轮才定位） |
+| 用 Python **`re.sub`** 或 Node **`String.replace`** 做注入/替换，而替换文本里含 **`$'`** | `$` 序列是两者的共同陷阱（Node 的字符串/正则替换都会解释 `$'`/`` `$ ``/`$n`/`$$`，**和 Python re.sub 一样**；Python `str.replace` 才是安全的）：`$'` 展开为「匹配点之后的整个字符串」——测试台里 `'…CA$'`（字符串以 $ 结尾）被替换成 `</html>`，单引号串跨行 → 整个 bench SyntaxError、一行都不跑，症状是 `NO TEST OUTPUT` 且无任何报错 | 文本注入一律用 Python `str.replace`；用 JS 的 `replace` 注入时先 `str.replace(/\$/g,'$$$$')` 转义（build.mjs 已这样做）；注入后对产物跑 `node --check` |
 | 从 dist 文件自身抽 bench 再重注入 dist | 传播旧污染（bench 一旦被 `$'` 展开腐化，每次「从自身重抽」都把它原样带进新产物） | bench 只从 source 测试台抽（build.mjs 已这样做；ad-hoc 脚本别另起炉灶） |
 
 ### 5.2 浏览器/three.js 类
@@ -629,8 +629,7 @@ console 转发器（error/warn 都要，转发器在 bundle 之后注册会漏�
 | 2990 | 逐商品建模注册表 `MODELS` + `modelCtx` 建模 API |
 | 4358 | UI（目录、检视面板、视角、日夜、加载提示） |
 
-**几何数据流**：`WALLS/FIXED/DOORS`（内置）+ `USERGEO`（用户编辑）→ `effWalls()/effFixed()/effDoors()` → 2D 和 3D **共用同一份**。
-新增任何消费几何的代码，一律走 `eff*()`，不要直接读 `WALLS`（`#dump` 和 CALIB 分支是故意的例外）。
+**几何数据流**：`DOC`（`ProjectDoc`：内置+用户实体，id 寻址，S1 Phase 2b 后唯一几何状态）→ `effWalls()/effFixed()/effDoors()`（文档投影，等价于旧版 Object.assign 语义）→ 2D 和 3D **共用同一份**。编辑层（`wallEdit.sel={kind,id}`、`segView/winView/doorView` Proxy）直写文档实体。新增任何消费几何的代码，一律走 `eff*()`，不要直接读 `WALLS`（`#dump` 和 CALIB 分支是故意的例外）。
 
 关键常量：`SC=11.2`（图纸px/ft）、`CEIL_H=8.8`（层高ft）、`EYE_H=5.35`（人眼高）、
 `DOOR_MIN=0.5`、`STUB_MIN=0.18`、`LINK_TOL=0.5`。

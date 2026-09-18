@@ -280,9 +280,9 @@ export function migrateLegacyToV1(geo: LegacyGeo, user: LegacyUserGeo = EMPTY_US
    输出与 effWalls/effFixed/effDoors 的返回完全同形（含 _src/_i）。
    ------------------------------------------------------------------- */
 
-export type LegacySegOut = LegacySeg & { _src: 'b' | 'u'; _i: number };
-export type LegacyFixedOut = { name: string; poly: Pt[] | { poly: Pt[] }; fill: string; noCal?: boolean; _src: 'b' | 'u'; _i: number };
-export type LegacyDoorOut = LegacyDoor & { _src: 'b' | 'u'; _i: number };
+export type LegacySegOut = LegacySeg & { _src: 'b' | 'u'; _i: number; _id: string };
+export type LegacyFixedOut = { name: string; poly: Pt[] | { poly: Pt[] }; fill: string; noCal?: boolean; _src: 'b' | 'u'; _i: number; _id: string };
+export type LegacyDoorOut = LegacyDoor & { _src: 'b' | 'u'; _i: number; _id: string };
 
 export interface LegacyProjection {
   walls: LegacySegOut[];
@@ -326,6 +326,7 @@ export function docToLegacy(doc: ProjectDoc): LegacyProjection {
         ...(w.thick != null ? { wd: w.wdPx ?? (doc.sc ? w.thick * doc.sc : undefined) } : {}),
         _src: w.src === 'user' ? 'u' : 'b',
         _i: w.chainIndex ?? (w.userIndex as number),
+        _id: w.id,
       });
     } else {
       const w = e as Wall;
@@ -337,6 +338,7 @@ export function docToLegacy(doc: ProjectDoc): LegacyProjection {
         ...(w.thick != null ? { wd: w.wdPx ?? (doc.sc ? w.thick * doc.sc : undefined) } : {}),
         _src: w.src === 'user' ? 'u' : 'b',
         _i: w.chainIndex ?? (w.userIndex as number),
+        _id: w.id,
       });
     }
   }
@@ -358,6 +360,7 @@ export function docToLegacy(doc: ProjectDoc): LegacyProjection {
       ...(s.noCal ? { noCal: s.noCal } : {}),
       _src: s.src === 'user' ? 'u' : 'b',
       _i: s.chainIndex ?? (s.userIndex as number),
+      _id: s.id,
     });
   });
 
@@ -378,6 +381,7 @@ export function docToLegacy(doc: ProjectDoc): LegacyProjection {
       wood: !!d.dark,
       _src: d.src === 'user' ? 'u' : 'b',
       _i: d.chainIndex ?? (d.userIndex as number),
+      _id: d.id,
     });
   });
 
