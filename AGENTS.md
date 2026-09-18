@@ -290,6 +290,7 @@ sips -z 高 宽 /tmp/x.png --out /tmp/x_big.png               # 放大
 | 工具条高度变化（控件出现/文字换行） | 画布跳动、缓存的屏幕坐标失效 | 编辑类工具条固定单行高度（`nowrap`+`ellipsis`+定高），控件用 `visibility` 占位切换 |
 | 工具模式的早退分支 | "加门模式下拖端点"完全失效 | 手柄/拖拽检测必须在工具分支**之前**；move 的早退要加 `&& !drag` |
 | **Raycaster 不刷新 `matrixWorld`（r147）** | 刚移动完家具再点，射线打空或打到旧位置；按需渲染下尤其明显 | 射线前显式 `group.updateMatrixWorld(true)`（相机也要），不能指望 `renderer.render()` 已经跑过 |
+| 3D bench 数 mesh / 读 `geometry.parameters` 断言 | `mergeByMaterial` 把同材质 mesh 合并成一个（顶点拼进新 BufferGeometry）：mesh 数对不上、`parameters` 消失（`BoxGeometry` 的 `parameters.height/depth` 没了），断言假红或假绿 | 对合并感知的断言：按**材质色**（`material.color.getHex()`）遍历 scene，数**顶点总量**（`geometry.attributes.position.count`）做对比（S2 窗框断言就是这么写的） |
 | 俯视时吸顶灯永远挡在射线最前 | 娃娃屋视角点不中灯下方的沙发 | `pickFurniture` 命中链里优先取非灯具，全是灯才回退取灯 |
 | **本机 3D 截图** | 黑屏 | 用 `--use-angle=swiftshader`（不带 `-webgl` 后缀），`--virtual-time-budget` 20000-30000；大 budget 会留下 400% CPU 僵尸进程，必要时 `pkill -f headless` |
 
@@ -630,6 +631,8 @@ console 转发器（error/warn 都要，转发器在 bundle 之后注册会漏�
 | 4358 | UI（目录、检视面板、视角、日夜、加载提示） |
 
 **几何数据流**：`DOC`（`ProjectDoc`：内置+用户实体，id 寻址，S1 Phase 2b 后唯一几何状态）→ `effWalls()/effFixed()/effDoors()`（文档投影，等价于旧版 Object.assign 语义）→ 2D 和 3D **共用同一份**。编辑层（`wallEdit.sel={kind,id}`、`segView/winView/doorView` Proxy）直写文档实体。新增任何消费几何的代码，一律走 `eff*()`，不要直接读 `WALLS`（`#dump` 和 CALIB 分支是故意的例外）。
+
+**投影键集合是冻结的（S1 字节等价红线）**：`docToLegacy` 输出的键必须与 legacy `eff*` 逐字节一致（fixture oracle 守着），**新的文档字段不能加进投影**（例：窗户 `style`/`frame`/`sill`/`head` 都不在 `effWalls` 投影里）。消费端需要这些字段时，用投影里的 `_id` 回查文档实体：`entById(s._id).style`（2D/3D 的窗款式渲染就是这么做的）。
 
 关键常量：`SC=11.2`（图纸px/ft）、`CEIL_H=8.8`（层高ft）、`EYE_H=5.35`（人眼高）、
 `DOOR_MIN=0.5`、`STUB_MIN=0.18`、`LINK_TOL=0.5`。
