@@ -39,7 +39,7 @@ export interface DxfDoc {
   entities?: DxfEntity[];
 }
 
-export type DxfUnit = 'mm' | 'cm' | 'm' | 'in' | 'ft';
+export type DxfUnit = 'mm' | 'cm' | 'm' | 'in' | 'ft' | 'yd' | 'mi';
 export type LayerClass = 'wall' | 'door' | 'window' | 'col' | 'furn' | 'room' | 'axis' | 'other';
 
 export interface ImportInfo {
@@ -53,8 +53,8 @@ export interface ImportResult { doc: ProjectDoc; info: ImportInfo }
 
 /* ---------------------------------------------------------------- 常量 */
 
-const INSUNITS: Record<number, DxfUnit> = { 1: 'mm', 2: 'cm', 3: 'm', 4: 'in', 5: 'ft' };
-export const UNIT_TO_M: Record<DxfUnit, number> = { mm: 0.001, cm: 0.01, m: 1, in: 0.0254, ft: 0.3048 };
+const INSUNITS: Record<number, DxfUnit> = { 1: 'mm', 2: 'cm', 3: 'm', 4: 'in', 5: 'ft', 6: 'yd', 7: 'mi' };
+export const UNIT_TO_M: Record<DxfUnit, number> = { mm: 0.001, cm: 0.01, m: 1, in: 0.0254, ft: 0.3048, yd: 0.9144, mi: 1609.344 };
 export const M_TO_FT = 1 / 0.3048;
 const FT_TO_M = 0.3048;   // 文档单位 ft → m（detectBands 内部用米做阈值）
 
@@ -134,7 +134,9 @@ export function classifyLayer(name: string | undefined): LayerClass {
   if (/WALL|墙/.test(n)) return 'wall';
   if (/DOOR|门/.test(n)) return 'door';
   if (/WIN|窗/.test(n)) return 'window';
-  if (/COL|COLUMN|柱/.test(n)) return 'col';
+  // COL 严格匹配词边界：'colors'（QCAD 色样层）不能命中 'col'（真实集成数据里发生的误判）；
+  // 'COL' / 'COLS' / 'COLUMN' / 'COLUMNS' / 'WALL-COLS' 都要命中
+  if (/\bCOL(?:S|UM(?:NS?)?)?\b|柱/.test(n)) return 'col';
   if (/FURN|家具/.test(n)) return 'furn';
   if (/ROOM|房间/.test(n)) return 'room';
   if (/AXIS|轴网|GRID|DIM|标注|TEXT|文字|HATCH|填充/.test(n)) return 'axis';
@@ -146,7 +148,7 @@ export function classifyLayer(name: string | undefined): LayerClass {
 export interface UnitDetect { unit: DxfUnit; method: 'insunits' | 'heuristic' | 'fallback' }
 
 /** 量级表（R1：酷家乐启发式）——240mm 砖墙在各单位下的标称值。 */
-export const UNIT_NOMINAL: Record<DxfUnit, number> = { mm: 240, cm: 24, m: 0.24, in: 9.45, ft: 0.787 };
+export const UNIT_NOMINAL: Record<DxfUnit, number> = { mm: 240, cm: 24, m: 0.24, in: 9.45, ft: 0.787, yd: 0.2625, mi: 0.000149 };
 
 /**
  * 墙厚样本必须是**源单位**数值（未换算）。
@@ -218,7 +220,25 @@ export function extractRaw(d: DxfDoc): Raw {
           .filter(p => Number.isFinite(p.x) && Number.isFinite(p.y))
           .map(p => v(p.x, p.y));
         if (pts.length < 2) break;
-        if (ent.shape && pts.length >= 3) { raw.closed.push({ pts, cls }); break; }
+        if (ent.shape && pts.length >= 3) {
+          if (cls === 'wall' || cls === 'door' || cls === 'window') {
+            // 墙/门/窗层的闭合折线 = 墙面/门扇/窗框轮廓（真实 CAD 常用面表达墙）
+            // → 逐边（含闭合边）入候选：相邻两边互相配对出真实墙厚；
+            // 若只当多边形（closed）就永远进不了墙带配对（hack_canada 集成用例暴露）
+            const nPts = pts.length;
+            for (let i = 0; i < nPts; i++) {
+              const p = pts[i], q = pts[(i + 1) % nPts];
+              const bulge = (ent.vertices?.[i] as DxfPt | undefined)?.bulge ?? 0;
+              if (Math.abs(bulge) > 1e-6) {
+                const arc = bulgeToArc(p, q, bulge);
+                if (arc) raw.arcs.push({ ...arc, cls });
+              } else if (len(sub(q, p)) > 1e-6) raw.segs.push({ a: p, b: q, cls });
+            }
+          } else {
+            raw.closed.push({ pts, cls });
+          }
+          break;
+        }
         for (let i = 0; i < pts.length - 1; i++) {
           const p = pts[i], q = pts[i + 1];
           const bulge = (ent.vertices?.[i] as DxfPt | undefined)?.bulge ?? 0;
@@ -373,13 +393,21 @@ function detectBands(segs: TSeg[]): Band[] {
     const ds = pairDs.filter(p => mSet.has(p.i) || mSet.has(p.j)).map(p => p.d);
     if (!ds.length) continue;
     const thickM = median(ds);
-    let dx = 0, dy = 0;
+    // 方向：成员段可能反向（闭合轮廓边一左一右）——直接相加会抵消成 (0,0)，
+    // 导致所有带被 mergeCollinearBands 归并成一条（真实 CAD 墙面数据暴露）。
+    // 抵消时回退到最长成员段的方向（同一条线，取最长最稳）。
+    let dx = 0, dy = 0, bestMi = members[0]!, bestL = -1;
     for (const mi of members) {
-      const d = norm(sub(segs[wallIdx[mi]].b, segs[wallIdx[mi]].a));
+      const s = segs[wallIdx[mi]];
+      const d = norm(sub(s.b, s.a));
       dx += d.x; dy += d.y;
+      const L = distFt(s.a, s.b);
+      if (L > bestL) { bestL = L; bestMi = mi; }
     }
-    const L = Math.hypot(dx, dy) || 1;
-    const dir = v(dx / L, dy / L);
+    const L = Math.hypot(dx, dy);
+    const dir = L < 1e-9
+      ? norm(sub(segs[wallIdx[bestMi]].b, segs[wallIdx[bestMi]].a))
+      : v(dx / L, dy / L);
     const nrm = v(-dir.y, dir.x);
     let off = 0;
     for (const mi of members) {
@@ -453,8 +481,7 @@ export function importDxf(d: DxfDoc, opts: ImportOptions = {}): ImportResult {
   const warnings: string[] = [];
   const raw = extractRaw(d);
 
-  // 墙厚样本（源单位距离）：供单位启发式。上限 = 整图包围盒对角线
-  // （平行但相距超过图幅的线对是「两堵平行墙」，不是墙的两侧）。
+  // 墙厚样本（源单位距离）：供单位启发式。距离上限 = 包围盒短边的 30%（尺度自适应）。
   const thickSrc: number[] = [];
   {
     // 样本口径：平行 + 投影重叠 ≥ 0.5（与 detectBands 配对一致）。
