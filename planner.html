@@ -223,6 +223,11 @@
     <button id="dnDay" class="on">白天</button>
     <button id="dnNight">夜晚</button>
   </div>
+  <div class="seg" id="envSeg" style="display:none" title="窗外环境">
+    <button id="envCity" class="on">城市</button>
+    <button id="envSub">郊野</button>
+    <button id="envSea">海景</button>
+  </div>
   <button class="btn" id="btnWallEdit">编辑墙体</button>
   <div class="seg" id="measSeg"><button id="btnMeas">量尺寸</button><button id="btnMeasClr">清除</button></div>
   <div class="seg" id="unitSeg">
@@ -2641,7 +2646,11 @@ function init3D(){
   sun.target.position.set(CTR[0],0,CTR[1]); scene.add(sun.target);
   scene.add(sun);
   three = {renderer, scene, cam, controls, canvas, furnGroup:new THREE.Group(), needsRender:true, dpr:Math.min(devicePixelRatio||1,2),
-           sun, amb, hemi, sunHome:sun.position.clone(), photo:null};
+           sun, amb, hemi, sunHome:sun.position.clone(), photo:null,
+           preset:(DOC.env&&DOC.env.preset)||'seattle-city', night:!!(DOC.env&&DOC.env.mode==='night')};
+  $('#dnDay').classList.toggle('on', !three.night);
+  $('#dnNight').classList.toggle('on', !!three.night);
+  ENV_BTNS.forEach(([id,p])=>$(id).classList.toggle('on', p===three.preset));
   buildEnvironment();
   buildStatic3D();
   scene.add(three.furnGroup);
@@ -2958,89 +2967,250 @@ function wallMesh(s, h, thick, mat, ext){
 /* 窗外全景：西雅图市中心 33 层视角（按 704/705 实拍配色近似）
    day=白天蓝天+远山+高楼群；night=夜景，楼体亮窗+城市辉光 */
 let _skyCache={};
-function cityPanorama(night){
-  srand(1007 + (night?7919:0));
-  if(_skyCache[night?'n':'d']) return _skyCache[night?'n':'d'];
-  const W=2048,H=1024, HZ=Math.round(H*0.54);       // 地平线（33层略俯视）
-  const c=document.createElement('canvas'); c.width=W;c.height=H;
-  const g=c.getContext('2d');
-  const rnd=(a,b)=>a+rnd01()*(b-a);
-  // —— 天空 ——
-  const sky=g.createLinearGradient(0,0,0,HZ);
-  if(night){ sky.addColorStop(0,'#070b16'); sky.addColorStop(0.6,'#131c2e'); sky.addColorStop(1,'#33354a'); }
-  else { sky.addColorStop(0,'#4f86c6'); sky.addColorStop(0.55,'#9cc3e4'); sky.addColorStop(1,'#d8e6f2'); }
-  g.fillStyle=sky; g.fillRect(0,0,W,HZ);
-  if(!night){ g.fillStyle='rgba(255,252,240,.85)';
-    g.beginPath(); g.ellipse(430,150,52,34,0,0,Math.PI*2); g.fill();
-    for(let i=0;i<26;i++){ g.fillStyle=`rgba(255,255,255,${rnd(0.06,0.20)})`;
-      const x=rnd(0,W), y=rnd(20,HZ-90), w=rnd(90,320), h=rnd(14,42);
-      g.beginPath(); g.ellipse(x,y,w/2,h/2,0,0,Math.PI*2); g.fill(); }
-  } else {
-    for(let i=0;i<170;i++){ g.fillStyle=`rgba(255,255,255,${rnd(0.15,0.7)})`;
-      g.fillRect(rnd(0,W), rnd(0,HZ-140), 1.3, 1.3); }
-    const glow=g.createLinearGradient(0,HZ-150,0,HZ);
-    glow.addColorStop(0,'rgba(255,150,60,0)'); glow.addColorStop(1,'rgba(255,150,60,.30)');
-    g.fillStyle=glow; g.fillRect(0,HZ-150,W,150);
-  }
-  // —— 远山（西雅图东侧山脊/奥林匹克）——
-  g.fillStyle = night? 'rgba(22,28,44,.95)' : 'rgba(126,146,166,.72)';
-  g.beginPath(); g.moveTo(0,HZ);
-  for(let x=0;x<=W;x+=32) g.lineTo(x, HZ-38-Math.sin(x*0.0032)*24-Math.sin(x*0.011)*13-rnd(0,7));
-  g.lineTo(W,HZ); g.closePath(); g.fill();
-  // —— 水面（Puget Sound / Lake Union）——
-  g.fillStyle = night? '#0b1220' : '#7d9db6';
-  g.fillRect(0,HZ-16,W,30);
-  // —— 城市：远景低层铺底 + 近景高楼群 ——
-  const bldg=(x,w,top,dark,winW,winH)=>{
-    const bh=HZ+130-top;
-    g.fillStyle = night? `rgba(${18+dark*10|0},${21+dark*10|0},${30+dark*12|0},1)`
-                       : `rgba(${104+dark*46|0},${112+dark*46|0},${124+dark*44|0},1)`;
-    g.fillRect(x,top,w,bh);
-    g.fillStyle = night? 'rgba(0,0,0,.35)' : 'rgba(255,255,255,.10)';
-    g.fillRect(x,top,Math.max(2,w*0.16),bh);                       // 受光侧
-    for(let wy=top+9; wy<HZ+120; wy+=winH){                        // 窗格
-      for(let wx=x+4; wx<x+w-5; wx+=winW){
-        if(night){ if(rnd01()<0.34){
-            const warm=rnd01()<0.72;
-            g.fillStyle=warm?`rgba(255,214,140,${rnd(0.55,0.95)})`:`rgba(190,220,255,${rnd(0.45,0.8)})`;
-            g.fillRect(wx,wy,winW-2.2,winH-2.6); } }
-        else { g.fillStyle=`rgba(${28+rnd01()*30|0},${44+rnd01()*34|0},${66+rnd01()*40|0},${rnd(0.35,0.7)})`;
-            g.fillRect(wx,wy,winW-2.2,winH-2.6); }
-      }
-    }
-  };
-  for(let x=-20;x<W;x+=rnd(26,58)){                                 // 远景城市底铺
-    const w=rnd(24,62), top=HZ-rnd(6,40);
-    bldg(x,w,top,rnd(-.35,.15), 6, 7);
-  }
-  const CLUSTER=[[150,520],[980,1420]];                             // 两片高楼群（市中心方向）
-  for(const [a,b] of CLUSTER){
-    for(let x=a;x<b;x+=rnd(46,104)){
-      const w=rnd(42,96), top=HZ-rnd(90,330);
-      bldg(x,w,top,rnd(-.2,.5), 9, 11);
-      if(!night && rnd01()<0.5){                              // 玻璃幕墙高光
-        const gr=g.createLinearGradient(x,top,x+w,top+120);
-        gr.addColorStop(0,'rgba(220,238,255,.22)'); gr.addColorStop(1,'rgba(220,238,255,0)');
-        g.fillStyle=gr; g.fillRect(x,top,w,140);
-      }
-    }
-  }
-  // —— 地面（俯视看到的街区）——
-  const grd=g.createLinearGradient(0,HZ+40,0,H);
-  if(night){ grd.addColorStop(0,'#0d1119'); grd.addColorStop(1,'#05070b'); }
-  else { grd.addColorStop(0,'#6f7b74'); grd.addColorStop(1,'#4a534d'); }
-  g.fillStyle=grd; g.fillRect(0,HZ+120,W,H-HZ-120);
-  for(let i=0;i<260;i++){                                            // 街区色块
-    const x=rnd(0,W), y=rnd(HZ+120,H), w=rnd(14,54), h=rnd(8,26);
-    g.fillStyle = night? `rgba(${rnd(14,30)|0},${rnd(16,32)|0},${rnd(22,42)|0},.9)`
-                       : `rgba(${rnd(70,130)|0},${rnd(78,132)|0},${rnd(72,122)|0},.85)`;
-    g.fillRect(x,y,w,h);
-    if(night && rnd01()<0.3){ g.fillStyle='rgba(255,190,110,.5)'; g.fillRect(x+w/2,y+h/2,1.6,1.6); }
-  }
+/* 环境预设：每个生成器自带固定种子（确定性可回归），输出 2048×1024 等距柱状全景。
+   seattle-city=现有种子 1007/8926（逐字节不变）；suburban=2101/10020；seaview=2102/10021 */
+function panoTex(c, key){
   const t=new THREE.CanvasTexture(c);
   t.mapping=THREE.EquirectangularReflectionMapping; t.encoding=THREE.sRGBEncoding;
-  _skyCache[night?'n':'d']=t; return t;
+  _skyCache[key]=t; return t;
 }
+function cityPanorama(night){ return panorama('seattle-city', night); }   // 旧名兼容
+function panorama(preset, night){
+  if(!PANORAMA_GEN[preset]) preset='seattle-city';
+  const key=preset+(night?'n':'d');
+  if(_skyCache[key]) return _skyCache[key];
+  return PANORAMA_GEN[preset](night, key);
+}
+const PANORAMA_GEN={
+  'seattle-city': (night, key)=>{
+    srand(1007 + (night?7919:0));
+    const W=2048,H=1024, HZ=Math.round(H*0.54);       // 地平线（33层略俯视）
+    const c=document.createElement('canvas'); c.width=W;c.height=H;
+    const g=c.getContext('2d');
+    const rnd=(a,b)=>a+rnd01()*(b-a);
+    // —— 天空 ——
+    const sky=g.createLinearGradient(0,0,0,HZ);
+    if(night){ sky.addColorStop(0,'#070b16'); sky.addColorStop(0.6,'#131c2e'); sky.addColorStop(1,'#33354a'); }
+    else { sky.addColorStop(0,'#4f86c6'); sky.addColorStop(0.55,'#9cc3e4'); sky.addColorStop(1,'#d8e6f2'); }
+    g.fillStyle=sky; g.fillRect(0,0,W,HZ);
+    if(!night){ g.fillStyle='rgba(255,252,240,.85)';
+      g.beginPath(); g.ellipse(430,150,52,34,0,0,Math.PI*2); g.fill();
+      for(let i=0;i<26;i++){ g.fillStyle=`rgba(255,255,255,${rnd(0.06,0.20)})`;
+        const x=rnd(0,W), y=rnd(20,HZ-90), w=rnd(90,320), h=rnd(14,42);
+        g.beginPath(); g.ellipse(x,y,w/2,h/2,0,0,Math.PI*2); g.fill(); }
+    } else {
+      for(let i=0;i<170;i++){ g.fillStyle=`rgba(255,255,255,${rnd(0.15,0.7)})`;
+        g.fillRect(rnd(0,W), rnd(0,HZ-140), 1.3, 1.3); }
+      const glow=g.createLinearGradient(0,HZ-150,0,HZ);
+      glow.addColorStop(0,'rgba(255,150,60,0)'); glow.addColorStop(1,'rgba(255,150,60,.30)');
+      g.fillStyle=glow; g.fillRect(0,HZ-150,W,150);
+    }
+    // —— 远山（西雅图东侧山脊/奥林匹克）——
+    g.fillStyle = night? 'rgba(22,28,44,.95)' : 'rgba(126,146,166,.72)';
+    g.beginPath(); g.moveTo(0,HZ);
+    for(let x=0;x<=W;x+=32) g.lineTo(x, HZ-38-Math.sin(x*0.0032)*24-Math.sin(x*0.011)*13-rnd(0,7));
+    g.lineTo(W,HZ); g.closePath(); g.fill();
+    // —— 水面（Puget Sound / Lake Union）——
+    g.fillStyle = night? '#0b1220' : '#7d9db6';
+    g.fillRect(0,HZ-16,W,30);
+    // —— 城市：远景低层铺底 + 近景高楼群 ——
+    const bldg=(x,w,top,dark,winW,winH)=>{
+      const bh=HZ+130-top;
+      g.fillStyle = night? `rgba(${18+dark*10|0},${21+dark*10|0},${30+dark*12|0},1)`
+                         : `rgba(${104+dark*46|0},${112+dark*46|0},${124+dark*44|0},1)`;
+      g.fillRect(x,top,w,bh);
+      g.fillStyle = night? 'rgba(0,0,0,.35)' : 'rgba(255,255,255,.10)';
+      g.fillRect(x,top,Math.max(2,w*0.16),bh);                       // 受光侧
+      for(let wy=top+9; wy<HZ+120; wy+=winH){                        // 窗格
+        for(let wx=x+4; wx<x+w-5; wx+=winW){
+          if(night){ if(rnd01()<0.34){
+              const warm=rnd01()<0.72;
+              g.fillStyle=warm?`rgba(255,214,140,${rnd(0.55,0.95)})`:`rgba(190,220,255,${rnd(0.45,0.8)})`;
+              g.fillRect(wx,wy,winW-2.2,winH-2.6); } }
+          else { g.fillStyle=`rgba(${28+rnd01()*30|0},${44+rnd01()*34|0},${66+rnd01()*40|0},${rnd(0.35,0.7)})`;
+              g.fillRect(wx,wy,winW-2.2,winH-2.6); }
+        }
+      }
+    };
+    for(let x=-20;x<W;x+=rnd(26,58)){                                 // 远景城市底铺
+      const w=rnd(24,62), top=HZ-rnd(6,40);
+      bldg(x,w,top,rnd(-.35,.15), 6, 7);
+    }
+    const CLUSTER=[[150,520],[980,1420]];                             // 两片高楼群（市中心方向）
+    for(const [a,b] of CLUSTER){
+      for(let x=a;x<b;x+=rnd(46,104)){
+        const w=rnd(42,96), top=HZ-rnd(90,330);
+        bldg(x,w,top,rnd(-.2,.5), 9, 11);
+        if(!night && rnd01()<0.5){                              // 玻璃幕墙高光
+          const gr=g.createLinearGradient(x,top,x+w,top+120);
+          gr.addColorStop(0,'rgba(220,238,255,.22)'); gr.addColorStop(1,'rgba(220,238,255,0)');
+          g.fillStyle=gr; g.fillRect(x,top,w,140);
+        }
+      }
+    }
+    // —— 地面（俯视看到的街区）——
+    const grd=g.createLinearGradient(0,HZ+40,0,H);
+    if(night){ grd.addColorStop(0,'#0d1119'); grd.addColorStop(1,'#05070b'); }
+    else { grd.addColorStop(0,'#6f7b74'); grd.addColorStop(1,'#4a534d'); }
+    g.fillStyle=grd; g.fillRect(0,HZ+120,W,H-HZ-120);
+    for(let i=0;i<260;i++){                                            // 街区色块
+      const x=rnd(0,W), y=rnd(HZ+120,H), w=rnd(14,54), h=rnd(8,26);
+      g.fillStyle = night? `rgba(${rnd(14,30)|0},${rnd(16,32)|0},${rnd(22,42)|0},.9)`
+                         : `rgba(${rnd(70,130)|0},${rnd(78,132)|0},${rnd(72,122)|0},.85)`;
+      g.fillRect(x,y,w,h);
+      if(night && rnd01()<0.3){ g.fillStyle='rgba(255,190,110,.5)'; g.fillRect(x+w/2,y+h/2,1.6,1.6); }
+    }
+    return panoTex(c, key);
+  },
+  /* 郊区别墅：低层住宅 + 树冠 + 远山（俯瞰视角见屋顶与树冠面） */
+  'suburban': (night, key)=>{
+    srand(2101 + (night?7919:0));
+    const W=2048,H=1024, HZ=Math.round(H*0.54);
+    const c=document.createElement('canvas'); c.width=W;c.height=H;
+    const g=c.getContext('2d');
+    const rnd=(a,b)=>a+rnd01()*(b-a);
+    const sky=g.createLinearGradient(0,0,0,HZ);
+    if(night){ sky.addColorStop(0,'#060a14'); sky.addColorStop(0.65,'#141d30'); sky.addColorStop(1,'#2a3450'); }
+    else { sky.addColorStop(0,'#5b93cf'); sky.addColorStop(0.6,'#a8cbe8'); sky.addColorStop(1,'#e2ecf4'); }
+    g.fillStyle=sky; g.fillRect(0,0,W,HZ);
+    if(!night){ g.fillStyle='rgba(255,250,235,.9)';
+      g.beginPath(); g.ellipse(1500,140,60,36,0,0,Math.PI*2); g.fill();
+      for(let i=0;i<20;i++){ g.fillStyle=`rgba(255,255,255,${rnd(0.07,0.22)})`;
+        const x=rnd(0,W), y=rnd(20,HZ-100), w=rnd(110,360), h=rnd(16,46);
+        g.beginPath(); g.ellipse(x,y,w/2,h/2,0,0,Math.PI*2); g.fill(); }
+    } else {
+      for(let i=0;i<150;i++){ g.fillStyle=`rgba(255,255,255,${rnd(0.15,0.65)})`;
+        g.fillRect(rnd(0,W), rnd(0,HZ-120), 1.3, 1.3); }
+      g.fillStyle='rgba(235,240,255,.95)';                          // 月亮
+      g.beginPath(); g.arc(1650,150,20,0,Math.PI*2); g.fill();
+      const mg=g.createRadialGradient(1650,150,10,1650,150,90);
+      mg.addColorStop(0,'rgba(210,225,255,.30)'); mg.addColorStop(1,'rgba(210,225,255,0)');
+      g.fillStyle=mg; g.beginPath(); g.arc(1650,150,90,0,Math.PI*2); g.fill();
+    }
+    // —— 远山（柔和低丘）——
+    g.fillStyle = night? 'rgba(18,24,38,.92)' : 'rgba(120,140,158,.55)';
+    g.beginPath(); g.moveTo(0,HZ);
+    for(let x=0;x<=W;x+=28) g.lineTo(x, HZ-26-Math.sin(x*0.0022)*30-Math.sin(x*0.007)*15-rnd(0,5));
+    g.lineTo(W,HZ); g.closePath(); g.fill();
+    // —— 地面基底（草坪/街区）——
+    const grd=g.createLinearGradient(0,HZ,0,H);
+    if(night){ grd.addColorStop(0,'#0d1311'); grd.addColorStop(1,'#050806'); }
+    else { grd.addColorStop(0,'#7fa065'); grd.addColorStop(1,'#54713f'); }
+    g.fillStyle=grd; g.fillRect(0,HZ-6,W,H-HZ+6);
+    if(night){
+      // 山谷暖带（远处小镇的街灯，画在山体/地面之上，任何窗向都可见）
+      const hg=g.createLinearGradient(0,HZ-26,0,HZ+26);
+      hg.addColorStop(0,'rgba(255,180,110,0)'); hg.addColorStop(0.5,'rgba(255,178,105,.30)'); hg.addColorStop(1,'rgba(255,180,110,0)');
+      g.fillStyle=hg; g.fillRect(0,HZ-26,W,52);
+      for(let i=0;i<130;i++){ g.fillStyle=`rgba(255,${rnd(175,220)|0},${rnd(105,140)|0},${rnd(0.35,0.85)})`;
+        g.fillRect(rnd(0,W), rnd(HZ-16,HZ+14), 1.8, 1.8); }
+    }
+    // —— 住宅屋顶（低层，散点分布）——
+    for(let i=0;i<44;i++){
+      const x=rnd(0,W-70), y=rnd(HZ+8,H-70), w=rnd(30,92), h=rnd(18,50);
+      g.fillStyle = night? `rgba(${rnd(14,26)|0},${rnd(16,28)|0},${rnd(22,34)|0},.95)`
+                         : (rnd01()<0.5? `rgba(${rnd(160,190)|0},${rnd(150,175)|0},${rnd(140,160)|0},.92)`
+                                      : `rgba(${rnd(120,145)|0},${rnd(105,125)|0},${rnd(95,115)|0},.92)`);
+      g.fillRect(x,y,w,h);
+      g.fillStyle = night? 'rgba(0,0,0,.4)' : 'rgba(255,255,255,.18)';
+      g.fillRect(x,y,Math.max(2,w*0.14),h);
+      if(night){ const nlt = 1+(rnd01()*3|0);                        // 屋顶/檐下暖点
+        for(let k=0;k<nlt;k++){ g.fillStyle=`rgba(255,${rnd(185,220)|0},120,${rnd(0.6,0.95)})`;
+          g.fillRect(x+w*0.2+rnd(0,w*0.6), y+h*0.2+rnd(0,h*0.6), 2.6, 2.6); } }
+    }
+    // —— 树冠（俯视见冠面：多层圆斑）——
+    for(let i=0;i<130;i++){
+      const x=rnd(0,W), y=rnd(HZ+6,H), r=rnd(9,30);
+      const sh = night? rnd(10,26) : rnd(52,96);
+      g.fillStyle = night? `rgba(${sh*0.8|0},${sh+8|0},${sh*0.7|0},.92)`
+                         : `rgba(${sh*0.8|0},${sh+42|0},${sh*0.62|0},.9)`;
+      g.beginPath(); g.arc(x,y,r,0,Math.PI*2); g.fill();
+      g.fillStyle = night? `rgba(${sh*1.3|0},${sh+22|0},${sh|0},.5)`
+                         : `rgba(${sh|0},${sh+64|0},${sh*0.8|0},.5)`;
+      g.beginPath(); g.arc(x+r*0.28,y-r*0.24,r*0.62,0,Math.PI*2); g.fill();
+    }
+    return panoTex(c, key);
+  },
+  /* 海景：开阔水面 + 地平线 + 远景城市群；夜=水面城市灯光倒影 */
+  'seaview': (night, key)=>{
+    srand(2102 + (night?7919:0));
+    const W=2048,H=1024, HZ=Math.round(H*0.54);      // 与 city 同一物理地平线（33层视角）
+    const c=document.createElement('canvas'); c.width=W;c.height=H;
+    const g=c.getContext('2d');
+    const rnd=(a,b)=>a+rnd01()*(b-a);
+    const sky=g.createLinearGradient(0,0,0,HZ);
+    if(night){ sky.addColorStop(0,'#04070f'); sky.addColorStop(0.65,'#0e1524'); sky.addColorStop(1,'#1d2b46'); }
+    else { sky.addColorStop(0,'#4585c2'); sky.addColorStop(0.55,'#8fc0e2'); sky.addColorStop(1,'#dcedf6'); }
+    g.fillStyle=sky; g.fillRect(0,0,W,HZ);
+    if(!night){ g.fillStyle='rgba(255,252,240,.88)';
+      g.beginPath(); g.ellipse(1420,170,56,34,0,0,Math.PI*2); g.fill();
+      for(let i=0;i<16;i++){ g.fillStyle=`rgba(255,255,255,${rnd(0.08,0.25)})`;
+        const x=rnd(0,W), y=rnd(20,HZ-110), w=rnd(130,420), h=rnd(10,26);
+        g.beginPath(); g.ellipse(x,y,w/2,h/2,0,0,Math.PI*2); g.fill(); }
+    } else {
+      for(let i=0;i<210;i++){ g.fillStyle=`rgba(255,255,255,${rnd(0.12,0.7)})`;
+        g.fillRect(rnd(0,W), rnd(0,HZ-140), 1.3, 1.3); }
+      const mg=g.createRadialGradient(520,120,8,520,120,80);
+      mg.addColorStop(0,'rgba(225,235,255,.5)'); mg.addColorStop(1,'rgba(225,235,255,0)');
+      g.fillStyle=mg; g.beginPath(); g.arc(520,120,80,0,Math.PI*2); g.fill();
+      g.fillStyle='rgba(230,240,255,.95)';
+      g.beginPath(); g.arc(520,120,17,0,Math.PI*2); g.fill();
+    }
+    // —— 远景城市（左侧天际线，贴地平线）——
+    const skyline=(x0,x1,minH,maxH)=>{
+      for(let x=x0;x<x1;x+=rnd(14,34)){
+        const w=rnd(10,30), h=rnd(minH,maxH), top=HZ-h;
+        g.fillStyle = night? `rgba(${rnd(10,20)|0},${rnd(13,24)|0},${rnd(22,38)|0},1)`
+                           : `rgba(${rnd(96,130)|0},${rnd(108,140)|0},${rnd(122,156)|0},.85)`;
+        g.fillRect(x,top,w,h);
+        if(night){
+          for(let k=0;k<4;k++) if(rnd01()<0.6){ g.fillStyle=`rgba(255,${rnd(185,225)|0},${rnd(115,150)|0},.9)`;
+            g.fillRect(x+2, top+3+k*5, 2.2, 2.2); }
+          // 水面倒影：竖向暖色光带（更宽更亮，远处也能读出）
+          const rg=g.createLinearGradient(x,HZ,x+w+14,H*0.8);
+          rg.addColorStop(0,'rgba(255,190,110,.5)'); rg.addColorStop(1,'rgba(255,190,110,0)');
+          g.fillStyle=rg; g.fillRect(x-2, HZ, w+8, H*0.38);
+        }
+      }
+    };
+    skyline(60, 1080, 14, 84);
+    // —— 水面 ——
+    const wg=g.createLinearGradient(0,HZ,0,H);
+    if(night){ wg.addColorStop(0,'#0a1220'); wg.addColorStop(1,'#03060b'); }
+    else { wg.addColorStop(0,'#5f88a8'); wg.addColorStop(1,'#2f5170'); }
+    if(night){
+      // 全宽地平线辉光（对岸城市的整体夜光，任何窗向都可见）
+      const cg=g.createLinearGradient(0,HZ-130,0,HZ+30);
+      cg.addColorStop(0,'rgba(255,170,90,0)');
+      cg.addColorStop(0.75,'rgba(255,180,105,.34)');
+      cg.addColorStop(1,'rgba(200,220,255,.10)');
+      g.fillStyle=cg; g.fillRect(0,HZ-130,W,160);
+      for(let i=0;i<130;i++){ g.fillStyle=`rgba(255,${rnd(180,220)|0},${rnd(110,150)|0},${rnd(0.4,0.9)})`;
+        g.fillRect(rnd(0,W), rnd(HZ-24,HZ-2), 2, 2); }
+    }
+    g.fillStyle=wg; g.fillRect(0,HZ,W,H-HZ);
+    if(!night){
+      // 太阳反射光路
+      const sx=1420;
+      const sg=g.createLinearGradient(sx-90,0,sx+90,0);
+      sg.addColorStop(0,'rgba(255,250,230,0)'); sg.addColorStop(0.5,'rgba(255,250,230,.4)'); sg.addColorStop(1,'rgba(255,250,230,0)');
+      g.fillStyle=sg; g.fillRect(sx-90,HZ,180,(H-HZ)*0.8);
+      for(let i=0;i<240;i++){                                   // 波面短亮纹
+        const x=rnd(0,W), y=rnd(HZ+4,H), w=rnd(6,42);
+        g.fillStyle=`rgba(255,255,255,${rnd(0.04,0.14)})`;
+        g.fillRect(x,y,w,1.2);
+      }
+    } else {
+      for(let i=0;i<180;i++){                                   // 夜水面碎波
+        const x=rnd(0,W), y=rnd(HZ+6,H), w=rnd(4,30);
+        g.fillStyle=`rgba(120,150,200,${rnd(0.03,0.09)})`;
+        g.fillRect(x,y,w,1.1);
+      }
+    }
+    return panoTex(c, key);
+  },
+};
+
 
 /* 镜子的实景反射：给每面镜子在镜面前方烘一张立方体贴图当 envMap。
    平面镜用立方体贴图会有视差误差，但比"反射窗外城市全景"正确得多，
@@ -3078,7 +3248,7 @@ function requestRender(){ if(three) three.needsRender=true; }
 function requestShadowUpdate(){ if(three){ three.renderer.shadowMap.needsUpdate=true; three.needsRender=true; } }
 function buildEnvironment(){
   const night = three.night;
-  const tex = cityPanorama(night);
+  const tex = panorama(three.preset||'seattle-city', night);
   const pm=new THREE.PMREMGenerator(three.renderer); pm.compileEquirectangularShader();
   if(three.env) three.env.dispose();
   const env=pm.fromEquirectangular(tex).texture;
@@ -3099,13 +3269,13 @@ function applyLightMode(){
     renderer.toneMappingExposure=0.98;
   } else if(night){
     sun.color.set(0x93a9d4); sun.intensity=0.16; sun.position.set(30,26,-34);
-    amb.color.set(0x2c3550); amb.intensity=0.10;
-    hemi.color.set(0x3a4d78); hemi.groundColor.set(0x14161c); hemi.intensity=0.16;
+    amb.color.set(ENV_TINT[three.preset||'seattle-city'].night[0]); amb.intensity=0.10;
+    hemi.color.set(ENV_TINT[three.preset||'seattle-city'].night[1]); hemi.groundColor.set(0x14161c); hemi.intensity=0.16;
     renderer.toneMappingExposure=1.25;
   } else {
     sun.color.set(0xffeeda); sun.intensity=1.85; sun.position.copy(three.sunHome);
-    amb.color.set(0xf2f4f8); amb.intensity=0.28;
-    hemi.color.set(0xbfd4ff); hemi.groundColor.set(0x3a3226); hemi.intensity=0.55;
+    amb.color.set(ENV_TINT[three.preset||'seattle-city'].day[0]); amb.intensity=0.28;
+    hemi.color.set(ENV_TINT[three.preset||'seattle-city'].day[1]); hemi.groundColor.set(0x3a3226); hemi.intensity=0.55;
     renderer.toneMappingExposure=0.92;
   }
   const on = three.lightsOn!==false;
@@ -3138,14 +3308,30 @@ function applyBackdrop(){
     requestRender();
   }
 }
-/* 白天 / 夜晚 */
+/* 白天 / 夜晚（持久化到 DOC.env.mode） */
 function setDayNight(night){
   if(!three) return;
   three.night=night;
+  DOC.env = DOC.env || {preset:'seattle-city', mode:'day'};
+  DOC.env.mode = night?'night':'day';
+  saveGeo();
   applyLightMode();
   buildEnvironment();
   $('#dnDay').classList.toggle('on', !night);
   $('#dnNight').classList.toggle('on', night);
+}
+/* 环境预设（持久化到 DOC.env.preset）：全景 + 环境色温 + 雾色一起换 */
+function setPreset(p){
+  if(!three) return;
+  if(!ENV_TINT[p]) p='seattle-city';
+  DOC.env = DOC.env || {preset:'seattle-city', mode:'day'};
+  if(DOC.env.preset===p && three.preset===p) return;
+  DOC.env.preset = p; three.preset = p;
+  saveGeo();
+  buildEnvironment();
+  applyLightMode();
+  applyBackdrop();
+  ENV_BTNS.forEach(([id,pp])=>$(id).classList.toggle('on', pp===p));
 }
 function buildStatic3D(){
   // 所有静态构件挂在一个可整体替换的 Group 上，墙体编辑后重建
@@ -13026,6 +13212,7 @@ function setView(v){
     : (fp ? '室内视角：左键拖动=<b>原地转头</b> · <b>双击地面=走过去</b> · W/A/S/D=走动 · 滚轮=前后（摆家具请切 3D 俯瞰）'
           : '左键拖动=环绕 · <b>Shift+左键 / 右键 = 平移</b> · 滚轮=缩放 · <b>拖动家具=移动（Shift 拖=旋转）</b> · <b>双击地面=站到那儿看</b>');
   $('#dnSeg').style.display = in3?'flex':'none';
+  $('#envSeg').style.display = in3?'flex':'none';
   $('#lampSeg').style.display = in3?'flex':'none';
   // 光追只在室内视角有意义：俯瞰是掀了天花板的剖切图，追出来的光照根本不成立
   $('#btnPT').style.display = fp?'inline-block':'none';
@@ -13485,8 +13672,16 @@ function fpStep(){
 }
 $('#lampOn').onclick=()=>{ $('#lampOn').blur(); setLights(true); };
 $('#lampOff').onclick=()=>{ $('#lampOff').blur(); setLights(false); };
+/* 环境预设色温（fp 分支叠加到环境光/半球光；city=原值，画面零变化） */
+const ENV_TINT={
+  'seattle-city':{ day:[0xf2f4f8,0xbfd4ff], night:[0x2c3550,0x3a4d78] },
+  'suburban':    { day:[0xf2f1e8,0xc8d8b0], night:[0x2a3148,0x364468] },
+  'seaview':     { day:[0xeaf2f8,0xaecdec], night:[0x243050,0x33487c] },
+};
+const ENV_BTNS=[['#envCity','seattle-city'],['#envSub','suburban'],['#envSea','seaview']];
 $('#dnDay').onclick=()=>{ $('#dnDay').blur(); setDayNight(false); };
 $('#dnNight').onclick=()=>{ $('#dnNight').blur(); setDayNight(true); };
+ENV_BTNS.forEach(([id,p])=>{ $(id).onclick=()=>{ $(id).blur(); setPreset(p); }; });
 window.addEventListener('keydown', e=>{
   if(['INPUT','SELECT','TEXTAREA'].includes(e.target.tagName)) return;
   if(e.key.toLowerCase()==='v' && is3D()){ setCamMode(three&&three.camMode==='fp'?'doll':'fp'); }
