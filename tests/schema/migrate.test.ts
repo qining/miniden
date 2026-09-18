@@ -30,17 +30,19 @@ const toLegacy = (scenario: 'empty' | 'user'): LegacyGeo => ({
   ...fx[scenario].legacy,
 });
 const legacy = toLegacy('empty');
-const deepStr = (x: unknown) => JSON.stringify(x);
-const stripMeta = (arr: Record<string, unknown>[]) =>
-  JSON.stringify(arr.map(({ _src, _i, ...rest }) => rest));
+const stripMeta = (arr: object[]) =>
+  JSON.stringify(arr.map(e => { const { _src, _i, _id, ...rest } = e as Record<string, unknown>; return rest; }));
+const stripId = (arr: object[]) =>
+  JSON.stringify(arr.map(e => { const { _id, ...rest } = e as Record<string, unknown>; return rest; }));
 
 function checkEquivalence(userGeo: LegacyUserGeo, expected: { walls: unknown[]; fixed: unknown[]; doors: unknown[] }) {
   const doc = migrateLegacyToV1(legacy, userGeo);
   const proj = docToLegacy(doc);
   expect(validate(doc)).toEqual([]);
-  expect(deepStr(proj.walls)).toBe(deepStr(expected.walls));
-  expect(deepStr(proj.fixed)).toBe(deepStr(expected.fixed));
-  expect(deepStr(proj.doors)).toBe(deepStr(expected.doors));
+  // _id 是 S1 Phase 2b 新加的实体回指字段（legacy oracle 没有），比较时剥掉
+  expect(stripId(proj.walls)).toBe(stripId(expected.walls as object[]));
+  expect(stripId(proj.fixed)).toBe(stripId(expected.fixed as object[]));
+  expect(stripId(proj.doors)).toBe(stripId(expected.doors as object[]));
 }
 
 describe('migrate → docToLegacy ≡ eff*（空 USERGEO）', () => {
@@ -142,5 +144,23 @@ describe('migrate → docToLegacy ≡ eff*（合成 USERGEO：覆盖/隐藏/新�
     expect(stripMeta(proj2.walls as unknown as Record<string, unknown>[])).toBe(stripMeta(proj1.walls as unknown as Record<string, unknown>[]));
     expect(stripMeta(proj2.fixed as unknown as Record<string, unknown>[])).toBe(stripMeta(proj1.fixed as unknown as Record<string, unknown>[]));
     expect(stripMeta(proj2.doors as unknown as Record<string, unknown>[])).toBe(stripMeta(proj1.doors as unknown as Record<string, unknown>[]));
+  });
+
+  it('投影带 _id（实体回指）：内置 = w/n/d/s{n+1}，用户 = nextId 生成且唯一', () => {
+    const doc = migrateLegacyToV1(legacy, userGeo);
+    const proj = docToLegacy(doc);
+    // 内置实体：_id 与链内位置对应（与 migrate 的 id 规则一致）
+    const w1 = proj.walls.find(s => s._src === 'b' && s._i === 0);
+    expect(w1?._id).toBe('w1');
+    const n1 = proj.walls.find(s => s.t === 'g' && s._src === 'b');
+    if(n1) expect(n1._id).toBe(`n${n1._i + 1}`);
+    expect(!!n1).toBe(true);
+    expect(proj.doors[0]._id).toBe('d1');
+    expect(proj.fixed[0]._id).toBe('s1');
+    // 用户实体：_id 全局唯一
+    const ids = [...proj.walls, ...proj.fixed, ...proj.doors].map(e => e._id as string);
+    expect(new Set(ids).size).toBe(ids.length);
+    const userWallIds = proj.walls.filter(s => s._src === 'u').map(s => s._id);
+    expect(userWallIds.every(id => /^[wnds]\d+$/.test(id))).toBe(true);
   });
 });

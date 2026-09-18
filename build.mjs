@@ -162,7 +162,10 @@ for (const [src, dst, mark] of [['work/t_walledit.html', 'work/t_walledit_dist.h
   const tf = readFileSync(join(root, src), 'utf8');
   const m = tf.match(new RegExp("(\\n<script>\\n" + mark + ".*?</script>\\n</body>)", 's'));
   if (!m) throw new Error(`测试台 ${src} 里找不到 ${mark} 标记`);
-  writeFileSync(join(root, dst), out.replace('</body>', m[1], 1));
+  // 注入前把替换串里的 $ 转义：String.replace 的替换串会解释 $'/$`/$$/​$n（Python re.sub 同款陷阱，
+  // Node 也一样——bench 里 'CA$90' 这类串里的 $' 曾被展开成「匹配点之后的字符串」= \n</html>，
+  // 断掉字符串字面量 → 整个 bench 脚本 SyntaxError → NO TEST OUTPUT）。
+  writeFileSync(join(root, dst), out.replace('</body>', m[1].replace(/\$/g, '$$$$'), 1));
   console.log(`  testbed: ${dst}`);
 }
 

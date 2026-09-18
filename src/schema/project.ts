@@ -122,6 +122,7 @@ export interface ProjectDoc {
   ceilingH: number;              // ft（酷家乐「生成后必设」）
   northRotation: number;         // 度（酷家乐「生成后校验」）
   sc?: number;                   // 图纸 px/ft（仅迁移自 legacy 底图的户型有；导入户型无）
+  dataV?: number;                // 内置数据版本（常量集变动时 bump；载入时不符 → 丢弃用户文档重新迁移）
   walls: Wall[];
   windows: Window[];
   doors: Door[];
@@ -274,6 +275,7 @@ export function projectSchema(): object {
       ceilingH: { type: 'number', exclusiveMinimum: 0 },
       northRotation: { type: 'number' },
       sc: { type: 'number', exclusiveMinimum: 0 },
+      dataV: { type: 'number', minimum: 1 },
       walls: { type: 'array', items: { $ref: '#/definitions/wall' } },
       windows: { type: 'array', items: { $ref: '#/definitions/window' } },
       doors: { type: 'array', items: { $ref: '#/definitions/door' } },
