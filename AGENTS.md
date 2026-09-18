@@ -647,7 +647,7 @@ console 转发器（error/warn 都要，转发器在 bundle 之后注册会漏�
 | 2990 | 逐商品建模注册表 `MODELS` + `modelCtx` 建模 API |
 | 4358 | UI（目录、检视面板、视角、日夜、加载提示） |
 
-**几何数据流**：`DOC`（`ProjectDoc`：内置+用户实体，id 寻址，S1 Phase 2b 后唯一几何状态）→ `effWalls()/effFixed()/effDoors()`（文档投影，等价于旧版 Object.assign 语义）→ 2D 和 3D **共用同一份**。编辑层（`wallEdit.sel={kind,id}`、`segView/winView/doorView` Proxy）直写文档实体。新增任何消费几何的代码，一律走 `eff*()`，不要直接读 `WALLS`（`#dump` 和 CALIB 分支是故意的例外）。
+**几何数据流**：`DOC`（`ProjectDoc`：内置+用户实体，id 寻址，S1 Phase 2b 后唯一几何状态）→ `effWalls()/effFixed()/effDoors()`（文档投影，等价于旧版 Object.assign 语义）→ 2D 和 3D **共用同一份**。洁具（马桶/台盆/浴缸/淋浴/台柜/镜子）也走文档：`effFixtures()` 返回 `DOC.fixtures`（S1 迁移：图纸 px/SC → ft）——2D `drawFixtures` 换算回 px 画、3D 直接用 ft（与旧 `F2(FX)` 逐位一致，3D 截图逐字节相同）；导入户型 fixtures=[] 时 2D/3D 都不画。编辑层（`wallEdit.sel={kind,id}`、`segView/winView/doorView` Proxy）直写文档实体。新增任何消费几何的代码，一律走 `eff*()`，不要直接读 `WALLS`/`FX`（`#dump` 和 CALIB 分支是故意的例外；`FX` 常量现在只是 S1 迁移源）。
 
 **投影键集合是冻结的（S1 字节等价红线）**：`docToLegacy` 输出的键必须与 legacy `eff*` 逐字节一致（fixture oracle 守着），**新的文档字段不能加进投影**（例：窗户 `style`/`frame`/`sill`/`head` 都不在 `effWalls` 投影里）。消费端需要这些字段时，用投影里的 `_id` 回查文档实体：`entById(s._id).style`（2D/3D 的窗款式渲染就是这么做的）。
 
