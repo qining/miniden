@@ -14,6 +14,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import esbuild from 'esbuild';
 import { bundleSchema } from './scripts/build-schema.mjs';
+import { bundleGeo } from './scripts/build-geo.mjs';
 
 const root = dirname(fileURLToPath(import.meta.url));
 const TMP = join(root, 'build', 'tmp');
@@ -35,6 +36,20 @@ if (embedded !== freshSchema) {
 }
 console.log('  schema: 嵌入块与 src/schema/ 最新编译一致');
 
+// --- S5：校验嵌入的 geo 块 == src/geo/ 最新编译 ---
+const freshGeo = await bundleGeo();
+const GEO_START = '<script id="miniden-geo">\n';
+const GEO_END = '\n</script><!-- /miniden-geo -->';
+const ga = html.indexOf(GEO_START);
+if (ga < 0) throw new Error('planner.html 缺 <script id="miniden-geo">（跑 npm run geo:build）');
+const gb = html.indexOf(GEO_END, ga);
+const geoEmbedded = html.slice(ga + GEO_START.length, gb);
+if (geoEmbedded !== freshGeo) {
+  console.error('✗ 嵌入的 geo 块与 src/geo/ 最新编译不一致。跑 `npm run geo:build` 后重试。');
+  process.exit(1);
+}
+console.log('  geo: 嵌入块与 src/geo/ 最新编译一致');
+
 // --- 抽取内联脚本（唯一的裸 <script> 标签）---
 const START = '<script>\n';
 const i = html.indexOf(START);
@@ -43,12 +58,14 @@ if (i < 0 || j < 0 || j < i) throw new Error('找不到内联脚本边界');
 const body = html.slice(i + START.length, j);
 const tail = html.slice(j + '</script>'.length);
 
-// --- head：去掉两个 lib 外链标签 ---
+// --- head：去掉 lib 外链标签；dxf-parser 内联进 dist（单文件）---
+const dxfLib = readFileSync(join(root, 'lib', 'dxf-parser.iife.js'), 'utf8');
 const head = html.slice(0, i)
   .replace('<script src="lib/three.min.js"></script>\n', '')
-  .replace('<script src="lib/OrbitControls.js"></script>\n', '');
-if (head.includes('lib/three.min.js') || head.includes('lib/OrbitControls.js'))
-  throw new Error('lib 标签去除失败（head 里还有残留）');
+  .replace('<script src="lib/OrbitControls.js"></script>\n', '')
+  .replace('<script src="lib/dxf-parser.iife.js"></script>\n', '<script>\n' + dxfLib + '\n</script>\n<!-- dxf-parser 内联（S5：单文件产物） -->');
+if (head.includes('lib/three.min.js') || head.includes('lib/OrbitControls.js') || head.includes('lib/dxf-parser.iife.js'))
+  throw new Error('lib 标签处理失败（head 里还有残留）');
 
 // --- 生成 ESM 入口（临时文件，不入库）---
 rmSync(TMP, { recursive: true, force: true });

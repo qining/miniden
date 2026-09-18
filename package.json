@@ -7,10 +7,12 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "fixtures": "node scripts/make-fixtures.mjs",
-    "schema:build": "node scripts/build-schema.mjs"
+    "schema:build": "node scripts/build-schema.mjs",
+    "geo:build": "node scripts/build-geo.mjs"
   },
   "devDependencies": {
     "@types/node": "^26.6.1",
+    "dxf-parser": "^1.1.2",
     "esbuild": "^0.28.2",
     "typescript": "^7.0.2",
     "vitest": "^5.0.1"
