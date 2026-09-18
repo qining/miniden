@@ -33,7 +33,7 @@
 | S3 | **墙/柱编辑切到文档直编**：交互层复用现有编辑器 | **随 S1 Phase 2b 完**（墙/柱/门/窗编辑全部直写文档实体，`restoreBuiltins` = #wRestore） | 依赖 S1 |
 | S4a | **昼夜光照联动**（homeowner 的核心问题：白天够不够亮/晚上温不温馨）+ 2–3 个高频环境预设 | **完**（本次提交）：`setDayNight`/`setPreset` 直写 `DOC.env.{mode,preset}`（单键持久化，载入即恢复）；工具条「白天/夜晚」旁加「城市/郊野/海景」段；`cityPanorama` 泛化为 `panorama(preset, night)`（seattle-city 种子逐字节不变）；新预设 suburban（低层+树冠+远山，夜=山谷暖带）/ seaview（水面+天际线，夜=灯光倒影），HZ 统一 0.54；环境色温表 `ENV_TINT` 叠加到 fp 分支的 amb/hemi（city 行=原值，光追/室内画面零变化）；光追环境光自动随预设（共用 `three.panorama`）。bench：t3d +11 / walledit +3（含确定性抽像素比对） | 依赖 S1（`env` 字段）；S4 里价值最高、先做 |
 | S4b | 10 环境预设全矩阵（5 景观 × 昼夜，程序化） | todo | 打磨项，可后移 |
-| S5 | **DXF 导入**：图层名映射 → 文档；单位自动检测 + **一次确认**；产出 = 立即可用初稿（调性：快捷的主要体现） | todo | 依赖 S1 + R1 |
+| S5 | **DXF 导入**：图层名映射 → 文档；单位自动检测 + **一次确认**；产出 = 立即可用初稿（调性：快捷的主要体现） | **完**（2026-09，`5775789`）：`src/geo/import-dxf.ts`（esbuild IIFE 内联，页面零 AI/零网络）：图层名映射（中英双语/前缀子串，WALL/DOOR/WINDOW/COL/ROOM/轴网/家具/标注七类）→ 双线墙带配对（投影重叠+距离→真实墙厚）→ 单线默认 10cm → 门洞=缺口+DOOR 层门扇 + 铰链/朝向推断（竖直门洞）→ 窗默认 fixed/窗台 0.9/顶 2.4 → 柱（CIRCLE/LWPOLYLINE）→ 房间环（面积≥ 5m²→room 否则 column，含名称 TEXT）；单位自动检测（`$INSUNITS` → 墙厚中位数启发式 mm/cm/m/in/ft，尺度自适应上限；无法判断按 mm + 警告）；一次确认对话框（单位可手动覆盖后重算）→ `applyImportedDoc` 整套替换（schema 校验、清家具、「重置内置」可整体回内置）；2D/3D 地板/相机/FP 用 `floorPts()`（导入=包围盒+0.8ft），阳台/厨房/手绘层隐藏；vendored dxf-parser@1.1.2 UMD（`scripts/build-dxf-lib.mjs`）。测试：vitest 27（fixtures 生成器）+ 浏览器 bench +10（t_walledit×2 全绿）；calib 不变 | 依赖 S1 + R1（R1 = 图纸结构调研） |
 | S6 | **PDF 向量导入**：operatorList → 线段聚类 → 文档；扫描件检测降级 | todo | 依赖 S1 + R1 |
 | S7 | **图片底图 + 磁吸描摹**（OpenCV.js） | todo | 依赖 S1 + R2 |
 | S8 | **ML 识别**（自家云函数，非 Vloor——R2） | v2+ | 调性校准：ML 重，仅当 P0–P2 覆盖不足 |
