@@ -63,9 +63,24 @@ const dxfLib = readFileSync(join(root, 'lib', 'dxf-parser.iife.js'), 'utf8');
 const head = html.slice(0, i)
   .replace('<script src="lib/three.min.js"></script>\n', '')
   .replace('<script src="lib/OrbitControls.js"></script>\n', '')
-  .replace('<script src="lib/dxf-parser.iife.js"></script>\n', '<script>\n' + dxfLib + '\n</script>\n<!-- dxf-parser 内联（S5：单文件产物） -->');
+  .replace('<script src="lib/dxf-parser.iife.js"></script>\n',
+    '<script>\n' + dxfLib.replace(/\$/g, '$$$$') + '\n</script>\n<!-- dxf-parser 内联（S5：单文件产物） -->');
 if (head.includes('lib/three.min.js') || head.includes('lib/OrbitControls.js') || head.includes('lib/dxf-parser.iife.js'))
   throw new Error('lib 标签处理失败（head 里还有残留）');
+
+// --- S6：pdf.js 双库内联进 dist head（懒执行）---
+// 源码版靠 <script src> 懒加载（点按钮才注入）；dist 是单文件，没有 lib/ 可指 →
+// 把两个 IIFE 以 JSON 字符串块内联，UI 层 loadPdfLibs() 检测到 #pdfJsInline 时用
+// new Function 执行（worker 侧效挂 globalThis.pdfjsWorker → getDocument 主线程 fake worker）。
+// 页面无 PDF 导入需求时零解析成本（JSON 文本块，不参与 JS 解析）。
+const pdfWSrc = readFileSync(join(root, 'lib', 'pdf.worker.min.js'), 'utf8');
+const pdfMSrc = readFileSync(join(root, 'lib', 'pdf.min.js'), 'utf8');
+// 替换串里的 $ 必须转义（AGENTS §5.1）：pdf.js 压缩代码含模板串 `$`` →
+// String.replace 会把它展开成「</head> 匹配点之前的整个文档」，把 planner 源码
+// 灌进 JSON 块（220 个裸换行 → JSON.parse 炸）。
+const head2 = head.replace('</head>',
+  '<script type="application/json" id="pdfJsInline">' + JSON.stringify([pdfWSrc, pdfMSrc]).replace(/\$/g, '$$$$') + '</script>\n</head>');
+if (!head2.includes('id="pdfJsInline"')) throw new Error('pdfJsInline 注入失败');
 
 // --- 生成 ESM 入口（临时文件，不入库）---
 rmSync(TMP, { recursive: true, force: true });
@@ -168,7 +183,7 @@ const bundle = outputFiles[0].text;
 // dist/ 在 root 下一层：把相对资源引用 'work/...' 改为 '../work/...'（dev 资源：
 // 底图/参考图；产品功能不依赖它们，缺失时优雅降级）
 mkdirSync(DIST, { recursive: true });
-let out = head + '<script>\n' + bundle + '\n</script>' + tail;
+let out = head2 + '<script>\n' + bundle + '\n</script>' + tail;
 out = out.replace(/['"]work\//g, m => m[0] + '../' + m.slice(1));
 writeFileSync(join(DIST, 'planner.html'), out);
 

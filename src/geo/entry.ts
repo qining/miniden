@@ -1,5 +1,5 @@
 /* =====================================================================
-   src/geo/entry.ts — 浏览器端入口（S5：DXF 导入，IIFE bundle 唯一入口）
+   src/geo/entry.ts — 浏览器端入口（S5/S6：DXF + PDF 导入，IIFE bundle 唯一入口）
 
    编译（scripts/build-geo.mjs）：esbuild → IIFE → 注入 planner.html 的
    `<script id="miniden-geo">` 块，挂到 globalThis.MINIDEN_GEO：
@@ -12,6 +12,7 @@
    ===================================================================== */
 
 import * as Dxf from './import-dxf';
+import * as Pdf from './import-pdf';
 
 (globalThis as { MINIDEN_GEO?: unknown }).MINIDEN_GEO = {
   importDxf: Dxf.importDxf,
@@ -20,4 +21,9 @@ import * as Dxf from './import-dxf';
   extractRaw: Dxf.extractRaw,
   UNIT_TO_M: Dxf.UNIT_TO_M,
   UNIT_NOMINAL: Dxf.UNIT_NOMINAL,
+  // S6：PDF 导入（pdf.js 由 UI 层提供；OPS 表运行时传入）
+  importPdf: Pdf.importPdf,
+  extractRawPdf: Pdf.extractRawPdf,
+  classifyPdfColor: Pdf.classifyPdfColor,
+  inferPdfScale: Pdf.inferPdfScale,
 };
