@@ -13,6 +13,7 @@
 
 import * as Dxf from './import-dxf';
 import * as Pdf from './import-pdf';
+import * as Trace from './image-trace';
 
 (globalThis as { MINIDEN_GEO?: unknown }).MINIDEN_GEO = {
   importDxf: Dxf.importDxf,
@@ -26,4 +27,7 @@ import * as Pdf from './import-pdf';
   extractRawPdf: Pdf.extractRawPdf,
   classifyPdfColor: Pdf.classifyPdfColor,
   inferPdfScale: Pdf.inferPdfScale,
+  // S7：图片底图特征提取（纯 JS Canny+Hough）与放置变换
+  traceLines: Trace.traceLines,
+  imgTransform: Trace.imgTransform,
 };

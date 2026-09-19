@@ -117,6 +117,22 @@ export interface EnvState {
   mode: 'day' | 'night';
 }
 
+/* S7：用户底图（扫描件/照片/扫描 PDF 页）——描摹通道的参考层。
+   data = JPEG dataURL（降采样 ≤2048px、体积 ≤2MB，localStorage 可容）；
+   mPerPx = 标定后的米/像素（两点标定或手动）；(ox,oy) = 图像左上角的文档坐标（ft，y 下）；
+   rot = 顺时针 90° 步进（手机照片常见横拍）。
+   纯增补可选字段：旧文档无此字段 = 无底图，不 bump DOC_DATA_VERSION（
+   导入户型文档不能因版本 bump 被丢弃重迁移）。 */
+export interface BaseImage {
+  data: string;                  // data:image/jpeg;base64,…
+  w: number;                     // 解码后像素宽
+  h: number;
+  mPerPx: number;                // 米/像素（>0）
+  ox: number;                    // ft
+  oy: number;                    // ft
+  rot?: 0 | 90 | 180 | 270;      // 默认 0
+}
+
 export interface ProjectDoc {
   schema: 1;
   name: string;
@@ -133,6 +149,7 @@ export interface ProjectDoc {
   rooms: Room[];
   fixtures: Fixture[];
   env: EnvState;
+  baseImage?: BaseImage;         // S7：用户底图（可选）
   hidden: { walls: string[]; windows: string[]; doors: string[]; solids: string[] };
 }
 
@@ -260,6 +277,22 @@ export function validate(doc: unknown): ValidationError[] {
     if (env.mode !== 'day' && env.mode !== 'night') fail('env.mode', '必须是 day|night');
   }
 
+  // S7：用户底图（可选）
+  if (d.baseImage != null) {
+    const bi = d.baseImage as Record<string, unknown>;
+    if (typeof bi !== 'object' || bi === null) fail('baseImage', '必须是对象');
+    else {
+      if (typeof bi.data !== 'string' || bi.data.length < 22) fail('baseImage.data', '必须是 dataURL 字符串');
+      if (!isNum(bi.w) || (bi.w as number) < 8) fail('baseImage.w', '必须是 ≥8 的像素宽');
+      if (!isNum(bi.h) || (bi.h as number) < 8) fail('baseImage.h', '必须是 ≥8 的像素高');
+      if (!isNum(bi.mPerPx) || (bi.mPerPx as number) <= 0) fail('baseImage.mPerPx', '必须是正数（米/像素）');
+      if (!isNum(bi.ox)) fail('baseImage.ox', '必须是数（ft）');
+      if (!isNum(bi.oy)) fail('baseImage.oy', '必须是数（ft）');
+      if (bi.rot !== undefined && bi.rot !== 0 && bi.rot !== 90 && bi.rot !== 180 && bi.rot !== 270)
+        fail('baseImage.rot', '必须是 0|90|180|270');
+    }
+  }
+
   const hidden = d.hidden as Record<string, unknown> | undefined;
   if (typeof hidden !== 'object' || hidden === null) fail('hidden', 'hidden 必须是对象');
   else {
@@ -296,6 +329,18 @@ export function projectSchema(): object {
       rooms: { type: 'array', items: { $ref: '#/definitions/room' } },
       fixtures: { type: 'array', items: { $ref: '#/definitions/fixture' } },
       env: { type: 'object', required: ['preset', 'mode'], properties: { preset: { type: 'string' }, mode: { enum: ['day', 'night'] } } },
+      baseImage: {
+        type: 'object',
+        required: ['data', 'w', 'h', 'mPerPx', 'ox', 'oy'],
+        properties: {
+          data: { type: 'string' },
+          w: { type: 'integer', minimum: 8 },
+          h: { type: 'integer', minimum: 8 },
+          mPerPx: { type: 'number', exclusiveMinimum: 0 },
+          ox: { type: 'number' }, oy: { type: 'number' },
+          rot: { enum: [0, 90, 180, 270] },
+        },
+      },
       hidden: {
         type: 'object',
         properties: {
