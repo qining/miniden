@@ -274,6 +274,8 @@ sips -z 高 宽 /tmp/x.png --out /tmp/x_big.png               # 放大
 | macOS **没有 `timeout` 命令** | rc=127，命令根本没跑，`echo done` 掩盖了失败，看到的是旧文件 | 不要用 `timeout`；检查 rc |
 | 测试页是改动前生成的副本 | 测出旧行为，浪费一轮调试 | 每次改完 planner.html 都重新生成测试页 |
 | 批量 replace 时文本已漂移 | 静默 MISS | 每次 replace 都统计 miss 数并打印 |
+| `pkill -f headless` 误杀 **browser 工具的 playwright `chrome-headless-shell`**（路径里含 headless） | 浏览器会话被断、且杀不干净上一轮 Chrome 僵尸 | 精确匹配：`pkill -f 'Google Chrome.app.*--headless'` |
+| **headless 里 `alert()`/`confirm()` 永久阻塞页面**（无人应答，进程存活但 0% CPU、dump-dom 永远空） | bench 挂死，症状与「页面崩溃」相似但 CPU 为 0 | 交互路径（会被 bench 执行到的）一律不用阻塞弹窗（改 toast/内联提示，2026-09-18 的 S6 bug 猎里 `setUnderlay` 在导入户型下 alert 就是这样把 bench 挂死的）；诊断挂死：看 `ps` 里 Chrome CPU——0% = 阻塞等待（弹窗/网络），高 = 在算 |
 | 用 Python **`re.sub`** 或 Node **`String.replace`** 做注入/替换，而替换文本里含 **`$'`** | `$` 序列是两者的共同陷阱（Node 的字符串/正则替换都会解释 `$'`/`` `$ ``/`$n`/`$$`，**和 Python re.sub 一样**；Python `str.replace` 才是安全的）：`$'` 展开为「匹配点之后的整个字符串」——测试台里 `'…CA$'`（字符串以 $ 结尾）被替换成 `</html>`，单引号串跨行 → 整个 bench SyntaxError、一行都不跑，症状是 `NO TEST OUTPUT` 且无任何报错 | 文本注入一律用 Python `str.replace`；用 JS 的 `replace` 注入时先 `str.replace(/\$/g,'$$$$')` 转义（build.mjs 已这样做）；注入后对产物跑 `node --check` |
 | 从 dist 文件自身抽 bench 再重注入 dist | 传播旧污染（bench 一旦被 `$'` 展开腐化，每次「从自身重抽」都把它原样带进新产物） | bench 只从 source 测试台抽（build.mjs 已这样做；ad-hoc 脚本别另起炉灶） |
 | bench 再生成只重写部分 `lib/` 相对路径（漏 dxf-parser） | `window.DxfParser` 未加载，导入链路抛异常，**把后面所有测试段也带崩**（症状：s5 全 FAIL + EXC，s6 一行没跑） | 重写规则要覆盖 head 里**所有** lib 引用（three/OrbitControls/dxf-parser）；bench 段之间加防御：前段失败不让后段跳段 |
