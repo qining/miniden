@@ -103,10 +103,12 @@ export interface Room {
 export interface Fixture {
   id: string;
   t: FixtureType;
-  x1: number; y1: number; x2: number; y2: number;   // ft（原 FX 图纸 px 已换算）
+  x1: number; y1: number; x2: number; y2: number;   // ft（包围盒，rot=0 时即轴对齐矩形）
   dir?: string;                  // 马桶朝向
   fa?: string;                   // 镜面/浴缸朝向
   open?: string;                 // 淋浴开口方向
+  rot?: number;                  // 度：绕占地中心旋转（0/缺省 = 轴对齐；S6 洁具工具用）
+  src?: 'user';                  // 用户放置的洁具（内置 = 缺省/chainIndex 存在）；S6 删除权限用
   chainIndex?: number;
 }
 
@@ -209,6 +211,16 @@ export function validate(doc: unknown): ValidationError[] {
   checkEntities(d.solids, 'solids', []);
   checkEntities(d.rooms, 'rooms', []);
   checkEntities(d.fixtures, 'fixtures', []);
+
+  // 洁具字段（矩形四角 + 旋转）
+  if (Array.isArray(d.fixtures)) {
+    (d.fixtures as Array<Record<string, unknown>>).forEach((e, i) => {
+      for (const k of ['x1', 'y1', 'x2', 'y2']) {
+        if (e[k] !== undefined && !isNum(e[k])) fail(`fixtures[${i}].${k}`, `${k} 必须是数（ft）`);
+      }
+      if (e.rot !== undefined && !isNum(e.rot)) fail(`fixtures[${i}].rot`, 'rot 必须是数（度）');
+    });
+  }
 
   // 引用完整性
   for (const [k, arr] of [['windows', d.windows], ['doors', d.doors]] as const) {
@@ -327,7 +339,7 @@ export function projectSchema(): object {
       },
       solid: { type: 'object', required: ['id', 'geom', 'fill'], properties: { id: { type: 'string' }, name: { type: 'string' }, geom: { $ref: '#/definitions/geom' }, fill: { type: 'string' }, noCal: { type: 'boolean' }, column: { type: 'boolean' } } },
       room: { type: 'object', required: ['id', 'label', 'pos'], properties: { id: { type: 'string' }, label: { type: 'string' }, pos: { type: 'array', minItems: 2, maxItems: 2, items: { type: 'number' } }, wd: { type: 'number' }, dp: { type: 'number' }, d: { type: 'string' }, rot: { type: 'number' }, small: { type: 'boolean' } } },
-      fixture: { type: 'object', required: ['id', 't', 'x1', 'y1', 'x2', 'y2'], properties: { id: { type: 'string' }, t: { enum: ['counter', 'basin', 'toilet', 'tub', 'shower', 'mirror'] }, x1: { type: 'number' }, y1: { type: 'number' }, x2: { type: 'number' }, y2: { type: 'number' } } },
+      fixture: { type: 'object', required: ['id', 't', 'x1', 'y1', 'x2', 'y2'], properties: { id: { type: 'string' }, t: { enum: ['counter', 'basin', 'toilet', 'tub', 'shower', 'mirror'] }, x1: { type: 'number' }, y1: { type: 'number' }, x2: { type: 'number' }, y2: { type: 'number' }, dir: { type: 'string' }, fa: { type: 'string' }, open: { type: 'string' }, rot: { type: 'number' } } },
     },
   };
 }

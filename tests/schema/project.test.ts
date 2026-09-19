@@ -104,6 +104,35 @@ describe('validate —— 拒绝非法文档', () => {
   });
 });
 
+describe('validate —— 洁具字段（S6 前置：rot 进文档）', () => {
+  const fx = (patch: object = {}): ProjectDoc => {
+    const d = blankDoc();
+    d.fixtures.push({ id: 'f01', t: 'toilet', x1: 1, y1: 1, x2: 2, y2: 2, ...patch });
+    return d;
+  };
+
+  it('fixture 带 rot 通过校验', () => {
+    expect(validate(fx({ rot: 45 }))).toEqual([]);
+    expect(validate(fx({}))).toEqual([]);   // rot 缺省 = 轴对齐
+  });
+
+  it('rot 非数被拒', () => {
+    const errs = validate(fx({ rot: 'N' as never }));
+    expect(errs.some(e => e.path === 'fixtures[0].rot')).toBe(true);
+  });
+
+  it('坐标非数被拒', () => {
+    const errs = validate(fx({ x2: '9' as never }));
+    expect(errs.map(e => e.path)).toContain('fixtures[0].x2');
+  });
+
+  it('fixture id 重复被拒', () => {
+    const d = fx();
+    d.fixtures.push({ id: 'f01', t: 'tub', x1: 3, y1: 3, x2: 4, y2: 4 });
+    expect(validate(d).some(e => e.path === 'fixtures[1].id' && /重复/.test(e.message))).toBe(true);
+  });
+});
+
 describe('projectSchema（JSON Schema 导出）', () => {
   it('是 draft-07 且含关键定义', () => {
     const s = projectSchema() as Record<string, any>;

@@ -272,6 +272,12 @@ sips -z 高 宽 /tmp/x.png --out /tmp/x_big.png               # 放大
 | 批量 replace 时文本已漂移 | 静默 MISS | 每次 replace 都统计 miss 数并打印 |
 | 用 Python **`re.sub`** 或 Node **`String.replace`** 做注入/替换，而替换文本里含 **`$'`** | `$` 序列是两者的共同陷阱（Node 的字符串/正则替换都会解释 `$'`/`` `$ ``/`$n`/`$$`，**和 Python re.sub 一样**；Python `str.replace` 才是安全的）：`$'` 展开为「匹配点之后的整个字符串」——测试台里 `'…CA$'`（字符串以 $ 结尾）被替换成 `</html>`，单引号串跨行 → 整个 bench SyntaxError、一行都不跑，症状是 `NO TEST OUTPUT` 且无任何报错 | 文本注入一律用 Python `str.replace`；用 JS 的 `replace` 注入时先 `str.replace(/\$/g,'$$$$')` 转义（build.mjs 已这样做）；注入后对产物跑 `node --check` |
 | 从 dist 文件自身抽 bench 再重注入 dist | 传播旧污染（bench 一旦被 `$'` 展开腐化，每次「从自身重抽」都把它原样带进新产物） | bench 只从 source 测试台抽（build.mjs 已这样做；ad-hoc 脚本别另起炉灶） |
+| bench 再生成只重写部分 `lib/` 相对路径（漏 dxf-parser） | `window.DxfParser` 未加载，导入链路抛异常，**把后面所有测试段也带崩**（症状：s5 全 FAIL + EXC，s6 一行没跑） | 重写规则要覆盖 head 里**所有** lib 引用（three/OrbitControls/dxf-parser）；bench 段之间加防御：前段失败不让后段跳段 |
+| **视图状态跨段泄漏**：bench 里某段放大/平移/导入后，后续点击坐标在视口外 | `elementFromPoint` 打空→落到 svg 根→放置类工具「凭空」在点击坐标放了件（症状：多出无法解释的 user 实体，且坐标恰好=点击点）；同一点击想选旧件却选不中 | 每段点击类测试开头先复位视图（`fit2DToContent()`）再 `drawWallEdit()`；诊断「多出来的件」先看它的坐标=哪次点击 |
+| **放置/选中类工具：新实体要重画命中区**（overlay 是命中唯一来源） | 放置后不调 `drawWallEdit()`：新件无命中区→再点它=又叠一件；而旧件的命中区还在（切工具时画的）→「有时点得中有时点不中」极难查 | 任何改实体的工具分支末尾都 `geoChanged()+drawWallEdit()`（S6 洁具工具踩过） |
+| `<select>` 值跨测试段粘滞（fxType='mirror' 留在下一次点击） | 后续点击全按上个类型放置，断言「放了马桶」变成「放了镜子」 | 每段放置前显式设 `#xxType` 值，不依赖默认值 |
+| **viewBox 单位 = ft×S**（所有 2D 绘制都乘 S） | `fit2DToContent` 直接用 ft 算 bbox → 导入后视图放大 S（22）倍，用户只见一个墙角（S5 潜在 bug，S6 bench 才暴露） | 任何写 viewBox 的代码都用 ft×S 单位；拿不准就和初始 viewBox（1232×1012 = 56×46 ft × 22）对量纲 |
+| bench 里顶层 `const` 命名撞已有声明（bx1/bx 等） | 整段 bench SyntaxError、一行不跑，症状 = NO TEST OUTPUT | bench 是新代码但跑在既有函数作用域里：新变量名先 grep 一遍 bench 全文再定 |
 
 ### 5.2 浏览器/three.js 类
 
@@ -647,7 +653,7 @@ console 转发器（error/warn 都要，转发器在 bundle 之后注册会漏�
 | 2990 | 逐商品建模注册表 `MODELS` + `modelCtx` 建模 API |
 | 4358 | UI（目录、检视面板、视角、日夜、加载提示） |
 
-**几何数据流**：`DOC`（`ProjectDoc`：内置+用户实体，id 寻址，S1 Phase 2b 后唯一几何状态）→ `effWalls()/effFixed()/effDoors()`（文档投影，等价于旧版 Object.assign 语义）→ 2D 和 3D **共用同一份**。洁具（马桶/台盆/浴缸/淋浴/台柜/镜子）也走文档：`effFixtures()` 返回 `DOC.fixtures`（S1 迁移：图纸 px/SC → ft）——2D `drawFixtures` 换算回 px 画、3D 直接用 ft（与旧 `F2(FX)` 逐位一致，3D 截图逐字节相同）；导入户型 fixtures=[] 时 2D/3D 都不画。编辑层（`wallEdit.sel={kind,id}`、`segView/winView/doorView` Proxy）直写文档实体。新增任何消费几何的代码，一律走 `eff*()`，不要直接读 `WALLS`/`FX`（`#dump` 和 CALIB 分支是故意的例外；`FX` 常量现在只是 S1 迁移源）。
+**几何数据流**：`DOC`（`ProjectDoc`：内置+用户实体，id 寻址，S1 Phase 2b 后唯一几何状态）→ `effWalls()/effFixed()/effDoors()`（文档投影，等价于旧版 Object.assign 语义）→ 2D 和 3D **共用同一份**。洁具（马桶/台盆/浴缸/淋浴/台柜/镜子）也走文档：`effFixtures()` 返回 `DOC.fixtures`（S1 迁移：图纸 px/SC → ft）——2D `drawFixtures` 换算回 px 画、3D 直接用 ft（与旧 `F2(FX)` 逐位一致，3D 截图逐字节相同）；导入户型 fixtures=[] 时 2D/3D 都不画。**S6（洁具放置工具）**：墙编辑工具条「洁具」按钮（`data-t="fx"`，`#fxCtl` 里选类型/转角）：点击空地放新件（台柜/镜子自动贴最近实墙：长边平行、法向偏移=墙半厚+件半深、rot=墙角；其余浮放）；点击已有件选中→拖移/方向键 1cm（Shift 5cm）/删（仅 `src:'user'` 件可删，内置件拒删）；2D 每件 `<g data-fx>` + `rotate()` 变换、命中区加厚；3D 每件一个 `THREE.Group`（`rotation.y = -rot·π/180`，绕占地中心，rot=0 也包组但世界坐标不变）。`Fixture` 有 `rot?:number`（度，0=轴对齐）与 `src?:'user'`（仅类型，不进 JSON schema），`DOC_DATA_VERSION=2`（v1 内置文档丢弃重迁移，13 件 rot 缺省无损）。编辑层（`wallEdit.sel={kind,id}`、`segView/winView/doorView` Proxy）直写文档实体。新增任何消费几何的代码，一律走 `eff*()`，不要直接读 `WALLS`/`FX`（`#dump` 和 CALIB 分支是故意的例外；`FX` 常量现在只是 S1 迁移源）。
 
 **投影键集合是冻结的（S1 字节等价红线）**：`docToLegacy` 输出的键必须与 legacy `eff*` 逐字节一致（fixture oracle 守着），**新的文档字段不能加进投影**（例：窗户 `style`/`frame`/`sill`/`head` 都不在 `effWalls` 投影里）。消费端需要这些字段时，用投影里的 `_id` 回查文档实体：`entById(s._id).style`（2D/3D 的窗款式渲染就是这么做的）。
 
