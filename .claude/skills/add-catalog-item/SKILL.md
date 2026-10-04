@@ -236,6 +236,7 @@ python3 .claude/skills/add-catalog-item/check-item.py --regress
 | 近看像塑料板 | 材质没贴图 → 跑 `catalog-all-textured` |
 | 彩色件变粉彩色 | `envMapIntensity` 默认 1 + clearcoat |
 | 贴图发白 | `CanvasTexture` 漏了 `encoding=sRGBEncoding` |
+| 场景渲出比商品照亮一大截（近白） | 照片像素 = albedo×摄影棚光照（实测 ~1.8×）；把受光像素当 albedo 直接写 color，再被场景光照 ×1.8 → 过曝（SC172 #505255 渲出近白） | 按**场景渲出结果**标定：调低 albedo 直到 check-item 渲染均值 ≈ 照片受光区均值（SC172 终值 #333538 → rgb(105) vs 照片 #49–#56）；采样脚本照 §5.4.3，判据是渲出图不是照片 |
 | 两个配色缩略图长一样 | 光照过曝（`physicallyCorrectLights=false` 时 three 会乘 π） |
 | 改尺寸后包围盒跟着变，调不拢 | 散件位置从 `spec.w/d` 反推了 |
 | T 脚/条形部件方向错 90° | 只看正面 3/4 图建模 | brief 写死轴向，侧视角渲染图核对 |
@@ -259,6 +260,7 @@ python3 .claude/skills/add-catalog-item/check-item.py --regress
 | 居中件偏了「一个半径」 | `C.rb`/`C.box` 的 x/z 是**中心点**不是角点：想让 11cm 块居中却写 (-5.5, 0, -5.5)，整块偏 5.5cm，上面的部件悬空（DYVLINGE 底座块） | 居中写 (0,0,0)，偏移用 ±w/2；bbox 探针「对称件整体偏半宽」就是它 |
 | 模型「不报错」但其实是通用回退造型 | `furn3D` 对注册模型的异常是 **try/catch 静默回退**（只 console.warn），mesh 是自定义+通用的混合体 | 验证探针要抓 console.warn，或数 mesh 数/三角形数对照预期；「没抛错」不是验收标准（`Object3D` 没有 `.translate()`，`mesh.translate()` 就属于这种炸法） |
 | rboxGeo 薄板退化（r ≈ h/2） | 基形先缩 2r 后基形接近扁平，圆角形状病态，成品尺寸漂移（17cm 板渲出 20.5cm） | 厚度 < 2r+余量 时改用直角 `C.box`，或选 r < h/2 留足基形厚度 |
+| rbox 的 r 逼近最窄边的一半（r≈w/2） | 基形缩 2r 后剩 ~8mm 薄片，而 roundedRectShape 的圆角半径还是大值 → 形状病态，bevel 向外膨胀回 **2× 请求宽**（SC172 扶手 13.5cm 渲出 26.8cm，填充率 113%） | 胶囊型厚薄板（r ≥ 最窄边/4）改用 `C.ext`：把圆弧点画进轮廓（bevel=null）再拉伸；否则保持 r < 最窄边/4 |
 | C.box 的 x/z 也是中心点（同 C.rb） | 想让板从 0 延伸到 w 却把 ±w/2 写成 x → 整板偏半个板长，bbox 爆 1.46×（BARLAST 十字底座两板交叉处重叠出 48cm 宽） | 居中写 (0,0,0)；要偏置写 ±w/2 而不是 ±w |
 | 旋转件的 bbox 比名义尺寸高 | `Box3.setFromObject` 按局部包围盒 8 角点算旋转体（过度估计）：60cm 板倾 3.4° 的 bbox 竖直方向多 3.6cm | 倾垫/倾斜面板的正常现象，别当成建模错误；填充率余量本就吸收它 |
 | 抓到的价格离谱 | 命中系列落地页而非商品页 |

@@ -1014,6 +1014,7 @@ requestRender();
 | centered 断言偏 ~1cm（模型含旋转件） | 归零用 `Box3.setFromObject`：旋转 mesh 按局部包围盒 8 角点算 bbox（过度估计），中心 ≠ 合并后真实顶点 bbox 中心 | 归零改按真实顶点求 bbox（traverse + `fromBufferAttribute` + `applyMatrix4`） |
 | 近看像塑料板 / 一眼假 | 材质没贴图。跑 `catalog-all-textured` 一查便知 |
 | 彩色件全变粉彩色 | `envMapIntensity` 默认 1 + clearcoat，白光罩糊了颜色 |
+| 场景渲出比商品照亮一大截（近白） | 照片像素 = albedo×摄影棚光照（实测 ~1.8×）；把受光像素当 albedo 写进 color，再被场景光照乘一遍 → 过曝（SC172 #505255 渲出近白） | 按**场景渲出结果**标定：调低 albedo 直到 check-item 渲染均值 ≈ 照片受光区均值（SC172 终值 #333538 → rgb(105) vs 照片 #49–#56）；判据是渲出图不是照片 |
 | 贴图发白 | `CanvasTexture` 忘了 `encoding = sRGBEncoding` |
 | 两个配色的缩略图长一样 | 光照过曝（`physicallyCorrectLights=false` 下 three 会乘 π） |
 | 改了尺寸后包围盒也跟着变，怎么调都对不上 | 散件位置从 `spec.w/d` 反推了，形成循环 |
@@ -1039,6 +1040,7 @@ requestRender();
 | 模型「不报错」但其实是通用回退造型 | `furn3D` 对注册模型异常是 **try/catch 静默回退**（只 console.warn），mesh 是自定义+通用的混合体 | 验证探针要抓 console.warn，或数 mesh 数/三角形数对照预期；「没抛错」不是验收标准（`Object3D` 没有 `.translate()` 方法，误调 `mesh.translate()` 就是这种炸法，改用 `geometry.translate()`） |
 | 旋转件的 bbox 比名义尺寸高 | `Box3.setFromObject` 按局部包围盒 8 角点算旋转体（过度估计）：60cm 板倾 3.4°，bbox 竖直方向多 3.6cm | 倾垫/斜面板的正常现象，别当成建模错误；填充率余量本就吸收它 |
 | rboxGeo 薄板退化（r ≈ h/2） | 基形先缩 2r 后接近扁平，圆角形状病态，成品尺寸漂移（17cm 座垫渲出 20.5cm） | 厚度 < 2r+余量 时改用直角 `C.box`，或选 r < h/2 留足基形厚度 |
+| rbox 的 r 逼近最窄边的一半（r≈w/2） | 基形缩 2r 后剩 ~8mm 薄片，roundedRectShape 的圆角半径还是大值 → 形状病态，bevel 向外膨胀回 **2× 请求宽**（SC172 扶手 13.5cm 渲出 26.8cm，填充率 113%） | 胶囊型厚薄板（r ≥ 最窄边/4）改用 `C.ext`：圆弧点画进轮廓（bevel=null）再拉伸；否则 r < 最窄边/4 |
 | 2D 符号大得离谱（比实物大 S≈22 倍） | `furnShape()` 里 px/ft 混用：`wp=wf*S` 已是 px，却传给内部又乘 S 的 `R()`（S² 双重放大）；裸 `el()` 直接吃 px、`R()` 吃 ft | 一律先用 `wf`/`df`（英尺）算几何，传给裸 `el()` 时自己乘 `S`；`R()` 只喂英尺；加新 kind 图例后在放大视图里量一下符号实际像素（见 SKILL §5） |
 | C.cyl 想当「中心在某高度」的横杆/顶杆 | C.cyl 是**底对齐**（add 时 y+h/2）：把中心高直接传给 y，144cm 杆被抬到 132cm（bbox 爆 155%）| 调用后 `m.position.y=cm(中心高)` 再转，或传 `中心高−len/2` |
 | work/ 里堆满一次性探针 HTML（用户要手动清理）| 每次调试都在 version 控制目录新建探针页、用完不删；放 /tmp 又因相对 `lib/` 路径失效不可复用 | 复用**一个**探针模板：planner.html 副本放 work/ + lib 改 `../lib`，同一命令末尾立即 `rm`；探针无输出先查页面目录与 lib 相对路径是否匹配 |
