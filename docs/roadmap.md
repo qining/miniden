@@ -73,7 +73,7 @@
 | E12 | PWA/service worker | todo |
 | E13 | 包体预算进 CI（796KB 基线） | todo（E5 的扩展） |
 | E15 | `work/` 644MB 研究产物治理：**ref/ 保留入库**（建模 source of truth），过程产物（check_*.png/tv_*.png）移出跟踪或 LFS；交付后清理政策写进 AGENTS（R8 §3.4） | todo |
-| E16 | **UI 黄金截图门禁**（R10）：`#ui` hash 模式 + 8 张黄金基线 + 像素 diff 工具（本地 ≤0.3% / CI 确定性 md5） | todo | S9 的前置 |
+| E16 | **UI 黄金截图门禁**（R10）：`#ui` hash 模式 + 8 张黄金基线 + 像素 diff 工具（本地 ≤0.3% / CI 确定性 md5） | **完**（本次提交）：`#ui:<state>` 规范化 8 态（2d / 2d-sel(Lunix 选中) / 3d / fp / night / ft / collapsed / dlg，全新内置文档+空布局+冻结光标，全 CALIB-gated）；`scripts/ui-gate.mjs`（pngjs）：截图→与 `work/golden/*.png` 比（≤0.3%、单通道容差 4），超限出红色 diff 图；`--update` 显式重拍；`--selftest` 同态双截 md5 必须一致——**本机实测 8/8 字节级确定**（含 3D/swiftshader，0.3% 留作跨 Chrome 版本余量）；npm `ui:gate` / `ui:gate:update` / `ui:gate:selftest`；窗口 1700×1100 固定（换窗口=重拍基线）。基线目检过（八态均与预期一致）；calib/bench 全绿 | S9 的前置；CI 侧（ubuntu 基线+md5 门禁）随 E5 落地 |
 
 ## 已完成（本次会话前）
 

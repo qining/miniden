@@ -9,13 +9,17 @@
     "fixtures": "node scripts/make-fixtures.mjs",
     "schema:build": "node scripts/build-schema.mjs",
     "geo:build": "node scripts/build-geo.mjs",
-    "pdf:build": "node scripts/build-pdf-lib.mjs"
+    "pdf:build": "node scripts/build-pdf-lib.mjs",
+    "ui:gate": "node scripts/ui-gate.mjs",
+    "ui:gate:update": "node scripts/ui-gate.mjs --update",
+    "ui:gate:selftest": "node scripts/ui-gate.mjs --selftest"
   },
   "devDependencies": {
     "@types/node": "^26.6.1",
     "dxf-parser": "^1.1.2",
     "esbuild": "^0.28.2",
     "pdfjs-dist": "^4.10.38",
+    "pngjs": "^7.0.0",
     "typescript": "^7.0.2",
     "vitest": "^5.0.1"
   }
