@@ -254,6 +254,7 @@ python3 .claude/skills/add-catalog-item/check-item.py --regress
 | 填充率超窗但不知哪个部件超了 | 灯环/绕线带/拉手外缘超 spec | `?nomerge` 逐 child 打 bbox 找最宽部件 |
 | CatmullRom 曲线在长直线+短弧交界处过冲 | 长段只给两个端点，切线被大段拉偏（NIPÅSEN 侧框外溢 0.4cm） | 长直线段按 ~40cm 间隔加密中间点再建 CatmullRomCurve3 |
 | 自建 `BufferGeometry`（扫掠/旋转体）渲成纯色平板 | 只设 `position`，没有 `uv` → 所有面采样 (0,0)（Murphy 桶壳第一版） | 自建几何必须设 `uv`；扫掠体按真实弧长铺（u=环向累计弧长/TILE，v=剖面累计弧长/TILE，TILE≈40cm）；盖面用独立顶点+平面 UV，共享顶点会把扇形拉成放射状 |
+| 盖面贴图变条纹 / 隆起顶面出放射折痕 | 水平盖面用面内基算 UV → 环上所有点 y 相同 → v≈0，贴图采样成一条线；单 apex 扇形盖面沿半径辐射 | 盖面 UV 按法线分派：水平盖面用 `(x/TILE, z/TILE)`，径向盖面才用面内基；隆起盖面用同心环逐层收向中心（`lift=dome·sin(f·π/2)`） |
 | 曲线点忘乘 `cm()`（cm 值被当英尺） | 钩子/管件突然放大 ~30 倍，bbox 爆到 200%+（NIPÅSEN 钩子 395cm） | 手建 Vector3 曲线点与 `C.box`/`C.cyl` 参数一样逐个 `cm()`；填充率体检能抓 |
 | 已换算值再包一层 `cm()`（双重转换） | 部件缩小 30 倍几乎看不见（Lil' Kick 轮胎/轮毂/花瓣半径 0.1cm，轮子只剩一圈幽灵） | 参数已是英尺（如 `R=cm(7.5)`）就直接用 `R`、`0.43*R`，不要再套 `cm()`；渲染图里「该大的部件很小」先查这个 |
 | Group/holder 里的 `C.rb`/`C.cushion` 子件被抬高半高 | 后仰垫/腰枕整体偏高一半厚度（8 件沙发全部 y 溢出 114~128%） | 子件局部几何是 **y 0..h 底对齐**（不是居中）；要绕中心旋转先 `child.position.y -= cm(h/2)` 再进 holder |

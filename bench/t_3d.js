@@ -227,7 +227,7 @@ async function run3DTest(){
       const v=new THREE.Vector3(); g2.traverse(o=>{ if(o.isMesh&&o.geometry){ const p=o.geometry.attributes.position; for(let i=0;i<p.count;i++){ v.fromBufferAttribute(p,i).applyMatrix4(o.matrixWorld);
         if(v.y*30.48>ylo && v.y*30.48<yhi && v.z<0){ a=Math.min(a,v.x*30.48); b=Math.max(b,v.x*30.48); } } } }); return b-a; };
     const wTop=regW(70,77), wLow=regW(9,13);
-    T('murphy-shell-tapers', wTop>wLow*1.15 && wTop<wLow*1.45, '背壳顶部宽 '+wTop.toFixed(1)+'cm vs 底部 '+wLow.toFixed(1)+'cm（g6 实测 79.3 vs 61.5）');
+    T('murphy-shell-tapers', wTop>wLow*1.15 && wTop<wLow*1.45, '背壳顶部宽 '+wTop.toFixed(1)+'cm vs 底部 '+wLow.toFixed(1)+'cm（g6 逐行拟合 79.0@72.7 → 66.3@16.7）');
     const g3=furn3D({uid:-3,ref:mp.id,x:0,y:0,rot:0},mp); g3.updateMatrixWorld(true);
     let backTop=-1e9, armTop=-1e9, frontTop=-1e9, seatTop=-1e9, ffZ=-1e9, ffY0=1e9, ffY1=-1e9; const v3=new THREE.Vector3();
     g3.traverse(o=>{ if(o.isMesh&&o.geometry){ const p=o.geometry.attributes.position; for(let i=0;i<p.count;i++){ v3.fromBufferAttribute(p,i).applyMatrix4(o.matrixWorld);
