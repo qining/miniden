@@ -8,7 +8,7 @@ async function run3DTest(){
   const origCap=Element.prototype.setPointerCapture;
   Element.prototype.setPointerCapture=function(id){ try{ origCap.call(this,id); }catch(e){} };
   try{
-    try{ localStorage.removeItem('planner_v1'); }catch(e){}
+    try{ localStorage.removeItem(ITEMS_KEY); }catch(e){}
     state.items=[]; save=()=>{};
     const _fb=floorPts(), _xs=_fb.map(p=>p[0]), _ys=_fb.map(p=>p[1]);
     const CX3=(Math.min(..._xs)+Math.max(..._xs))/2, CY3=(Math.min(..._ys)+Math.max(..._ys))/2;
@@ -463,13 +463,13 @@ async function run3DTest(){
   T('s4-pano-deterministic', JSON.stringify([px5(100,100),px5(1000,500),px5(1900,900)])===JSON.stringify(p0), 're-gen identical');
   setDayNight(true); await wait(100);
   T('s4-dn-persist', DOC.env.mode==='night' && three.night===true &&
-    JSON.parse(localStorage.getItem('planner_doc_v1')).env.mode==='night', JSON.stringify(DOC.env));
+    JSON.parse(localStorage.getItem(DOC_KEY)).env.mode==='night', JSON.stringify(DOC.env));
   setDayNight(false); await wait(100);
   T('s4-dn-restore', DOC.env.mode==='day' && three.night===false &&
-    JSON.parse(localStorage.getItem('planner_doc_v1')).env.mode==='day');
+    JSON.parse(localStorage.getItem(DOC_KEY)).env.mode==='day');
   setPreset('suburban'); await wait(100);
   T('s4-preset-persist', DOC.env.preset==='suburban' && three.preset==='suburban' &&
-    JSON.parse(localStorage.getItem('planner_doc_v1')).env.preset==='suburban' &&
+    JSON.parse(localStorage.getItem(DOC_KEY)).env.preset==='suburban' &&
     three.panorama===panorama('suburban',false), JSON.stringify(DOC.env));
   T('s4-preset-btn', document.querySelector('#envSub').classList.contains('on') &&
     !document.querySelector('#envCity').classList.contains('on'));
@@ -478,7 +478,7 @@ async function run3DTest(){
     document.querySelector('#envSea').classList.contains('on'));
   setPreset('seattle-city'); setDayNight(false); await wait(100);
   T('s4-restore-default', DOC.env.preset==='seattle-city' && DOC.env.mode==='day' && !three.night &&
-    JSON.parse(localStorage.getItem('planner_doc_v1')).env.preset==='seattle-city');
+    JSON.parse(localStorage.getItem(DOC_KEY)).env.preset==='seattle-city');
   // ===== S6：3D 洁具（每件一个 Group；rot 绕占地中心）=====
   {
     const f0=DOC.fixtures[0];

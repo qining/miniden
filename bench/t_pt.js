@@ -8,7 +8,7 @@ async function runPT(){
   const T=(n,ok,x)=>log.push((ok?'PASS':'FAIL')+' '+n+(x!==undefined?' | '+x:''));
   const wait=(ms)=>new Promise(r=>setTimeout(r,ms||150));
   try{
-    try{ localStorage.removeItem('planner_v1'); }catch(e){}
+    try{ localStorage.removeItem(ITEMS_KEY); }catch(e){}
     // 光追要在「有家具的客厅」上测，空屋测不出真实的 BVH 规模和光源数量
     state.items=[]; save=()=>{};
     // S10：布局锚定「客厅」标签中心，坐标全是相对锚点的偏移（ft）→ plan-independent，

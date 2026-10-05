@@ -51,6 +51,23 @@ if (geoEmbedded !== freshGeo) {
 }
 console.log('  geo: 嵌入块与 src/geo/ 最新编译一致');
 
+// --- S10：校验嵌入的 #miniden-plan 块 == data/plans/generic.json（入库版唯一事实来源）---
+// 两者静默分叉的话，CI 跑的户型和 data/ 里的不是同一个，查起来很贵。
+{
+  const PSTART = '<script type="application/json" id="miniden-plan">\n';
+  const PEND = '\n</script>';
+  const pa = html.indexOf(PSTART);
+  if (pa < 0) throw new Error('planner.html 缺 <script type="application/json" id="miniden-plan">');
+  const pb = html.indexOf(PEND, pa);
+  const embPlan = JSON.parse(html.slice(pa + PSTART.length, pb));
+  const genPlan = JSON.parse(readFileSync(join(root, 'data/plans/generic.json'), 'utf8'));
+  if (JSON.stringify(embPlan) !== JSON.stringify(genPlan)) {
+    console.error('✗ planner.html 的 #miniden-plan 块与 data/plans/generic.json 不一致（入库版必须是 generic）。');
+    process.exit(1);
+  }
+  console.log('  plan: 嵌入块与 data/plans/generic.json 一致');
+}
+
 // --- 抽取内联脚本（唯一的裸 <script> 标签）---
 const START = '<script>\n';
 const i = html.indexOf(START);

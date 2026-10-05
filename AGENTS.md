@@ -204,6 +204,14 @@ open('/tmp/planner_check.js','w').write(m.group(1))
 **ui-gate 截 dist 不是 source**（source 里是 generic plan，对 mine 基线必然 18%+ 假红）。
 标题/样式有意改动后 `--update` 重拍（显式动作，提交信息里说明）。
 
+**`--update` 之后的「8/8 @ 0.0000%」什么都不证明**（P1 实测踩过）：基线被重拍成
+「改动后的样子」，回归就被焊进基线里了。**重构类改动（plan 外部化/模块化/重排）
+的验收不能只看 ui-gate**，要对**改动前的版本**独立做一次像素对比：
+`git show HEAD~1:planner.html > _prev.html` → 同窗口同 `#ui:<state>` 各截一张 →
+pngjs 逐像素比。P1 那次就是这样才抓到「2D 0.79% / 3D 1.23%」的真回归
+（基线 mtime 比 diff 图还新 = 跑红之后补拍的，是个有用的取证信号）。
+改完记得 `rm _prev.html`。
+
 ### 运行
 
 ```bash
@@ -316,6 +324,8 @@ sips -z 高 宽 /tmp/x.png --out /tmp/x_big.png               # 放大
 | **viewBox 单位 = ft×S**（所有 2D 绘制都乘 S） | `fit2DToContent` 直接用 ft 算 bbox → 导入后视图放大 S（22）倍，用户只见一个墙角（S5 潜在 bug，S6 bench 才暴露） | 任何写 viewBox 的代码都用 ft×S 单位；拿不准就和初始 viewBox（1232×1012 = 56×46 ft × 22）对量纲 |
 | **plan 坐标末位漂移 → auto-fit 视图整体位移**（S10） | Python/手算的 `px/11.2` 与浏览器 V8 逐位不同（末位 1 ulp）：calib（固定像素管线）看不出来，但 **2D auto-fit viewBox / 3D 相机取景**的 extent 变了 → 整体平移 → ui-gate 18~53% 假红，症状极像「UI 崩了」 | plan JSON 一律**用 node eval 原版代码提取**（V8 对 V8 逐位一致），再用 `#dump`/页面内探针与浏览器运行时值全字段比对（JSON.stringify 相等才算过） |
 | **calib 底图 w/h 写成文件分辨率**（2048×1370，实为 591×480 图纸 px） | SVG `<image>` 按 w/h 铺：放大 3.5 倍后潎满全画布，calib md5 整体变掉（diff 197k 像素、全画布、非位移） | 底图尺寸是**图纸 px**（与 viewBox 同量纲）；改 calib 字段后立刻跑 §1.1 md5 |
+| **把几何外置成 plan 数据时漏掉「某户型专属」的硬编码构件**（P1 实测：3D 落地窗带钢梁 `C(x1,y1)…` + 2D 黑方块示意 + 阳台楔形补板 + 中岛标签位） | 只按 `docImported()` 门控、不按 plan 门控 → 换个户型照画不误：钢梁斜穿整个户型，看着像「地板和墙错位」；而且真实坐标还留在公开文件里 | 外置几何后 `grep -nE 'C\([0-9]'`（以及任何裸数字坐标）扫一遍消费端，每处问「这是所有户型都有的，还是某一户专属？」——专属的一律挪进 plan JSON 并用 `PLAN.xxx` 存在性门控；验收：**generic 户型目检 2D+3D**（mine 全绿不代表 generic 没炸） |
+| **localStorage 存档不带户型标识**（P1：`planner_v1`/`planner_doc_v1` 单桶） | plan 外置后，mine 的存档被原样回放到 generic 上（斜墙/阳台/柱 + 满屋家具叠在通用户型里）；用户以为「渲染坏了」 | 键按户型指纹分桶（`planner_doc_v1:<fp>`，fp = name+sc+floorpts+walls 的 hash）；旧单桶键**只读兼容且不删**（它属于另一份户型，删了就是毁用户数据），采用前用 `docMatchesPlan()` 逐坐标核对内置实体 |
 | bench 里顶层 `const` 命名撞已有声明（bx1/bx 等） | 整段 bench SyntaxError、一行不跑，症状 = NO TEST OUTPUT | bench 是新代码但跑在既有函数作用域里：新变量名先 grep 一遍 bench 全文再定 |
 
 ### 5.2 浏览器/three.js 类
