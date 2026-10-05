@@ -1074,6 +1074,7 @@ requestRender();
 | 多件套装「嵌套」和「总宽」矛盾 | 例：60+30=90 恰等于 spec 宽时，嵌套必然总宽不足 | 建模前先算整组 bbox span，选偏移落在 92~102% 填充窗内（VITTSJÖ 套几解法：span 85=94%） |
 | 填充率超窗但不知哪个部件超了 | 灯环/绕线带/拉手这类细件外缘超出 spec | 别盲调参数：`?nomerge` 逐 child 打 bbox，找出最宽部件（VIDJA 铬环 R 13.1→12.5） |
 | CatmullRom 曲线在长直线+短弧交界处过冲 | 长直线段只给两个端点，切线估计被大段拉偏，管壁越出路径（NIPÅSEN 圆角侧框外溢 0.4cm） | 长直线段按 ~40cm 间隔加密中间点再建 CatmullRomCurve3 |
+| 自建 `BufferGeometry`（扫掠/旋转体）渲成**纯色平板**，贴图完全看不见 | 只设了 `position`，没有 `uv` 属性 → 所有面采样 (0,0)，贴图等于一个色块（Henredon Murphy 桶壳第一版） | 自建几何必须 `geo.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(uv),2))`；扫掠体按**真实弧长**铺 UV（u=环向累计弧长/TILE，v=剖面累计弧长/TILE），TILE 取实物尺寸（如 40cm）否则纹理密度随半径变化；盖面用**独立顶点 + 平面 UV**，共享顶点会让扇形被侧壁 UV 拉成放射状 |
 | 手建曲线点忘乘 `cm()`（cm 值被当英尺） | 钩子/管件放大 ~30 倍，bbox 爆到 200%+（NIPÅSEN J 钩撑到 395cm） | `Vector3` 曲线点与 `C.box`/`C.cyl` 参数一样逐个 `cm()`；填充率体检能立刻抓住 |
 | 已换算值再包一层 `cm()`（双重转换） | 部件缩小 30 倍几乎看不见（Lil' Kick 轮胎/轮毂/花瓣半径缩到 0.1cm，轮子只剩幽灵圈） | 参数已是英尺（`R=cm(7.5)`）就直接用 `R`、`0.43*R`，不再套 `cm()`；渲染里「该大的部件很小」先查这个 |
 | Group/holder 里的 `C.rb`/`C.cushion` 子件被抬高半高 | 后仰垫/腰枕整体偏高半厚（8 件沙发全部 y 溢出 114~128%） | 子件局部几何是 **y 0..h 底对齐**（不是居中）；要绕中心旋转先 `child.position.y -= cm(h/2)` 再进 holder |

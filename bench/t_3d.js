@@ -201,6 +201,39 @@ async function run3DTest(){
     T('aldryn-panel-on-left-arm', !!plate && plate.x0<-halfW2+cm2ft(1.5) && plate.x1>-halfW2-cm2ft(1.5)
       && plate.y0*30.48>35 && plate.y1*30.48<50 && plate.z1>halfD2-cm2ft(20),
       '面板 x['+(plate?(plate.x0*30.48).toFixed(1):'?')+','+(plate?(plate.x1*30.48).toFixed(1):'?')+']cm（扶手外缘 '+(halfW2*30.48).toFixed(1)+'）· y['+(plate?(plate.y0*30.48).toFixed(1):'?')+','+(plate?(plate.y1*30.48).toFixed(1):'?')+']cm');
+    // Henredon Murphy 桶形旋转椅（bouclé）：Cream/Gray 共用 model，木底座、向下收窄、waterfall 顶边
+    const mp=CATALOG.find(c=>c.id==='murphy-0'), mp1=CATALOG.find(c=>c.id==='murphy-1');
+    T('murphy-in-catalog', !!mp && !!mp1 && mp.model===mp1.model && mp.kind==='tubChair'
+      && mp.price==299.99 && mp.priceCA==449.99 && !!mp.caVar && mp.color!==mp1.color,
+      'Cream '+ (mp?mp.color:'?') + ' / Gray ' + (mp1?mp1.color:'?') + ' 共用 model=murphy');
+    const mpFit=(()=>{ const sp=mp, g=furn3D({uid:-1,ref:sp.id,x:0,y:0,rot:0},sp); g.updateMatrixWorld(true);
+      const bb=new THREE.Box3(), v=new THREE.Vector3(), mats={};
+      g.traverse(o=>{ if(o.isMesh&&o.geometry){ const key=o.material.color.getHexString(); const m=mats[key]||(mats[key]={x0:1e9,x1:-1e9,y0:1e9,y1:-1e9,z0:1e9,z1:-1e9});
+        const p=o.geometry.attributes.position; for(let i=0;i<p.count;i++){ v.fromBufferAttribute(p,i).applyMatrix4(o.matrixWorld);
+          bb.expandByPoint(v); m.x0=Math.min(m.x0,v.x); m.x1=Math.max(m.x1,v.x); m.y0=Math.min(m.y0,v.y); m.y1=Math.max(m.y1,v.y); m.z0=Math.min(m.z0,v.z); m.z1=Math.max(m.z1,v.z); } } });
+      return {bb, mats}; })();
+    const mpSz=new THREE.Vector3(); mpFit.bb.getSize(mpSz);
+    T('murphy-fits-footprint', mpSz.x/cm2ft(mp.w)>0.92 && mpSz.x/cm2ft(mp.w)<1.02 && mpSz.z/cm2ft(mp.d)>0.92 && mpSz.z/cm2ft(mp.d)<1.02 && mpSz.y/cm2ft(mp.h)>0.92 && mpSz.y/cm2ft(mp.h)<1.02,
+      'w '+mpSz.x*30.48+' / d '+mpSz.z*30.48+' / h '+mpSz.y*30.48+' vs '+mp.w+'/'+mp.d+'/'+mp.h);
+    const mpC=new THREE.Vector3(); mpFit.bb.getCenter(mpC);
+    T('murphy-centered', Math.abs(mpC.x)<0.02 && Math.abs(mpC.z)<0.02, 'center '+mpC.x.toFixed(3)+','+mpC.z.toFixed(3));
+    T('murphy-on-floor', mpFit.bb.min.y>-0.02, 'min y '+mpFit.bb.min.y);
+    const wood=mpFit.mats['8b6a45'];
+    T('murphy-wood-pedestal', !!wood && wood.y0*30.48<0.6 && wood.y1*30.48>9 && wood.y1*30.48<13
+      && (wood.x1-wood.x0)*30.48>47 && (wood.x1-wood.x0)*30.48<52, '底座 y['+(wood?wood.y0*30.48:0)+','+(wood?wood.y1*30.48:0)+']cm 宽 '+(wood?((wood.x1-wood.x0)*30.48).toFixed(1):0)+'cm（Ø50.2）');
+    const mHalfW2=cm2ft(mp.w)/2, mHalfD2=cm2ft(mp.d)/2;
+    const regW=(ylo,yhi)=>{ let a=1e9,b=-1e9; const g2=furn3D({uid:-2,ref:mp.id,x:0,y:0,rot:0},mp); g2.updateMatrixWorld(true);
+      const v=new THREE.Vector3(); g2.traverse(o=>{ if(o.isMesh&&o.geometry){ const p=o.geometry.attributes.position; for(let i=0;i<p.count;i++){ v.fromBufferAttribute(p,i).applyMatrix4(o.matrixWorld); if(v.y*30.48>ylo && v.y*30.48<yhi){ a=Math.min(a,v.x*30.48); b=Math.max(b,v.x*30.48); } } } }); return b-a; };
+    const wTop=regW(66,77), wLow=regW(14,26);
+    T('murphy-shell-tapers', wTop>wLow*1.15 && wTop<wLow*1.45, '顶部宽 '+wTop.toFixed(1)+'cm vs 下部 '+wLow.toFixed(1)+'cm（g6 实测 79.3 vs 61.5）');
+    const g3=furn3D({uid:-3,ref:mp.id,x:0,y:0,rot:0},mp); g3.updateMatrixWorld(true);
+    let backTop=-1e9, frontTop=-1e9, seatTop=-1e9; const v3=new THREE.Vector3();
+    g3.traverse(o=>{ if(o.isMesh&&o.geometry){ const p=o.geometry.attributes.position; for(let i=0;i<p.count;i++){ v3.fromBufferAttribute(p,i).applyMatrix4(o.matrixWorld);
+      const y=v3.y*30.48; if(y>12){ if(v3.z<-mHalfD2*0.5) backTop=Math.max(backTop,y); if(v3.z>mHalfD2*0.5) frontTop=Math.max(frontTop,y); }
+      const rr=Math.hypot(v3.x/mHalfW2, v3.z/mHalfD2);            // 归一化半径：外壳内壁/座垫外缘 ≈0.67
+      if(y>44 && y<52 && rr<0.75) seatTop=Math.max(seatTop,y); } } });
+    T('murphy-waterfall-top', backTop>frontTop+8 && backTop>74 && backTop<77, '后顶 '+backTop.toFixed(1)+'cm vs 前顶 '+frontTop.toFixed(1)+'cm（官方 H 76.46 / 扶手 64.0）');
+    T('murphy-seat-surface', seatTop>45 && seatTop<51, '座面最高 '+seatTop.toFixed(1)+'cm（官方座高 48.0）');
     const laett=CATALOG.find(c=>c.id==='laett-0');
     const laettFit = (()=>{
       const g=furn3D({uid:-113,ref:laett.id,x:0,y:0,rot:0}, laett);
