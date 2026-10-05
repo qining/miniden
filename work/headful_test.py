@@ -123,7 +123,7 @@ def main():
     # 第三个参数可以只截断采样数，保留该档的弹射次数和分辨率——
     # 验证「单块会不会踩看门狗」不需要等它收敛完
     spp_arg = sys.argv[3] if len(sys.argv) > 3 else 'undefined'
-    lay = json.load(open(f'{ROOT}/work/layouts/{name}.json', encoding='utf-8'))['items']
+    lay = json.load(open(f'{ROOT}/private/layouts/{name}.json', encoding='utf-8'))['items']
     layarr = [[i['ref'], i['x'], i['y'], i.get('rot', 0)] for i in lay]
 
     src = open(f'{ROOT}/planner.html', encoding='utf-8').read()

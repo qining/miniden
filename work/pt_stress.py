@@ -4,7 +4,7 @@
   python3 work/pt_stress.py                 # 全部 4 套
   python3 work/pt_stress.py D_极限堆料 8 8800   # 指定布局 / spp / 像素数
 
-布局也导出成了 work/layouts/*.json，可以直接用界面上的「导入布局」载进去手动看。
+布局也导出成了 private/layouts/*.json，可以直接用界面上的「导入布局」载进去手动看。
 
 重点看：分块标定选了几乘几、单块耗时、是否上下文丢失、实际完成的 spp 是否等于请求值。
 """

@@ -2,13 +2,13 @@
 /* E16 — UI 黄金截图门禁（R10 关 C 的实现）
  *
  * 用法：
- *   node scripts/ui-gate.mjs                 # 8 个 #ui:* 状态全部截图并与 work/golden/ 基线比对
+ *   node scripts/ui-gate.mjs                 # 8 个 #ui:* 状态全部截图并与 private/golden/ 基线比对
  *   node scripts/ui-gate.mjs --update        # 重拍基线（显式动作！改样式的 PR 必须贴新旧对比）
  *   node scripts/ui-gate.mjs 2d night        # 只跑指定状态
  *   node scripts/ui-gate.mjs --selftest      # 同一状态截两次，md5 必须一致（本机确定性体检）
  *
  * 规则（R10）：
- *   本地：像素 diff 比例 ≤0.3% 为 PASS；超限输出 diff 图（差异像素标红）到 work/golden/
+ *   本地：像素 diff 比例 ≤0.3% 为 PASS；超限输出 diff 图（差异像素标红）到 private/golden/
  *   CI：  黄金基线由 CI 环境生成；同代码两次渲染 md5 必须一致（--selftest 即其本地等价物）
  *
  * 环境（CI 适配）：

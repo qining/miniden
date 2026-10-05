@@ -2,7 +2,8 @@
 /* =====================================================================
    scripts/make-fixtures.mjs — 从 planner.html 提取真实几何数据 → tests/fixtures/
 
-   生成 legacy-geo.json：
+   生成 tests/fixtures/legacy-geo.json（从当前 source plan 提取；
+   隐私边界后 source = 通用户型 → 生成物可安全入库；本地 mine plan 请用 --out private/fixtures/）：
    - legacy: 内置几何原文（WALLS/INNER/DOORS/FIXED/LABELS/FX/PATIO/ISL，SC 换算后 ft）
    - effEmpty: 空 USERGEO 时 legacy eff* 的输出（基线）
    - effUser: 合成 USERGEO（覆盖/隐藏/新增，含用户手绘 'd'/'o' 开口段）时的 eff* 输出

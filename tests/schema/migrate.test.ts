@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
@@ -13,7 +13,7 @@ import { validate } from '../../src/schema/project';
 
        docToLegacy(migrate(legacy, userGeo))  ≡  effWalls/effFixed/effDoors()
 
-   对照基准 = tests/fixtures/legacy-geo.json（scripts/make-fixtures.mjs 从
+   对照基准 = private/fixtures/legacy-geo.json（scripts/make-fixtures.mjs 从
    planner.html 原文提取的 eff* 真实输出）。两个场景：空 USERGEO、合成
    USERGEO（覆盖/隐藏/新增）。逐字段相等（含 _src/_i）——浮点原样透传，
    所以是精确比较（JSON 序列化串比），不是近似。
@@ -23,7 +23,10 @@ import { validate } from '../../src/schema/project';
    ===================================================================== */
 
 const root = path.dirname(path.dirname(path.dirname(fileURLToPath(import.meta.url))));
-const fx = JSON.parse(readFileSync(path.join(root, 'tests/fixtures/legacy-geo.json'), 'utf8'));
+const fxPath = path.join(root, 'private/fixtures/legacy-geo.json');
+const fx: any = existsSync(fxPath) ? JSON.parse(readFileSync(fxPath, 'utf8')) : null;
+// 私有几何 fixture 缺失（CI / 公开环境）→ 整文件 skip；本地开发机 → 全量跑
+const d = fx ? describe : (describe.skip as typeof describe);
 
 const toLegacy = (scenario: 'empty' | 'user'): LegacyGeo => ({
   sc: fx[scenario].meta.sc,
@@ -45,7 +48,7 @@ function checkEquivalence(userGeo: LegacyUserGeo, expected: { walls: unknown[]; 
   expect(stripId(proj.doors)).toBe(stripId(expected.doors as object[]));
 }
 
-describe('migrate → docToLegacy ≡ eff*（空 USERGEO）', () => {
+d('migrate → docToLegacy ≡ eff*（空 USERGEO）', () => {
   it('三条 eff* 输出逐字段相等（72 链段 + 21 实心块 + 10 门扇，含 _src/_i）', () => {
     checkEquivalence(EMPTY_USERGEO, fx.empty.eff as never);
   });
@@ -86,7 +89,7 @@ describe('migrate → docToLegacy ≡ eff*（空 USERGEO）', () => {
   });
 });
 
-describe('migrate → docToLegacy ≡ eff*（合成 USERGEO：覆盖/隐藏/新增）', () => {
+d('migrate → docToLegacy ≡ eff*（合成 USERGEO：覆盖/隐藏/新增）', () => {
   const userGeo = fx.user.userGeo as LegacyUserGeo;
 
   it('三条 eff* 输出逐字段相等（_i 来自原 USERGEO 数组下标）', () => {

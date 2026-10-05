@@ -41,3 +41,6 @@ work/t_pt_dist.html
 src/schema/dist-schema.js
 work/golden/shots/
 work/golden/diff-*.png
+
+# 隐私：公寓照片/底图/裁剪/私有基线/私有 bench（2026-09 隐私边界：CI/public 永远不含）
+private/
