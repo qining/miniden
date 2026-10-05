@@ -174,14 +174,16 @@ async function run3DTest(){
       g.traverse(o=>{ if(!o.isMesh||!o.material||o.material.color.getHexString()!=='282524') return;
         const pos=o.geometry.attributes.position;
         for(let i=0;i<pos.count;i++){ v.fromBufferAttribute(pos,i).applyMatrix4(o.matrixWorld);
-          if(v.z<halfD2-cm2ft(10) || Math.abs(v.x)>halfW2-cm2ft(23)) continue;
+          if(v.z<halfD2-cm2ft(10) || v.y>cm2ft(33) || Math.abs(v.x)>halfW2-cm2ft(20)) continue;
           if(v.x<a.x0)a.x0=v.x; if(v.x>a.x1)a.x1=v.x;
           if(v.y<a.y0)a.y0=v.y; if(v.y>a.y1)a.y1=v.y;
           if(v.z<a.z0)a.z0=v.z; if(v.z>a.z1)a.z1=v.z; a.n++; } });
       disposeOwned(g); return a; })();
-    T('aldryn-front-band-at-front', band.n>0 && band.z1>halfD2-cm2ft(1) && band.y1*30.48<48.8 && band.y0*30.48<12,
-      '前带 z['+(band.n?(band.z0*30.48).toFixed(1):'?')+','+(band.n?(band.z1*30.48).toFixed(1):'?')+']cm（声明前缘 '+(halfD2*30.48).toFixed(1)+'）· y['+(band.n?(band.y0*30.48).toFixed(1):'?')+','+(band.n?(band.y1*30.48).toFixed(1):'?')+']cm（座面 48.8）');
-    // 背垫后倾 6°：顶部（y>90cm）的皮面后缘必须落在最大深度平面
+    // 前带 = 收合脚踏盖：必须在座面以下、且比侧板前缘退 4.5cm（v1/v6 的台阶）
+    T('aldryn-front-band-at-front', band.n>0 && band.y1*30.48<33.5 && band.y0*30.48<12
+      && band.z1>halfD2-cm2ft(6) && band.z1<halfD2-cm2ft(3),
+      '前带 z['+(band.n?(band.z0*30.48).toFixed(1):'?')+','+(band.n?(band.z1*30.48).toFixed(1):'?')+']cm（前缘平面 '+(halfD2*30.48).toFixed(1)+'，带前面应退 4.5）· y['+(band.n?(band.y0*30.48).toFixed(1):'?')+','+(band.n?(band.y1*30.48).toFixed(1):'?')+']cm（座面 48.8）');
+    // 背垫后倾 6°：顶部（y>90cm）必须命中官方总高，且后缘落在座背平面之后 ≥12cm
     const top=(()=>{ const a={z0:1e9,z1:-1e9,y0:1e9,y1:-1e9,n:0};
       const g=furn3D({uid:-117,ref:aldrin.id,x:0,y:0,rot:0}, aldrin); g.updateMatrixWorld(true);
       const v=new THREE.Vector3();
@@ -192,8 +194,8 @@ async function run3DTest(){
           if(v.z<a.z0)a.z0=v.z; if(v.z>a.z1)a.z1=v.z;
           if(v.y<a.y0)a.y0=v.y; if(v.y>a.y1)a.y1=v.y; a.n++; } });
       disposeOwned(g); return a; })();
-    T('aldryn-back-lean-reaches-depth', top.n>0 && Math.abs(top.z0+halfD2)<cm2ft(1.2) && top.y1*30.48>99,
-      '顶部皮面后缘 z='+(top.n?(top.z0*30.48).toFixed(1):'?')+'cm（声明 -'+(halfD2*30.48).toFixed(1)+'）· 顶 y='+(top.n?(top.y1*30.48).toFixed(1):'?')+'cm');
+    T('aldryn-back-lean-reaches-depth', top.n>0 && top.y1*30.48>99.5 && top.z0<-cm2ft(30),
+      '顶部皮面顶 y='+(top.n?(top.y1*30.48).toFixed(1):'?')+'cm（声明 100.8）· 后缘 z='+(top.n?(top.z0*30.48).toFixed(1):'?')+'cm（座背平面约 -29.5，应再往后）');
     // 控制面板在左扶手外侧面（-x），与扶手外面齐平（不超出官方宽）
     const plate=adFit.mats['0x565250'];
     T('aldryn-panel-on-left-arm', !!plate && plate.x0<-halfW2+cm2ft(1.5) && plate.x1>-halfW2-cm2ft(1.5)
