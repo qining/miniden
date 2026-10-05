@@ -221,6 +221,10 @@ const origCap=Element.prototype.setPointerCapture;
 Element.prototype.setPointerCapture=function(id){ try{ origCap.call(this,id); }catch(e){} };
 ```
 
+**断言按钮「开/关」状态要先读当前值再断言翻转**：别的代码路径可能已经切过它
+（实测：进编辑墙体会自动开底图对照，bench 再点按钮断言 `.on` 就反了）。
+写成 `before = el.classList.contains('on'); el.click(); assert contains('on') === !before`。
+
 **断言里不要写死材质颜色常量**——改了材质就会假失败。已经因为这个踩过两次（门材质调色后测试红）。要么断言结构（mesh 数量、类型），要么改材质时同步更新测试常量。
 
 ---
