@@ -55,7 +55,7 @@
 | `docs/research/01–10` | 需要「依据」时（各结论的调研过程/数据） |
 | `docs/design/` | 户型输入 → 3D 的设计总文档 |
 
-**当前位置**：R1–R10 研究全部完成；S1/S2/S4a/S5/S5b/S6/S7 全部落地（导入三通道：DXF / PDF 向量 / 图片底图+特征线磁吸）。下一步 = **S9（UI Warm Dark，先 E16 黄金门禁）**或 E5/E14/E10 工程项；S8（ML）v2+。加目录条目照 §8.1 / skill 走。
+**当前位置**：R1–R10 研究全部完成；S 系列全部落地（S1–S7 + S9 Warm Dark 2a–2d：暖炭/琥珀 token、MiniDen 品牌、渐进披露「工具 ⌄」第二层、间距/Tab 序审计）。下一步 = **E5（GitHub Actions CI）**或 E14（快捷 SLO 套件）/ E10（IndexedDB）；S8（ML）v2+。加目录条目照 §8.1 / skill 走。
 
 ---
 
