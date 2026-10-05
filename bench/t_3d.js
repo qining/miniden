@@ -243,6 +243,17 @@ async function run3DTest(){
     T('murphy-cushion-protrudes', ffZ>mHalfD2*30.48-2 && ffY0<13 && ffY1>40,
       '座垫前立面 z='+ffZ.toFixed(1)+'cm（足迹最前 '+(mHalfD2*30.48).toFixed(1)+'）· 高 '+ffY0.toFixed(1)+'→'+ffY1.toFixed(1)+'cm');
     T('murphy-seat-surface', seatTop>45 && seatTop<51, '座面最高 '+seatTop.toFixed(1)+'cm（官方座高 48.0）');
+    // 遮挡：从 45° 仰角前左方向向「应当被座垫盖住的点」（木盘顶面中心）打射线。
+    // Raycaster 按 material.side 跳过背面，所以法线朝内（被剔除）时这条会打穿座垫命中木。
+    // 参考图里木盘只有前口下方一弯月牙（v2 受光木区 29.1×6.8cm），不是整块可见圆盘。
+    const ray=new THREE.Raycaster();
+    const camP=new THREE.Vector3(-3.46,3.46,3.46);            // 45° 仰角、前左
+    const tgt=new THREE.Vector3(0, cm2ft(8.8), 0);            // 木盘顶面中心
+    ray.set(camP, tgt.clone().sub(camP).normalize());
+    const hits=ray.intersectObject(g3, true);
+    const hm=hits.length? hits[0].object.material.color.getHexString() : 'none';
+    T('murphy-base-hidden-from-45deg', hits.length>0 && hm!=='8b6a45',
+      '首个命中材质 '+hm+'（木=8b6a45）· 距离 '+(hits.length?hits[0].distance.toFixed(2):'-')+'ft');
     const laett=CATALOG.find(c=>c.id==='laett-0');
     const laettFit = (()=>{
       const g=furn3D({uid:-113,ref:laett.id,x:0,y:0,rot:0}, laett);

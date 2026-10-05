@@ -60,7 +60,9 @@ def run_chrome(page_path, budget, size, extra=None):
            '--dump-dom', f'--virtual-time-budget={budget}', f'--window-size={size}']
     if extra:
         cmd += extra
-    cmd.append('file://' + page_path)
+    # ?nomerge：合并会新建 BufferGeometry，把建模时写在 geometry.userData 上的绕序标记丢掉，
+    # 所以绕序断言必须看未合并的网格。合并只改 draw call，不改画面，其它断言不受影响。
+    cmd.append('file://' + page_path + '?nomerge')
     kill_mine()
     r = subprocess.run(cmd, capture_output=True, text=True, timeout=budget / 1000 + 180)
     kill_mine()
@@ -114,6 +116,15 @@ window.addEventListener('load', ()=>{ setTimeout(async ()=>{
     P('材质都有法线贴图', noNrm===0, noNrm? noNrm+'/'+need+' 个没有 normalMap' : 'ok');
     P('三角形数 500~40000', tri>=500&&tri<=40000, Math.round(tri)+' 面 · '+mats.size+' 种材质');
     if(tri<2000) L.push('  注意：面数偏低，检查是不是「几个方块拼一下」');
+    // --- 法线朝向 / 背面剔除：任何截图都证明不了这件事——被剔除的面在每个视图里都不存在，
+    // 所以必须程序化验。判据来自扫掠体自己的侧面绕序标记（swept() 在建模时写入）：
+    // 盖面会按期望法线自己翻，只有侧面法线的符号真正来自边界环的走向。
+    // 逐面占比不能用：环状件（缝线绳圈）的剖面质心在环中心，占比天然 ~50%，读不出结论。
+    const bad=[];
+    g.traverse(o=>{ if(o.isMesh && o.geometry && o.geometry.userData && o.geometry.userData.winding==='inward')
+      bad.push(Math.round(o.geometry.attributes.position.count/3)+'面'); });
+    P('法线朝外（扫掠体侧面绕序）', bad.length===0,
+      bad.length? '整圈朝内会被背面剔除（斜视角看穿）：'+bad.join(' ') : '侧面全部朝外');
     // --- 最高/最低的部件（排查沉底用）---
     const rows=[];
     g.children.forEach((ch,i)=>{ ch.updateMatrixWorld(true);

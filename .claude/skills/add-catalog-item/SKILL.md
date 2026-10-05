@@ -253,6 +253,10 @@ python3 .claude/skills/add-catalog-item/check-item.py --regress
 | 多件套装嵌套与总宽矛盾 | 60+30=90 时嵌套必缩 span | 先算整组 bbox span，选偏移进 92~102% 窗 |
 | 填充率超窗但不知哪个部件超了 | 灯环/绕线带/拉手外缘超 spec | `?nomerge` 逐 child 打 bbox 找最宽部件 |
 | CatmullRom 曲线在长直线+短弧交界处过冲 | 长段只给两个端点，切线被大段拉偏（NIPÅSEN 侧框外溢 0.4cm） | 长直线段按 ~40cm 间隔加密中间点再建 CatmullRomCurve3 |
+| 绕序自检写在 `const geo` 声明之前 | TDZ → `furn3D` 静默回退成通用造型（填充率掉到几百面、mesh 数=1，无报错） | 自检放在 geo 声明之后 |
+| 法线自检的三角形顶点顺序与 `id.push` 不一致 | 法线反号，正确模型被判红 | 逐字照抄 `id.push` 第一组 |
+| 逐面「朝外占比」当通用判据 | 环状件天然 ~50%；盖面自翻把信号稀释 | 只测侧面：`swept()` 写 `geometry.userData.winding`，且必须 `?nomerge`（合并丢 userData） |
+| 菱形截面顺序决定管壁法线朝内还是朝外 | 朝内的绳圈**仍然渲染**（看到远壁），截图抓不到 | 按 (profile dir)×(ring dir) 推一遍截面点顺序 |
 | 自建 `BufferGeometry`（扫掠/旋转体）渲成纯色平板 | 只设 `position`，没有 `uv` → 所有面采样 (0,0)（Murphy 桶壳第一版） | 自建几何必须设 `uv`；扫掠体按真实弧长铺（u=环向累计弧长/TILE，v=剖面累计弧长/TILE，TILE≈40cm）；盖面用独立顶点+平面 UV，共享顶点会把扇形拉成放射状 |
 | 盖面贴图变条纹 / 隆起顶面出放射折痕 | 水平盖面用面内基算 UV → 环上所有点 y 相同 → v≈0，贴图采样成一条线；单 apex 扇形盖面沿半径辐射 | 盖面 UV 按法线分派：水平盖面用 `(x/TILE, z/TILE)`，径向盖面才用面内基；隆起盖面用同心环逐层收向中心（`lift=dome·sin(f·π/2)`） |
 | 扫掠体侧面被背面剔除（斜视角看穿座垫看见底座）/ 反序后 inset 符号翻 | 环向顺序决定法线朝向（`(剖面方向)×(环向方向)`）；依赖法线的 inset/offset 符号绑定环向顺序 | 在特征点验一次法线朝向；反序时 inset 符号一起翻 |
