@@ -222,17 +222,25 @@ async function run3DTest(){
     T('murphy-wood-pedestal', !!wood && wood.y0*30.48<0.6 && wood.y1*30.48>9 && wood.y1*30.48<13
       && (wood.x1-wood.x0)*30.48>47 && (wood.x1-wood.x0)*30.48<52, '底座 y['+(wood?wood.y0*30.48:0)+','+(wood?wood.y1*30.48:0)+']cm 宽 '+(wood?((wood.x1-wood.x0)*30.48).toFixed(1):0)+'cm（Ø50.2）');
     const mHalfW2=cm2ft(mp.w)/2, mHalfD2=cm2ft(mp.d)/2;
+    // 外壳收窄：只看后半区（z<0）——座垫在前口，不会污染背壳的宽度测量
     const regW=(ylo,yhi)=>{ let a=1e9,b=-1e9; const g2=furn3D({uid:-2,ref:mp.id,x:0,y:0,rot:0},mp); g2.updateMatrixWorld(true);
-      const v=new THREE.Vector3(); g2.traverse(o=>{ if(o.isMesh&&o.geometry){ const p=o.geometry.attributes.position; for(let i=0;i<p.count;i++){ v.fromBufferAttribute(p,i).applyMatrix4(o.matrixWorld); if(v.y*30.48>ylo && v.y*30.48<yhi){ a=Math.min(a,v.x*30.48); b=Math.max(b,v.x*30.48); } } } }); return b-a; };
-    const wTop=regW(66,77), wLow=regW(14,26);
-    T('murphy-shell-tapers', wTop>wLow*1.15 && wTop<wLow*1.45, '顶部宽 '+wTop.toFixed(1)+'cm vs 下部 '+wLow.toFixed(1)+'cm（g6 实测 79.3 vs 61.5）');
+      const v=new THREE.Vector3(); g2.traverse(o=>{ if(o.isMesh&&o.geometry){ const p=o.geometry.attributes.position; for(let i=0;i<p.count;i++){ v.fromBufferAttribute(p,i).applyMatrix4(o.matrixWorld);
+        if(v.y*30.48>ylo && v.y*30.48<yhi && v.z<0){ a=Math.min(a,v.x*30.48); b=Math.max(b,v.x*30.48); } } } }); return b-a; };
+    const wTop=regW(70,77), wLow=regW(9,13);
+    T('murphy-shell-tapers', wTop>wLow*1.15 && wTop<wLow*1.45, '背壳顶部宽 '+wTop.toFixed(1)+'cm vs 底部 '+wLow.toFixed(1)+'cm（g6 实测 79.3 vs 61.5）');
     const g3=furn3D({uid:-3,ref:mp.id,x:0,y:0,rot:0},mp); g3.updateMatrixWorld(true);
-    let backTop=-1e9, frontTop=-1e9, seatTop=-1e9; const v3=new THREE.Vector3();
+    let backTop=-1e9, armTop=-1e9, frontTop=-1e9, seatTop=-1e9, ffZ=-1e9, ffY0=1e9, ffY1=-1e9; const v3=new THREE.Vector3();
     g3.traverse(o=>{ if(o.isMesh&&o.geometry){ const p=o.geometry.attributes.position; for(let i=0;i<p.count;i++){ v3.fromBufferAttribute(p,i).applyMatrix4(o.matrixWorld);
-      const y=v3.y*30.48; if(y>12){ if(v3.z<-mHalfD2*0.5) backTop=Math.max(backTop,y); if(v3.z>mHalfD2*0.5) frontTop=Math.max(frontTop,y); }
-      const rr=Math.hypot(v3.x/mHalfW2, v3.z/mHalfD2);            // 归一化半径：外壳内壁/座垫外缘 ≈0.67
-      if(y>44 && y<52 && rr<0.75) seatTop=Math.max(seatTop,y); } } });
-    T('murphy-waterfall-top', backTop>frontTop+8 && backTop>74 && backTop<77, '后顶 '+backTop.toFixed(1)+'cm vs 前顶 '+frontTop.toFixed(1)+'cm（官方 H 76.46 / 扶手 64.0）');
+      const y=v3.y*30.48, z=v3.z*30.48;
+      if(y>12){ if(v3.z<-mHalfD2*0.5) backTop=Math.max(backTop,y); if(v3.z>mHalfD2*0.5) frontTop=Math.max(frontTop,y); }
+      if(z>5 && Math.abs(v3.x)>mHalfW2*0.85) armTop=Math.max(armTop,y);      // 扶手端（θ≈±100..112°）
+      if(z>mHalfD2*30.48-2){ ffZ=Math.max(ffZ,z); ffY0=Math.min(ffY0,y); ffY1=Math.max(ffY1,y); }
+      if(y>44 && y<52 && v3.z>0) seatTop=Math.max(seatTop,y); } } });
+    T('murphy-waterfall-top', backTop>armTop+6 && backTop>74 && backTop<77 && armTop>60 && armTop<70,
+      '顶边 waterfall：背 '+backTop.toFixed(1)+'cm → 扶手端 '+armTop.toFixed(1)+'cm（官方 H 76.46 / 扶手 64.0）');
+    T('murphy-open-front', frontTop<52, '前口最高 '+frontTop.toFixed(1)+'cm —— 外壳是马蹄形不闭合，前口只有座垫');
+    T('murphy-cushion-protrudes', ffZ>mHalfD2*30.48-2 && ffY0<13 && ffY1>40,
+      '座垫前立面 z='+ffZ.toFixed(1)+'cm（足迹最前 '+(mHalfD2*30.48).toFixed(1)+'）· 高 '+ffY0.toFixed(1)+'→'+ffY1.toFixed(1)+'cm');
     T('murphy-seat-surface', seatTop>45 && seatTop<51, '座面最高 '+seatTop.toFixed(1)+'cm（官方座高 48.0）');
     const laett=CATALOG.find(c=>c.id==='laett-0');
     const laettFit = (()=>{
