@@ -219,15 +219,16 @@ async function run3DTest(){
     T('murphy-centered', Math.abs(mpC.x)<0.02 && Math.abs(mpC.z)<0.02, 'center '+mpC.x.toFixed(3)+','+mpC.z.toFixed(3));
     T('murphy-on-floor', mpFit.bb.min.y>-0.02, 'min y '+mpFit.bb.min.y);
     const wood=mpFit.mats['8b6a45'];
-    T('murphy-wood-pedestal', !!wood && wood.y0*30.48<0.6 && wood.y1*30.48>9 && wood.y1*30.48<13
-      && (wood.x1-wood.x0)*30.48>47 && (wood.x1-wood.x0)*30.48<52, '底座 y['+(wood?wood.y0*30.48:0)+','+(wood?wood.y1*30.48:0)+']cm 宽 '+(wood?((wood.x1-wood.x0)*30.48).toFixed(1):0)+'cm（Ø50.2）');
+    T('murphy-wood-pedestal', !!wood && wood.y0*30.48<0.6 && wood.y1*30.48>8 && wood.y1*30.48<10
+      && (wood.x1-wood.x0)*30.48>47 && (wood.x1-wood.x0)*30.48<52, '底座 y['+(wood?wood.y0*30.48:0)+','+(wood?wood.y1*30.48:0)+']cm 宽 '+(wood?((wood.x1-wood.x0)*30.48).toFixed(1):0)+'cm（g6 木盘带 134px/15.24 = 8.8cm 高 · Ø50.2）');
     const mHalfW2=cm2ft(mp.w)/2, mHalfD2=cm2ft(mp.d)/2;
-    // 外壳收窄：只看后半区（z<0）——座垫在前口，不会污染背壳的宽度测量
-    const regW=(ylo,yhi)=>{ let a=1e9,b=-1e9; const g2=furn3D({uid:-2,ref:mp.id,x:0,y:0,rot:0},mp); g2.updateMatrixWorld(true);
+    // 外壳向下收窄：量「最后端 z」而不是宽度 —— 顶边 waterfall 之后，高处的宽度被顶边高度限制，
+    // 量宽度会把 taper 和 waterfall 混在一起。最后端 z 只由 taper 决定（θ=0 处）。
+    const regBack=(ylo,yhi)=>{ let mn=1e9; const g2=furn3D({uid:-2,ref:mp.id,x:0,y:0,rot:0},mp); g2.updateMatrixWorld(true);
       const v=new THREE.Vector3(); g2.traverse(o=>{ if(o.isMesh&&o.geometry){ const p=o.geometry.attributes.position; for(let i=0;i<p.count;i++){ v.fromBufferAttribute(p,i).applyMatrix4(o.matrixWorld);
-        if(v.y*30.48>ylo && v.y*30.48<yhi && v.z<0){ a=Math.min(a,v.x*30.48); b=Math.max(b,v.x*30.48); } } } }); return b-a; };
-    const wTop=regW(70,77), wLow=regW(9,13);
-    T('murphy-shell-tapers', wTop>wLow*1.15 && wTop<wLow*1.45, '背壳顶部宽 '+wTop.toFixed(1)+'cm vs 底部 '+wLow.toFixed(1)+'cm（g6 逐行拟合 79.0@72.7 → 66.3@16.7）');
+        if(v.y*30.48>ylo && v.y*30.48<yhi && v.z<0) mn=Math.min(mn, v.z*30.48); } } }); return -mn; };
+    const dTop=regBack(72,76), dLow=regBack(8.5,9.5);   // 外壳底环就在 pedH=8.8 上，窗口必须含它
+    T('murphy-shell-tapers', dTop>dLow*1.15 && dTop<dLow*1.45, '背壳最后端 z：顶 '+dTop.toFixed(1)+'cm vs 底 '+dLow.toFixed(1)+'cm（拟合 k=0.22 p=1.48 → 37.5 vs 30.6）');
     const g3=furn3D({uid:-3,ref:mp.id,x:0,y:0,rot:0},mp); g3.updateMatrixWorld(true);
     let backTop=-1e9, armTop=-1e9, frontTop=-1e9, seatTop=-1e9, ffZ=-1e9, ffY0=1e9, ffY1=-1e9; const v3=new THREE.Vector3();
     g3.traverse(o=>{ if(o.isMesh&&o.geometry){ const p=o.geometry.attributes.position; for(let i=0;i<p.count;i++){ v3.fromBufferAttribute(p,i).applyMatrix4(o.matrixWorld);
