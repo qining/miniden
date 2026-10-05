@@ -7,9 +7,10 @@
 //   4. 拼回 HTML（去掉两个 lib <script src> 标签，内联 bundle）
 //
 // 等价性验收（每次构建后跑）：
-//   - #calib 截图 md5 == 1ac26921871db50ef1c055674c10e6e7
-//   - work/t_3d.html / t_walledit.html（从 dist 生成变体）全绿
-import { readFileSync, writeFileSync, mkdirSync, rmSync } from 'node:fs';
+//   - #calib 截图 md5 == 1ac26921871db50ef1c055674c10e6e7（mine plan；generic 无基线）
+//   - work/t_3d*.html / t_pt*.html（构建生成，plan-independent 脚本）全绿
+//   - S10：plan 注入（mine 存在时）+ private/ 路径修复
+import { readFileSync, writeFileSync, mkdirSync, rmSync, existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import esbuild from 'esbuild';
@@ -180,25 +181,68 @@ if (errors.length) { console.error(outputFiles?.[0]?.text || errors); process.ex
 const bundle = outputFiles[0].text;
 
 // --- 组装单文件 HTML ---
-// dist/ 在 root 下一层：把相对资源引用 'work/...' 改为 '../work/...'（dev 资源：
-// 底图/参考图；产品功能不依赖它们，缺失时优雅降级）
 mkdirSync(DIST, { recursive: true });
 let out = head2 + '<script>\n' + bundle + '\n</script>' + tail;
-out = out.replace(/['"]work\//g, m => m[0] + '../' + m.slice(1));
+
+// --- S10：plan 注入（本地开发机有 private/plans/mine.json → dist 用真实户型；
+//     CI / 公开环境没有 → 保持 data/plans/generic.json 通用户型）---
+if (existsSync(join(root, 'private/plans/mine.json'))) {
+  const mine = JSON.parse(readFileSync(join(root, 'private/plans/mine.json'), 'utf8'));
+  const PSTART = '<script type="application/json" id="miniden-plan">\n';
+  const PEND = '\n</script>';
+  const pa = out.indexOf(PSTART);
+  if (pa < 0) throw new Error('dist 缺 #miniden-plan 块');
+  const pb = out.indexOf(PEND, pa);
+  out = out.slice(0, pa + PSTART.length) + JSON.stringify(mine, null, 1) + out.slice(pb);
+  console.log('  plan: 注入 private/plans/mine.json（本地真实户型）');
+} else {
+  console.log('  plan: generic（private/plans/mine.json 不存在，CI/公开环境）');
+}
+// dist/ 在 root 下一层：相对资源引用加 ../（dev 资源；缺失时优雅降级）
+out = out.replace(/['"]work\//g, m => m[0] + '../' + m.slice(1))
+         .replace(/['"]private\//g, m => m[0] + '../' + m.slice(1));
 writeFileSync(join(DIST, 'planner.html'), out);
 
-// --- 生成 dist 变体的测试台（从 dist 生成，保证测试代码与产物同源、永不过期）---
-for (const [src, dst, mark] of [['work/t_walledit.html', 'work/t_walledit_dist.html', 'window\\.__ERRS'],
-                                ['work/t_3d.html', 'work/t_3d_dist.html', 'window\\.__E3'],
-                                ['work/t_pt.html', 'work/t_pt_dist.html', 'window\\.__EPT']]) {
-  const tf = readFileSync(join(root, src), 'utf8');
-  const m = tf.match(new RegExp("(\\n<script>\\n" + mark + ".*?</script>\\n</body>)", 's'));
-  if (!m) throw new Error(`测试台 ${src} 里找不到 ${mark} 标记`);
-  // 注入前把替换串里的 $ 转义：String.replace 的替换串会解释 $'/$`/$$/​$n（Python re.sub 同款陷阱，
-  // Node 也一样——bench 里 'CA$90' 这类串里的 $' 曾被展开成「匹配点之后的字符串」= \n</html>，
-  // 断掉字符串字面量 → 整个 bench 脚本 SyntaxError → NO TEST OUTPUT）。
-  writeFileSync(join(root, dst), out.replace('</body>', m[1].replace(/\$/g, '$$$$'), 1));
-  console.log(`  testbed: ${dst}`);
+// --- 测试台（S10：脚本与 plan 解耦，全部构建生成、不入库）---
+// bench/t_3d.js、bench/t_pt.js = plan-independent（随库提交；坐标运行时从
+//   floorPts() 派生 → generic/mine 两个户型同一套脚本）
+// private/bench/t_walledit.js = plan 特定（含真实户型几何断言；仅本地）
+// 生成矩阵：
+//   work/t_3d.html / t_pt.html      ← source 页（本地 = mine plan 注入；CI = generic）
+//   work/t_3d_dist.html / t_pt_dist.html ← dist 页
+//   work/t_walledit.html / t_walledit_dist.html ← 仅本地（mine plan）
+function makeBench(pageHtml, scriptPath, outPath) {
+  const script = readFileSync(join(root, scriptPath), 'utf8');
+  // $ 转义（AGENTS §5.1）：String.replace 替换串会解释 $'/$`/$$/$n。
+  // 转义只有一层：$ → $$（'$$$$' 被替换引擎解释为字面 $$），外层 replace 再把 $$ 解回 $。
+  // 写 6 个 $ 会把 $ 变成 $$$，外层解出 $ 后原字符重新暴露（$' 再展开）——真踩过。
+  writeFileSync(join(root, outPath),
+    pageHtml.replace('</body>', '\n<script>\n' + script.replace(/\$/g, '$$$$') + '\n</script>\n</body>', 1));
+  console.log(`  testbed: ${outPath} ← ${scriptPath}`);
+}
+// source 页（本地把 mine plan 注入进 #miniden-plan 块）
+let srcForBench = html;
+if (existsSync(join(root, 'private/plans/mine.json'))) {
+  const mine = JSON.parse(readFileSync(join(root, 'private/plans/mine.json'), 'utf8'));
+  const PSTART = '<script type="application/json" id="miniden-plan">\n';
+  const PEND = '\n</script>';
+  const pa = srcForBench.indexOf(PSTART);
+  const pb = srcForBench.indexOf(PEND, pa);
+  srcForBench = srcForBench.slice(0, pa + PSTART.length) + JSON.stringify(mine, null, 1) + srcForBench.slice(pb);
+}
+// bench 在 work/ 下：lib/ 与 private/ 相对路径加 ../
+srcForBench = srcForBench.replace(/['"]lib\//g, m => m[0] + '../' + m.slice(1))
+                         .replace(/['"]private\//g, m => m[0] + '../' + m.slice(1));
+for (const [script, out] of [['bench/t_3d.js', 'work/t_3d.html'],
+                             ['bench/t_pt.js', 'work/t_pt.html']])
+  makeBench(srcForBench, script, out);
+makeBench(out, 'bench/t_3d.js', 'work/t_3d_dist.html');
+makeBench(out, 'bench/t_pt.js', 'work/t_pt_dist.html');
+if (existsSync(join(root, 'private/bench/t_walledit.js'))) {
+  makeBench(srcForBench, 'private/bench/t_walledit.js', 'work/t_walledit.html');
+  makeBench(out, 'private/bench/t_walledit.js', 'work/t_walledit_dist.html');
+} else {
+  console.log('  testbed: t_walledit 跳过（private/bench/t_walledit.js 不存在 = CI/公开环境）');
 }
 
 const kb = (n) => (n / 1024).toFixed(0);

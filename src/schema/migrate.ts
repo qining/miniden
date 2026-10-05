@@ -90,7 +90,7 @@ const merge = <T extends object>(base: T, ov?: Partial<T>): T => (ov ? Object.as
 
 export function migrateLegacyToV1(geo: LegacyGeo, user: LegacyUserGeo = EMPTY_USERGEO): ProjectDoc {
   const sc = geo.sc;
-  const doc = blankDoc('旧默认名');
+  const doc = blankDoc('未命名户型');
   doc.sc = sc;
   const { walls, windows, doors, solids, rooms, fixtures } = doc;
 

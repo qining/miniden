@@ -24,7 +24,7 @@ import { fileURLToPath } from 'node:url';
 import { PNG } from 'pngjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
-const gold = join(root, 'work', 'golden');
+const gold = join(root, 'private', 'golden');
 const shots = join(gold, 'shots');
 
 const CHROME = process.env.CHROME
@@ -50,7 +50,9 @@ if (states.some(s => !ALL.includes(s))) { console.error(`未知状态: ${states.
 mkdirSync(shots, { recursive: true });
 
 function shoot(state, out) {
-  const url = `file://${join(root, 'planner.html')}#ui:${state}`;
+  // S10：截 dist（本地注入了 mine.json，与 private/golden 的 mine 基线对应；
+  // CI 无 private/ → dist 是 generic → CI 用自己的 golden）
+  const url = `file://${join(root, 'dist', 'planner.html')}#ui:${state}`;
   execFileSync(CHROME, ['--headless', '--use-angle=swiftshader',
     `--screenshot=${out}`, `--window-size=${W},${H}`,
     `--virtual-time-budget=${BUDGET[state]}`, url],
