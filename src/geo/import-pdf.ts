@@ -464,7 +464,7 @@ export function importPdf(ops: PdfOpList, page: PdfPageInfo, O: OpsTable, opts: 
       info: {
         unit: 'pt', unitMethod: 'fixed',
         extent: { w: Math.round(page.w * kM * 10000) / 10000, h: Math.round(page.h * kM * 10000) / 10000 },
-        counts: { walls: 0, doors: 0, windows: 0, solids: 0, rooms: 0 },
+        counts: { walls: 0, doors: 0, windows: 0, solids: 0, rooms: 0, runs: 0 },
         warnings: [
           `这是扫描件（${raw.imageOps} 张位图、几乎无矢量几何）——PDF 通道读不出墙体。`,
           '请走「图片底图 + 磁吸描摹」通道（roadmap S7，OpenCV.js）。',

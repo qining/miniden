@@ -112,6 +112,25 @@ export interface Fixture {
   chainIndex?: number;
 }
 
+export type RunModule = 'sink' | 'cooktop' | 'fridge' | 'dishwasher' | 'open';
+const RUN_MODULES: RunModule[] = ['sink', 'cooktop', 'fridge', 'dishwasher', 'open'];
+
+/* S12：台面/柜体 run（厨房台面、浴室柜、中岛）——用户自己画的一条沿墙折线。
+   以前厨房柜体是 AI 从图纸读出来后硬编码的，用户改不了。现在它是文档实体：
+   path = 柜体前沿折线（靠墙那一侧），柜体向户型内侧伸出 depth；
+   topH = 台面高（厨房 base 80+3cm、中岛 90cm、浴室柜 74cm），h = 柜体高（缺省 = topH）。
+   纯增量可选字段：不进 docToLegacy 投影（投影键集冻结），消费端走 effRuns()。 */
+export interface Run {
+  id: string;
+  path: Pt[];                        // ft（≥2 点，靠墙侧前沿）
+  depth: number;                     // ft（柜体深度，从 path 向户型内侧）
+  topH: number;                      // ft（台面高）
+  h?: number;                        // ft（柜体高；缺省 = topH）
+  modules?: Array<{ at: number; type: RunModule; w?: number }>;   // at = 沿 path 的距离（ft）
+  src?: EntitySrc;
+  userIndex?: number;
+}
+
 export interface EnvState {
   preset: string;                // 环境预设（R3：seattle-city / …）
   mode: 'day' | 'night';
@@ -175,6 +194,7 @@ export interface ProjectDoc {
   patio: { geom: Geom } | null;
   rooms: Room[];
   fixtures: Fixture[];
+  runs?: Run[];                    // S12：台面/柜体 run（纯增量可选字段，不进投影）
   env: EnvState;
   baseImage?: BaseImage;         // S7：用户底图（可选）
   floorOutline?: Pt[][];         // S11：地板轮廓（ft 多边形，导出/导入往返用）。纯增量可选字段，不进 docToLegacy 投影
@@ -187,13 +207,13 @@ export interface ProjectDoc {
    ------------------------------------------------------------------- */
 
 const ID_PREFIX: Record<string, string> = {
-  wall: 'w', window: 'n', door: 'd', solid: 's', room: 'r', fixture: 'f',
+  wall: 'w', window: 'n', door: 'd', solid: 's', room: 'r', fixture: 'f', run: 'rn',
 };
 
 /** 下一个未占用的稳定 id（w01, w02, …）。 */
-export function nextId(doc: Pick<ProjectDoc, 'walls' | 'windows' | 'doors' | 'solids' | 'rooms' | 'fixtures'>, kind: keyof typeof ID_PREFIX): string {
+export function nextId(doc: Pick<ProjectDoc, 'walls' | 'windows' | 'doors' | 'solids' | 'rooms' | 'fixtures' | 'runs'>, kind: keyof typeof ID_PREFIX): string {
   const p = ID_PREFIX[kind];
-  const list = kind === 'wall' ? doc.walls : kind === 'window' ? doc.windows : kind === 'door' ? doc.doors : kind === 'solid' ? doc.solids : kind === 'room' ? doc.rooms : doc.fixtures;
+  const list = (kind === 'wall' ? doc.walls : kind === 'window' ? doc.windows : kind === 'door' ? doc.doors : kind === 'solid' ? doc.solids : kind === 'room' ? doc.rooms : kind === 'fixture' ? doc.fixtures : doc.runs) ?? [];
   let n = list.length + 1;
   const used = new Set(list.map(e => e.id));
   while (used.has(`${p}${String(n).padStart(2, '0')}`)) n++;
@@ -212,6 +232,7 @@ export function blankDoc(name = '未命名户型'): ProjectDoc {
     patio: null,
     rooms: [],
     fixtures: [],
+    runs: [],
     env: { preset: 'seattle-city', mode: 'day' },
     hidden: { walls: [], windows: [], doors: [], solids: [] },
   };
@@ -257,6 +278,33 @@ export function validate(doc: unknown): ValidationError[] {
   checkEntities(d.solids, 'solids', []);
   checkEntities(d.rooms, 'rooms', []);
   checkEntities(d.fixtures, 'fixtures', []);
+  if (d.runs !== undefined) checkEntities(d.runs, 'runs', []);   // S12：纯增量可选字段，旧文档无此字段 = 无 run
+
+  // 台面/柜体 run（S12）：前沿折线 + 深度 + 台面高
+  if (Array.isArray(d.runs)) {
+    (d.runs as Array<Record<string, unknown>>).forEach((e, i) => {
+      const p = e.path;
+      if (!Array.isArray(p) || p.length < 2) fail(`runs[${i}].path`, 'path 必须是 ≥2 个 [x, y]（ft）');
+      else p.forEach((q, j) => {
+        if (!Array.isArray(q) || q.length !== 2 || !isNum(q[0]) || !isNum(q[1]))
+          fail(`runs[${i}].path[${j}]`, '必须是 [x, y]（ft）');
+      });
+      for (const k of ['depth', 'topH', 'h']) {
+        if (e[k] !== undefined && (!isNum(e[k]) || (e[k] as number) <= 0)) fail(`runs[${i}].${k}`, `${k} 必须是正数（ft）`);
+      }
+      if (e.depth !== undefined && (e.depth as number) > 4) fail(`runs[${i}].depth`, `depth 超过合理柜体深度（${e.depth} ft）`);
+      if (e.topH !== undefined && (e.topH as number) > 8) fail(`runs[${i}].topH`, `topH 超过合理台面高（${e.topH} ft）`);
+      if (e.modules !== undefined) {
+        if (!Array.isArray(e.modules)) { fail(`runs[${i}].modules`, '必须是数组'); return; }
+        (e.modules as Array<Record<string, unknown>>).forEach((m, j) => {
+          if (typeof m !== 'object' || m === null) { fail(`runs[${i}].modules[${j}]`, '不是对象'); return; }
+          if (!isNum(m.at) || (m.at as number) < 0) fail(`runs[${i}].modules[${j}].at`, 'at 必须是 ≥0 的数（沿 path 的 ft）');
+          if (RUN_MODULES.indexOf(m.type as RunModule) < 0) fail(`runs[${i}].modules[${j}].type`, `type 非法: ${String(m.type)}`);
+          if (m.w !== undefined && (!isNum(m.w) || (m.w as number) <= 0)) fail(`runs[${i}].modules[${j}].w`, 'w 必须是正数（ft）');
+        });
+      }
+    });
+  }
 
   // 洁具字段（矩形四角 + 旋转）
   if (Array.isArray(d.fixtures)) {
@@ -435,6 +483,7 @@ export function projectSchema(): object {
       patio: { oneOf: [{ type: 'null' }, { type: 'object', required: ['geom'], properties: { geom: { $ref: '#/definitions/geom' } } }] },
       rooms: { type: 'array', items: { $ref: '#/definitions/room' } },
       fixtures: { type: 'array', items: { $ref: '#/definitions/fixture' } },
+      runs: { type: 'array', items: { $ref: '#/definitions/run' } },
       env: { type: 'object', required: ['preset', 'mode'], properties: { preset: { type: 'string' }, mode: { enum: ['day', 'night'] } } },
       floorOutline: { type: 'array', minItems: 3, items: { type: 'array', minItems: 2, maxItems: 2, items: { type: 'number' } } },
       plan: {
@@ -507,6 +556,13 @@ export function projectSchema(): object {
       solid: { type: 'object', required: ['id', 'geom', 'fill'], properties: { id: { type: 'string' }, name: { type: 'string' }, geom: { $ref: '#/definitions/geom' }, fill: { type: 'string' }, noCal: { type: 'boolean' }, column: { type: 'boolean' } } },
       room: { type: 'object', required: ['id', 'label', 'pos'], properties: { id: { type: 'string' }, label: { type: 'string' }, pos: { type: 'array', minItems: 2, maxItems: 2, items: { type: 'number' } }, wd: { type: 'number' }, dp: { type: 'number' }, d: { type: 'string' }, rot: { type: 'number' }, small: { type: 'boolean' } } },
       fixture: { type: 'object', required: ['id', 't', 'x1', 'y1', 'x2', 'y2'], properties: { id: { type: 'string' }, t: { enum: ['counter', 'basin', 'toilet', 'tub', 'shower', 'mirror'] }, x1: { type: 'number' }, y1: { type: 'number' }, x2: { type: 'number' }, y2: { type: 'number' }, dir: { type: 'string' }, fa: { type: 'string' }, open: { type: 'string' }, rot: { type: 'number' } } },
+      run: { type: 'object', required: ['id', 'path', 'depth', 'topH'], properties: {
+        id: { type: 'string' },
+        path: { type: 'array', minItems: 2, items: { type: 'array', minItems: 2, maxItems: 2, items: { type: 'number' } } },
+        depth: { type: 'number', exclusiveMinimum: 0 }, topH: { type: 'number', exclusiveMinimum: 0 }, h: { type: 'number', exclusiveMinimum: 0 },
+        modules: { type: 'array', items: { type: 'object', required: ['at', 'type'], properties: { at: { type: 'number', minimum: 0 }, type: { enum: ['sink', 'cooktop', 'fridge', 'dishwasher', 'open'] }, w: { type: 'number', exclusiveMinimum: 0 } } } },
+        src: { enum: ['builtin', 'user'] }, userIndex: { type: 'integer' },
+      } },
     },
   };
 }

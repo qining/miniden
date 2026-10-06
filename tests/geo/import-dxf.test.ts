@@ -9,6 +9,7 @@ import { importDxf, classifyLayer, type DxfDoc } from '../../src/geo/import-dxf'
 import { validate } from '../../src/schema/project';
 import { expand, type Seg, type Geom } from '../../src/schema/primitives';
 import { docToLegacy } from '../../src/schema/migrate';
+import { buildDocFromRaw, type Raw, type RawClosed, type RawSeg, type V2, type LayerClass } from '../../src/geo/import-common';
 
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -180,5 +181,69 @@ describe('边界', () => {
     const r = importDxf(d as unknown as DxfDoc, { unit: 'cm' });
     expect(r.info.unit).toBe('cm');
     expect(r.info.unitMethod).toBe('user');
+  });
+});
+
+describe('S12：家具层轮廓 → 台面 run（读几何，不猜位置）', () => {
+  const P = (x: number, y: number): V2 => ({ x, y });
+  const rawOf = (closed: RawClosed[], segs: RawSeg[]): Raw =>
+    ({ segs, arcs: [], circles: [], closed, skipped: { ellipses: 0, inserts: 0, texts: 0, other: 0 } });
+  const build = (pts: V2[], wall: [V2, V2] | null) => buildDocFromRaw(
+    rawOf([{ pts, cls: 'furn' as LayerClass }], wall ? [{ a: wall[0], b: wall[1], cls: 'wall' as LayerClass }] : []),
+    { unit: 'm', name: 't', method: 'user' });
+
+  it('柜体带形状（3.0m × 0.6m）→ run，深度取轮廓实际延伸，不再落成整高 solid', () => {
+    const r = build([P(1, 0.05), P(4, 0.05), P(4, 0.65), P(1, 0.65)], [P(0, 0), P(6, 0)]);
+    expect(r.info.counts.runs).toBe(1);
+    const run = r.doc.runs![0]!;
+    near(run.depth!, 0.6 * M_TO_FT, 0.01);
+    near(run.topH!, 0.9 * M_TO_FT, 0.01);
+    expect(r.doc.solids.length).toBe(0);
+  });
+
+  it('path 取靠墙那条长边（前沿贴墙）', () => {
+    const r = build([P(1, 0.05), P(4, 0.05), P(4, 0.65), P(1, 0.65)], [P(0, 0), P(6, 0)]);
+    const run = r.doc.runs![0]!;
+    const ys = run.path.map(p => p[1]);
+    expect(Math.max(...ys) - Math.min(...ys)).toBeLessThan(0.01);            // 水平边
+    const wy = (r.doc.walls[0]!.geom as { y1: number }).y1;
+    near(Math.abs(ys[0] - wy), 0.05 * M_TO_FT, 0.01);                        // 就是贴墙那条
+    // 若挑的是对面那条边，距离会是 0.6m
+    expect(Math.abs(ys[0] - wy)).toBeLessThan(0.1 * M_TO_FT);
+  });
+
+  it('没有墙带时退回最长边', () => {
+    const r = build([P(1, 0.05), P(4, 0.05), P(4, 0.65), P(1, 0.65)], null);
+    expect(r.info.counts.runs).toBe(1);
+    const run = r.doc.runs![0]!;
+    const L = Math.hypot(run.path[1][0] - run.path[0][0], run.path[1][1] - run.path[0][1]);
+    near(L * 0.3048, 3.0, 0.02);                                            // 3.0m 长边
+    near(run.depth! * 0.3048, 0.6, 0.02);
+  });
+
+  it('床（2.0×1.6m，不浅）不当柜体带 → 仍是 solid', () => {
+    const r = build([P(1, 0), P(3, 0), P(3, 1.6), P(1, 1.6)], [P(0, 0), P(6, 0)]);
+    expect(r.info.counts.runs).toBe(0);
+    expect(r.doc.solids.length).toBe(1);
+  });
+
+  it('浅但太短（0.5×0.4m）→ solid，不是 run', () => {
+    const r = build([P(1, 0), P(1.5, 0), P(1.5, 0.4), P(1, 0.4)], [P(0, 0), P(6, 0)]);
+    expect(r.info.counts.runs).toBe(0);
+    expect(r.doc.solids.length).toBe(1);
+  });
+
+  it('读入柜体带时给出可核对的警告（不是猜）', () => {
+    const r = build([P(1, 0.05), P(4, 0.05), P(4, 0.65), P(1, 0.65)], [P(0, 0), P(6, 0)]);
+    const w = r.info.warnings.find(x => x.includes('柜体带'));
+    expect(w).toBeTruthy();
+    expect(w).toContain('1 个');
+    expect(w).toContain('0.9m');
+  });
+
+  it('导入的 run 通过校验且不进投影', () => {
+    const r = build([P(1, 0.05), P(4, 0.05), P(4, 0.65), P(1, 0.65)], [P(0, 0), P(6, 0)]);
+    expect(validate(r.doc)).toEqual([]);
+    expect(Object.keys(docToLegacy(r.doc))).toEqual(['walls', 'fixed', 'doors']);
   });
 });

@@ -638,6 +638,48 @@ async function run3DTest(){
     DOC.fixtures=DOC.fixtures.filter(f=>f.id!=='f99');
     geoChanged(); setView('2d'); setView('3d'); await wait(300);
   }
+  // ===== S12：用户画的台面 run（3D 柜体 + 台面石板）=====
+  // 按材质分桶会把 mesh 合并（parameters 消失、position 不可靠），所以用顶点数 + 桶包围盒。
+  {
+    const vByColor=(hex)=>{ let v=0; three.staticGroup.traverse(o=>{ if(o.isMesh&&o.material&&o.material.color&&o.material.color.getHex()===hex) v+=o.geometry.attributes.position.count; }); return v; };
+    const bbByColor=(hex)=>{ const b=new THREE.Box3(); three.staticGroup.traverse(o=>{ if(o.isMesh&&o.material&&o.material.color&&o.material.color.getHex()===hex) b.expandByObject(o); }); return b; };
+    const has=(b,p)=> p[0]>=b.min.x-0.02 && p[0]<=b.max.x+0.02 && p[1]>=b.min.y-0.02 && p[1]<=b.max.y+0.02 && p[2]>=b.min.z-0.02 && p[2]<=b.max.z+0.02;
+    const CAB=0xffffff, TOP=0xe9e7e2, STEEL=0xc9ccd0;
+    const v0=vByColor(CAB), t0=vByColor(TOP), s0=vByColor(STEEL);
+    const r12=pushUserRun([[20,12],[26,12]], 1.97, 2.95);
+    buildStatic3D(); await wait(120);
+    T('s12-3d-cabinet-box', vByColor(CAB)-v0===24, '柜体顶点增量 '+(vByColor(CAB)-v0)+'（BoxGeometry=24）');
+    // 按材质合并会把单成员桶也重排（顶点数不保证恰好 24），所以断言增量 ≥24 + 包围盒落在内侧
+    T('s12-3d-countertop-slab', vByColor(TOP)-t0>=24, '台面石板顶点增量 '+(vByColor(TOP)-t0)+'（合并桶影响精确计数）');
+    const bbT=bbByColor(TOP);
+    const inRoom=[23, 2.975, 12+1.97/2], inWall=[23, 2.975, 12-1.97/2];
+    const noKitchen = !((planOf('kitchen')||[]).length);
+    T('s12-3d-band-on-room-side', has(bbT,inRoom) && (!noKitchen || !has(bbT,inWall)),
+      '台面桶 bbox z=['+bbT.min.z.toFixed(2)+','+bbT.max.z.toFixed(2)+'] · 地板中心 z='+floorCentroid()[1].toFixed(1)+' · 厨房数据 '+(noKitchen?'无（可判两侧）':'有（只验内侧）'));
+    r12.modules=[{at:1.0,type:'fridge',w:2.0}];
+    buildStatic3D(); await wait(120);
+    T('s12-3d-fridge-module', vByColor(STEEL)-s0===24, '钢模块顶点增量 '+(vByColor(STEEL)-s0));
+    DOC.runs=DOC.runs.filter(x=>x.id!==r12.id);
+    geoChanged(); buildStatic3D(); await wait(120);
+    T('s12-3d-cleared', vByColor(CAB)===v0 && vByColor(TOP)===t0 && vByColor(STEEL)===s0,
+      'cab '+(vByColor(CAB)-v0)+' top '+(vByColor(TOP)-t0)+' steel '+(vByColor(STEEL)-s0));
+  }
+  // ===== S12：钢框窗（窗实体的 steel 标志）→ 3D 黑钢梁 =====
+  {
+    const BLACK=0x17181b;
+    const bbB=()=>{ const b=new THREE.Box3(); three.staticGroup.traverse(o=>{ if(o.isMesh&&o.material&&o.material.color&&o.material.color.getHex()===BLACK) b.expandByObject(o); }); return b; };
+    const has=(b,p)=> p[0]>=b.min.x-0.02 && p[0]<=b.max.x+0.02 && p[1]>=b.min.y-0.02 && p[1]<=b.max.y+0.02 && p[2]>=b.min.z-0.02 && p[2]<=b.max.z+0.02;
+    const w12=pushUserWindow(20,20,26,20,9); w12.steel=true;
+    buildStatic3D(); await wait(120);
+    const bb1=bbB(), mid=[23, CEIL_H/2, 20];
+    T('s12-3d-steel-post-at-window', has(bb1,mid),
+      '黑梁桶 x['+bb1.min.x.toFixed(2)+','+bb1.max.x.toFixed(2)+'] y['+bb1.min.y.toFixed(2)+','+bb1.max.y.toFixed(2)+'] z['+bb1.min.z.toFixed(2)+','+bb1.max.z.toFixed(2)+'] · 窗中点 (23, '+(CEIL_H/2).toFixed(1)+', 20)');
+    DOC.windows=DOC.windows.filter(x=>x.id!==w12.id);
+    buildStatic3D(); await wait(120);
+    const bb2=bbB();
+    T('s12-3d-steel-removed', !(bb2.max.x>=22.9 && bb2.min.x<=23.1 && bb2.min.z<=20.02 && bb2.max.z>=19.98),
+      '移除后 x['+bb2.min.x.toFixed(2)+','+bb2.max.x.toFixed(2)+'] z['+bb2.min.z.toFixed(2)+','+bb2.max.z.toFixed(2)+']');
+  }
   T('t3d-bench-done', true, __E3.length+' tests', 'done');
 
   }catch(e){ log.push('EXC '+e.message+' | '+(e.stack||'').split('\n')[1]); }

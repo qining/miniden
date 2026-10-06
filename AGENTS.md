@@ -327,6 +327,11 @@ sips -z 高 宽 /tmp/x.png --out /tmp/x_big.png               # 放大
 | **把几何外置成 plan 数据时漏掉「某户型专属」的硬编码构件**（P1 实测：3D 落地窗带钢梁 `C(x1,y1)…` + 2D 黑方块示意 + 阳台楔形补板 + 中岛标签位） | 只按 `docImported()` 门控、不按 plan 门控 → 换个户型照画不误：钢梁斜穿整个户型，看着像「地板和墙错位」；而且真实坐标还留在公开文件里 | 外置几何后 `grep -nE 'C\([0-9]'`（以及任何裸数字坐标）扫一遍消费端，每处问「这是所有户型都有的，还是某一户专属？」——专属的一律挪进 plan JSON 并用 `PLAN.xxx` 存在性门控；验收：**generic 户型目检 2D+3D**（mine 全绿不代表 generic 没炸） |
 | **localStorage 存档不带户型标识**（P1：`planner_v1`/`planner_doc_v1` 单桶） | plan 外置后，mine 的存档被原样回放到 generic 上（斜墙/阳台/柱 + 满屋家具叠在通用户型里）；用户以为「渲染坏了」 | 键按户型指纹分桶（`planner_doc_v1:<fp>`，fp = name+sc+floorpts+walls 的 hash）；旧单桶键**只读兼容且不删**（它属于另一份户型，删了就是毁用户数据），采用前用 `docMatchesPlan()` 逐坐标核对内置实体 |
 | bench 里顶层 `const` 命名撞已有声明（bx1/bx 等） | 整段 bench SyntaxError、一行不跑，症状 = NO TEST OUTPUT | bench 是新代码但跑在既有函数作用域里：新变量名先 grep 一遍 bench 全文再定 |
+| 返回文档时用字面量 `runs: []` 而不是简写变量 `runs` | `info.counts.runs` 是 1、`doc.runs` 却是空数组——push 进的是局部变量，文档里是另一个数组，测试读不到 | 文档字段用简写（`runs,`）；写完立刻打印 `doc.runs` 与 `counts.runs` 对一下 |
+| `segOnBand(seg, band, tol)` 吃**单个** Band | 传 `bands` 数组 → `bd.dir` undefined → `Cannot read properties of undefined (reading 'y')` | 遍历数组：`bands.some(bd => segOnBand({a,b}, bd, tol))` |
+| 米/英尺混用（文档字段一律 ft） | `topH: f2(COUNTER_H_M)`（米）写进文档 → 0.9 被当 0.9ft，差 3.3 倍 | 常量是米就 `f2(COUNTER_H_M * M_TO_FT)`；对照 `polyBboxM`（返回米）与 `f2`（ft）确认量纲 |
+| 以为窗有 `effWindows()`（其实没有） | `steelBands()` 在首次 `build2D()` 时 ReferenceError → 整段 bench 崩 | 窗走 `effWalls()` 投影（`t:'g'` + `_id`）或 `DOC.windows`；读 `DOC` 的函数要 TDZ 守护（`freshDoc()` 在 `loadDoc()` 内跑） |
+| 合并感知的顶点数断言写成恰好 24 | `mergeByMaterial` 会把单成员桶重排，增量不保证恰好 24（实测 36） | 断言增量 ≥24 + 用包围盒/材质色定位，别依赖单 mesh 的 `parameters` |
 | 把几何常量改成函数（`const PATIO` → `const PATIO = () => ...`）时漏改一处下标用法（`PATIO[ia]`） | 不报错但渲染少构件（3D 阳台栏板消失）；`undefined[0]` 在 try/catch 里会静默吞掉，症状是「场景 mesh 数从 50+ 变 4」 | 改名后 `grep -n 'PATIO\|BAND\|PATCH\|ISL\|INNER'` 逐处改成调用；消费端在 `loadDoc()` 路径上被调用的函数还要做 **TDZ 安全**（`DOC` 尚未赋值时读 `DOC.plan` 会 `ReferenceError: Cannot access 'DOC' before initialization`，整个 IIFE 挂掉 → calib 底图不画 → 100% 像素差） |
 | 逐字段比较「文档 vs 导出 JSON」时可选字段一边是 `undefined`（`JSON.stringify(undefined)` 返回 undefined 而非字符串） | 假红：导出补的 `floorOutline` 在文档里不存在，两边永远不等（S11 实测） | 比较前先按「该字段两边是否都有值」分支，或两边从同一个来源取（如都走 `floorPts()`） |
 
@@ -1120,6 +1125,12 @@ requestRender();
 绑定到某一件家具的具体细节不进 skill。
 
 ### 8.2 加可编辑性
+
+**实体只能来自两个来源：用户画，或导入读到的几何。** 任何「找最长的墙」「水槽靠窗」「灶台在对面」式的启发式规则一律不写——那是猜（用户 2026-10-05 明确否掉，他的户型就是反例）。允许的是：
+- **形状分类**（对读到的轮廓做几何判据，如家具层闭合轮廓：一个方向 ≤0.75m、另一个方向 ≥1.0m → 柜体带），且必须给出可核对的警告说明判据和默认值；
+- **渲染风格挂在实体标志上**（窗的 `steel` → 黑钢梁），不是独立的猜测算法；
+- 与历史读入数据重合时**只画一次**（内置户型的钢梁位置逐字节不变，黄金基线不动）。
+
 
 已有：画墙/画柱异形/改内置墙、门的位置与宽度（带墙垛联动）、灯的色温与亮度、家具旋转 0.1° 精度。
 

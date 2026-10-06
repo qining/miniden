@@ -11,7 +11,7 @@
 
    纯函数：禁 import three / document / localStorage（R7 模块图）。
    ===================================================================== */
-import type { ProjectDoc, Wall, Window, Door, Solid, Room } from '../schema/project';
+import type { ProjectDoc, Wall, Window, Door, Solid, Room, Run } from '../schema/project';
 import { fullCircle } from '../schema/primitives';
 
 /* ---------------------------------------------------------------- 类型 */
@@ -24,7 +24,7 @@ export interface ImportInfo {
   unit: Unit;
   unitMethod: UnitMethod;
   extent: { w: number; h: number };            // m（换算后）
-  counts: { walls: number; doors: number; windows: number; solids: number; rooms: number };
+  counts: { walls: number; doors: number; windows: number; solids: number; rooms: number; runs: number };
   warnings: string[];
   /** 扫描件（S6 PDF）：doc 是空文档占位，UI 走降级提示，不 apply。 */
   scanned?: boolean;
@@ -63,6 +63,7 @@ const DOOR_GAP_MIN = 0.55, DOOR_GAP_MAX = 1.6;  // 门洞宽度区间
 const LEAF_TOL = 0.35;                          // 门扇端点吸附容差
 const WIN_TOL = 0.25;                           // 窗与墙中线距离容差
 const SOLID_AREA = 4.0;                         // m²：< 柱/异形，≥ 房间轮廓
+const COUNTER_H_M = 0.9;                        // 从图纸读出的柜体带的默认台面高（用户可改）
 const DEFAULT_THICK = 0.1;                      // 单线墙默认厚（m）
 
 /* ---------------------------------------------------------------- 工具 */
@@ -555,10 +556,18 @@ export function buildDocFromRaw(raw: Raw, opts: BuildDocOptions): ImportResult {
   // ---- 柱 / 房间（闭合环 + 圆）----
   const solids: Solid[] = [];
   const rooms: Room[] = [];
+  const runs: Run[] = [];
   {
-    let ns = 0, nr = 0;
+    let ns = 0, nr = 0, nn = 0;
     for (const c of tf.closed) {
       const areaM2 = polyAreaM(c.pts);
+      // S12：家具层的「浅而长」闭合轮廓 = 从图纸**读**出来的柜体带（不是猜厨房在哪）。
+      // 判据只看形状：一个方向 ≤0.75m（柜体深度量级）、另一个方向 ≥1.0m（沿墙长度）。
+      // 靠墙的那条长边当 path（前沿贴墙），深度取轮廓在该方向上的实际延伸。
+      if (c.cls === 'furn') {
+        const rr = runFromContour(c.pts, bands);
+        if (rr) { rr.id = 'rn' + String(++nn).padStart(2, '0'); rr.userIndex = runs.length; runs.push(rr); continue; }
+      }
       if (areaM2 < SOLID_AREA) {
         solids.push({
           id: 'p' + String(++ns).padStart(2, '0'),
@@ -589,18 +598,19 @@ export function buildDocFromRaw(raw: Raw, opts: BuildDocOptions): ImportResult {
   if (raw.skipped.inserts) warnings.push(`跳过 ${raw.skipped.inserts} 个块引用（未展开，门/窗符号可能缺失）`);
   if (raw.skipped.ellipses) warnings.push(`跳过 ${raw.skipped.ellipses} 个椭圆`);
   if (walls.length === 0) warnings.push('未检出墙体——请检查图层/单位，或在编辑器里手画');
+  if (runs.length) warnings.push(`${runs.length} 个家具轮廓按柜体带读入（深度取轮廓实际延伸、台面高默认 0.9m，可在「台面」工具里改）`);
 
   return {
     doc: {
       schema: 1, name: opts.name ?? '导入户型', units: 'cm', ceilingH: 8.8, northRotation: 0,
-      walls, windows, doors, solids, rooms, fixtures: [],
+      walls, windows, doors, solids, rooms, fixtures: [], runs,
       patio: null, env: { preset: 'seattle-city', mode: 'day' },
       hidden: { walls: [], windows: [], doors: [], solids: [] },
     },
     info: {
       unit, unitMethod: method,
       extent: { w: f2(tf.extentM.w), h: f2(tf.extentM.h) },
-      counts: { walls: walls.length, doors: doors.length, windows: windows.length, solids: solids.length, rooms: rooms.length },
+      counts: { walls: walls.length, doors: doors.length, windows: windows.length, solids: solids.length, rooms: rooms.length, runs: runs.length },
       warnings,
       ...(opts.scale !== undefined || opts.scaleMethod !== undefined ? { scale, scaleMethod: opts.scaleMethod } : {}),
     },
@@ -608,6 +618,34 @@ export function buildDocFromRaw(raw: Raw, opts: BuildDocOptions): ImportResult {
 }
 
 /* ------------------------------------------------------------ 辅助 */
+
+/** 家具层闭合轮廓 → 台面 run（读几何，不猜位置）。返回的 doc 坐标是 ft。 */
+function runFromContour(pts: V2[], bands: Band[]): Run | null {
+  if (pts.length < 3) return null;
+  const bb = polyBboxM(pts);
+  const mn = Math.min(bb.w, bb.d), mx = Math.max(bb.w, bb.d);
+  if (mn > 0.75 || mx < 1.0) return null;          // 不是柜体带形状（床/桌子会走 solid）
+  const edges: { a: V2; b: V2; L: number; onWall: boolean }[] = [];
+  for (let i = 0; i < pts.length; i++) {
+    const a = pts[i], b = pts[(i + 1) % pts.length];
+    const L = len(sub(b, a));
+    if (L < 1e-6) continue;
+    edges.push({ a, b, L, onWall: bands.some(bd => segOnBand({ a, b }, bd, 0.06 * M_TO_FT)) });
+  }
+  if (!edges.length) return null;
+  const wallEdges = edges.filter(e => e.onWall);
+  const pick = (wallEdges.length ? wallEdges : edges).sort((x, y) => y.L - x.L)[0];
+  const d = norm(sub(pick.b, pick.a));
+  const n = v(-d.y, d.x);
+  let maxOff = 0;
+  for (const p of pts) maxOff = Math.max(maxOff, Math.abs(dot(sub(p, pick.a), n)));
+  if (maxOff < 0.1) return null;
+  return {
+    id: '', src: 'user',
+    path: [[f2(pick.a.x), f2(pick.a.y)], [f2(pick.b.x), f2(pick.b.y)]],
+    depth: f2(maxOff), topH: f2(COUNTER_H_M * M_TO_FT), h: f2(0.6 * M_TO_FT),
+  };
+}
 
 function pointOnLine(bd: Band, u: number): V2 {
   return add(bd.origin, mul(bd.dir, u));

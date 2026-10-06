@@ -259,3 +259,76 @@ describe('plan 快照（S11b）', () => {
     expect(Object.keys(docToLegacy(d))).toEqual(['walls', 'fixed', 'doors']);
   });
 });
+
+/* =====================================================================
+   S12：台面/柜体 run（用户自己画的沿墙折线）
+   ===================================================================== */
+describe('run 实体（S12）', () => {
+  const good = () => {
+    const d = blankDoc('厨房');
+    d.runs = [{
+      id: 'rn01',
+      path: [[2, 1], [8, 1], [8, 4]] as unknown as Pt[] as any,
+      depth: 1.97, topH: 2.95, h: 2.62,
+      modules: [{ at: 1.5, type: 'sink', w: 1.8 }, { at: 5, type: 'cooktop', w: 2.0 }],
+      src: 'user',
+    }];
+    return d;
+  };
+
+  it('合法 run 通过校验且 JSON 往返逐字段相等', () => {
+    const d = good();
+    expect(validate(d)).toEqual([]);
+    const round = JSON.parse(JSON.stringify(d)) as ProjectDoc;
+    expect(validate(round)).toEqual([]);
+    expect(round).toEqual(d);
+  });
+
+  it('runs 是纯增量可选字段（不在 required 里）', () => {
+    const s = projectSchema() as Record<string, any>;
+    expect(s.properties.runs).toBeTruthy();
+    expect(s.required).not.toContain('runs');
+    const d = blankDoc(); d.runs = undefined;
+    expect(validate(d)).toEqual([]);   // 旧文档没有 runs 也合法
+  });
+
+  it('path 少于 2 点被拒', () => {
+    const d = good();
+    (d.runs![0] as any).path = [[2, 1]];
+    expect(validate(d).some(e => e.path === 'runs[0].path')).toBe(true);
+  });
+
+  it('path 点不是 [x, y] 被拒', () => {
+    const d = good();
+    (d.runs![0] as any).path = [[2, 1], [8, 'x']] as any;
+    expect(validate(d).some(e => e.path === 'runs[0].path[1]')).toBe(true);
+  });
+
+  it('depth / topH 非正数被拒', () => {
+    const d = good();
+    (d.runs![0] as any).depth = 0;
+    (d.runs![0] as any).topH = -1;
+    const errs = validate(d);
+    expect(errs.some(e => e.path === 'runs[0].depth')).toBe(true);
+    expect(errs.some(e => e.path === 'runs[0].topH')).toBe(true);
+  });
+
+  it('module type 非法被拒', () => {
+    const d = good();
+    (d.runs![0].modules![0] as any).type = 'bookcase';
+    expect(validate(d).some(e => e.path === 'runs[0].modules[0].type')).toBe(true);
+  });
+
+  it('runs 不进 docToLegacy 投影（投影键集冻结）', () => {
+    const d = good();
+    expect(Object.keys(docToLegacy(d))).toEqual(['walls', 'fixed', 'doors']);
+  });
+
+  it('nextId 给 run 用 rn 前缀且不撞 room 的 r', () => {
+    const d = blankDoc();
+    expect(nextId(d, 'run')).toBe('rn01');
+    d.runs = [{ id: 'rn01', path: [[0, 0], [1, 0]], depth: 2, topH: 3 }];
+    expect(nextId(d, 'run')).toBe('rn02');
+    expect(nextId(d, 'room')).toBe('r01');
+  });
+});
