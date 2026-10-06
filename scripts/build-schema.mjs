@@ -1,7 +1,7 @@
-// S1 Phase 2a: 把 src/schema/（TypeScript）编译成 IIFE 并注入 planner.html
+// S1 Phase 2a: 把 src/schema/（TypeScript）编译成 IIFE 并注入 app.html
 //
 // 单一事实来源 = src/schema/（有 31 单测 + tsc strict 门禁）。
-// planner.html 里的 `<script id="miniden-schema">` 块是 vendored 副本：
+// app.html 里的 `<script id="miniden-schema">` 块是 vendored 副本：
 //   - 本脚本重新生成它（npm run schema:build）
 //   - build.mjs 每次构建校验它 == 最新编译输出（不一致即失败）
 //
@@ -50,8 +50,8 @@ export function injectSchema(html, code) {
 if (process.argv[1] && import.meta.url === `file://${process.argv[1]}`) {
   const code = await bundleSchema();
   writeFileSync(join(root, 'src/schema/dist-schema.js'), code);
-  const htmlPath = join(root, 'planner.html');
+  const htmlPath = join(root, 'app.html');
   const html = readFileSync(htmlPath, 'utf8');
   writeFileSync(htmlPath, injectSchema(html, code));
-  console.log(`schema bundle ${code.length}B → planner.html <script id="miniden-schema">`);
+  console.log(`schema bundle ${code.length}B → app.html <script id="miniden-schema">`);
 }

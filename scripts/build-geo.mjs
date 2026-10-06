@@ -1,7 +1,7 @@
-// S5: 把 src/geo/（TypeScript）编译成 IIFE 并注入 planner.html
+// S5: 把 src/geo/（TypeScript）编译成 IIFE 并注入 app.html
 //
 // 单一事实来源 = src/geo/（有单测 + tsc strict 门禁）。
-// planner.html 里的 `<script id="miniden-geo">` 块是 vendored 副本：
+// app.html 里的 `<script id="miniden-geo">` 块是 vendored 副本：
 //   - 本脚本重新生成它（npm run geo:build）
 //   - build.mjs 每次构建校验它 == 最新编译输出（不一致即失败）
 import { readFileSync, writeFileSync } from 'node:fs';
@@ -49,8 +49,8 @@ export function injectGeo(html, code) {
 if (process.argv[1] && import.meta.url === `file://${process.argv[1]}`) {
   const code = await bundleGeo();
   writeFileSync(join(root, 'src/geo/dist-geo.js'), code);
-  const htmlPath = join(root, 'planner.html');
+  const htmlPath = join(root, 'app.html');
   const html = readFileSync(htmlPath, 'utf8');
   writeFileSync(htmlPath, injectGeo(html, code));
-  console.log(`geo bundle ${code.length}B → planner.html <script id="miniden-geo">`);
+  console.log(`geo bundle ${code.length}B → app.html <script id="miniden-geo">`);
 }

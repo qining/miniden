@@ -40,3 +40,7 @@ work/golden/diff-*.png
 
 # 隐私：公寓照片/底图/裁剪/私有基线/私有 bench（2026-09 隐私边界：CI/public 永远不含）
 private/
+
+# E17 个人入口（由 build.mjs 从 app.html + private/plans/mine.json 生成）
+# 内含真实户型坐标 —— 绝不入库；git 已忽略，git add -f 是唯一风险（同 dist/）
+/planner.html

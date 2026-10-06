@@ -32,3 +32,8 @@ Planform / Trueplan / Roomline / Bostad（.com 1999–2005 已注册）、
   架构落地时一并定产物名）
 - **风险**：无活跃同名产品（已查），但「den」是常见英语词，
   对外发布前需再做一轮商标检索（tmsearch.uspto.gov）
+
+---
+
+**更新（2026-10-05，E18）**：`planner.html` 这个文件名已让给**个人入口**（构建生成、gitignore、
+内嵌真实户型）；入库的源文件改名 **`app.html`**。本地目录名仍未改。详见 AGENTS.md §0.3。

@@ -68,6 +68,7 @@
 | E10 | 持久化 localStorage → IndexedDB（`storage.js` 门面 + 迁移 3 个现有 key） | todo |
 | E14 | **快捷 SLO 套件**（ADR-0006：顶层 = 用户时间，不是原始性能）：首次 ≤3 分钟（打开→放家具→3D 印象）；导入 ≤3 分钟（上传→可用初稿）；子指标：启动 <1.5s、切视图 <300ms、拖拽 <16ms/帧、50 件场景内存 <1.5GB、DXF 10MB <3s（带进度）、目录包 1000 条 <1s。每项都要实测数字，不凭感觉 | todo |
 | E17 | **快捷 SLO 的 CI 门禁**（E14 的用户时间指标进 CI：进程墙钟 + 完成标记法，AGENTS §11；回归即红） | todo |
+| E18 | **两个入口，一个事实来源**（用户 2026-10-05：planner.html 要维持那套固定公寓；另做一个 public/user-facing 入口；以后新工具/功能/家具两边都要同步） | **完**（本次提交）：`git mv planner.html → app.html`——**`app.html` 是唯一入库代码文件**（内嵌 generic，clone 后直接打开即公开入口）。build.mjs 用同一份 bundle 产出：`dist/app.html`（公开单文件，硬断言不含 `private/` 资源引用 + 户型必须 `generic-2br`）、`dist/planner.html`（个人单文件，注入 mine，ui-gate/黄金基线用它）、根目录 `planner.html`（**个人入口源形式** = app.html + mine 替换，`lib/` 外链保持 → 改完刷新即见；gitignore，与 dist 同一条红线）。同步不靠人记：同一套 plan-independent bench 跑 source(mine)/dist(mine)/**dist(generic)** 三份（新增 `work/t_3d_app.html`、`work/t_pt_app.html`）。顺带把 bench 里写死户型的断言改成与运行时投影比（镜子 mine 3 面 / generic 1 面）。验收：t_3d 117/117 ×3、t_pt 32/32 ×3、t_walledit 243/243 ×2、ui-gate 8/8 @ 0.0000%、calib md5 `1ac26921871db50ef1c055674c10e6e7`（从根目录个人入口跑）、vitest 155/155、generic 2D+3D 目检正常。未来删公寓 = 删 `private/` + build.mjs 的 `hasMine` 分支 + `private/bench/t_walledit.js`，两个公开产物不受影响（AGENTS §0.3） |
 
 **P2 —— nice to have**
 

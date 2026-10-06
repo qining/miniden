@@ -1,7 +1,7 @@
 {
   "name": "miniden",
   "private": true,
-  "description": "MiniDen — 自家房子的迷你模型，看家具放不放得下（单文件构建：npm run build → dist/planner.html）",
+  "description": "MiniDen — 自家房子的迷你模型，看家具放不放得下（单文件构建：npm run build → dist/app.html（公开入口）+ dist/planner.html（个人入口））",
   "scripts": {
     "build": "node build.mjs",
     "test": "vitest run",

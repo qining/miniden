@@ -1,7 +1,16 @@
-// E1-1: 构建管线（源 = planner.html 内联脚本；产物 = dist/planner.html 单文件）
+// E1-1: 构建管线（E17 起：一个事实来源，两个入口）
+//
+// 事实来源（唯一，入库）：app.html —— 内嵌 generic 通用户型，也是公开/用户入口的源文件。
+// 构建产物（全部 gitignore）：
+//   dist/app.html      公开入口单文件（generic 户型，绝不含 private/ 引用）
+//   dist/planner.html  个人入口单文件（注入 private/plans/mine.json = 西雅图公寓；ui-gate/黄金基线用它）
+//   planner.html       个人入口「源形式」（app.html + mine 替换，lib/ 外链保持）
+//                      → 改完 app.html 直接刷新就能看到，不用先 build；你日常打开的那个文件
+// 两个入口共用同一份代码 → 新工具/新功能/新家具只写一次，两边同时生效。
+// 同步由测试台强制：同一套 plan-independent bench 跑 source(mine) / dist(mine) / dist(generic) 三份。
 //
 // 原则：「move, not rewrite」——不改变任何逻辑，只做：
-//   1. 从 planner.html 抽出内联 <script>（唯一事实来源）
+//   1. 从 app.html 抽出内联 <script>（唯一事实来源）
 //   2. 加两行 ESM 前言（import 本地 lib/ 的 three + OrbitControls，接上裸 THREE 引用）
 //   3. esbuild bundle 成 IIFE（three/OrbitControls 内联 → 真正单文件）
 //   4. 拼回 HTML（去掉两个 lib <script src> 标签，内联 bundle）
@@ -21,14 +30,14 @@ const root = dirname(fileURLToPath(import.meta.url));
 const TMP = join(root, 'build', 'tmp');
 const DIST = join(root, 'dist');
 
-const html = readFileSync(join(root, 'planner.html'), 'utf8');
+const html = readFileSync(join(root, 'app.html'), 'utf8');   // 唯一事实来源（入库版内嵌 generic）
 
 // --- S1 Phase 2a：校验嵌入的 schema 块 == src/schema/ 最新编译（单一事实来源）---
 const freshSchema = await bundleSchema();
 const SCHEMA_START = '<script id="miniden-schema">\n';
 const SCHEMA_END = '\n</script><!-- /miniden-schema -->';
 const sa = html.indexOf(SCHEMA_START);
-if (sa < 0) throw new Error('planner.html 缺 <script id="miniden-schema">（跑 npm run schema:build）');
+if (sa < 0) throw new Error('app.html 缺 <script id="miniden-schema">（跑 npm run schema:build）');
 const sb = html.indexOf(SCHEMA_END, sa);
 const embedded = html.slice(sa + SCHEMA_START.length, sb);
 if (embedded !== freshSchema) {
@@ -42,7 +51,7 @@ const freshGeo = await bundleGeo();
 const GEO_START = '<script id="miniden-geo">\n';
 const GEO_END = '\n</script><!-- /miniden-geo -->';
 const ga = html.indexOf(GEO_START);
-if (ga < 0) throw new Error('planner.html 缺 <script id="miniden-geo">（跑 npm run geo:build）');
+if (ga < 0) throw new Error('app.html 缺 <script id="miniden-geo">（跑 npm run geo:build）');
 const gb = html.indexOf(GEO_END, ga);
 const geoEmbedded = html.slice(ga + GEO_START.length, gb);
 if (geoEmbedded !== freshGeo) {
@@ -57,15 +66,15 @@ console.log('  geo: 嵌入块与 src/geo/ 最新编译一致');
   const PSTART = '<script type="application/json" id="miniden-plan">\n';
   const PEND = '\n</script>';
   const pa = html.indexOf(PSTART);
-  if (pa < 0) throw new Error('planner.html 缺 <script type="application/json" id="miniden-plan">');
+  if (pa < 0) throw new Error('app.html 缺 <script type="application/json" id="miniden-plan">');
   const pb = html.indexOf(PEND, pa);
   const embPlan = JSON.parse(html.slice(pa + PSTART.length, pb));
   const genPlan = JSON.parse(readFileSync(join(root, 'data/plans/generic.json'), 'utf8'));
   if (JSON.stringify(embPlan) !== JSON.stringify(genPlan)) {
-    console.error('✗ planner.html 的 #miniden-plan 块与 data/plans/generic.json 不一致（入库版必须是 generic）。');
+    console.error('✗ app.html 的 #miniden-plan 块与 data/plans/generic.json 不一致（入库版必须是 generic）。');
     process.exit(1);
   }
-  console.log('  plan: 嵌入块与 data/plans/generic.json 一致');
+  console.log('  plan: app.html 嵌入块与 data/plans/generic.json 一致（公开入口的户型）');
 }
 
 // --- 抽取内联脚本（唯一的裸 <script> 标签）---
@@ -201,24 +210,49 @@ const bundle = outputFiles[0].text;
 mkdirSync(DIST, { recursive: true });
 let out = head2 + '<script>\n' + bundle + '\n</script>' + tail;
 
-// --- S10：plan 注入（本地开发机有 private/plans/mine.json → dist 用真实户型；
-//     CI / 公开环境没有 → 保持 data/plans/generic.json 通用户型）---
-if (existsSync(join(root, 'private/plans/mine.json'))) {
-  const mine = JSON.parse(readFileSync(join(root, 'private/plans/mine.json'), 'utf8'));
-  const PSTART = '<script type="application/json" id="miniden-plan">\n';
-  const PEND = '\n</script>';
-  const pa = out.indexOf(PSTART);
-  if (pa < 0) throw new Error('dist 缺 #miniden-plan 块');
-  const pb = out.indexOf(PEND, pa);
-  out = out.slice(0, pa + PSTART.length) + JSON.stringify(mine, null, 1) + out.slice(pb);
-  console.log('  plan: 注入 private/plans/mine.json（本地真实户型）');
-} else {
-  console.log('  plan: generic（private/plans/mine.json 不存在，CI/公开环境）');
+// --- E17：户型注入助手（同一份 bundle，只换 #miniden-plan 块）---
+const PSTART = '<script type="application/json" id="miniden-plan">\n';
+const PEND = '\n</script>';
+function withPlan(pageHtml, planJson, where){
+  const pa = pageHtml.indexOf(PSTART);
+  if (pa < 0) throw new Error(`${where} 缺 #miniden-plan 块`);
+  const pb = pageHtml.indexOf(PEND, pa);
+  return pageHtml.slice(0, pa + PSTART.length) + JSON.stringify(planJson, null, 1) + pageHtml.slice(pb);
 }
-// dist/ 在 root 下一层：相对资源引用加 ../（dev 资源；缺失时优雅降级）
-out = out.replace(/['"]work\//g, m => m[0] + '../' + m.slice(1))
-         .replace(/['"]private\//g, m => m[0] + '../' + m.slice(1));
-writeFileSync(join(DIST, 'planner.html'), out);
+const planName = (pageHtml) => {
+  const pa = pageHtml.indexOf(PSTART);
+  return JSON.parse(pageHtml.slice(pa + PSTART.length, pageHtml.indexOf(PEND, pa))).name;
+};
+// dist/ 与 work/ 在 root 下一层：相对资源引用加 ../（dev 资源；缺失时优雅降级）
+const upDist  = (h) => h.replace(/['"]work\//g, m => m[0] + '../' + m.slice(1))
+                        .replace(/['"]private\//g, m => m[0] + '../' + m.slice(1));
+
+// --- 公开入口 dist/app.html：generic，隐私硬断言（§1.4）---
+// 只查「真正的资源引用」（引号后紧跟 private/ 或 ../private/）；HTML 注释里提到
+// private/plans/mine.json 是说明文字，不是引用。
+const outApp = out.replace(/['"]work\//g, m => m[0] + '../' + m.slice(1));
+if (/['"](\.\.\/)?private\//.test(outApp))
+  throw new Error('✗ dist/app.html 含 private/ 资源引用 —— 公开入口不得带个人数据（§1.4）');
+if (planName(outApp) !== 'generic-2br')
+  throw new Error('✗ dist/app.html 的户型不是 generic-2br —— 公开入口必须用通用户型');
+writeFileSync(join(DIST, 'app.html'), outApp);
+console.log('  入口: dist/app.html（公开/用户入口 · generic · 无 private/ 引用）');
+
+// --- 个人入口：dist/planner.html（单文件，黄金基线用）+ 根目录 planner.html（源形式，改动即时可见）---
+// 本地开发机有 private/plans/mine.json → 注入真实户型；CI/公开环境没有 → 退回 generic。
+const minePath = join(root, 'private/plans/mine.json');
+const hasMine = existsSync(minePath);
+// out = dist 个人入口内容（下面按 hasMine 决定注入 mine 还是保持 generic）
+if (hasMine) {
+  const mine = JSON.parse(readFileSync(minePath, 'utf8'));
+  out = upDist(withPlan(out, mine, 'dist'));
+  writeFileSync(join(DIST, 'planner.html'), out);
+  writeFileSync(join(root, 'planner.html'), withPlan(html, mine, 'app.html'));   // 源形式：lib/ 外链不动
+  console.log('  入口: dist/planner.html + planner.html（个人入口 · mine 西雅图公寓 · gitignore）');
+} else {
+  writeFileSync(join(DIST, 'planner.html'), out);   // CI：与 dist/app.html 同内容，保持既有路径
+  console.log('  入口: dist/planner.html（无 private/plans/mine.json → generic；个人入口跳过）');
+}
 
 // --- 测试台（S10：脚本与 plan 解耦，全部构建生成、不入库）---
 // bench/t_3d.js、bench/t_pt.js = plan-independent（随库提交；坐标运行时从
@@ -239,22 +273,19 @@ function makeBench(pageHtml, scriptPath, outPath) {
 }
 // source 页（本地把 mine plan 注入进 #miniden-plan 块）
 let srcForBench = html;
-if (existsSync(join(root, 'private/plans/mine.json'))) {
-  const mine = JSON.parse(readFileSync(join(root, 'private/plans/mine.json'), 'utf8'));
-  const PSTART = '<script type="application/json" id="miniden-plan">\n';
-  const PEND = '\n</script>';
-  const pa = srcForBench.indexOf(PSTART);
-  const pb = srcForBench.indexOf(PEND, pa);
-  srcForBench = srcForBench.slice(0, pa + PSTART.length) + JSON.stringify(mine, null, 1) + srcForBench.slice(pb);
-}
+if (hasMine) srcForBench = withPlan(srcForBench, JSON.parse(readFileSync(minePath, 'utf8')), 'app.html');
 // bench 在 work/ 下：lib/ 与 private/ 相对路径加 ../
 srcForBench = srcForBench.replace(/['"]lib\//g, m => m[0] + '../' + m.slice(1))
                          .replace(/['"]private\//g, m => m[0] + '../' + m.slice(1));
-for (const [script, out] of [['bench/t_3d.js', 'work/t_3d.html'],
-                             ['bench/t_pt.js', 'work/t_pt.html']])
-  makeBench(srcForBench, script, out);
+for (const [script, outp] of [['bench/t_3d.js', 'work/t_3d.html'],
+                              ['bench/t_pt.js', 'work/t_pt.html']])
+  makeBench(srcForBench, script, outp);
 makeBench(out, 'bench/t_3d.js', 'work/t_3d_dist.html');
 makeBench(out, 'bench/t_pt.js', 'work/t_pt_dist.html');
+// E17 同步门禁：同一套 plan-independent bench 也跑公开入口 dist/app.html（generic 户型）。
+// 新工具/新家具若在 generic 上炸，这里就红 —— 「两边同步」由构建保证，不靠人记。
+makeBench(outApp, 'bench/t_3d.js', 'work/t_3d_app.html');
+makeBench(outApp, 'bench/t_pt.js', 'work/t_pt_app.html');
 if (existsSync(join(root, 'private/bench/t_walledit.js'))) {
   makeBench(srcForBench, 'private/bench/t_walledit.js', 'work/t_walledit.html');
   makeBench(out, 'private/bench/t_walledit.js', 'work/t_walledit_dist.html');
@@ -263,5 +294,6 @@ if (existsSync(join(root, 'private/bench/t_walledit.js'))) {
 }
 
 const kb = (n) => (n / 1024).toFixed(0);
-console.log(`build OK: dist/planner.html ${kb(Buffer.byteLength(out))}KB` +
-  ` (src ${kb(Buffer.byteLength(html))}KB + three ${kb(readFileSync(join(root,'lib','three.min.js')).length)}KB 内联)`);
+console.log(`build OK: dist/app.html ${kb(Buffer.byteLength(outApp))}KB（公开） · ` +
+  `dist/planner.html ${kb(Buffer.byteLength(out))}KB（个人${hasMine?' · mine':''}）` +
+  ` (src app.html ${kb(Buffer.byteLength(html))}KB + three ${kb(readFileSync(join(root,'lib','three.min.js')).length)}KB 内联)`);

@@ -63,10 +63,11 @@ async function run3DTest(){
       'drot='+(it.rot-rot0).toFixed(1)+'° dpos='+Math.hypot(it.x-px0,it.y-py0).toFixed(3));
 
     /* ===== v3.3 新增件：卫生间镜子 / Lunix 沙发 / Honeywell 落地灯 ===== */
-    T('mirror-in-fx', FX.filter(f=>f.t==='mirror').length===3,
-      FX.filter(f=>f.t==='mirror').length+' 面镜子（主卫两面 + 卫2 一面）');
-    T('mirror-3d-built', !!three.mirrors && three.mirrors.length===3,
-      (three.mirrors?three.mirrors.length:0)+' 面进了 3D');
+    // 镜子数量随户型（mine 3 面 / generic 1 面）→ 断言「投影里有、且 3D 建的数量与投影一致」，不写死
+    const nMir = FX.filter(f=>f.t==='mirror').length;
+    T('mirror-in-fx', nMir>=1, nMir+' 面镜子（户型自带洁具，数量随户型）');
+    T('mirror-3d-built', !!three.mirrors && three.mirrors.length===nMir,
+      (three.mirrors?three.mirrors.length:0)+' 面进了 3D / 投影 '+nMir+' 面');
     if(three.mirrors && three.mirrors.length){
       const mm=three.mirrors[0].material;
       T('mirror-is-reflective', mm.metalness>=0.95 && mm.roughness<=0.05,

@@ -1,6 +1,6 @@
 ---
 name: add-catalog-item
-description: 往 planner.html 的家具目录里添加新条目（家具/灯具/地毯/儿童用品）：数据采集 → 目录条目 → 3D 建模 → 材质贴图 → 2D 图例 → 验证关卡 → 入库。
+description: 往 app.html 的家具目录里添加新条目（家具/灯具/地毯/儿童用品）：数据采集 → 目录条目 → 3D 建模 → 材质贴图 → 2D 图例 → 验证关卡 → 入库。
 ---
 
 # 加家具入库
@@ -85,7 +85,7 @@ Length/reach 对应的**最大占地**，不是机身尺寸。如果录好的 sp
 ```
 
 - **同款不同色 = 每个配色一个独立条目**，共用同一个 `model`
-- **写入前查 id / model 唯一性**（`grep "id:'xxx'" planner.html`）：同系列不同品类会撞（PS 2026 推车已有 `id:'ps2026-0'/model:'ps2026'`，落地灯必须改名如 `ps2026l`）
+- **写入前查 id / model 唯一性**（`grep "id:'xxx'" app.html`）：同系列不同品类会撞（PS 2026 推车已有 `id:'ps2026-0'/model:'ps2026'`，落地灯必须改名如 `ps2026l`）
 - `price`=美国实际标价、`priceCA`=加拿大实际标价（**不是汇率折算**）；
   `caVar`=同型号但面料/配置不同、`caNA`=加拿大不售
 - 固定在墙/天花的灯（`downlight/ceilingLight/vanityLight/pendant`）**不写价格**，公寓自带；
@@ -183,7 +183,7 @@ function xxxTexture(){
 # 关 1：语法
 python3 -c "
 import re
-h=open('planner.html').read(); m=re.search(r'<script>\n(.*?)</script>', h, re.S)
+h=open('app.html').read(); m=re.search(r'<script>\n(.*?)</script>', h, re.S)
 open('/tmp/p.js','w').write(m.group(1))" && node --check /tmp/p.js
 
 # 关 2+3：单件体检（包围盒/填充率/重心/贴地/材质/缩略图）+ 隔离渲染出图
@@ -277,7 +277,7 @@ python3 .claude/skills/add-catalog-item/check-item.py --regress
 | 成品比 spec 大一圈 | `C.ext(..., bevel)` 的 `bevelSize` 是**向外扩**的：轮廓要先减掉倒角量。深度它已经补偿了，截面没有 |
 | 折线管件像一串香肠 | `C.tube` 的胶囊端帽收在端点上，首尾相接会在每个折点掐出腰 → 每段 `C.tube(L + 2r, ...)` 让相邻段搭接 |
 | C.cyl 想当「中心在某高度」的横杆/顶杆 | C.cyl 是**底对齐**（add 时 y+h/2）：把中心高直接传给 y，144cm 杆被抬到 132cm（bbox 爆 155%）| 调用后 `m.position.y=cm(中心高)` 再转，或传 `中心高−len/2` |
-| work/ 里堆满一次性探针 HTML（用户要手动清理）| 每次调试都在 version 控制目录里新建探针页、用完不删；放 /tmp 又因相对 `lib/` 路径失效不可复用 | 复用**一个**探针模板：planner.html 副本放 work/ + lib 改 `../lib`，同一命令末尾立即 `rm`；探针无输出先查页面目录与 lib 相对路径是否匹配 |
+| work/ 里堆满一次性探针 HTML（用户要手动清理）| 每次调试都在 version 控制目录里新建探针页、用完不删；放 /tmp 又因相对 `lib/` 路径失效不可复用 | 复用**一个**探针模板：app.html 副本放 work/ + lib 改 `../lib`，同一命令末尾立即 `rm`；探针无输出先查页面目录与 lib 相对路径是否匹配 |
 | 参考图里的人被建成了产品部件 / 捏造了实物没有的支撑件 | 生活照里有小孩大人，肢体衣物被误当结构 | 白底产品图为准；生活图先圈出人体部位；部件必须能指着参考图定位，指不出就不建 |
 | 部件互穿/悬空/高度不合儿童尺度 | 只查了填充率和贴地，没查物理合理性 | 常识三查：非关节处不互穿；每件有支撑/附着；高度对照 2-3 岁体格（~90cm，爬洞 30-40cm，座 25-35cm） |
 | 扁压板件建成 3D 环（拱门带、扁环拉手） | 侧视图的"一条带"被当成圆环 | 看侧视：带=扁板（extrude 环形轮廓，厚度朝外），环=torus |

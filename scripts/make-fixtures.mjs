@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /* =====================================================================
-   scripts/make-fixtures.mjs — 从 planner.html 提取真实几何数据 → tests/fixtures/
+   scripts/make-fixtures.mjs — 从 app.html 提取真实几何数据 → tests/fixtures/
 
    生成 tests/fixtures/legacy-geo.json（从当前 source plan 提取；
    隐私边界后 source = 通用户型 → 生成物可安全入库；本地 mine plan 请用 --out private/fixtures/）：
@@ -11,7 +11,7 @@
 
    提取的是**原始脚本行**（几何块是纯数据+纯函数，无 DOM 依赖），
    在 vm 沙箱里执行后序列化。eff* 用下方内联的 **legacy 参考实现**（S1 Phase 2a
-   之前的行为）——它是等价性测试的独立 oracle，不能从 planner.html 提取
+   之前的行为）——它是等价性测试的独立 oracle，不能从 app.html 提取
    （现在的 eff* 已经是文档驱动，用它做 oracle 就是自己验证自己）。
    输出无时间戳——重复生成逐字节相同。
    ===================================================================== */
@@ -21,7 +21,7 @@ import path from 'node:path';
 import vm from 'node:vm';
 
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
-const html = readFileSync(path.join(root, 'planner.html'), 'utf8');
+const html = readFileSync(path.join(root, 'app.html'), 'utf8');
 const body = html.slice(html.indexOf('<script>\n') + '<script>\n'.length, html.lastIndexOf('</script>'));
 const lines = body.split('\n');
 
@@ -42,7 +42,7 @@ function extractBalanced(startLine) {
 
 const idx = (re) => lines.findIndex(l => re.test(l));
 if ([1, idx(/^const DIMTXT/), idx(/^const GEO_VERSION /), idx(/^let USERGEO = /), idx(/^const USERGEO_VERSION /)].some(i => i < 0)) {
-  console.error('fixture 提取锚点缺失——planner.html 结构变了，检查脚本');
+  console.error('fixture 提取锚点缺失——app.html 结构变了，检查脚本');
   process.exit(1);
 }
 
@@ -50,7 +50,7 @@ if ([1, idx(/^const DIMTXT/), idx(/^const GEO_VERSION /), idx(/^let USERGEO = /)
 const block1 = lines.slice(0, idx(/^const DIMTXT/) + 1).join('\n');
 
 /* legacy eff* 参考实现（S1 Phase 2a 之前的行为；等价性测试的唯一 oracle）。
-   与 planner.html 当前实现无关。若未来 legacy 语义有变，这里必须同步。 */
+   与 app.html 当前实现无关。若未来 legacy 语义有变，这里必须同步。 */
 const LEGACY_EFF = `
 function effWalls(){
   if(CALIB) return WALLS;
@@ -129,7 +129,7 @@ function run(scenario) {
 const empty = run(null);
 const user = run(SYN_CODE);
 const fixture = {
-  note: '从 planner.html 自动提取（scripts/make-fixtures.mjs）。eff* 输出是迁移等价性（docToLegacy ≡ eff*）的对照基准。无时间戳，重复生成逐字节相同。',
+  note: '从 app.html 自动提取（scripts/make-fixtures.mjs）。eff* 输出是迁移等价性（docToLegacy ≡ eff*）的对照基准。无时间戳，重复生成逐字节相同。',
   empty,
   user,
 };

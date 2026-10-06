@@ -1,5 +1,5 @@
 // S6: 把 pdfjs-dist（4.10.38 legacy build，ESM-only）包成经典脚本，
-// 供 planner.html 的「单文件/file://」约束使用（与 dxf-parser 同策略）：
+// 供 app.html 的「单文件/file://」约束使用（与 dxf-parser 同策略）：
 //
 //   lib/pdf.min.js       —— IIFE + top-level var pdfjsLib（classic 脚本 var 挂 window）
 //   lib/pdf.worker.min.js—— IIFE + 显式 globalThis.pdfjsWorker = { WorkerMessageHandler }

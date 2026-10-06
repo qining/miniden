@@ -10,7 +10,7 @@
 import os, re, subprocess, sys, tempfile
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
-PLANNER = os.path.join(ROOT, 'planner.html')
+PLANNER = os.path.join(ROOT, 'app.html')   # E17：唯一事实来源（公开入口同源）
 WORK = os.path.join(ROOT, 'work')
 CHROME = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
 CALIB_BASELINE = '1ac26921871db50ef1c055674c10e6e7'
@@ -25,7 +25,7 @@ def syntax_check():
     src = open(PLANNER, encoding='utf-8').read()
     m = re.search(r'<script>\n(.*?)</script>', src, re.S)
     if not m:
-        die('planner.html 里找不到主 script 块')
+        die('app.html 里找不到主 script 块')
     with tempfile.NamedTemporaryFile('w', suffix='.js', delete=False, encoding='utf-8') as f:
         f.write(m.group(1))
         path = f.name
@@ -38,7 +38,7 @@ def syntax_check():
 
 
 def make_page(src, body):
-    """把探针脚本注进 planner.html 的副本，修好相对路径。"""
+    """把探针脚本注进 app.html 的副本，修好相对路径。"""
     out = src.replace('</body>', body + '\n</body>', 1)
     return (out.replace("'work/clean_plan.jpg'", "'clean_plan.jpg'")
                .replace('lib/three.min.js', '../lib/three.min.js')
@@ -240,7 +240,7 @@ HARNESS = [('t_walledit.html', 80000, '1700,1100', 'wetest'),
 
 def regress():
     src = syntax_check()
-    # 三个测试台都要按最新 planner.html 重新生成
+    # 三个测试台都要按最新 app.html 重新生成
     for name, _, _, _ in HARNESS:
         f = os.path.join(WORK, name)
         mark = {'t_walledit.html': r'window\.__ERRS', 't_3d.html': r'window\.__E3',

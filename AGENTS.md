@@ -7,8 +7,8 @@
 
 ## 0. 这是什么
 
-项目名 **MiniDen**（迷你窝，ADR-0001；文件名 `planner.html` 暂保留）。
-单文件 Web 应用 `planner.html`（13,000+ 行，~792KB），给一套**高层 2室2卫公寓**做家具规划（具体城市/楼层属于隐私，不进 repo）：
+项目名 **MiniDen**（迷你窝，ADR-0001）。
+单文件 Web 应用（13,000+ 行，~870KB），给一套**高层 2室2卫公寓**做家具规划（具体城市/楼层属于隐私，不进 repo）：
 
 - **2D SVG 平面编辑器**：拖放家具、编辑墙体/门/柱、标准建筑图例
 - **3D 渲染**（Three.js r147，本地 `lib/`，离线可用）：娃娃屋视角 + 室内第一人称漫游
@@ -26,7 +26,7 @@
 | `.agents/skills` → `../.claude/skills` | **给 pi coding agent 用的软链**（git 存 mode 120000）。pi 只扫 `.agents/skills`，不认 `.claude/`；Claude Code 反过来不认 `.agents/`。软链让两边共用同一份文件，改一处两边同时生效 |
 | `bench/t_3d.js` `bench/t_pt.js` + `private/bench/t_walledit.js` | 三个自动化测试台脚本（§3）。**bench/*.js 入库且 plan-independent**；t_walledit 含真实户型几何断言，只能在 private/（§1.4） |
 | `data/plans/generic.json` | 入库的通用户型（2室1卫，无个人数据）；`private/plans/mine.json` = 真实户型（gitignore，逐位精确提取，§1.4） |
-| `build.mjs` + `package.json` | 构建管线：esbuild 捆成单文件 `dist/planner.html`（注入 mine plan + 修复 private/ 路径），并重新生成 **6 个 bench HTML**（3 脚本 × source/dist）（§3、§5.7） |
+| `build.mjs` + `package.json` | 构建管线：**一个事实来源 `app.html` → 两个入口**（E17，§0.3）。esbuild 捆成单文件 `dist/app.html`（公开）+ `dist/planner.html`（个人，注入 mine plan + 修复 private/ 路径）+ 根目录 `planner.html`（个人入口源形式），并重新生成 **8 个 bench HTML**（§3、§5.7） |
 | `scripts/ui-gate.mjs` | E16 UI 黄金截图门禁：截 **dist**（本地=mine / CI=generic）对 golden（§3） |
 | `private/golden/` | mine 的 UI 黄金基线（gitignore；`--update` 重拍） |
 | `work/headful_test.py` | 真显卡光追验证（§5.5） |
@@ -41,6 +41,23 @@
 | 首次加载 | 直接可用 | **要先信任项目**：交互模式跑一次 `/trust` 然后重启；非交互（`-p` / `--mode json` / `--mode rpc`）不弹框，必须显式加 `--approve`，否则**静默不加载、不报错** |
 
 所以给 pi 看的约束必须写进 `AGENTS.md`（本文），写进 `CLAUDE.md` 它看不到。
+
+### 0.3 两个入口，一个事实来源（E17，2026-10-05）
+
+**只有一个代码文件：`app.html`（入库）。所有工具/功能/家具只写一次，两个入口同时生效。**
+
+| 文件 | 入库? | 户型 | 形态 | 是什么 |
+|---|---|---|---|---|
+| `app.html` | **✓ 唯一事实来源** | generic（通用户型） | 源形式（`lib/` 外链） | 改代码就改它；clone 后直接打开就是公开入口 |
+| `planner.html`（根目录） | ✗ gitignore | **mine（西雅图公寓）** | 源形式 = app.html + mine 替换 | **你日常打开的那个**；改完 app.html 刷新即见，不用先 build |
+| `dist/app.html` | ✗ | generic | 单文件 bundle | **公开 / 用户入口**（可托管、可分享）；构建硬断言它不含任何 `private/` 资源引用、户型必须是 `generic-2br` |
+| `dist/planner.html` | ✗ | mine | 单文件 bundle | 个人入口单文件；`ui-gate` 黄金截图与 dist bench 用它 |
+
+- **同步不靠人记**：同一套 plan-independent bench 跑三份页面 —— source(mine) / dist(mine) / **dist(generic)**。新工具或新家具换个户型就坏，`work/t_3d_app.html` / `work/t_pt_app.html` 立刻红。
+- **断言必须 plan-independent**：不得写死某个户型的数量/坐标（踩过：镜子数量 mine 3 / generic 1）。要断数量就与运行时投影比（`const n = FX.filter(...).length`）。
+- **pull 之后第一件事跑 `npm run build`**：根目录 `planner.html` 是生成物，不 build 就没有。
+- **`private/` 是每个 worktree 各自一份**（gitignore 的未跟踪目录，不随 worktree 共享）。新 worktree 里从主检出复制，或软链：`ln -s /Users/dako/planner/private private`。没有 `private/plans/mine.json` 时构建自动跳过个人入口（CI/公开环境就是这个状态）。
+- **遥远的未来删掉这个公寓** = 删 `private/` + 删 build.mjs 里 `hasMine` 分支 + 删 `private/bench/t_walledit.js`；`app.html` 与 `dist/app.html` 不受影响。
 
 ### 0.2 项目状态与文档（非加目录类的工作先读这里）
 
@@ -58,7 +75,7 @@
 | `docs/research/01–10` | 需要「依据」时（各结论的调研过程/数据） |
 | `docs/design/` | 户型输入 → 3D 的设计总文档 |
 
-**当前位置**：R1–R10 研究全部完成；S 系列全部落地（S1–S7 + S9 Warm Dark 2a–2d）。**S10（隐私 + plan 外部化，2026-09）**：个人数据全部移入 `private/`（§1.4）；户型几何外置为 `#miniden-plan` JSON（committed=generic / 本地构建注入 mine）；bench 分层（入库 plan-independent / private plan-specific）；ui-gate 截 dist。**S11（2026-10-05）**：户型文档导出/导入（「工具 ⌄」→「导出户型 / 导入户型」+ `#docModal` 一次性确认，走 `applyImportedDoc` 同一条路；`ProjectDoc.floorOutline?` 纯增量可选字段保地板轮廓逐坐标保真）。**S11b（2026-10-05）**：导出必须无限制 → `ProjectDoc.plan?`（户型专属快照：roomSummary/refPhoto/calib/windowBand/patioPatch/islLabel/isl/kitchen/inner，同样不进投影），`freshDoc()` 从 PLAN 播种、消费端走 `planOf(k)`（文档优先、回退 PLAN）；厨房硬编码块数据化（顺带清除了公开文件里的真实坐标）。待办：`git filter-repo` 历史清除（用户确认后 force-push）、E5 CI（generic 子集）。加目录条目照 §8.1 / skill 走。
+**当前位置**：R1–R10 研究全部完成；S 系列全部落地（S1–S7 + S9 Warm Dark 2a–2d）。**S10（隐私 + plan 外部化，2026-09）**：个人数据全部移入 `private/`（§1.4）；户型几何外置为 `#miniden-plan` JSON（committed=generic / 本地构建注入 mine）；bench 分层（入库 plan-independent / private plan-specific）；ui-gate 截 dist。**S11（2026-10-05）**：户型文档导出/导入（「工具 ⌄」→「导出户型 / 导入户型」+ `#docModal` 一次性确认，走 `applyImportedDoc` 同一条路；`ProjectDoc.floorOutline?` 纯增量可选字段保地板轮廓逐坐标保真）。**S11b（2026-10-05）**：导出必须无限制 → `ProjectDoc.plan?`（户型专属快照：roomSummary/refPhoto/calib/windowBand/patioPatch/islLabel/isl/kitchen/inner，同样不进投影），`freshDoc()` 从 PLAN 播种、消费端走 `planOf(k)`（文档优先、回退 PLAN）；厨房硬编码块数据化（顺带清除了公开文件里的真实坐标）。**S12（2026-10-05）**：放置类实体只认两个来源——用户画 / 导入读到的几何，不写启发式猜测；`Run` 台面柜体带实体 + 工具、DXF/PDF `furn` 轮廓按形状分类落地为 run、钢框窗改成窗实体的 `steel` 标志（`steelBands()` 与历史 windowBand 重合时只画一次）。**E18（2026-10-05）**：两个入口一个事实来源（§0.3）。待办：`git filter-repo` 历史清除（用户暂缓）、E5 CI（generic 子集）。加目录条目照 §8.1 / skill 走。
 
 ---
 
@@ -79,6 +96,9 @@ md5 -q /tmp/ckc.png
 # 不是文件分辨率**（写成 2048×1370 会把底图放大 3.5 倍潎满全画布，md5 整体变掉）
 # 只验几何，不受 UI 影响（body.calib 锁死旧版面板宽度，§5.4.6）
 ```
+
+（`file:///Users/dako/planner/planner.html` = 根目录个人入口 = mine 户型，§0.3。
+   **必须从仓库根目录打开**：否则 `private/plan/clean_plan.jpg` 解析不到，md5 会是另一个值。）
 
 **新增的视觉元素一律不能进 calib 视图**。做法：
 - FIXED 条目加 `noCal:true`
@@ -113,14 +133,19 @@ md5 -q /tmp/ckc.png
 
 - `private/` 全目录 gitignore：`plans/mine.json`（真实户型，23KB）、`photos/`、
   `plan/`（clean_plan.jpg 等）、`bench/t_walledit.js`、`golden/`、`calib/`、`ref/`。
-- 入库的 `planner.html` 里 `#miniden-plan` 块 = `data/plans/generic.json`（通用 2室1卫，
+- 入库的 `app.html` 里 `#miniden-plan` 块 = `data/plans/generic.json`（通用 2室1卫，
   无个人数据）。`build.mjs` 本地构建时若 `private/plans/mine.json` 存在就把它注入
-  dist（**dist/ 始终 gitignore，注入永不入库**）；否则用 generic（CI/公开环境）。
+  dist 与根目录 `planner.html`（**dist/ 与根 `planner.html` 始终 gitignore，注入永不入库**）；
+  否则用 generic（CI/公开环境）。
+- 根目录 `planner.html`（E17 个人入口）**内含真实户型坐标**：gitignore 已挡，与 `dist/`
+  同一条红线——**绝不 `git add -f`**。`dist/app.html` 由构建硬断言不含 `private/` 资源引用。
 - **mine.json 必须逐位精确**（§5.1 有坑）：它是从原版硬编码常量**用 node eval 原代码
   提取**的（floorpts/walls/… 与浏览器运行时逐位一致，已用 #dump 全字段核对）。
   手绘/Python 转算的值会有末位漂移 → 2D auto-fit viewBox 整体位移 → ui-gate 18% 假红。
-- **历史里的个人数据待 `git filter-repo` 清除**（用户确认后 force-push）；在那之前
-  **禁止 push**。
+- **历史里的个人数据（17 个 blob + 最早 commit `e73cb45` 里硬编码的真实户型坐标）尚未清除**：
+  用户 2026-10-05 明确「暂时不需要删除历史」，并授权直接 push。红线因此变成
+  **HEAD 必须干净**（新提交里不得出现真实坐标 / `private/` 资源引用 / `dist` 或根 `planner.html`）；
+  `git filter-repo` + force-push 仍是将来要做的收尾。
 - 新增任何「真实户型相关」的产物（截图/基线/坐标）默认放 `private/`，
   入库前问自己：「这个文件给陌生人看，泄露了我的家吗？」
 
@@ -143,15 +168,16 @@ cd /Users/dako/planner
 # 2) 语法检查——必做，比打开浏览器快得多
 python3 -c "
 import re
-html = open('planner.html').read()
+html = open('app.html').read()
 m = re.search(r'<script>\n(.*?)</script>', html, re.S)
 open('/tmp/planner_check.js','w').write(m.group(1))
 " && node --check /tmp/planner_check.js && echo "SYNTAX OK"
 
-# 2b) 构建单文件产物（E1/S10 起）：node build.mjs
-#     → dist/planner.html（本地注入 mine plan + private/ 路径修复；无 private/ 时=generic）
+# 2b) 构建（E1/S10/E17 起）：node build.mjs
+#     → dist/app.html（公开入口 generic）+ dist/planner.html（个人入口单文件，注入 mine + private/ 路径修复）
+#       + 根目录 planner.html（个人入口源形式）；无 private/ 时个人入口退回 generic
 #     + 重新生成 6 个 bench HTML（3 脚本 × source/dist，work/ 下 gitignore）
-#     改完 planner.html / bench/*.js 之后必跑（dist 是构建产物，不同步就是过期副本）
+#     改完 app.html / bench/*.js 之后必跑（dist 与根 planner.html 都是构建产物，不同步就是过期副本）
 
 # 3) 交互测试台（t_walledit 198 / t_3d 92 / t_pt 32 条断言，见 §3；dist 变体同断言，见 §5.7）
 # 4) 校准回归（§1.1）
@@ -184,8 +210,9 @@ open('/tmp/planner_check.js','w').write(m.group(1))
 - t_walledit 含真实户型坐标断言（门/墙的具体位置），**只能放 private/**（§1.4）；
   CI 只跑 t_3d/t_pt（generic plan 上同样全绿——这就是 plan-independence 的验收）。
 
-**生成**：`node build.mjs` 把三个脚本注入 **source planner.html 和 dist/planner.html**，
-产出 `work/t_*.html` + `work/t_*_dist.html`（6 个，全 gitignore，每次构建重新生成）。
+**生成**：`node build.mjs` 把三个脚本注入 **source(mine) / dist(mine) / dist(generic)** 三份页面，
+产出 `work/t_*.html` + `work/t_*_dist.html` + `work/t_*_app.html`（8 个，全 gitignore，每次构建重新生成）。
+**`*_app.html` 是 E17 的同步门禁**：同一套断言跑在公开入口 `dist/app.html`（generic 户型）上。
 **脚本改了就重跑 build.mjs，不要手工维护 HTML 副本**。注入用 Python `str.replace`
 （`$` 陷阱见 §5.1）+ 注入后 `node --check`。
 
@@ -207,7 +234,7 @@ open('/tmp/planner_check.js','w').write(m.group(1))
 **`--update` 之后的「8/8 @ 0.0000%」什么都不证明**（P1 实测踩过）：基线被重拍成
 「改动后的样子」，回归就被焊进基线里了。**重构类改动（plan 外部化/模块化/重排）
 的验收不能只看 ui-gate**，要对**改动前的版本**独立做一次像素对比：
-`git show HEAD~1:planner.html > _prev.html` → 同窗口同 `#ui:<state>` 各截一张 →
+`git show HEAD~1:app.html > _prev.html` → 同窗口同 `#ui:<state>` 各截一张 →
 pngjs 逐像素比。P1 那次就是这样才抓到「2D 0.79% / 3D 1.23%」的真回归
 （基线 mtime 比 diff 图还新 = 跑红之后补拍的，是个有用的取证信号）。
 改完记得 `rm _prev.html`。
@@ -309,7 +336,7 @@ sips -z 高 宽 /tmp/x.png --out /tmp/x_big.png               # 放大
 | 只做截图冒烟就交付交互功能 | 用户反馈"根本不工作" | 必须写自动化交互测试台 |
 | 凭 DOM 查询（querySelector/textContent）声称「已显示/可见」，用户说「我看不到」 | DOM 存在 ≠ 人眼可见：被盖住（z-index）/ 在裁剪或折叠区外 / 对比度不足 / 只是已关闭的瞬态 | 可见性声称必须过三层探针（几何/遮挡/截图放大目检），见 §8.4 |
 | macOS **没有 `timeout` 命令** | rc=127，命令根本没跑，`echo done` 掩盖了失败，看到的是旧文件 | 不要用 `timeout`；检查 rc |
-| 测试页是改动前生成的副本 | 测出旧行为，浪费一轮调试 | 每次改完 planner.html 都重新生成测试页 |
+| 测试页是改动前生成的副本 | 测出旧行为，浪费一轮调试 | 每次改完 app.html 都重新生成测试页 |
 | 批量 replace 时文本已漂移 | 静默 MISS | 每次 replace 都统计 miss 数并打印 |
 | `pkill -f headless` 误杀 **browser 工具的 playwright `chrome-headless-shell`**（路径里含 headless） | 浏览器会话被断、且杀不干净上一轮 Chrome 僵尸 | 精确匹配：`pkill -f 'Google Chrome.app.*--headless'` |
 | **headless 里 `alert()`/`confirm()` 永久阻塞页面**（无人应答，进程存活但 0% CPU、dump-dom 永远空） | bench 挂死，症状与「页面崩溃」相似但 CPU 为 0 | 交互路径（会被 bench 执行到的）一律不用阻塞弹窗（改 toast/内联提示，2026-09-18 的 S6 bug 猎里 `setUnderlay` 在导入户型下 alert 就是这样把 bench 挂死的）；诊断挂死：看 `ps` 里 Chrome CPU——0% = 阻塞等待（弹窗/网络），高 = 在算 |
@@ -326,6 +353,8 @@ sips -z 高 宽 /tmp/x.png --out /tmp/x_big.png               # 放大
 | **calib 底图 w/h 写成文件分辨率**（2048×1370，实为 591×480 图纸 px） | SVG `<image>` 按 w/h 铺：放大 3.5 倍后潎满全画布，calib md5 整体变掉（diff 197k 像素、全画布、非位移） | 底图尺寸是**图纸 px**（与 viewBox 同量纲）；改 calib 字段后立刻跑 §1.1 md5 |
 | **把几何外置成 plan 数据时漏掉「某户型专属」的硬编码构件**（P1 实测：3D 落地窗带钢梁 `C(x1,y1)…` + 2D 黑方块示意 + 阳台楔形补板 + 中岛标签位） | 只按 `docImported()` 门控、不按 plan 门控 → 换个户型照画不误：钢梁斜穿整个户型，看着像「地板和墙错位」；而且真实坐标还留在公开文件里 | 外置几何后 `grep -nE 'C\([0-9]'`（以及任何裸数字坐标）扫一遍消费端，每处问「这是所有户型都有的，还是某一户专属？」——专属的一律挪进 plan JSON 并用 `PLAN.xxx` 存在性门控；验收：**generic 户型目检 2D+3D**（mine 全绿不代表 generic 没炸） |
 | **localStorage 存档不带户型标识**（P1：`planner_v1`/`planner_doc_v1` 单桶） | plan 外置后，mine 的存档被原样回放到 generic 上（斜墙/阳台/柱 + 满屋家具叠在通用户型里）；用户以为「渲染坏了」 | 键按户型指纹分桶（`planner_doc_v1:<fp>`，fp = name+sc+floorpts+walls 的 hash）；旧单桶键**只读兼容且不删**（它属于另一份户型，删了就是毁用户数据），采用前用 `docMatchesPlan()` 逐坐标核对内置实体 |
+| plan-independent 的 bench 里写死了某个户型的数量（镜子断言 `===3`） | 换户型就假红（generic 只有 1 面镜子），而 CI 只跑 generic → CI 永远红、本地永远绿 | 断言与**运行时投影**比（`const n = FX.filter(...).length`）或从 `floorPts()`/`LABELS` 派生；每个写死的户型数字都要问「另一个户型也是这个吗」 |
+| JS 正则字面量里未转义的 `/`（写成 `/(\.\./)?private\//`） | 字符类外的 `/` 直接结束字面量 → `Invalid regular expression: Unterminated group`，构建脚本连加载都失败 | 正则里的斜杠一律 `\/`；写完 `node --check` 一遍 |
 | bench 里顶层 `const` 命名撞已有声明（bx1/bx 等） | 整段 bench SyntaxError、一行不跑，症状 = NO TEST OUTPUT | bench 是新代码但跑在既有函数作用域里：新变量名先 grep 一遍 bench 全文再定 |
 | 返回文档时用字面量 `runs: []` 而不是简写变量 `runs` | `info.counts.runs` 是 1、`doc.runs` 却是空数组——push 进的是局部变量，文档里是另一个数组，测试读不到 | 文档字段用简写（`runs,`）；写完立刻打印 `doc.runs` 与 `counts.runs` 对一下 |
 | `segOnBand(seg, band, tol)` 吃**单个** Band | 传 `bands` 数组 → `bd.dir` undefined → `Cannot read properties of undefined (reading 'y')` | 遍历数组：`bands.some(bd => segOnBand({a,b}, bd, tol))` |
@@ -379,7 +408,7 @@ sips -z 高 宽 /tmp/x.png --out /tmp/x_big.png               # 放大
 
 ## 5.4 材质与贴图（2026-09 补齐）
 
-`planner.html` 里所有贴图都是**程序化生成的 CanvasTexture**（离线可用、可确定性复现）：
+`app.html` 里所有贴图都是**程序化生成的 CanvasTexture**（离线可用、可确定性复现）：
 
 | 函数 | 用途 | 备注 |
 |---|---|---|
@@ -680,7 +709,7 @@ WebGL2 更没有。所以这是「用 GPU 的通用计算单元跑软件光追�
 
 ### 5.7 经典脚本 → ESM（2026-09 E1 实测踩的 6 个坑）
 
-E1 把 `planner.html` 的内联脚本搬进 esbuild 管线（bundle 出单文件 dist，行为必须逐字节等价）。
+E1 把 `app.html`（当时还叫 `planner.html`）的内联脚本搬进 esbuild 管线（bundle 出单文件 dist，行为必须逐字节等价）。
 classic script 和 ESM 的**作用域语义差异**是全部麻烦的来源，六个坑都真的发生过：
 
 | 坑 | 症状 | 修法 |
@@ -962,7 +991,7 @@ function xxxTexture(){
 ```bash
 python3 -c "
 import re
-h=open('planner.html').read(); m=re.search(r'<script>\n(.*?)</script>', h, re.S)
+h=open('app.html').read(); m=re.search(r'<script>\n(.*?)</script>', h, re.S)
 open('/tmp/p.js','w').write(m.group(1))" && node --check /tmp/p.js
 ```
 
@@ -1105,7 +1134,7 @@ requestRender();
 | rbox 的 r 逼近最窄边的一半（r≈w/2） | 基形缩 2r 后剩 ~8mm 薄片，roundedRectShape 的圆角半径还是大值 → 形状病态，bevel 向外膨胀回 **2× 请求宽**（SC172 扶手 13.5cm 渲出 26.8cm，填充率 113%） | 胶囊型厚薄板（r ≥ 最窄边/4）改用 `C.ext`：圆弧点画进轮廓（bevel=null）再拉伸；否则 r < 最窄边/4 |
 | 2D 符号大得离谱（比实物大 S≈22 倍） | `furnShape()` 里 px/ft 混用：`wp=wf*S` 已是 px，却传给内部又乘 S 的 `R()`（S² 双重放大）；裸 `el()` 直接吃 px、`R()` 吃 ft | 一律先用 `wf`/`df`（英尺）算几何，传给裸 `el()` 时自己乘 `S`；`R()` 只喂英尺；加新 kind 图例后在放大视图里量一下符号实际像素（见 SKILL §5） |
 | C.cyl 想当「中心在某高度」的横杆/顶杆 | C.cyl 是**底对齐**（add 时 y+h/2）：把中心高直接传给 y，144cm 杆被抬到 132cm（bbox 爆 155%）| 调用后 `m.position.y=cm(中心高)` 再转，或传 `中心高−len/2` |
-| work/ 里堆满一次性探针 HTML（用户要手动清理）| 每次调试都在 version 控制目录新建探针页、用完不删；放 /tmp 又因相对 `lib/` 路径失效不可复用 | 复用**一个**探针模板：planner.html 副本放 work/ + lib 改 `../lib`，同一命令末尾立即 `rm`；探针无输出先查页面目录与 lib 相对路径是否匹配 |
+| work/ 里堆满一次性探针 HTML（用户要手动清理）| 每次调试都在 version 控制目录新建探针页、用完不删；放 /tmp 又因相对 `lib/` 路径失效不可复用 | 复用**一个**探针模板：app.html 副本放 work/ + lib 改 `../lib`，同一命令末尾立即 `rm`；探针无输出先查页面目录与 lib 相对路径是否匹配 |
 | C.box 的 x/z 也是中心点（同 C.rb） | 想让板居中却把 ±w/2 写成 x → 整板偏半个板长，bbox 爆 1.46×（BARLAST 十字底座两板都偏 -w/2，交叠区撑出 48cm） | 居中写 (0,0,0)；要偏置写 ±w/2 |
 | 模型里出现实物没有的部件 / 把真人当成了产品的一部分 | 参考图里有小孩/成人（手抓栏杆、腿跨在架上、衣服颜色），把肢体/衣物误当结构，或"想当然"补了个支撑件（Lil' Climber 曾捏造一块 A 撑板） | 读参考图先分离人与产品：白底产品图为准，生活图里先圈出所有人体部位再提取结构；每个部件要能指着参考图说"这里是它"，指不出来就不建 |
 | 部件互相穿插 / 悬空 / 高度不合使用者尺度 | 建模后没做常识体检，只看了填充率和贴地 | 建模完做常识三查：（a）非关节处不得互穿（滑梯末端不能插进拱门腿）；（b）每个部件有支撑或明确附着；（c）高度对照使用者体格（2-3 岁 ≈90cm；爬洞口 30-40cm；座高 25-35cm） |
@@ -1186,6 +1215,8 @@ F 交互体检 / G 卫生）。**关 C 已有工具（E16）**：UI 改动后必
 
 ```bash
 CHROME="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+# 下面的 file:// 都是**个人入口**（根目录 planner.html = mine 户型，§0.3）；
+# 公开入口 = dist/app.html（单文件）或 app.html（源形式）。
 
 # 2D 截图
 "$CHROME" --headless --disable-gpu --screenshot=/tmp/a.png --window-size=1700,1100 \
