@@ -4,8 +4,9 @@
 // 构建产物（全部 gitignore）：
 //   dist/app.html      公开入口单文件（generic 户型，绝不含 private/ 引用）
 //   dist/planner.html  个人入口单文件（注入 private/plans/mine.json = 西雅图公寓；ui-gate/黄金基线用它）
-//   planner.html       个人入口「源形式」（app.html + mine 替换，lib/ 外链保持）
+//   planner.html       个人入口「源形式」（app.html + mine 替换，lib/ 外链保持）——**入库**
 //                      → 改完 app.html 直接刷新就能看到，不用先 build；你日常打开的那个文件
+//                      → 因此它含真实户型坐标，与历史里已有的同一份数据同级（AGENTS §1.4）
 // 两个入口共用同一份代码 → 新工具/新功能/新家具只写一次，两边同时生效。
 // 同步由测试台强制：同一套 plan-independent bench 跑 source(mine) / dist(mine) / dist(generic) 三份。
 //
@@ -248,10 +249,10 @@ if (hasMine) {
   out = upDist(withPlan(out, mine, 'dist'));
   writeFileSync(join(DIST, 'planner.html'), out);
   writeFileSync(join(root, 'planner.html'), withPlan(html, mine, 'app.html'));   // 源形式：lib/ 外链不动
-  console.log('  入口: dist/planner.html + planner.html（个人入口 · mine 西雅图公寓 · gitignore）');
+  console.log('  入口: dist/planner.html + planner.html（个人入口 · mine 西雅图公寓 · planner.html 入库）');
 } else {
   writeFileSync(join(DIST, 'planner.html'), out);   // CI：与 dist/app.html 同内容，保持既有路径
-  console.log('  入口: dist/planner.html（无 private/plans/mine.json → generic；个人入口跳过）');
+  console.log('  入口: dist/planner.html（无 private/plans/mine.json → generic；根 planner.html 保持已入库的那份不动）');
 }
 
 // --- 测试台（S10：脚本与 plan 解耦，全部构建生成、不入库）---

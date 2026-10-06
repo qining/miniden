@@ -26,7 +26,7 @@
 | `.agents/skills` → `../.claude/skills` | **给 pi coding agent 用的软链**（git 存 mode 120000）。pi 只扫 `.agents/skills`，不认 `.claude/`；Claude Code 反过来不认 `.agents/`。软链让两边共用同一份文件，改一处两边同时生效 |
 | `bench/t_3d.js` `bench/t_pt.js` + `private/bench/t_walledit.js` | 三个自动化测试台脚本（§3）。**bench/*.js 入库且 plan-independent**；t_walledit 含真实户型几何断言，只能在 private/（§1.4） |
 | `data/plans/generic.json` | 入库的通用户型（2室1卫，无个人数据）；`private/plans/mine.json` = 真实户型（gitignore，逐位精确提取，§1.4） |
-| `build.mjs` + `package.json` | 构建管线：**一个事实来源 `app.html` → 两个入口**（E17，§0.3）。esbuild 捆成单文件 `dist/app.html`（公开）+ `dist/planner.html`（个人，注入 mine plan + 修复 private/ 路径）+ 根目录 `planner.html`（个人入口源形式），并重新生成 **8 个 bench HTML**（§3、§5.7） |
+| `build.mjs` + `package.json` | 构建管线：**一个事实来源 `app.html` → 两个入口**（E18，§0.3）。esbuild 捆成单文件 `dist/app.html`（公开）+ `dist/planner.html`（个人，注入 mine plan + 修复 private/ 路径）+ 根目录 `planner.html`（个人入口源形式），并重新生成 **8 个 bench HTML**（§3、§5.7） |
 | `scripts/ui-gate.mjs` | E16 UI 黄金截图门禁：截 **dist**（本地=mine / CI=generic）对 golden（§3） |
 | `private/golden/` | mine 的 UI 黄金基线（gitignore；`--update` 重拍） |
 | `work/headful_test.py` | 真显卡光追验证（§5.5） |
@@ -42,20 +42,20 @@
 
 所以给 pi 看的约束必须写进 `AGENTS.md`（本文），写进 `CLAUDE.md` 它看不到。
 
-### 0.3 两个入口，一个事实来源（E17，2026-10-05）
+### 0.3 两个入口，一个事实来源（E18，2026-10-05）
 
 **只有一个代码文件：`app.html`（入库）。所有工具/功能/家具只写一次，两个入口同时生效。**
 
 | 文件 | 入库? | 户型 | 形态 | 是什么 |
 |---|---|---|---|---|
 | `app.html` | **✓ 唯一事实来源** | generic（通用户型） | 源形式（`lib/` 外链） | 改代码就改它；clone 后直接打开就是公开入口 |
-| `planner.html`（根目录） | ✗ gitignore | **mine（西雅图公寓）** | 源形式 = app.html + mine 替换 | **你日常打开的那个**；改完 app.html 刷新即见，不用先 build |
+| `planner.html`（根目录） | **✓ 入库**（含真实户型坐标，见 §1.4） | **mine（西雅图公寓）** | 源形式 = app.html + mine 替换 | **你日常打开的那个**；改完 app.html 刷新即见，不用先 build。`npm run build` 每次把它重新生成一遍（所以它会跟着 app.html 一起出现在 diff 里） |
 | `dist/app.html` | ✗ | generic | 单文件 bundle | **公开 / 用户入口**（可托管、可分享）；构建硬断言它不含任何 `private/` 资源引用、户型必须是 `generic-2br` |
 | `dist/planner.html` | ✗ | mine | 单文件 bundle | 个人入口单文件；`ui-gate` 黄金截图与 dist bench 用它 |
 
 - **同步不靠人记**：同一套 plan-independent bench 跑三份页面 —— source(mine) / dist(mine) / **dist(generic)**。新工具或新家具换个户型就坏，`work/t_3d_app.html` / `work/t_pt_app.html` 立刻红。
 - **断言必须 plan-independent**：不得写死某个户型的数量/坐标（踩过：镜子数量 mine 3 / generic 1）。要断数量就与运行时投影比（`const n = FX.filter(...).length`）。
-- **pull 之后第一件事跑 `npm run build`**：根目录 `planner.html` 是生成物，不 build 就没有。
+- `planner.html` 入库 ⇒ 换机器 / 没有 `private/` 时它照样存在（就是仓库里那份公寓版）。有 `private/plans/mine.json` 时 `npm run build` 会把它重新生成一遍；没有时构建**不动它**。
 - **`private/` 是每个 worktree 各自一份**（gitignore 的未跟踪目录，不随 worktree 共享）。新 worktree 里从主检出复制，或软链：`ln -s /Users/dako/planner/private private`。没有 `private/plans/mine.json` 时构建自动跳过个人入口（CI/公开环境就是这个状态）。
 - **遥远的未来删掉这个公寓** = 删 `private/` + 删 build.mjs 里 `hasMine` 分支 + 删 `private/bench/t_walledit.js`；`app.html` 与 `dist/app.html` 不受影响。
 
@@ -135,10 +135,18 @@ md5 -q /tmp/ckc.png
   `plan/`（clean_plan.jpg 等）、`bench/t_walledit.js`、`golden/`、`calib/`、`ref/`。
 - 入库的 `app.html` 里 `#miniden-plan` 块 = `data/plans/generic.json`（通用 2室1卫，
   无个人数据）。`build.mjs` 本地构建时若 `private/plans/mine.json` 存在就把它注入
-  dist 与根目录 `planner.html`（**dist/ 与根 `planner.html` 始终 gitignore，注入永不入库**）；
+  dist（**dist/ 始终 gitignore，注入永不入库**）并重新生成根目录 `planner.html`；
   否则用 generic（CI/公开环境）。
-- 根目录 `planner.html`（E17 个人入口）**内含真实户型坐标**：gitignore 已挡，与 `dist/`
-  同一条红线——**绝不 `git add -f`**。`dist/app.html` 由构建硬断言不含 `private/` 资源引用。
+- **`planner.html`（个人入口）现在入库**（用户 2026-10-05：「先把 planner.html 也确保在 repo 里面存着」）。
+  它 = `app.html` + mine 替换，**含真实户型坐标**——与历史里已有的同一份数据（commit `e73cb45`
+  的硬编码几何）同级，用户已明确暂缓 `git filter-repo`。所以现在的红线是**分区**的：
+
+  | 必须干净（构建硬断言 / 审查） | 允许含真实户型（已知、被接受，直到将来删掉这个公寓） |
+  |---|---|
+  | `app.html`（事实来源）、`dist/app.html`（公开入口）、`bench/*.js`、`tests/`、`docs/`、`data/plans/generic.json` | `planner.html`（个人入口）、`dist/planner.html`、`private/**` |
+
+  新的个人数据（照片、图纸扫描、真实户型截图/基线）**仍然一律进 `private/`**，不要顺手放进入库文件。
+  将来删掉这个公寓 = 删 `planner.html` + `private/` + `build.mjs` 的 `hasMine` 分支 + `private/bench/t_walledit.js`。
 - **mine.json 必须逐位精确**（§5.1 有坑）：它是从原版硬编码常量**用 node eval 原代码
   提取**的（floorpts/walls/… 与浏览器运行时逐位一致，已用 #dump 全字段核对）。
   手绘/Python 转算的值会有末位漂移 → 2D auto-fit viewBox 整体位移 → ui-gate 18% 假红。
@@ -173,7 +181,7 @@ m = re.search(r'<script>\n(.*?)</script>', html, re.S)
 open('/tmp/planner_check.js','w').write(m.group(1))
 " && node --check /tmp/planner_check.js && echo "SYNTAX OK"
 
-# 2b) 构建（E1/S10/E17 起）：node build.mjs
+# 2b) 构建（E1/S10/E18 起）：node build.mjs
 #     → dist/app.html（公开入口 generic）+ dist/planner.html（个人入口单文件，注入 mine + private/ 路径修复）
 #       + 根目录 planner.html（个人入口源形式）；无 private/ 时个人入口退回 generic
 #     + 重新生成 6 个 bench HTML（3 脚本 × source/dist，work/ 下 gitignore）
@@ -212,7 +220,7 @@ open('/tmp/planner_check.js','w').write(m.group(1))
 
 **生成**：`node build.mjs` 把三个脚本注入 **source(mine) / dist(mine) / dist(generic)** 三份页面，
 产出 `work/t_*.html` + `work/t_*_dist.html` + `work/t_*_app.html`（8 个，全 gitignore，每次构建重新生成）。
-**`*_app.html` 是 E17 的同步门禁**：同一套断言跑在公开入口 `dist/app.html`（generic 户型）上。
+**`*_app.html` 是 E18 的同步门禁**：同一套断言跑在公开入口 `dist/app.html`（generic 户型）上。
 **脚本改了就重跑 build.mjs，不要手工维护 HTML 副本**。注入用 Python `str.replace`
 （`$` 陷阱见 §5.1）+ 注入后 `node --check`。
 

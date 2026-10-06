@@ -41,6 +41,7 @@ work/golden/diff-*.png
 # 隐私：公寓照片/底图/裁剪/私有基线/私有 bench（2026-09 隐私边界：CI/public 永远不含）
 private/
 
-# E17 个人入口（由 build.mjs 从 app.html + private/plans/mine.json 生成）
-# 内含真实户型坐标 —— 绝不入库；git 已忽略，git add -f 是唯一风险（同 dist/）
-/planner.html
+# E18 个人入口 planner.html：**入库**（用户 2026-10-05 决定「先把 planner.html 也确保在 repo 里面存着」）。
+# 它 = app.html + private/plans/mine.json 替换，因此**含真实户型坐标** —— 与历史里已有的同一份数据
+# （commit e73cb45 的硬编码几何）同级；用户已明确暂缓 git filter-repo。红线见 AGENTS.md §1.4：
+# 公开入口 app.html / dist/app.html 必须 generic 且不含 private/ 资源引用；新的个人数据仍进 private/。
