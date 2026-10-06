@@ -29,6 +29,9 @@ jobs:
 
       - run: npm ci
 
+      - name: chrome version
+        run: google-chrome --version
+
       - run: npm run typecheck
 
       - run: npm test

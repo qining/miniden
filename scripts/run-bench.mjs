@@ -9,7 +9,7 @@
  *   每个 bench 的窗口 / virtual-time-budget / <pre id> 与 AGENTS §3 的 run() 完全一致。
  * 退出码：任一 bench 出现 FAIL / EXC / NO TEST OUTPUT → 1。
  */
-import { execFileSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -19,6 +19,8 @@ const CHROME = process.env.CHROME
   || (process.env.CI === 'true' ? 'google-chrome'
       : '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome');
 const CI_FLAGS = process.env.CI === 'true' ? ['--no-sandbox', '--disable-dev-shm-usage'] : [];
+// Chrome ≥140：软件 WebGL（SwiftShader）需显式 opt-in，否则可能降级成受限路径
+const SWIFTSHADER_FLAG = '--enable-unsafe-swiftshader';
 
 // 与 AGENTS §3 的表格一致（dist 的 t_walledit budget 120000）
 const SPEC = {
@@ -41,24 +43,27 @@ function attempt(f, spec) {
   const page = join(root, 'work', f);
   if (!existsSync(page)) return { ok: false, head: `FAIL ${f} | 页面不存在（先 npm run build）`, bad: [] };
   const [w, h] = spec.win.split(',');
-  let dom = '';
+  let r;
   try {
-    dom = execFileSync(CHROME, [
-      '--headless', '--use-angle=swiftshader', '--allow-file-access-from-files',
+    r = spawnSync(CHROME, [
+      '--headless', '--use-angle=swiftshader', SWIFTSHADER_FLAG, '--allow-file-access-from-files',
       ...CI_FLAGS,
       '--dump-dom', `--virtual-time-budget=${spec.budget}`, `--window-size=${w},${h}`,
       `file://${page}`,
-    ], { maxBuffer: 64 * 1024 * 1024, encoding: 'utf8', timeout: 15 * 60 * 1000, stdio: ['ignore', 'pipe', 'pipe'] });
+    ], { maxBuffer: 64 * 1024 * 1024, encoding: 'utf8', timeout: 15 * 60 * 1000 });
   } catch (e) {
     return { ok: false, head: `FAIL ${f} | chrome 失败: ${String(e.message).slice(0, 200)}`, bad: [] };
   }
+  if (r.error) return { ok: false, head: `FAIL ${f} | chrome 失败: ${String(r.error.message).slice(0, 200)}`, bad: [] };
+  const dom = r.stdout || '';
+  const diag = (r.stderr || '').split('\n').filter(l => /GL|WebGL|swiftshader|SwiftShader|FBO|framebuffer|error/i.test(l) && !/cv_display_link|GCM|mcs_client|registration_request|updater|crashpad|RLZ|TensorFlow|allocator|mailbox/i.test(l));
   const m = dom.match(new RegExp(`<pre id="${spec.pre}">([\\s\\S]*?)</pre>`));
-  if (!m) return { ok: false, head: `FAIL ${f} | NO TEST OUTPUT`, bad: [] };
+  if (!m) return { ok: false, head: `FAIL ${f} | NO TEST OUTPUT`, bad: diag.slice(0, 8).map(l => 'chrome: ' + l.slice(0, 200)) };
   const raw = m[1].replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&').replace(/&quot;/g, '"');
   const lines = raw.split('\n');
   const tests = lines.filter(l => l.startsWith('PASS') || l.startsWith('FAIL')).length;
   const bad = lines.filter(l => l.startsWith('FAIL') || l.startsWith('EXC'));
-  return { ok: !bad.length, head: `${bad.length ? 'FAIL' : 'PASS'} ${f} | tests ${tests} · fails ${bad.length}`, bad };
+  return { ok: !bad.length, head: `${bad.length ? 'FAIL' : 'PASS'} ${f} | tests ${tests} · fails ${bad.length}`, bad, diag };
 }
 
 for (const f of list) {
@@ -69,12 +74,14 @@ for (const f of list) {
     // AGENTS §3：headless 瞬态（如 t_pt kallax 全黑）→ 原样重跑一次再下结论
     console.log(`${r.head} → 重跑一次（已知 headless 瞬态）`);
     for (const b of r.bad.slice(0, 12)) console.log('   ', b.slice(0, 220));
+    if (r.diag?.length) for (const d of r.diag.slice(0, 8)) console.log('    [chrome]', d.slice(0, 220));
     const r2 = attempt(f, spec);
     if (r2.ok) { console.log(`PASS ${f} | tests 重跑通过（首次为瞬态：${r.bad.map(b => b.split('|')[0]).join('; ').slice(0, 200)}）`); continue; }
     r = r2;
   }
   console.log(r.head);
   for (const b of r.bad.slice(0, 12)) console.log('   ', b.slice(0, 220));
+  if (!r.ok && r.diag?.length) for (const d of r.diag.slice(0, 8)) console.log('    [chrome]', d.slice(0, 220));
   if (!r.ok) fail++;
 }
 process.exit(fail ? 1 : 0);

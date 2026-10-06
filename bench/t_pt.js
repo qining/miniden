@@ -35,6 +35,16 @@ async function runPT(){
     if(typeof applyFP==='function') applyFP();
     await wait(300);
 
+    /* ---- 0. GL 能力探针（诊断：float FBO 不支持时 PT 整条管线变 no-op → 全黑图）---- */
+    {
+      const glc = document.createElement('canvas'); glc.width = glc.height = 8;
+      const gl2 = glc.getContext('webgl2');
+      const f = gl2 ? (gl2.getExtension('EXT_color_buffer_float') ? 1 : 0) : 0;
+      const h = gl2 ? (gl2.getExtension('EXT_color_buffer_half_float') ? 1 : 0) : 0;
+      const maxT = gl2 ? gl2.getParameter(gl2.MAX_TEXTURE_SIZE) : 0;
+      T('pt-gl-capability', !!gl2 && !!(f || h), 'webgl2=' + !!gl2 + ' floatFBO=' + f + ' halfFBO=' + h + ' maxTex=' + maxT);
+    }
+
     /* ---- 1. 场景收集 ---- */
     const S=ptCollect();
     T('pt-collect-tris', !!S && S.nTri>80000, S? (S.nTri.toLocaleString()+' 三角形 · '+S.mats.length+' 材质 · '+S.maps.length+' 贴图') : 'null');
