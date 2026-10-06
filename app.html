@@ -6925,67 +6925,88 @@ MODELS['vihals-chair'] = (C) => {
 };
 MODELS['dyvlinge'] = (C) => {
   const cm = C.cm, T = C.THREE;
-  /* Kelinge 粗条灯芯绒。参考 d1-d6：整椅 = 单一厚坐垫（绗缝面）+ 单一大连帽背枕（2×2 深绗缝）
-     + 深碗形布漏斗 + 细镀铬五星脚。旧版错在坐垫上叠 4 块方枕 / 背板 4 块补丁 / 包边外突 / 腿宽扁。 */
+  /* Kelinge 粗条灯芯绒（d5/d6 特写）。旧模型方正的根因：坐垫/背枕用 rboxGeo =
+     直边+圆角，读成板。实物是枕头形：边向外微鼓 + 整圈宽圆角带 → 自定义 pillow 轮廓
+     （二次曲线鼓边 + 全宽 bevel）。 */
   const fab   = C.M(C.col, {rough:.88, sheen:.24, envI:.22, flat:true});
   const cord  = texScaled(corduroyTexture(), 2.0, 0.65);      // tile≈20cm → 绒条≈6mm
   const cordN = normalFromTexture(cord, 1.5);
   fab.map = cord; fab.normalMap = cordN;
-  const seamC = (C.col2 ? C.col2.clone() : C.col.clone()).multiplyScalar(0.58);
+  const seamC = (C.col2 ? C.col2.clone() : C.col.clone()).multiplyScalar(0.48);
   const fabD  = C.M(seamC, {rough:.92, envI:.16, flat:true});
   fabD.map = cord; fabD.normalMap = cordN;
   const chrome= C.M(0xd6dade, {rough:.05, metal:1, clear:.7, clearRough:.03, envI:1.15});
   const blk   = C.M(0x1e2024, {rough:.52, metal:.25});
 
-  /* ========== 坐垫：一整块 61×52×19 厚软垫（r8 大圆角，不方），顶面恰落座高 42。
-     顶面绗缝 = 4 个椭球软包（透镜形，无硬边）+ 暗扣窝 + 包扣 + 十字缝线。 ========== */
-  const SW = cm(61), SD = cm(52), ST = cm(19), SZ = cm(11.5);   // 前沿 z=+37.5
-  C.rb(SW, ST, SD, cm(8), fab, 0, cm(23), SZ, 4);
+  /* pillow(w,d,t,b,cr,bulge): 最终外形 w×d、厚 t。轮廓先缩 b（bevel 向外扩 b），
+     四边二次曲线外鼓 bulge，角半径 cr-b。返回几何居中于 xy、z 0..t。 */
+  function pillowGeo(w,d,t,b,cr,bulge,taper){
+    taper = taper||0;
+    const ow=w/2-b-bulge-taper/2, oh=d/2-b-bulge, c=Math.max(0.4, cr-b);
+    const owB=ow-taper/2, owT=ow+taper/2;   // 上宽下窄（d2 背枕读梯形）
+    const sh=new T.Shape();
+    sh.moveTo(owB-c,-oh);
+    sh.quadraticCurveTo( 0,     -oh-bulge, -owB+c, -oh);   // 底边
+    sh.quadraticCurveTo(-owB,   -oh,       -owB,   -oh+c); // BL 角
+    sh.quadraticCurveTo(-ow-bulge, 0,      -owT,    oh-c); // 左边
+    sh.quadraticCurveTo(-owT,    oh,       -owT+c,   oh);  // TL 角
+    sh.quadraticCurveTo( 0,      oh+bulge,  owT-c,   oh);  // 顶边
+    sh.quadraticCurveTo( owT,    oh,        owT,     oh-c); // TR 角
+    sh.quadraticCurveTo( ow+bulge, 0,       owB,    -oh+c); // 右边
+    sh.quadraticCurveTo( owB,    -oh,       owB-c,  -oh);   // BR 角
+    const geo=new T.ExtrudeGeometry(sh,{depth:Math.max(0.004,t-2*b), bevelEnabled:true,
+      bevelSize:b, bevelThickness:b, bevelSegments:5, curveSegments:12, steps:1});
+    geo.computeBoundingBox();
+    const bb=geo.boundingBox;
+    geo.translate(-(bb.min.x+bb.max.x)/2, -(bb.min.y+bb.max.y)/2, -bb.min.z);
+    geo.computeVertexNormals();
+    return geo;
+  }
+  const addM=(geo,mat,x,y,z,rotX)=>{ const mm=new T.Mesh(geo,mat);
+    mm.castShadow=mm.receiveShadow=true; if(rotX) mm.rotation.x=rotX;
+    mm.position.set(x,y,z); C.g.add(mm); return mm; };
+
+  /* ========== 坐垫枕头 61×52×19：鼓边 2.5、bevel 6（整圈 6cm 圆角带）、角≈13。
+     躺平：shape 局部 xy → 绕 x -90° 后局部 z(挤出) 变世界 y。顶面恰落 42。 ========== */
+  const SZ = cm(11.5);
+  addM(pillowGeo(cm(61), cm(52), cm(19), cm(6), cm(13), cm(2.5)), fab, 0, cm(23), SZ, -Math.PI/2);
   for(const sx of [-1,1]) for(const sz of [-1,1]){
-    const x=sx*cm(14), z=SZ+sz*cm(12);
-    C.rb(cm(27), cm(4), cm(23), cm(1.98), fab, x, cm(40.2), z, 5);   // 半圆截面软包（r=h/2 无硬边），顶 44.2
-    const d = C.sph(cm(2.8), fabD, x, cm(43.4), z, 18); d.scale.set(1, .22, 1);   // 扣窝阴影（嵌进包面）
-    const b = C.sph(cm(1.6), fabD, x, cm(43.9), z, 14); b.scale.y = .55;           // 包扣
+    const x=sx*cm(14), z=SZ+sz*cm(10);
+    const d = C.sph(cm(2.6), fabD, x, cm(41.6), z, 18); d.scale.set(1, .20, 1);   // 扣窝（只露阴影环）
+    const b = C.sph(cm(1.3), fabD, x, cm(42.0), z, 14); b.scale.y = .45;           // 包扣
   }
-  C.box(cm(52), cm(.45), cm(.5), fabD, 0, cm(42.2), SZ);        // 横缝（贴面微凸）
-  C.box(cm(.45), cm(.45), cm(50), fabD, 0, cm(42.2), SZ);       // 竖缝
+  C.box(cm(34), cm(.4), cm(.4), fabD, 0, cm(41.9), SZ);        // 横缝（外扣之间）
+  C.box(cm(.4), cm(.4), cm(26), fabD, 0, cm(41.9), SZ);        // 竖缝
 
-  /* ========== 背枕：单一 58×40×15 大软板（圆角 6），后倾 19°，自坐垫后缘下方向上生长。
-     绗缝 = 4 块大软凸起（只凸 1.5cm）+ 4 颗深包扣 + 过扣网格缝线（d1 线稿的十字弧缝）。
-     姿态分离：所有件先建在 slab 局部系（y 0..40 沿高、z ±7.5 厚），进 Group 统一旋转。 ========== */
+  /* ========== 背枕枕头 58×40×15：鼓边 2、bevel 5、角≈12；后倾 19° 姿态分离进 Group。
+     局部系：面在 xy（y 0..40 沿高），厚 z ±7.5。 ========== */
   const grp = new T.Group();
-  const _n0 = C.g.children.length;                       // 只收背枕段新增的 mesh（坐垫件不动）
-  C.rb(cm(58), cm(40), cm(15), cm(6), fab, 0, 0, 0, 4);   // 厚 15：r6 才不退化（2r<15）
-  for(const sx of [-1,1]) for(const sy of [-1,1]){
-    const y = cm(21+sy*10);
-    C.rb(cm(27), cm(18), cm(4), cm(1.98), fab, sx*cm(14), cm(12+sy*10), cm(7.2), 5);  // 半圆截面软包，凸出 1.7
-    const d = C.sph(cm(2.8), fabD, sx*cm(14), y, cm(9.0), 18); d.scale.set(1, 1, .22); // 扣窝阴影
-    const b = C.sph(cm(1.6), fabD, sx*cm(14), y, cm(9.1), 14); b.scale.z = .55;         // 包扣
+  const _n0 = C.g.children.length;
+  const back = addM(pillowGeo(cm(58), cm(40), cm(15), cm(5), cm(14), cm(2), cm(3)), fab, 0, 0, 0);
+  back.geometry.translate(0, cm(20), -cm(7.5));                    // 局部 y 0..40（Group 绕底缘转），厚 z ±7.5
+  for(const sx of [-1,0,1]) for(const sy of [-1,1]){              // 6 粒包扣：3列×2行（d2 实拍）
+    const x = sx*cm(18), y = cm(21+sy*8);
+    const d = C.sph(cm(2.6), fabD, x, y, cm(7.1), 18); d.scale.set(1, 1, .20);    // 扣窝
+    const b = C.sph(cm(1.3), fabD, x, y, cm(7.5), 14); b.scale.z = .45;            // 包扣
   }
-  C.box(cm(52), cm(.5), cm(.5), fabD, 0, cm(20.75), cm(8.1));   // 横缝（谷中贴面）
-  C.box(cm(.5), cm(38), cm(.5), fabD, 0, cm(2), cm(8.1));       // 竖缝（通高）
-  for(const ch of C.g.children.slice(_n0)) grp.add(ch);           // 移入 holder（reparent）
-  grp.rotation.x = -0.332;                                                               // 后倾 19°（绕 slab 底缘）
-  grp.position.set(0, cm(29), -cm(17.5));
+  C.box(cm(40), cm(.4), cm(.4), fabD, 0, cm(20.75), cm(7.55));  // 横缝（两排扣之间）
+  C.box(cm(.4), cm(26), cm(.4), fabD, 0, cm(8), cm(7.55));      // 竖缝
+  for(const ch of C.g.children.slice(_n0)) grp.add(ch);
+  grp.rotation.x = -0.4014;                     // 后倾 23°
+  grp.position.set(0, cm(26), -cm(11.5));    // 前缘埋进坐垫后部，衔接连续（d2）
   C.g.add(grp);
-  // 世界校验：顶前角 y≈69.2（≤69×1.02），顶后角 z≈-37.6（深度填充 100.1%），底前角 z≈-10.4 埋进坐垫后缘
 
-  /* ========== 漏斗座：坐垫底面整圈布裙，碗形内收（不是直锥），椭圆截面（x 1.45× / z 1.25×）。
-     旋转轴在 z=SZ2=5.75（坐垫中心 11.5 与足迹中心之间，d4：坐垫前沿悬出轴前）；
-     顶缘 r21 贴坐垫底、下收到底缘 r4.6 插进黑色轴帽。 ========== */
+  /* ========== 漏斗座：碗形布裙（顶缘内卷藏进坐垫底），轴 z=7.5 ========== */
   const SZ2 = cm(7.5);
-  /* 顶缘 r19（x 半宽 27.55，距坐垫边 3cm 软内收）+ 顶端内卷（18.4@24.6）藏进坐垫底，
-     消除硬唇外角；后缘 5.75→-16.25 只凸坐垫后缘 1.75cm，前缘 31.25 在坐垫悬垂下。 */
   const fun = C.lathe([[cm(4.6),cm(12.2)],[cm(5.5),cm(13.4)],[cm(8.5),cm(15.5)],[cm(12.5),cm(18.5)],
                       [cm(15.5),cm(21)],[cm(17.8),cm(22.8)],[cm(19),cm(23.6)],[cm(18.4),cm(24.6)]], fab, 0, 0, SZ2, 32);
-  fun.scale.x = 1.45; fun.scale.z = 1.25;   // x 向 ±27.55 ✓ z 向 -16.25..31.25
+  fun.scale.x = 1.45; fun.scale.z = 1.35;
 
-  /* ========== 旋转五金：镀铬套筒 + 黑色塑料轴帽（d6：漏斗尖端插进帽里） ========== */
+  /* ========== 旋转五金：镀铬套筒 + 黑色轴帽 ========== */
   C.cyl(cm(5.0), cm(5.4), cm(10.5), chrome, 0, 0, SZ2, 24);
   C.cyl(cm(4.2), cm(4.6), cm(4.2), blk, 0, cm(10), SZ2, 20);
 
-  /* ========== 镀铬五星脚：细圆条辐（宽 4.6 收细、顶面外张下斜、圆头收尖），黑色小脚垫。
-     参考 d6：腿是细圆棒不是宽刀片；tip r 30.2（前尖 z=7.5+30.2=37.7 ≤ 37.5×1.02，x 向 28.7 < 31.5）。 ========== */
+  /* ========== 镀铬五星脚：细圆条辐 + 黑脚垫（tip r30.2 不超足迹） ========== */
   const R0 = cm(4.5), R1 = cm(30.2), RL = R1-R0;
   const legPts = [
     [R0, cm(9.2)], [R0+RL*0.30, cm(7.4)], [R0+RL*0.62, cm(5.4)], [R1-cm(2.5), cm(3.4)],
@@ -6999,7 +7020,7 @@ MODELS['dyvlinge'] = (C) => {
     C.rb(cm(3.2), cm(0.9), cm(4.2), cm(0.45), blk, -rGl*Math.sin(a), 0, -rGl*Math.cos(a)+SZ2).rotation.y = a;
   });
 
-  /* 水平重心归零（按真实顶点，旋转件 Box3.setFromObject 会高估） */
+  /* 水平重心归零（按真实顶点） */
   C.g.updateMatrixWorld(true);
   const bb = new T.Box3();
   C.g.traverse(o=>{
