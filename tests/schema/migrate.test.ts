@@ -32,7 +32,7 @@ const toLegacy = (scenario: 'empty' | 'user'): LegacyGeo => ({
   sc: fx[scenario].meta.sc,
   ...fx[scenario].legacy,
 });
-const legacy = toLegacy('empty');
+const legacy = fx ? toLegacy('empty') : (null as never);   // fx 缺失时不在顶层解引用（describe.skip 的 it 体不会跑）
 const stripMeta = (arr: object[]) =>
   JSON.stringify(arr.map(e => { const { _src, _i, _id, ...rest } = e as Record<string, unknown>; return rest; }));
 const stripId = (arr: object[]) =>
@@ -90,7 +90,7 @@ d('migrate → docToLegacy ≡ eff*（空 USERGEO）', () => {
 });
 
 d('migrate → docToLegacy ≡ eff*（合成 USERGEO：覆盖/隐藏/新增）', () => {
-  const userGeo = fx.user.userGeo as LegacyUserGeo;
+  const userGeo = (fx?.user?.userGeo) as LegacyUserGeo;   // fx 缺失时不在 describe 体里解引用
 
   it('三条 eff* 输出逐字段相等（_i 来自原 USERGEO 数组下标）', () => {
     checkEquivalence(userGeo, fx.user.eff as never);

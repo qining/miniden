@@ -1,0 +1,56 @@
+# E5：GitHub Actions CI（generic 子集，AGENTS §1.4 / roadmap P1）
+#
+# CI 里没有 private/（gitignore）→ 只有 generic 户型可跑：
+#   typecheck → vitest → build（含 schema/geo/plan 一致性守卫 + 公开入口隐私硬断言）
+#   → plan-independent bench（t_3d ×3 入口 + t_pt ×3 入口）
+#   → ui-gate 双截：先 --update 在 CI 里自建 generic 基线，再 gate 比对
+#     ⚠ 这验证的是「渲染确定性 + 页面可渲 + 构建管线不改变行为」，
+#       不是视觉回归门禁（基线=当次样子，AGENTS §3 的「--update 后 8/8 什么都不证明」）。
+#       视觉回归基线（mine golden）在本地开发机上跑。
+# calib md5 门禁需要 private/plan/clean_plan.jpg + mine plan → CI 跑不了，留在本地（§1.1）。
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  generic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run typecheck
+
+      - run: npm test
+
+      # 构建守卫：嵌入 schema/geo/plan 块 == src 最新编译；
+      # dist/app.html 无 private/ 引用 + 户型=generic-2br + layout:null
+      - run: npm run build
+
+      # plan-independent bench：source / dist / 公开入口 三份同一套脚本
+      - run: node scripts/run-bench.mjs t_3d.html t_3d_dist.html t_3d_app.html
+
+      - run: node scripts/run-bench.mjs t_pt.html t_pt_dist.html t_pt_app.html
+
+      # 渲染确定性（双截 md5 一致）+ 8 个 UI 态可渲
+      - name: ui-gate determinism (CI-built generic baseline)
+        run: |
+          node scripts/ui-gate.mjs --update
+          node scripts/ui-gate.mjs
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: ci-failure-artifacts
+          path: private/golden/
+          if-no-files-found: ignore

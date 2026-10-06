@@ -28,6 +28,8 @@
 | `data/plans/generic.json` | 入库的通用户型（2室1卫，无个人数据）；`private/plans/mine.json` = 真实户型（gitignore，逐位精确提取，§1.4） |
 | `build.mjs` + `package.json` | 构建管线：**一个事实来源 `app.html` → 两个入口**（E18，§0.3）。esbuild 捆成单文件 `dist/app.html`（公开）+ `dist/planner.html`（个人，注入 mine plan + 修复 private/ 路径）+ 根目录 `planner.html`（个人入口源形式），并重新生成 **8 个 bench HTML**（§3、§5.7） |
 | `scripts/ui-gate.mjs` | E16 UI 黄金截图门禁：截 **dist**（本地=mine / CI=generic）对 golden（§3） |
+| `scripts/run-bench.mjs` | bench 运行器（本地 + CI 通用）：窗口/budget/pre-id 与 §3 表格一致；FAIL 自动原样重跑一次（§3 瞬态口径）；`CI=true` 时切 google-chrome + `--no-sandbox` |
+| `.github/workflows/ci.yml` | E5 CI（generic 子集，§3）：npm ci → tsc → vitest → build → bench ×6 → ui-gate 双截（CI 自建 generic 基线 = 确定性门禁，不是视觉回归门禁）；calib md5 门禁需 private 资产→留本地 |
 | `private/golden/` | mine 的 UI 黄金基线（gitignore；`--update` 重拍） |
 | `work/headful_test.py` | 真显卡光追验证（§5.5） |
 | `work/layouts/*.json` | 4 套压力测试布局 |
@@ -226,6 +228,10 @@ open('/tmp/planner_check.js','w').write(m.group(1))
   （2026-09 实测：HEAD 原版锚点恰是客厅标签位置，用标签派生后逐像素复现）。
 - t_walledit 含真实户型坐标断言（门/墙的具体位置），**只能放 private/**（§1.4）；
   CI 只跑 t_3d/t_pt（generic plan 上同样全绿——这就是 plan-independence 的验收）。
+  **E5 CI**（`.github/workflows/ci.yml`）：用 `node scripts/run-bench.mjs` 跑 6 个 bench；
+  ui-gate 在 CI 里先 `--update` 自建 generic 基线再 gate 比对（双截 0.0000% = 验渲染确定性，
+  **不验视觉回归**，§3 开头的「--update 什么都不证明」同样适用于 CI）；
+  calib md5 门禁需要 private/ 资产，CI 跑不了，留在本地（§1.1）。
 
 **生成**：`node build.mjs` 把三个脚本注入 **source(mine) / dist(mine) / dist(generic)** 三份页面，
 产出 `work/t_*.html` + `work/t_*_dist.html` + `work/t_*_app.html`（8 个，全 gitignore，每次构建重新生成）。

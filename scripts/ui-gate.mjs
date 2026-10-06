@@ -28,7 +28,9 @@ const gold = join(root, 'private', 'golden');
 const shots = join(gold, 'shots');
 
 const CHROME = process.env.CHROME
-  || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
+  || (process.env.CI === 'true' ? 'google-chrome'
+      : '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome');
+const CI_FLAGS = process.env.CI === 'true' ? ['--no-sandbox', '--disable-dev-shm-usage'] : [];
 const [W, H] = (process.env.UG_WINDOW || '1700,1100').split(',').map(Number);
 const BUDGET = {
   '2d': +(process.env.UG_BUDGET2D || 20000), '2d-sel': +(process.env.UG_BUDGET2D || 20000),
@@ -54,6 +56,7 @@ function shoot(state, out) {
   // CI 无 private/ → dist 是 generic → CI 用自己的 golden）
   const url = `file://${join(root, 'dist', 'planner.html')}#ui:${state}`;
   execFileSync(CHROME, ['--headless', '--use-angle=swiftshader',
+    ...CI_FLAGS,
     `--screenshot=${out}`, `--window-size=${W},${H}`,
     `--virtual-time-budget=${BUDGET[state]}`, url],
     { stdio: 'ignore', env: { ...process.env, MallocNanoArena: '1' } });
