@@ -150,6 +150,7 @@ export interface ProjectDoc {
   fixtures: Fixture[];
   env: EnvState;
   baseImage?: BaseImage;         // S7：用户底图（可选）
+  floorOutline?: Pt[][];         // S11：地板轮廓（ft 多边形，导出/导入往返用）。纯增量可选字段，不进 docToLegacy 投影
   hidden: { walls: string[]; windows: string[]; doors: string[]; solids: string[] };
 }
 
@@ -293,6 +294,18 @@ export function validate(doc: unknown): ValidationError[] {
     }
   }
 
+  // S11：地板轮廓（可选，纯增量字段 —— docToLegacy 不投影它）
+  if (d.floorOutline !== undefined) {
+    if (!Array.isArray(d.floorOutline)) fail('floorOutline', '必须是点数组');
+    else {
+      if (d.floorOutline.length < 3) fail('floorOutline', '至少 3 个点');
+      d.floorOutline.forEach((p, i) => {
+        if (!Array.isArray(p) || p.length !== 2 || !isNum(p[0]) || !isNum(p[1]))
+          fail(`floorOutline[${i}]`, '必须是 [x, y]（ft）');
+      });
+    }
+  }
+
   const hidden = d.hidden as Record<string, unknown> | undefined;
   if (typeof hidden !== 'object' || hidden === null) fail('hidden', 'hidden 必须是对象');
   else {
@@ -329,6 +342,7 @@ export function projectSchema(): object {
       rooms: { type: 'array', items: { $ref: '#/definitions/room' } },
       fixtures: { type: 'array', items: { $ref: '#/definitions/fixture' } },
       env: { type: 'object', required: ['preset', 'mode'], properties: { preset: { type: 'string' }, mode: { enum: ['day', 'night'] } } },
+      floorOutline: { type: 'array', minItems: 3, items: { type: 'array', minItems: 2, maxItems: 2, items: { type: 'number' } } },
       baseImage: {
         type: 'object',
         required: ['data', 'w', 'h', 'mPerPx', 'ox', 'oy'],

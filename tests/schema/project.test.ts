@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { validate, blankDoc, nextId, projectSchema, type ProjectDoc } from '../../src/schema/project';
-import type { Seg } from '../../src/schema/primitives';
+import { docToLegacy } from '../../src/schema/migrate';
+import type { Seg, Pt } from '../../src/schema/primitives';
 import { fullCircle } from '../../src/schema/primitives';
 
 /* =====================================================================
@@ -130,6 +131,45 @@ describe('validate —— 洁具字段（S6 前置：rot 进文档）', () => {
     const d = fx();
     d.fixtures.push({ id: 'f01', t: 'tub', x1: 3, y1: 3, x2: 4, y2: 4 });
     expect(validate(d).some(e => e.path === 'fixtures[1].id' && /重复/.test(e.message))).toBe(true);
+  });
+});
+
+describe('S11 —— floorOutline（户型文档导出/导入）', () => {
+  it('可选字段，缺省不影响校验', () => {
+    expect(validate(blankDoc())).toEqual([]);
+  });
+
+  it('带合法轮廓通过校验，且导出/导入往返逐字段相等', () => {
+    const d = blankDoc('我家');
+    d.floorOutline = [[0, 0], [20, 0], [20, 15], [0, 15]] as unknown as Pt[][];
+    expect(validate(d)).toEqual([]);
+    const round = JSON.parse(JSON.stringify(d)) as ProjectDoc;
+    expect(validate(round)).toEqual([]);
+    expect(round).toEqual(d);
+  });
+
+  it('少于 3 个点被拒', () => {
+    const d = blankDoc(); d.floorOutline = [[0, 0], [10, 0]] as unknown as Pt[][];
+    expect(validate(d).some(e => e.path === 'floorOutline')).toBe(true);
+  });
+
+  it('点不是 [x, y] 被拒', () => {
+    const d = blankDoc(); d.floorOutline = [[0, 0], [10, 0], ['x', 0]] as unknown as unknown as Pt[][];
+    expect(validate(d).some(e => e.path === 'floorOutline[2]')).toBe(true);
+    const d2 = blankDoc(); d2.floorOutline = [[0, 0], [10, 0], [10, 5, 5]] as unknown as unknown as Pt[][];
+    expect(validate(d2).some(e => e.path === 'floorOutline[2]')).toBe(true);
+  });
+
+  it('不进 docToLegacy 投影（S1 字节等价红线：投影键集冻结）', () => {
+    const d = blankDoc();
+    d.floorOutline = [[0, 0], [10, 0], [10, 5]] as unknown as Pt[][];
+    expect(Object.keys(docToLegacy(d))).toEqual(['walls', 'fixed', 'doors']);
+  });
+
+  it('JSON Schema 导出含 floorOutline', () => {
+    const s = projectSchema() as Record<string, any>;
+    expect(s.properties.floorOutline).toBeTruthy();
+    expect(s.required).not.toContain('floorOutline');   // 纯增量可选字段
   });
 });
 

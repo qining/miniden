@@ -58,7 +58,7 @@
 | `docs/research/01–10` | 需要「依据」时（各结论的调研过程/数据） |
 | `docs/design/` | 户型输入 → 3D 的设计总文档 |
 
-**当前位置**：R1–R10 研究全部完成；S 系列全部落地（S1–S7 + S9 Warm Dark 2a–2d）。**S10（隐私 + plan 外部化，2026-09）**：个人数据全部移入 `private/`（§1.4）；户型几何外置为 `#miniden-plan` JSON（committed=generic / 本地构建注入 mine）；bench 分层（入库 plan-independent / private plan-specific）；ui-gate 截 dist。待办：户型文档 save/load（导出/导入 ProjectDoc 按钮）、`git filter-repo` 历史清除（用户确认后 force-push）、E5 CI（generic 子集）。加目录条目照 §8.1 / skill 走。
+**当前位置**：R1–R10 研究全部完成；S 系列全部落地（S1–S7 + S9 Warm Dark 2a–2d）。**S10（隐私 + plan 外部化，2026-09）**：个人数据全部移入 `private/`（§1.4）；户型几何外置为 `#miniden-plan` JSON（committed=generic / 本地构建注入 mine）；bench 分层（入库 plan-independent / private plan-specific）；ui-gate 截 dist。**S11（2026-10-05）**：户型文档导出/导入（「工具 ⌄」→「导出户型 / 导入户型」+ `#docModal` 一次性确认，走 `applyImportedDoc` 同一条路；`ProjectDoc.floorOutline?` 纯增量可选字段保地板轮廓逐坐标保真）。待办：`git filter-repo` 历史清除（用户确认后 force-push）、E5 CI（generic 子集）。加目录条目照 §8.1 / skill 走。
 
 ---
 
@@ -327,6 +327,7 @@ sips -z 高 宽 /tmp/x.png --out /tmp/x_big.png               # 放大
 | **把几何外置成 plan 数据时漏掉「某户型专属」的硬编码构件**（P1 实测：3D 落地窗带钢梁 `C(x1,y1)…` + 2D 黑方块示意 + 阳台楔形补板 + 中岛标签位） | 只按 `docImported()` 门控、不按 plan 门控 → 换个户型照画不误：钢梁斜穿整个户型，看着像「地板和墙错位」；而且真实坐标还留在公开文件里 | 外置几何后 `grep -nE 'C\([0-9]'`（以及任何裸数字坐标）扫一遍消费端，每处问「这是所有户型都有的，还是某一户专属？」——专属的一律挪进 plan JSON 并用 `PLAN.xxx` 存在性门控；验收：**generic 户型目检 2D+3D**（mine 全绿不代表 generic 没炸） |
 | **localStorage 存档不带户型标识**（P1：`planner_v1`/`planner_doc_v1` 单桶） | plan 外置后，mine 的存档被原样回放到 generic 上（斜墙/阳台/柱 + 满屋家具叠在通用户型里）；用户以为「渲染坏了」 | 键按户型指纹分桶（`planner_doc_v1:<fp>`，fp = name+sc+floorpts+walls 的 hash）；旧单桶键**只读兼容且不删**（它属于另一份户型，删了就是毁用户数据），采用前用 `docMatchesPlan()` 逐坐标核对内置实体 |
 | bench 里顶层 `const` 命名撞已有声明（bx1/bx 等） | 整段 bench SyntaxError、一行不跑，症状 = NO TEST OUTPUT | bench 是新代码但跑在既有函数作用域里：新变量名先 grep 一遍 bench 全文再定 |
+| 逐字段比较「文档 vs 导出 JSON」时可选字段一边是 `undefined`（`JSON.stringify(undefined)` 返回 undefined 而非字符串） | 假红：导出补的 `floorOutline` 在文档里不存在，两边永远不等（S11 实测） | 比较前先按「该字段两边是否都有值」分支，或两边从同一个来源取（如都走 `floorPts()`） |
 
 ### 5.2 浏览器/three.js 类
 
@@ -705,7 +706,7 @@ console 转发器（error/warn 都要，转发器在 bundle 之后注册会漏�
 
 **几何数据流**：`#miniden-plan` JSON（S10：plan 外部化；committed=generic / 本地构建=mine，逐位精确）→ `PLAN` 常量 + `DOC`（`ProjectDoc`：内置+用户实体，id 寻址，S1 Phase 2b 后唯一几何状态）→ `effWalls()/effFixed()/effDoors()`（文档投影，等价于旧版 Object.assign 语义）→ 2D 和 3D **共用同一份**。洁具（马桶/台盆/浴缸/淋浴/台柜/镜子）也走文档：`effFixtures()` 返回 `DOC.fixtures`（S1 迁移：图纸 px/SC → ft）——2D `drawFixtures` 换算回 px 画、3D 直接用 ft（与旧 `F2(FX)` 逐位一致，3D 截图逐字节相同）；导入户型 fixtures=[] 时 2D/3D 都不画。**S6（洁具放置工具）**：墙编辑工具条「洁具」按钮（`data-t="fx"`，`#fxCtl` 里选类型/转角）：点击空地放新件（台柜/镜子自动贴最近实墙：长边平行、法向偏移=墙半厚+件半深、rot=墙角；其余浮放）；点击已有件选中→拖移/方向键 1cm（Shift 5cm）/删（仅 `src:'user'` 件可删，内置件拒删）；2D 每件 `<g data-fx>` + `rotate()` 变换、命中区加厚；3D 每件一个 `THREE.Group`（`rotation.y = -rot·π/180`，绕占地中心，rot=0 也包组但世界坐标不变）。`Fixture` 有 `rot?:number`（度，0=轴对齐）与 `src?:'user'`（仅类型，不进 JSON schema），`DOC_DATA_VERSION=2`（v1 内置文档丢弃重迁移，13 件 rot 缺省无损）。编辑层（`wallEdit.sel={kind,id}`、`segView/winView/doorView` Proxy）直写文档实体。新增任何消费几何的代码，一律走 `eff*()`，不要直接读 `WALLS`/`FX`（`#dump` 和 CALIB 分支是故意的例外；`FX` 常量现在只是 S1 迁移源）。
 
-**投影键集合是冻结的（S1 字节等价红线）**：`docToLegacy` 输出的键必须与 legacy `eff*` 逐字节一致（fixture oracle 守着），**新的文档字段不能加进投影**（例：窗户 `style`/`frame`/`sill`/`head` 都不在 `effWalls` 投影里）。消费端需要这些字段时，用投影里的 `_id` 回查文档实体：`entById(s._id).style`（2D/3D 的窗款式渲染就是这么做的）。
+**投影键集合是冻结的（S1 字节等价红线）**：`docToLegacy` 输出的键必须与 legacy `eff*` 逐字节一致（fixture oracle 守着），**新的文档字段不能加进投影**（例：窗户 `style`/`frame`/`sill`/`head` 都不在 `effWalls` 投影里）。消费端需要这些字段时，用投影里的 `_id` 回查文档实体：`entById(s._id).style`（2D/3D 的窗款式渲染就是这么做的）。纯增量可选字段（`baseImage?`、`floorOutline?`）不进投影，消费端直接读 `DOC.xxx`。
 
 关键常量：`SC=11.2`（图纸px/ft）、`CEIL_H=8.8`（层高ft）、`EYE_H=5.35`（人眼高）、
 `DOOR_MIN=0.5`、`STUB_MIN=0.18`、`LINK_TOL=0.5`。
