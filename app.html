@@ -847,6 +847,7 @@ const CATALOG = [
  {id:'besta180', cat:'收纳 / 搁架', name:'BESTÅ 电视柜 180(带门)', w:180,d:42,h:38, price:225, priceCA:255, color:'#e8e4dc', kind:'tvBench', model:'besta180', url:'https://www.ikea.com/us/en/p/besta-tv-bench-with-doors-black-brown-lappviken-brown-walnut-effect-s49612174/', note:'含65"电视示意'},
  {id:'besta120', cat:'收纳 / 搁架', name:'BESTÅ 电视柜 120(带门)', w:120,d:42,h:48, price:200, priceCA:205, color:'#e8e4dc', kind:'tvBench', model:'besta120', url:'https://www.ikea.com/us/en/p/besta-tv-bench-with-doors-black-brown-lappviken-stubbarp-brown-walnut-effect-s19612104/'},
  {id:'lack_tv', cat:'收纳 / 搁架', name:'LACK 电视柜 120', w:120,d:35,h:36, price:54.99, priceCA:89.99, color:'#2e3138', kind:'tvBench', model:'lack_tv', url:'https://www.ikea.com/us/en/p/lack-tv-unit-black-brown-00566060/', note:'另有160cm款~$59'},
+ {id:'colin-0', cat:'收纳 / 搁架', name:'Colin 72" 凹槽门边柜 · 金合欢棕', w:182.88,d:46.99,h:61.47, price:549.99, caNA:true, color:'#7a5a40', color2:'#c09a4a', kind:'accentConsole', model:'colin', wood:'walnut', url:'https://www.costco.com/p/-/colin-72-accent-console/4000258410', note:'Bayside Furnishings；杨木实木+金合欢木皮手工涂装；4 扇竖板条门（黄铜条把手）；背板 2 个走线孔；缓降铰链；加拿大无售'},
  {id:'radmanso6', cat:'收纳 / 搁架', name:'RÅDMANSÖ 六屉柜 159', w:159,d:48,h:81, price:349.99, priceCA:399, color:'#6e5843', kind:'dresser', model:'radmanso6', url:'https://www.ikea.com/us/en/p/radmansoe-6-drawer-dresser-brown-walnut-effect-40593839/', note:'MALM宽柜继任款'},
  {id:'storklinta6', cat:'收纳 / 搁架', name:'STORKLINTA 六屉柜 140', w:140,d:48,h:75, price:249.99, priceCA:249, color:'#f0ece4', kind:'dresser', model:'storklinta6', url:'https://www.ikea.com/us/en/p/storklinta-6-drawer-dresser-140-cm-60561248/'},
  {id:'storklinta4', cat:'收纳 / 搁架', name:'STORKLINTA 四屉柜', w:70,d:48,h:98, price:179.99, priceCA:199, color:'#f0ece4', kind:'dresser', model:'storklinta4', url:'https://www.ikea.com/us/en/p/storklinta-4-drawer-dresser-white-anchor-unlock-function-40559289/'},
@@ -2003,6 +2004,16 @@ function furnShape(it, spec){
     if(kind!=='stool') R(-wf/2+.05,-df/2+.05, wf-.1, df*.25, 2, dk);
   } else if(kind==='tvBench'){
     R(-Math.min(wf-.3,4.8)/2, -df/2-.12, Math.min(wf-.3,4.8), .14, 0, '#111');  // 电视(壁挂示意在柜后)
+  } else if(kind==='accentConsole'){
+    // 凹槽门边柜：前缘板条示意 + 3 道门缝 + 黄铜把手
+    const n=Math.max(10, Math.round(wf/0.27));
+    for(let i=1;i<n;i++){
+      const x=-wf/2 + wf*i/n;
+      if(Math.abs(Math.abs(x)-wf/4)<0.07) continue;                 // 门缝处另画粗线
+      R(x, df/2-cm2ft(11), .025, cm2ft(10), 0, 'rgba(0,0,0,.22)');
+    }
+    for(const gx of [-wf/4, 0, wf/4]) R(gx-.015, df/2-cm2ft(13), .03, cm2ft(12.5), 0, 'rgba(0,0,0,.4)');
+    for(const hx of [-wf/4-cm2ft(8), -wf/4+cm2ft(8), wf/4-cm2ft(8), wf/4+cm2ft(8)]) R(hx-.06, df/2-cm2ft(4), .12, cm2ft(3), 1, '#b98f45');
   } else if(kind==='desk'){
     R(-wf/2+.15, -df/2+.15, 1.5, df-.5, 2, dk); // 显示器示意
   } else if(kind==='climber'){                                  // 爬爬架：外框 + 横档示意
@@ -6080,7 +6091,7 @@ function texScaled(base, ftSize, per){
 const _furnMatCache=new Map();
 const FURN_SOFT = ['sofa','sofaL','armchair','playCouch','bed','stool','officeChair','swivelChair','chair','ballPit','magTiles'];
 const FURN_LEATHER = ['recliner'];   // 电动躺椅：皮面（侧面/背面为同色 PVC 贴面）
-const FURN_CASE = ['bookcase','shelf','dresser','nightstand','shoeCab','tvBench','desk','deskSitStand',
+const FURN_CASE = ['bookcase','shelf','dresser','nightstand','shoeCab','tvBench','desk','deskSitStand','accentConsole',
                    'sideTable','coffeeTable','tableRect','tableRound','tableFold','tableDrawer','crib','box','rocking','xylophone','wobble','sandTable','playKitchen'];
 const FURN_METAL= ['bedMetal','cart'];
 function furnMats(spec, col){
@@ -7075,6 +7086,92 @@ MODELS['dyvlinge'] = (C) => {
   C.g.updateMatrixWorld(true);
   const off2 = new T.Vector3(); new T.Box3().setFromObject(C.g).getCenter(off2);
   for(const ch of C.g.children){ ch.position.x -= off2.x; ch.position.z -= off2.z; }
+};
+MODELS['colin'] = (C) => {
+  const cm=C.cm, T=C.THREE;
+  /* Colin 72" Accent Console（Bayside）：杨木实木+金合欢皮。
+     轴向 brief：长轴=x(182.88)；竖板条沿 y，在正面 +z；腿在四角外斜。 */
+  const W=cm(182.88), D=cm(46.99), H=cm(61.47);
+  const wood  = C.M(0x74585a, {wood:'walnut', rough:.45, clear:.35, clearRough:.18, envI:.55});
+  const woodA = C.M(0x7d6060, {wood:'walnut', rough:.45, clear:.35, clearRough:.18, envI:.55});
+  const woodB = C.M(0x6a4f4e, {wood:'walnut', rough:.48, clear:.3,  clearRough:.2,  envI:.5});
+  const woodD = C.M(0x4f3c2c, {wood:'walnut', rough:.55, envI:.35});   // 凹槽底部的阴影面（实拍深槽）
+  const brass = C.M(0xd0a955, {metal:1, rough:.42, envI:.55});
+  brass.map = laminateTexture(); brass.normalMap = normalFromTexture(laminateTexture(), .2);  // 黄铜用近白贴图（brushedSteel 底色 #5c5c5c 会把金色压暗）
+  const TOP_T=cm(2.6), Y0=cm(15), Y1=H-TOP_T;          // 台面/柜体底
+  const BW=cm(180), BD=cm(43), bodyH=Y1-Y0;
+
+  /* 柜体壳：侧板/底档/顶档 */
+  C.box(cm(1.8), bodyH, BD, wood, -(BW/2-cm(0.9)), Y0, 0);
+  C.box(cm(1.8), bodyH, BD, wood,  (BW/2-cm(0.9)), Y0, 0);
+  C.box(BW-cm(3.6), cm(3.5), BD, wood, 0, Y0, 0);
+  C.box(BW-cm(3.6), cm(2.2), BD, wood, 0, Y1-cm(2.2), 0);
+
+  /* 背板：整板 + 2 个胶囊形走线孔（d2/c3 实拍） */
+  {
+    const pw=BW-cm(3.6), ph=bodyH;
+    const sh=new T.Shape();
+    sh.moveTo(-pw/2,0); sh.lineTo(pw/2,0); sh.lineTo(pw/2,ph); sh.lineTo(-pw/2,ph); sh.closePath();
+    for(const cx of [-cm(44), cm(44)]){
+      const r=cm(2.75), hh=cm(8), y0=cm(20);
+      const hole=new T.Path();
+      hole.moveTo(cx-r,y0); hole.lineTo(cx-r,y0+hh);
+      hole.absarc(cx, y0+hh, r, Math.PI, 0, true);
+      hole.lineTo(cx+r, y0);
+      hole.absarc(cx, y0, r, 0, Math.PI, true);
+      sh.holes.push(hole);
+    }
+    const geo=new T.ExtrudeGeometry(sh,{depth:cm(1.2), bevelEnabled:false, curveSegments:10});
+    geo.computeVertexNormals();
+    const m=new T.Mesh(geo, woodD); m.castShadow=m.receiveShadow=true;
+    m.position.set(0, Y0, -BD/2); C.g.add(m);
+  }
+
+  /* 4 扇门：板 + 竖板条（半圆棱，嵌入面板只露一半）+ 平顶档 + 黄铜条把手 */
+  const DW=(BW-cm(3.6)-cm(0.8)*3)/4, DH=bodyH-cm(3.5)-cm(2.2);
+  const DZ=BD/2-cm(0.85);                              // 门板中心 z（前表面=BD/2）
+  for(let i=0;i<4;i++){
+    const x=-(BW/2-cm(1.8))+cm(0.4)+DW/2+i*(DW+cm(0.8));
+    C.box(DW, DH, cm(1.7), woodD, x, Y0+cm(3.5), DZ);              // 门板用深色：槽缝读成阴影
+    const nS=13, pitch=DW/nS;                                      // 棱Ø2.7 + 槽~0.65（实拍深槽）
+    for(let s=0;s<nS;s++){
+      const sx=x-DW/2+pitch*(s+0.5);
+      C.cyl(cm(1.35), cm(1.35), DH-cm(3.4), (s%3===0)?woodA:(s%3===1)?wood:woodB, sx, Y0+cm(3.5)+cm(1.7), BD/2, 12);
+    }
+    C.box(DW, cm(3.4), cm(0.9), wood, x, Y1-cm(2.2)-cm(3.4), BD/2+cm(0.35));
+    const hx=(i%2===0)? x+DW/2-cm(4.5) : x-DW/2+cm(4.5);   // 把手在门缝两侧成对（c1/c2）
+    C.rb(cm(7.5), cm(1.3), cm(2.4), cm(0.4), brass, hx, Y1-cm(4), BD/2+cm(0.9));
+  }
+
+  /* 台面（全宽全深，盖在柜体上，c6 可见悬挑） */
+  C.box(W, TOP_T, D, wood, 0, H-TOP_T, 0);
+
+  /* 4 腿：方截面收分棱柱，绕顶枢轴沿对角外斜 ~4°，单轴角轴旋转（不叠欧拉角） */
+  for(const sx of [-1,1]) for(const sz of [-1,1]){
+    const geo=new T.CylinderGeometry(cm(3.6), cm(2.2), Y0, 4);
+    geo.translate(0, -Y0/2, 0); geo.rotateY(Math.PI/4);
+    const m=new T.Mesh(geo, wood); m.castShadow=m.receiveShadow=true;
+    const dx=sx*cm(83), dz=sz*cm(18.5);
+    const ax=new T.Vector3(dz, 0, -dx).normalize();
+    m.setRotationFromAxisAngle(ax, -0.07);              // 底端外摆
+    m.position.set(dx, Y0, dz); C.g.add(m);
+  }
+  C.box(cm(7), cm(14.5), cm(5), woodD, 0, cm(0.5), 0);  // 中撑块（c3 底部中央）
+
+  /* 水平重心归零（真实顶点）+ setFromObject 口径微调 */
+  C.g.updateMatrixWorld(true);
+  const bb=new T.Box3();
+  C.g.traverse(o=>{
+    if(o.isMesh && o.geometry){
+      const pos=o.geometry.attributes.position, v=new T.Vector3();
+      for(let i2=0;i2<pos.count;i2++){ v.fromBufferAttribute(pos,i2).applyMatrix4(o.matrixWorld); bb.expandByPoint(v); }
+    }
+  });
+  const off=new T.Vector3(); bb.getCenter(off);
+  for(const ch of C.g.children){ ch.position.x-=off.x; ch.position.z-=off.z; }
+  C.g.updateMatrixWorld(true);
+  const off2=new T.Vector3(); new T.Box3().setFromObject(C.g).getCenter(off2);
+  for(const ch of C.g.children){ ch.position.x-=off2.x; ch.position.z-=off2.z; }
 };
 MODELS['saltsjobaden'] = (C) => {
   const cm=C.cm, W=C.w, D=C.d, H=C.h;
