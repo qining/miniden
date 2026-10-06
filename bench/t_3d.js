@@ -10,6 +10,10 @@ async function run3DTest(){
   try{
     try{ localStorage.removeItem(ITEMS_KEY); }catch(e){}
     state.items=[]; save=()=>{};
+    // S13：测试台不得带个人布局（build.mjs 把 plan.layout 剥成 null）——
+    // 否则同一套脚本在 mine 与 generic 上起点不同，plan-independence 就被破坏。
+    T('s13-bench-layout-stripped', !(PLAN.layout && (PLAN.layout.items||[]).length) && state.items.length===0,
+      'PLAN.layout='+JSON.stringify(PLAN.layout)+' items='+state.items.length);
     const _fb=floorPts(), _xs=_fb.map(p=>p[0]), _ys=_fb.map(p=>p[1]);
     const CX3=(Math.min(..._xs)+Math.max(..._xs))/2, CY3=(Math.min(..._ys)+Math.max(..._ys))/2;
     const TP1=[CX3, CY3+2], TP2=[CX3-2, CY3-1];   // floorPts 中心派生（plan-independent）

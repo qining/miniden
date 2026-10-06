@@ -75,7 +75,7 @@
 | `docs/research/01–10` | 需要「依据」时（各结论的调研过程/数据） |
 | `docs/design/` | 户型输入 → 3D 的设计总文档 |
 
-**当前位置**：R1–R10 研究全部完成；S 系列全部落地（S1–S7 + S9 Warm Dark 2a–2d）。**S10（隐私 + plan 外部化，2026-09）**：个人数据全部移入 `private/`（§1.4）；户型几何外置为 `#miniden-plan` JSON（committed=generic / 本地构建注入 mine）；bench 分层（入库 plan-independent / private plan-specific）；ui-gate 截 dist。**S11（2026-10-05）**：户型文档导出/导入（「工具 ⌄」→「导出户型 / 导入户型」+ `#docModal` 一次性确认，走 `applyImportedDoc` 同一条路；`ProjectDoc.floorOutline?` 纯增量可选字段保地板轮廓逐坐标保真）。**S11b（2026-10-05）**：导出必须无限制 → `ProjectDoc.plan?`（户型专属快照：roomSummary/refPhoto/calib/windowBand/patioPatch/islLabel/isl/kitchen/inner，同样不进投影），`freshDoc()` 从 PLAN 播种、消费端走 `planOf(k)`（文档优先、回退 PLAN）；厨房硬编码块数据化（顺带清除了公开文件里的真实坐标）。**S12（2026-10-05）**：放置类实体只认两个来源——用户画 / 导入读到的几何，不写启发式猜测；`Run` 台面柜体带实体 + 工具、DXF/PDF `furn` 轮廓按形状分类落地为 run、钢框窗改成窗实体的 `steel` 标志（`steelBands()` 与历史 windowBand 重合时只画一次）。**E18（2026-10-05）**：两个入口一个事实来源（§0.3）。待办：`git filter-repo` 历史清除（用户暂缓）、E5 CI（generic 子集）。加目录条目照 §8.1 / skill 走。
+**当前位置**：R1–R10 研究全部完成；S 系列全部落地（S1–S7 + S9 Warm Dark 2a–2d）。**S10（隐私 + plan 外部化，2026-09）**：个人数据全部移入 `private/`（§1.4）；户型几何外置为 `#miniden-plan` JSON（committed=generic / 本地构建注入 mine）；bench 分层（入库 plan-independent / private plan-specific）；ui-gate 截 dist。**S11（2026-10-05）**：户型文档导出/导入（「工具 ⌄」→「导出户型 / 导入户型」+ `#docModal` 一次性确认，走 `applyImportedDoc` 同一条路；`ProjectDoc.floorOutline?` 纯增量可选字段保地板轮廓逐坐标保真）。**S11b（2026-10-05）**：导出必须无限制 → `ProjectDoc.plan?`（户型专属快照：roomSummary/refPhoto/calib/windowBand/patioPatch/islLabel/isl/kitchen/inner，同样不进投影），`freshDoc()` 从 PLAN 播种、消费端走 `planOf(k)`（文档优先、回退 PLAN）；厨房硬编码块数据化（顺带清除了公开文件里的真实坐标）。**S12（2026-10-05）**：放置类实体只认两个来源——用户画 / 导入读到的几何，不写启发式猜测；`Run` 台面柜体带实体 + 工具、DXF/PDF `furn` 轮廓按形状分类落地为 run、钢框窗改成窗实体的 `steel` 标志（`steelBands()` 与历史 windowBand 重合时只画一次）。**E18（2026-10-05）**：两个入口一个事实来源（§0.3）。**S13（2026-10-06）**：布局跟着 app 走——户型 JSON 新增 `layout`（内置布局），`load()` 在「这台浏览器对这份户型从没存过档」时用它播种（§1.2）；公开入口 `layout:null`（build.mjs 硬断言），测试台一律剥掉 layout（保持确定性 + plan-independence），`#calib` 不播种（§1.1）。待办：`git filter-repo` 历史清除（用户暂缓）、E5 CI（generic 子集）。加目录条目照 §8.1 / skill 走。
 
 ---
 
@@ -104,6 +104,8 @@ md5 -q /tmp/ckc.png
 - FIXED 条目加 `noCal:true`
 - 或在绘制处判断 `if(!CALIB) ...`
 - 或让 CALIB 分支沿用原来的颜色（例：中岛描边写成 `stroke:CALIB?'#4a5058':'#6b655d'`）
+- 或让数据在 CALIB 下不参与（S13 实例：`load()` 的内置布局播种 gated 在 `!CALIB`——
+  基线 md5 是在干净浏览器（无存档、无播种）下拍的，播种会把 32 件家具画进 calib，md5 直接变）
 
 如果确实要改动户型几何（用户明确指出图纸有误时），必须：
 1. 记录**意图坐标**（不是"以底图为准"，而是明确写出这段几何应该是什么）
@@ -118,6 +120,8 @@ md5 -q /tmp/ckc.png
 | `DOC_DATA_VERSION` | 户型文档 `planner_doc_v1` 的数据版本（旧 `planner_userGeo_v1` 自动一次性迁移进来） | **内置实体结构/几何变动时**（旧文档按版本丢弃、回退 freshDoc） |
 
 **持久化是单键**：`planner_doc_v1` = 完整 `ProjectDoc`（内置+用户实体都在文档里，id 寻址）。编辑内置实体 = 直写文档实体（不再走 ov* 覆盖层）；删除内置 = 记入 `doc.hidden.*`。旧的 `planner_v1`（家具）与 `planner_userGeo_v1`（只读迁移源）分开。历史上「用户编辑按数组下标寻址」的坑（`USERGEO.ovW[i]`，往 `WALLS` 中间插墙就错位）已随 S1 Phase 2b 彻底消除。
+
+**家具目录是 app 数据，摆法才是用户数据（S13）**：275 条目录（商品/尺寸/价格/模型代码）在 `app.html` 里，永远跟着文件走，与 localStorage 无关；localStorage 里只有「哪件商品摆在哪个坐标」。而 localStorage 不是可靠的长期存放（清浏览器数据 / 换浏览器 / 无痕窗口 / 代码换代都会看不见），所以户型 JSON 带 `layout`（这份户型的内置布局，随文件走）。`load()` 优先级：本户型指纹存档 → 旧单桶存档（只读兼容）→ `PLAN.layout` 播种；**播种只在指纹键完全不存在时发生**（存过档哪怕存的是空数组也不播种，否则删空家具一刷新就被复活）。个人入口 `planner.html`/`dist/planner.html` 带 layout，公开入口 `app.html`/`dist/app.html` 必须 `layout:null`（build.mjs 硬断言）；测试台页面一律被 build 剥掉 layout。
 
 ### 1.3 用户明确说过的偏好
 
@@ -147,6 +151,11 @@ md5 -q /tmp/ckc.png
 
   新的个人数据（照片、图纸扫描、真实户型截图/基线）**仍然一律进 `private/`**，不要顺手放进入库文件。
   将来删掉这个公寓 = 删 `planner.html` + `private/` + `build.mjs` 的 `hasMine` 分支 + `private/bench/t_walledit.js`。
+- **S13：内置布局（家具摆位）跟着个人入口走**。布局源数据 = `private/plans/mine-layout.json`（gitignore），
+  `build.mjs` 把它注入个人入口的 `#miniden-plan` 块（`plan.layout`）——所以 `planner.html` 里除了户型坐标
+  还有家具摆位坐标，**与户型坐标同一豁免、同一个删除口径**。公开侧硬断言：`dist/app.html` 的
+  `plan.layout` 必须空（build 报错），测试台页面一律被 `stripPlanLayout()` 剥掉布局，
+  `t_3d` 的 `s13-bench-layout-stripped` 与 `t_walledit` 的 `s13-*` 断言守着这条。
 - **mine.json 必须逐位精确**（§5.1 有坑）：它是从原版硬编码常量**用 node eval 原代码
   提取**的（floorpts/walls/… 与浏览器运行时逐位一致，已用 #dump 全字段核对）。
   手绘/Python 转算的值会有末位漂移 → 2D auto-fit viewBox 整体位移 → ui-gate 18% 假红。
@@ -715,10 +724,10 @@ WebGL2 更没有。所以这是「用 GPU 的通用计算单元跑软件光追�
 判断缩略图是否有内容要**解码后数不透明像素**，不能看 PNG 字节数：简单形状压得极小，
 1.9KB 也可能是张正常的图。
 
-### 5.7 经典脚本 → ESM（2026-09 E1 实测踩的 6 个坑）
+### 5.7 经典脚本 → ESM（2026-09 E1 实测踩的 7 个坑）
 
 E1 把 `app.html`（当时还叫 `planner.html`）的内联脚本搬进 esbuild 管线（bundle 出单文件 dist，行为必须逐字节等价）。
-classic script 和 ESM 的**作用域语义差异**是全部麻烦的来源，六个坑都真的发生过：
+classic script 和 ESM 的**作用域语义差异**是全部麻烦的来源，七个坑都真的发生过：
 
 | 坑 | 症状 | 修法 |
 |---|---|---|
@@ -728,6 +737,7 @@ classic script 和 ESM 的**作用域语义差异**是全部麻烦的来源，�
 | **getter-only 镜像挡住写入方**：sloppy classic script 对无 setter 的全局属性赋值**静默失败**（不报错！） | 测试脚本 `uidSeq++` 不生效 → 两个家具拿到**同一个 uid** → furnMap 互相覆盖（场景只剩一件、位置错到另一件）→ 拾取/拖动全挂，且无任何报错 | var/let/function 名必须带 **setter 闭包**（`set: v => { name = v }`——闭包写模块绑定合法）；const 保持 getter-only（原 classic 里给 const 赋值本来就会 TypeError） |
 | **`THREE` 本身也是外部脚本的裸名**（原由 three.min.js UMD 挂到 window） | 测试台报 `THREE is not defined` | 入口前言加 `globalThis.THREE = threeLib`（threeLib = UMD 的 module.exports，可变对象，OrbitControls 能挂上去） |
 | **顶层函数重复声明**（classic 里合法：后声明者胜出；ESM 里 SyntaxError） | esbuild 直接报语法错，构建失败 | 构建前 dedupe：只保留最后一个声明（复刻 classic 语义）。结束行判定用代码风格规则（col-0 的 `}`），不用花括号扫描器（正则字面量/字符串会让它失同步） |
+| **多声明器顶层行只镜像第一个名字**（`const ITEMS_KEY = …, ITEMS_KEY_OLD = …`；旧正则只认无初始化的 `const a, b, c` 列表） | **source 页全绿、dist 页红**：注入脚本裸用第二个名字报 `ITEMS_KEY_OLD is not defined`（classic 里它在全局词法环境所以可见，ESM 里私有且没镜像），很容易误判成“dist 行为不同” | 按 depth-0 逗号切段、每段取开头标识符（字符串/正则里的括号可能让 depth 失同步，但只会多产生幻影名，而幻影名被 typeof 守护接住）；关键字取声明自己的（`let` 被误标成 `const` 就没了 setter，又踩回上一个坑） |
 
 排查这一类问题的关键手法：**mirror 块首尾各插一条 console.log 标记** + 在 bundle **之前**注入
 console 转发器（error/warn 都要，转发器在 bundle 之后注册会漏掉 bundle 内部的同步异常）。

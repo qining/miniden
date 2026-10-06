@@ -170,11 +170,34 @@ const bodyEsm = dedupeToplevelFunctions(body);
 const noComments = bodyEsm.replace(/\/\*[\s\S]*?\*\//g, m => m.replace(/[^\n]/g, ' '));
 const names = [];
 const kind = {};
+/* 多声明器顶层行（`const A = x, B = y;`）必须把每个名字都抽出来。
+   旧正则只抽第一个名字（它只认 `const a, b, c` 这种无初始化的列表），
+   于是 `const ITEMS_KEY = …, ITEMS_KEY_OLD = …` 里的第二个名字在 dist 里没有镜像
+   → 注入脚本（测试台）裸用就 ReferenceError（source 页是 classic，反而正常）。
+   这里按 depth-0 逗号切段，每段取开头标识符；字符串/正则里的括号可能让 depth 失同步，
+   但只会多产生幻影名，而幻影名被下面的 typeof 守护接住（typeof 对未声明名安全）。 */
+function declNames(line){
+  const m = line.match(/^(var|let|const)\s+/);
+  if(!m) return null;
+  const kw = m[1];
+  const rest = line.slice(m[0].length);
+  const out = [];
+  const flush = (seg) => { const nm = seg.match(/^\s*([A-Za-z_$][\w$]*)/); if(nm) out.push(nm[1]); };
+  let depth = 0, segStart = 0;
+  for(let i = 0; i < rest.length; i++){
+    const c = rest[i];
+    if(c === '(' || c === '[' || c === '{' || c === '`') depth++;
+    else if(c === ')' || c === ']' || c === '}' || c === '`') depth--;
+    else if(c === ',' && depth === 0){ flush(rest.slice(segStart, i)); segStart = i + 1; }
+  }
+  flush(rest.slice(segStart));
+  return { kw, out };
+}
 for (const l of noComments.split('\n')) {
   let m = l.match(/^function\s+([A-Za-z_$][\w$]*)/);
   if (m) { names.push(m[1]); kind[m[1]] = 'fn'; continue; }
-  m = l.match(/^(var|let|const)\s+([A-Za-z_$][\w$]*(?:\s*,\s*[A-Za-z_$][\w$]*)*)/);
-  if (m) m[2].split(',').forEach(s => { const n = s.trim(); names.push(n); kind[n] = m[1]; });
+  const d = declNames(l);
+  if (d) for (const n of d.out){ names.push(n); if (!kind[n] || (kind[n] === 'const' && d.kw !== 'const')) kind[n] = d.kw; }
 }
 const uniq = [...new Set(names)].filter(n => /^[A-Za-z_$][\w$]*$/.test(n));
 // 可重绑定名（var/let/function）必须带 setter：外部脚本（测试台）会写它们
@@ -224,6 +247,19 @@ const planName = (pageHtml) => {
   const pa = pageHtml.indexOf(PSTART);
   return JSON.parse(pageHtml.slice(pa + PSTART.length, pageHtml.indexOf(PEND, pa))).name;
 };
+const planOfPage = (pageHtml) => {
+  const pa = pageHtml.indexOf(PSTART);
+  return JSON.parse(pageHtml.slice(pa + PSTART.length, pageHtml.indexOf(PEND, pa)));
+};
+// S13：测试台不得带个人布局 —— bench 要确定性、且 plan-independent（同一套脚本跑两个户型）。
+// 布局播种逻辑本身在 private/bench/t_walledit.js 里用合成 PLAN.layout 测（不靠个人数据）。
+function stripPlanLayout(pageHtml){
+  const pa = pageHtml.indexOf(PSTART); if (pa < 0) return pageHtml;
+  const pb = pageHtml.indexOf(PEND, pa);
+  const p = JSON.parse(pageHtml.slice(pa + PSTART.length, pb));
+  p.layout = null;
+  return pageHtml.slice(0, pa + PSTART.length) + JSON.stringify(p, null, 1) + pageHtml.slice(pb);
+}
 // dist/ 与 work/ 在 root 下一层：相对资源引用加 ../（dev 资源；缺失时优雅降级）
 const upDist  = (h) => h.replace(/['"]work\//g, m => m[0] + '../' + m.slice(1))
                         .replace(/['"]private\//g, m => m[0] + '../' + m.slice(1));
@@ -236,6 +272,11 @@ if (/['"](\.\.\/)?private\//.test(outApp))
   throw new Error('✗ dist/app.html 含 private/ 资源引用 —— 公开入口不得带个人数据（§1.4）');
 if (planName(outApp) !== 'generic-2br')
   throw new Error('✗ dist/app.html 的户型不是 generic-2br —— 公开入口必须用通用户型');
+// S13 隐私硬断言：公开入口不得带内置布局（那是个人数据，只属于个人入口）
+{
+  const n = ((planOfPage(outApp).layout || {}).items || []).length;
+  if (n) throw new Error(`✗ dist/app.html 的内置布局有 ${n} 件 —— 公开入口必须 layout:null`);
+}
 writeFileSync(join(DIST, 'app.html'), outApp);
 console.log('  入口: dist/app.html（公开/用户入口 · generic · 无 private/ 引用）');
 
@@ -249,7 +290,9 @@ if (hasMine) {
   out = upDist(withPlan(out, mine, 'dist'));
   writeFileSync(join(DIST, 'planner.html'), out);
   writeFileSync(join(root, 'planner.html'), withPlan(html, mine, 'app.html'));   // 源形式：lib/ 外链不动
-  console.log('  入口: dist/planner.html + planner.html（个人入口 · mine 西雅图公寓 · planner.html 入库）');
+  const ln = ((mine.layout || {}).items || []).length;
+  console.log('  入口: dist/planner.html + planner.html（个人入口 · mine 西雅图公寓 · planner.html 入库）' +
+              (ln ? ` · 内置布局 ${ln} 件（S13：localStorage 没存档时用它播种）` : ''));
 } else {
   writeFileSync(join(DIST, 'planner.html'), out);   // CI：与 dist/app.html 同内容，保持既有路径
   console.log('  入口: dist/planner.html（无 private/plans/mine.json → generic；根 planner.html 保持已入库的那份不动）');
@@ -264,6 +307,7 @@ if (hasMine) {
 //   work/t_3d_dist.html / t_pt_dist.html ← dist 页
 //   work/t_walledit.html / t_walledit_dist.html ← 仅本地（mine plan）
 function makeBench(pageHtml, scriptPath, outPath) {
+  pageHtml = stripPlanLayout(pageHtml);   // S13：测试台不带个人布局
   const script = readFileSync(join(root, scriptPath), 'utf8');
   // $ 转义（AGENTS §5.1）：String.replace 替换串会解释 $'/$`/$$/$n。
   // 转义只有一层：$ → $$（'$$$$' 被替换引擎解释为字面 $$），外层 replace 再把 $$ 解回 $。
