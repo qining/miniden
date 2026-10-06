@@ -133,6 +133,33 @@ export interface BaseImage {
   rot?: 0 | 90 | 180 | 270;      // 默认 0
 }
 
+/* S11b：户型专属构件 / 参考的快照（纯增量可选字段，不进 docToLegacy 投影）。
+   这些是「只有某一份户型才有」的东西：标题、参考照片、校准底图、落地窗带、
+   阳台补板、中岛轮廓与标注、厨房构件。以前它们只存在于 plan JSON（= 内置户型的种子），
+   所以导出/导入的文档拿到别的机器上会丢。现在它们随文档走，消费端一律走 planOf()。 */
+export interface KitchenPart {
+  m: 'cab' | 'top' | 'steel' | 'chrome' | 'seam' | 'black';   // 材质档
+  box?: [number, number, number];    // ft（BoxGeometry 尺寸）
+  cyl?: [number, number];            // ft（半径, 高）
+  seg?: number;                      // 圆柱细分（缺省 10，与原硬编码一致）
+  p: [number, number, number];       // ft（mesh position = 中心）
+  rz?: 90;                           // 绕 z 转 90°（横放的杆）
+  sh?: boolean;                      // castShadow
+  rc?: boolean;                      // receiveShadow
+}
+
+export interface PlanExtras {
+  roomSummary?: string;
+  refPhoto?: string;                 // 只能带路径：浏览器无法把本地文件读进 JSON
+  calib?: { img: string; w: number; h: number };   // w/h 是图纸 px（不是文件分辨率）
+  windowBand?: number[][];           // 图纸 px 折线
+  patioPatch?: number[][];           // 图纸 px 三角形
+  islLabel?: { p: number[]; w: number; d: number; calib: string };
+  isl?: { a: number[]; b: number[]; e: number[]; cp2: number[]; d: number[] };   // 图纸 px
+  kitchen?: KitchenPart[];
+  inner?: Array<{ x1: number; y1: number; x2: number; y2: number; wd?: number }>;   // 图纸 px（内部示意墙：投影范围外的特例，不经 effWalls）
+}
+
 export interface ProjectDoc {
   schema: 1;
   name: string;
@@ -151,6 +178,7 @@ export interface ProjectDoc {
   env: EnvState;
   baseImage?: BaseImage;         // S7：用户底图（可选）
   floorOutline?: Pt[][];         // S11：地板轮廓（ft 多边形，导出/导入往返用）。纯增量可选字段，不进 docToLegacy 投影
+  plan?: PlanExtras;             // S11b：户型专属构件/参考快照（同上，不进投影）
   hidden: { walls: string[]; windows: string[]; doors: string[]; solids: string[] };
 }
 
@@ -306,6 +334,72 @@ export function validate(doc: unknown): ValidationError[] {
     }
   }
 
+  // S11b：户型专属构件快照（可选，纯增量字段 —— docToLegacy 不投影它）
+  if (d.plan !== undefined) {
+    if (typeof d.plan !== 'object' || d.plan === null || Array.isArray(d.plan)) fail('plan', '必须是对象');
+    else {
+      const pl = d.plan as Record<string, unknown>;
+      for (const k of ['roomSummary', 'refPhoto']) if (pl[k] !== undefined && !isStr(pl[k])) fail(`plan.${k}`, '必须是字符串');
+      if (pl.calib !== undefined) {
+        const c = pl.calib as Record<string, unknown>;
+        if (typeof c !== 'object' || c === null) fail('plan.calib', '必须是对象');
+        else {
+          if (!isStr(c.img)) fail('plan.calib.img', '必须是字符串（图纸底图路径）');
+          if (!isNum(c.w) || (c.w as number) <= 0) fail('plan.calib.w', '必须是正数（图纸 px）');
+          if (!isNum(c.h) || (c.h as number) <= 0) fail('plan.calib.h', '必须是正数（图纸 px）');
+        }
+      }
+      const pt = (v: unknown, path: string) => {
+        if (!Array.isArray(v) || v.length !== 2 || v.some(q => !isNum(q))) fail(path, '必须是 [x, y]（图纸 px）');
+      };
+      const pts = (v: unknown, path: string, n?: number) => {
+        if (!Array.isArray(v)) { fail(path, '必须是点数组'); return; }
+        v.forEach((p, i) => {
+          if (!Array.isArray(p) || (n && p.length !== n) || p.some(q => !isNum(q)))
+            fail(`${path}[${i}]`, n ? `必须是 [${Array(n).fill('x').join(', ')}]（图纸 px）` : '必须是数字点');
+        });
+      };
+      if (pl.windowBand !== undefined) pts(pl.windowBand, 'plan.windowBand', 2);
+      if (pl.patioPatch !== undefined) pts(pl.patioPatch, 'plan.patioPatch', 2);
+      if (pl.islLabel !== undefined) {
+        const L = pl.islLabel as Record<string, unknown>;
+        if (typeof L !== 'object' || L === null) fail('plan.islLabel', '必须是对象');
+        else { pt(L.p, 'plan.islLabel.p'); if (!isNum(L.w)) fail('plan.islLabel.w', '必须是数'); if (!isNum(L.d)) fail('plan.islLabel.d', '必须是数'); if (!isStr(L.calib)) fail('plan.islLabel.calib', '必须是字符串'); }
+      }
+      if (pl.isl !== undefined) {
+        const I = pl.isl as Record<string, unknown>;
+        if (typeof I !== 'object' || I === null) fail('plan.isl', '必须是对象');
+        else for (const k of ['a', 'b', 'e', 'cp2', 'd']) pt(I[k], `plan.isl.${k}`);
+      }
+      if (pl.inner !== undefined) {
+        if (!Array.isArray(pl.inner)) fail('plan.inner', '必须是数组');
+        else pl.inner.forEach((s, i) => {
+          const sg = s as Record<string, unknown>;
+          if (typeof sg !== 'object' || sg === null) { fail(`plan.inner[${i}]`, '不是对象'); return; }
+          for (const k of ['x1', 'y1', 'x2', 'y2']) if (!isNum(sg[k])) fail(`plan.inner[${i}].${k}`, '必须是数（图纸 px）');
+          if (sg.wd !== undefined && !isNum(sg.wd)) fail(`plan.inner[${i}].wd`, '必须是数');
+        });
+      }
+      if (pl.kitchen !== undefined) {
+        if (!Array.isArray(pl.kitchen)) fail('plan.kitchen', '必须是数组');
+        else pl.kitchen.forEach((e, i) => {
+          const kp = e as Record<string, unknown>;
+          if (typeof kp !== 'object' || kp === null) { fail(`plan.kitchen[${i}]`, '不是对象'); return; }
+          if (['cab', 'top', 'steel', 'chrome', 'seam', 'black'].indexOf(kp.m as string) < 0)
+            fail(`plan.kitchen[${i}].m`, `材质档非法: ${String(kp.m)}`);
+          if (!kp.box && !kp.cyl) fail(`plan.kitchen[${i}]`, '必须有 box 或 cyl');
+          if (kp.box && !(Array.isArray(kp.box) && kp.box.length === 3 && kp.box.every(q => isNum(q))))
+            fail(`plan.kitchen[${i}].box`, '必须是 [w, h, d]（ft）');
+          if (kp.cyl && !(Array.isArray(kp.cyl) && kp.cyl.length === 2 && kp.cyl.every(q => isNum(q))))
+            fail(`plan.kitchen[${i}].cyl`, '必须是 [r, len]（ft）');
+          if (kp.seg !== undefined && (!isNum(kp.seg) || (kp.seg as number) < 3)) fail(`plan.kitchen[${i}].seg`, '必须是 ≥3 的细分');
+          if (!(Array.isArray(kp.p) && kp.p.length === 3 && kp.p.every(q => isNum(q))))
+            fail(`plan.kitchen[${i}].p`, '必须是 [x, y, z]（ft）');
+        });
+      }
+    }
+  }
+
   const hidden = d.hidden as Record<string, unknown> | undefined;
   if (typeof hidden !== 'object' || hidden === null) fail('hidden', 'hidden 必须是对象');
   else {
@@ -343,6 +437,20 @@ export function projectSchema(): object {
       fixtures: { type: 'array', items: { $ref: '#/definitions/fixture' } },
       env: { type: 'object', required: ['preset', 'mode'], properties: { preset: { type: 'string' }, mode: { enum: ['day', 'night'] } } },
       floorOutline: { type: 'array', minItems: 3, items: { type: 'array', minItems: 2, maxItems: 2, items: { type: 'number' } } },
+      plan: {
+        type: 'object',
+        properties: {
+          roomSummary: { type: 'string' },
+          refPhoto: { type: 'string' },
+          calib: { type: 'object', required: ['img', 'w', 'h'], properties: { img: { type: 'string' }, w: { type: 'number', exclusiveMinimum: 0 }, h: { type: 'number', exclusiveMinimum: 0 } } },
+          windowBand: { type: 'array', items: { type: 'array', minItems: 2, maxItems: 2, items: { type: 'number' } } },
+          patioPatch: { type: 'array', minItems: 3, items: { type: 'array', minItems: 2, maxItems: 2, items: { type: 'number' } } },
+          islLabel: { type: 'object', required: ['p', 'w', 'd', 'calib'], properties: { p: { type: 'array', minItems: 2, maxItems: 2, items: { type: 'number' } }, w: { type: 'number' }, d: { type: 'number' }, calib: { type: 'string' } } },
+          isl: { type: 'object', required: ['a', 'b', 'e', 'cp2', 'd'], properties: { a: { type: 'array', minItems: 2, maxItems: 2, items: { type: 'number' } }, b: { type: 'array', minItems: 2, maxItems: 2, items: { type: 'number' } }, e: { type: 'array', minItems: 2, maxItems: 2, items: { type: 'number' } }, cp2: { type: 'array', minItems: 2, maxItems: 2, items: { type: 'number' } }, d: { type: 'array', minItems: 2, maxItems: 2, items: { type: 'number' } } } },
+          kitchen: { type: 'array', items: { type: 'object', required: ['m', 'p'], properties: { m: { enum: ['cab', 'top', 'steel', 'chrome', 'seam', 'black'] }, box: { type: 'array', minItems: 3, maxItems: 3, items: { type: 'number' } }, cyl: { type: 'array', minItems: 2, maxItems: 2, items: { type: 'number' } }, seg: { type: 'integer', minimum: 3 }, p: { type: 'array', minItems: 3, maxItems: 3, items: { type: 'number' } }, rz: { enum: [90] }, sh: { type: 'boolean' }, rc: { type: 'boolean' } } } },
+          inner: { type: 'array', items: { type: 'object', required: ['x1', 'y1', 'x2', 'y2'], properties: { x1: { type: 'number' }, y1: { type: 'number' }, x2: { type: 'number' }, y2: { type: 'number' }, wd: { type: 'number' } } } },
+        },
+      },
       baseImage: {
         type: 'object',
         required: ['data', 'w', 'h', 'mPerPx', 'ox', 'oy'],

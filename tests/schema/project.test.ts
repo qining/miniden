@@ -190,3 +190,72 @@ describe('整圆原语进文档（ADR-0002：圆柱可用 arc 存）', () => {
     expect(validate(d)).toEqual([]);
   });
 });
+
+/* =====================================================================
+   S11b：plan 快照（户型专属构件/参考）——导出/导入必须带得走
+   ===================================================================== */
+describe('plan 快照（S11b）', () => {
+  const good = () => {
+    const d = blankDoc('我家');
+    d.plan = {
+      roomSummary: '2室1卫 · 通用户型',
+      refPhoto: 'private/photos/704.jpg',
+      calib: { img: 'private/plan/clean_plan.jpg', w: 591, h: 480 },
+      windowBand: [[10, 20], [14, 22]],
+      patioPatch: [[0, 0], [3, 0], [0, 3]],
+      islLabel: { p: [30, 12], w: 9.6, d: 2.4, calib: '9.6×2.4' },
+      isl: { a: [24, 27.8], b: [40, 27.8], e: [40, 30], cp2: [32, 31], d: [24, 30] },
+      inner: [{ x1: 0, y1: 12, x2: 8, y2: 12, wd: 3 }],
+      kitchen: [
+        { m: 'cab', box: [9.6, 3.0, 2.41], p: [26.18, 1.5, 14.33], sh: true },
+        { m: 'chrome', cyl: [0.045, 2.7], p: [19.69, 4.3, 15.85], seg: 10 },
+        { m: 'chrome', cyl: [0.045, 2.45], p: [19.83, 1.5, 15.85], rz: 90 },
+      ],
+    };
+    return d;
+  };
+
+  it('合法快照通过校验，且 JSON 往返逐字段相等', () => {
+    const d = good();
+    expect(validate(d)).toEqual([]);
+    const round = JSON.parse(JSON.stringify(d)) as ProjectDoc;
+    expect(validate(round)).toEqual([]);
+    expect(round).toEqual(d);
+  });
+
+  it('plan 是纯增量可选字段（不在 required 里）', () => {
+    const s = projectSchema() as Record<string, any>;
+    expect(s.properties.plan).toBeTruthy();
+    expect(s.required).not.toContain('plan');
+    expect(validate(blankDoc())).toEqual([]);   // 没有 plan 也合法
+  });
+
+  it('非法材质档被拒', () => {
+    const d = good();
+    (d.plan!.kitchen![0] as any).m = 'marble';
+    expect(validate(d).some(e => e.path === 'plan.kitchen[0].m')).toBe(true);
+  });
+
+  it('缺 box 或 cyl 被拒', () => {
+    const d = good();
+    (d.plan!.kitchen![0] as any).box = undefined;
+    expect(validate(d).some(e => e.path === 'plan.kitchen[0]')).toBe(true);
+  });
+
+  it('cyl 必须是 [r, len]（ft）', () => {
+    const d = good();
+    (d.plan!.kitchen![1] as any).cyl = [0.045, 2.7, 10];
+    expect(validate(d).some(e => e.path === 'plan.kitchen[1].cyl')).toBe(true);
+  });
+
+  it('inner 段坐标不是数被拒', () => {
+    const d = good();
+    (d.plan!.inner![0] as any).y2 = 'x';
+    expect(validate(d).some(e => e.path === 'plan.inner[0].y2')).toBe(true);
+  });
+
+  it('plan 不进 docToLegacy 投影（S1 字节等价红线：投影键集冻结）', () => {
+    const d = good();
+    expect(Object.keys(docToLegacy(d))).toEqual(['walls', 'fixed', 'doors']);
+  });
+});
