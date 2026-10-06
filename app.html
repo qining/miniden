@@ -6925,10 +6925,9 @@ MODELS['vihals-chair'] = (C) => {
 };
 MODELS['dyvlinge'] = (C) => {
   const cm = C.cm, T = C.THREE;
-  /* Kelinge 粗条灯芯绒。两轮教训：rboxGeo 直边读成板（第一轮），
-     pillowGeo 修好轮廓后仍「硬邦邦」——extrude 面绝对平、边带绝对匀、
-     完美对称 = 机器件。软包的真面目是布包海绵：面有起伏、缝线随面走、
-     扣件把面拽出窝。解法：确定性平滑噪声沿法线位移（种子固定，可复现）。 */
+  /* 三轮教训：rboxGeo 直边=板；pillow 修轮廓后仍硬（机器完美性）；
+     全频段揉面 → 皱纸丑。软包的正确物理：中央微隆（crown）+
+     包扣把面拽出凹窝（tuft）+ 极轻大尺度起伏，只沿朝向面的法线加权。 */
   const fab   = C.M(C.col, {rough:.88, sheen:.24, envI:.22, flat:true});
   const cord  = texScaled(corduroyTexture(), 2.0, 0.65);      // tile≈20cm → 绒条≈6mm
   const cordN = normalFromTexture(cord, 1.5);
@@ -6939,25 +6938,7 @@ MODELS['dyvlinge'] = (C) => {
   const chrome= C.M(0xd6dade, {rough:.05, metal:1, clear:.7, clearRough:.03, envI:1.15});
   const blk   = C.M(0x1e2024, {rough:.52, metal:.25});
 
-  /* 揉面场：三个不可通约频率的正弦积，英尺坐标，值域约 ±2 */
-  const FQ = 5.5;
-  const field = (x,y,z,seed) =>
-      Math.sin(x*FQ+seed)*Math.cos(z*FQ*0.8+seed*1.7)
-    + 0.6*Math.sin(z*FQ*1.4+y*FQ*0.5+seed*0.6)
-    + 0.4*Math.sin(x*FQ*1.9-z*FQ*1.1+seed*2.3)
-    + 0.25*Math.sin(x*FQ*2.6+z*FQ*2.2+seed*3.1);   // 细一档的布纹起伏
-  function soften(geo, amp, seed){
-    geo.computeVertexNormals();
-    const pos=geo.attributes.position, nor=geo.attributes.normal;
-    for(let i=0;i<pos.count;i++){
-      const x=pos.getX(i), y=pos.getY(i), z=pos.getZ(i);
-      const d=amp*0.5*field(x,y,z,seed);
-      pos.setXYZ(i, x+nor.getX(i)*d, y+nor.getY(i)*d, z+nor.getZ(i)*d);
-    }
-    pos.needsUpdate=true; geo.computeVertexNormals();
-  }
-  /* pillow(w,d,t,b,cr,bulge,taper): 枕头轮廓（鼓边+全宽 bevel 圆角带），
-     居中于 xy、z 0..t。bevel 向外扩 b → 轮廓先缩。 */
+  /* pillow(w,d,t,b,cr,bulge,taper): 枕头轮廓（鼓边+全宽 bevel 圆角带），居中 xy、z 0..t */
   function pillowGeo(w,d,t,b,cr,bulge,taper){
     taper = taper||0;
     const ow=w/2-b-bulge-taper/2, oh=d/2-b-bulge, c=Math.max(0.4, cr-b);
@@ -6979,64 +6960,87 @@ MODELS['dyvlinge'] = (C) => {
     geo.translate(-(bb.min.x+bb.max.x)/2, -(bb.min.y+bb.max.y)/2, -bb.min.z);
     return geo;
   }
+  /* 面整形：沿 +z 位移，按法线 z 分量加权（顶面全额、圆角带渐隐、背面不动） */
+  function surface(geo, offFn){
+    geo.computeVertexNormals();
+    const pos=geo.attributes.position, nor=geo.attributes.normal;
+    for(let i=0;i<pos.count;i++){
+      const nz=nor.getZ(i); if(nz<=0.12) continue;
+      pos.setZ(i, pos.getZ(i) + offFn(pos.getX(i), pos.getY(i))*Math.min(1,nz));
+    }
+    pos.needsUpdate=true; geo.computeVertexNormals();
+  }
+  const tuft=(x,y,cs,sig,A)=>{ let s=0;
+    for(const [tx,ty] of cs){ const dx=(x-tx)/sig, dy=(y-ty)/sig; s-=A*Math.exp(-(dx*dx+dy*dy)); }
+    return s; };
   const addM=(geo,mat,x,y,z,rotX)=>{ const mm=new T.Mesh(geo,mat);
     mm.castShadow=mm.receiveShadow=true; if(rotX) mm.rotation.x=rotX;
     mm.position.set(x,y,z); C.g.add(mm); return mm; };
-  /* 缝线 = 细分薄条，逐顶点按同一揉面场平移 → 跟着曲面走，不是浮棍 */
-  function seamStrip(w,h,d,x,y0,z0,seed,axis){   // axis:'y'|'z' 位移方向
+  /* 缝线：细分薄条，逐顶点按同一 offFn 贴面走 */
+  function seamStrip(w,h,d,x,y0,z0,axis,disp){
     const sg=Math.max(1, Math.round(Math.max(w,d)/cm(8)));
     const geo = axis==='y' ? new T.BoxGeometry(w,cm(0.35),d, (w>cm(2)?sg:1),1,1)
                            : new T.BoxGeometry(w,h,d, (w>cm(2)?sg:1),(h>cm(2)?sg:1),1);
     const pos=geo.attributes.position;
     for(let i=0;i<pos.count;i++){
       const lx=pos.getX(i), ly=pos.getY(i), lz=pos.getZ(i);
-      const f=cm(0.35)*0.5*field(lx+x, ly+y0, lz+z0, seed);
-      if(axis==='y') pos.setY(i, ly+f); else pos.setZ(i, lz+f);
+      const o=disp(lx,ly,lz);
+      if(axis==='y') pos.setY(i, ly+o); else pos.setZ(i, lz+o);
     }
     pos.needsUpdate=true; geo.computeVertexNormals();
     const m=new T.Mesh(geo,fabD); m.castShadow=true; m.position.set(x,y0,z0); C.g.add(m);
   }
 
-  /* ========== 坐垫枕头 61×52×19（揉面 ±0.7cm），顶面均值落座高 42 ========== */
-  const SZ = cm(11.5), AMP = cm(0.7), S1 = 1.73;
+  /* ========== 坐垫枕头 61×52×19：crown +0.8 中央隆、4 扣窝 -0.9、起伏 ±0.25 ========== */
+  const SZ = cm(11.5);
+  const offSeat=(x,y)=>{
+    const u=x/cm(25), v=y/cm(21);
+    return cm(0.8)*Math.max(0, 1-u*u-v*v)
+         + tuft(x,y, [[-14,-10],[-14,10],[14,-10],[14,10]].map(([a,b])=>[cm(a),cm(b)]), cm(7), cm(0.9))
+         + cm(0.25)*(Math.sin(x*3.1+1.7)*Math.cos(y*2.4+2.9) + 0.5*Math.sin(x*1.6-y*3.3+0.7));
+  };
   const seatGeo = pillowGeo(cm(61), cm(52), cm(19), cm(6), cm(14), cm(2.5));
-  soften(seatGeo, AMP, S1);
+  surface(seatGeo, offSeat);
   addM(seatGeo, fab, 0, cm(23), SZ, -Math.PI/2);
-  const surfY = (x,z) => 42 + AMP*0.5*field(cm(x), cm(42), cm(z)+SZ, S1)/cm(1);   // 面高度场（cm）
   for(const sx of [-1,1]) for(const sz of [-1,1]){
     const x=sx*cm(14), z=SZ+sz*cm(10);
-    const yTop = cm(42) + AMP*0.5*field(x, cm(42), z, S1);
-    const d = C.sph(cm(2.6), fabD, x, yTop-cm(0.4), z, 18); d.scale.set(1, .20, 1);  // 扣窝随面起伏
-    const b = C.sph(cm(1.3), fabD, x, yTop+cm(0.1), z, 14); b.scale.y = .45;          // 包扣
+    const yTop = cm(42) + offSeat(x, -sz*cm(10));            // shape sy = SZ−worldZ = −sz·10
+    const d = C.sph(cm(2.6), fabD, x, yTop-cm(0.15), z, 18); d.scale.set(1, .20, 1);  // 扣窝坐在凹底
+    const b = C.sph(cm(1.3), fabD, x, yTop+cm(0.15), z, 14); b.scale.y = .45;          // 包扣
   }
-  seamStrip(cm(34), 0, cm(0.4), 0, cm(42.15), SZ, S1, 'y');    // 横缝
-  seamStrip(cm(0.4), 0, cm(26), 0, cm(42.15), SZ, S1, 'y');    // 竖缝
+  seamStrip(cm(34), 0, cm(0.4), 0, cm(42.0), SZ, 'y', (lx,ly,lz)=>offSeat(lx,-lz));
+  seamStrip(cm(0.4), 0, cm(26), 0, cm(42.0), SZ, 'y', (lx,ly,lz)=>offSeat(lx,-lz));
 
-  /* ========== 背枕枕头 58×40×15（揉面 ±0.6cm，上宽下窄），后倾 23° 姿态分离 ========== */
+  /* ========== 背枕枕头 58×40×15（居中系 y±20 整形后平移），后倾 23° ========== */
   const grp = new T.Group();
   const _n0 = C.g.children.length;
+  const offBack=(x,y)=>{
+    const u=x/cm(26), v=(y-cm(1))/cm(19);
+    return cm(0.6)*Math.max(0, 1-u*u-v*v)
+         + tuft(x,y, [[-18,-7],[0,-7],[18,-7],[-18,9],[0,9],[18,9]].map(([a,b])=>[cm(a),cm(b)]), cm(7), cm(0.9))
+         + cm(0.22)*(Math.sin(x*2.8+2.9)*Math.cos(y*2.2+1.3) + 0.5*Math.sin(y*3.1-x*1.9+2.1));
+  };
   const backGeo = pillowGeo(cm(58), cm(40), cm(15), cm(5), cm(15), cm(2), cm(3));
-  soften(backGeo, cm(0.6), 2.91);
+  surface(backGeo, offBack);
   const back = addM(backGeo, fab, 0, 0, 0);
-  back.geometry.translate(0, cm(20), -cm(7.5));                // 局部 y 0..40，厚 z ±7.5
-  for(const sx of [-1,0,1]) for(const sy of [-1,1]){           // 6 粒包扣：3列×2行（d2 实拍）
+  back.geometry.translate(0, cm(20), -cm(7.5));              // 局部 y 0..40，厚 z ±7.5
+  for(const sx of [-1,0,1]) for(const sy of [-1,1]){         // 6 粒包扣：3列×2行（d2 实拍）
     const x = sx*cm(18), y = cm(21+sy*8);
-    const zF = cm(7.5) + cm(0.6)*0.5*field(x, y, cm(7.5), 2.91);
-    const d = C.sph(cm(2.6), fabD, x, y, zF-cm(0.4), 18); d.scale.set(1, 1, .20);
-    const b = C.sph(cm(1.3), fabD, x, y, zF+cm(0.1), 14); b.scale.z = .45;
+    const zF = cm(7.5) + offBack(x, y-cm(20));
+    const d = C.sph(cm(2.6), fabD, x, y, zF-cm(0.15), 18); d.scale.set(1, 1, .20);
+    const b = C.sph(cm(1.3), fabD, x, y, zF+cm(0.15), 14); b.scale.z = .45;
   }
-  seamStrip(cm(40), cm(0.4), 0, 0, cm(20.75), cm(7.6), 2.91, 'z');  // 横缝
-  seamStrip(cm(0.4), cm(26), 0, 0, cm(13), cm(7.6), 2.91, 'z');     // 竖缝
+  seamStrip(cm(40), cm(0.4), 0, 0, cm(20.75), cm(7.45), 'z', (lx,ly,lz)=>offBack(lx, ly+cm(0.75)));
+  seamStrip(cm(0.4), cm(26), 0, 0, cm(13), cm(7.45), 'z',    (lx,ly,lz)=>offBack(lx, ly-cm(7)));
   for(const ch of C.g.children.slice(_n0)) grp.add(ch);
   grp.rotation.x = -0.4014;                     // 后倾 23°
   grp.position.set(0, cm(26), -cm(11.5));       // 前缘埋进坐垫后部，衔接连续（d2）
   C.g.add(grp);
 
-  /* ========== 漏斗座：碗形布裙（揉出软褶，顶缘内卷藏进坐垫底），轴 z=7.5 ========== */
+  /* ========== 漏斗座：碗形布裙（光滑收拢，顶缘内卷藏进坐垫底），轴 z=7.5 ========== */
   const SZ2 = cm(7.5);
   const fun = C.lathe([[cm(4.6),cm(12.2)],[cm(5.5),cm(13.4)],[cm(8.5),cm(15.5)],[cm(12.5),cm(18.5)],
                       [cm(15.5),cm(21)],[cm(17.8),cm(22.8)],[cm(19),cm(23.6)],[cm(18.4),cm(24.6)]], fab, 0, 0, SZ2, 40);
-  soften(fun.geometry, cm(0.45), 4.17);
   fun.scale.x = 1.45; fun.scale.z = 1.35;
 
   /* ========== 旋转五金：镀铬套筒 + 黑色轴帽 ========== */
@@ -7057,7 +7061,7 @@ MODELS['dyvlinge'] = (C) => {
     C.rb(cm(3.2), cm(0.9), cm(4.2), cm(0.45), blk, -rGl*Math.sin(a), 0, -rGl*Math.cos(a)+SZ2).rotation.y = a;
   });
 
-  /* 水平重心归零（按真实顶点） */
+  /* 水平重心归零（真实顶点）+ setFromObject 口径微调 */
   C.g.updateMatrixWorld(true);
   const bb = new T.Box3();
   C.g.traverse(o=>{
@@ -7068,8 +7072,6 @@ MODELS['dyvlinge'] = (C) => {
   });
   const off = new T.Vector3(); bb.getCenter(off);
   for(const ch of C.g.children){ ch.position.x -= off.x; ch.position.z -= off.z; }
-  /* 第二遍按 Box3.setFromObject 口径对齐（旋转 Group 的角点过度估计不对称，
-     验收/拾取都用那个口径；残差约 1mm） */
   C.g.updateMatrixWorld(true);
   const off2 = new T.Vector3(); new T.Box3().setFromObject(C.g).getCenter(off2);
   for(const ch of C.g.children){ ch.position.x -= off2.x; ch.position.z -= off2.z; }

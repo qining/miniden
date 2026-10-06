@@ -1131,6 +1131,7 @@ requestRender();
 | 绕序自检写在 `const geo = ...` **之前** | TDZ ReferenceError → `furn3D` 的 try/catch **静默回退成通用造型**（症状：填充率掉到 310 面、mesh 数=1，且没有任何报错），断言永远读不到标记 | 自检必须在 `geo` 声明之后；验证「模型真的跑了」要抓 console.warn 或数 mesh 数 |
 | 法线符号自检按 `(a, b, b2)` 取三角形 | 和 `id.push(a, a2, b2, ...)` 的顶点顺序不一致 → 法线整个反号 → 正确的模型被判红 | 自检里的三角形顶点顺序必须逐字照抄 `id.push` 的第一组 |
 | 自检里的索引写成 `pos[a+j2]` 而 `a` 已含 `j` | 双加 `j` → 取到别的环的点 → 法线/面心全错，占比读成 ~50% | 生成器和自检的索引变量必须逐字对齐（`a = i*P` 是环基址，不是环基址+j） |
+| 顶点处理里写 `nor[i*3+2]` 读法线 z 分量 | BufferAttribute 对象**不支持按下标取底层数组元素**（`attr[i]` 是 undefined）→ `Math.min(1,undefined)=NaN` → 整个几何 NaN（症状：填充率 NaN%、模型消失，无报错） | 一律用 `attr.getX/getY/getZ(i)`（或 `attr.array[i*3+2]`）；改完先跑填充率探针 |
 | 环状扫掠件（缝线绳圈）法线天然朝内 | 菱形截面 `[(-r,0),(0,r),(r,0),(0,-r)]` 的顺序决定管壁朝内还是朝外；朝内时**仍然渲染**（看到的是管的远壁），所以截图检查抓不到 | 截面点顺序要按 (profile dir)×(ring dir) 推一遍；`check-item.py` 的绕序断言会读 `geometry.userData.winding` |
 | 用逐面「朝外占比」做通用绕序判据 | 环状件天然 ~50%（剖面质心在环中心），盖面会按期望法线自己翻把信号稀释成 42% 这种读不出结论的值 | 占比不能用。判据只能落在**侧面**（`swept()` 自己写 `userData.winding`），且必须跑 `?nomerge`——合并会新建 BufferGeometry 丢掉 userData |
 | 自建 `BufferGeometry`（扫掠/旋转体）渲成**纯色平板**，贴图完全看不见 | 只设了 `position`，没有 `uv` 属性 → 所有面采样 (0,0)，贴图等于一个色块（Henredon Murphy 桶壳第一版） | 自建几何必须 `geo.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(uv),2))`；扫掠体按**真实弧长**铺 UV（u=环向累计弧长/TILE，v=剖面累计弧长/TILE），TILE 取实物尺寸（如 40cm）否则纹理密度随半径变化；盖面用**独立顶点 + 平面 UV**，共享顶点会让扇形被侧壁 UV 拉成放射状 |
