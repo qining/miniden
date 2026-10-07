@@ -10,7 +10,7 @@
  * 退出码：任一 bench 出现 FAIL / EXC / NO TEST OUTPUT → 1。
  */
 import { spawnSync } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { existsSync, rmSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -21,6 +21,11 @@ const CHROME =
 const CI_FLAGS = process.env.CI === 'true' ? ['--no-sandbox', '--disable-dev-shm-usage'] : [];
 // Chrome ≥140：软件 WebGL（SwiftShader）需显式 opt-in，否则可能降级成受限路径
 const SWIFTSHADER_FLAG = '--enable-unsafe-swiftshader';
+/* 每个 bench 一个干净 profile（跑前删、跑后删）。两个理由：
+   1) 默认 profile 会把上一轮的 localStorage / IndexedDB 带进来（E10 后更多），本地跑与 CI 干净环境不同口径；
+   2) 被 kill 掉的 Chrome 会在默认 profile 里留下 SingletonLock，后续 headless 跑就在 0% CPU 上挂死
+      —— 症状与「alert() 阻塞」一模一样，极易误判成页面 bug。 */
+const PROFILE_DIR = join(root, 'work', 'bench-profile');
 
 // 与 AGENTS §3 的表格一致（dist 的 t_walledit budget 120000）
 const SPEC = {
@@ -48,10 +53,16 @@ function attempt(f, spec) {
   const [w, h] = spec.win.split(',');
   let r;
   try {
+    rmSync(PROFILE_DIR, { recursive: true, force: true });
+  } catch (_e) {
+    /* 删不掉就用它 */
+  }
+  try {
     r = spawnSync(
       CHROME,
       [
         '--headless',
+        `--user-data-dir=${PROFILE_DIR}`,
         '--use-angle=swiftshader',
         SWIFTSHADER_FLAG,
         '--allow-file-access-from-files',
@@ -129,5 +140,10 @@ for (const f of list) {
   for (const b of r.bad.slice(0, 12)) console.log('   ', b.slice(0, 220));
   if (!r.ok && r.diag?.length) for (const d of r.diag.slice(0, 8)) console.log('    [chrome]', d.slice(0, 220));
   if (!r.ok) fail++;
+}
+try {
+  rmSync(PROFILE_DIR, { recursive: true, force: true });
+} catch (_e) {
+  /* 临时 profile 负清理失败不影响结果 */
 }
 process.exit(fail ? 1 : 0);
