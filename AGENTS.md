@@ -77,7 +77,7 @@
 | `docs/research/01–10` | 需要「依据」时（各结论的调研过程/数据） |
 | `docs/design/` | 户型输入 → 3D 的设计总文档 |
 
-**当前位置**：R1–R10 研究全部完成；S 系列全部落地（S1–S7 + S9 Warm Dark 2a–2d）。**S10（隐私 + plan 外部化，2026-09）**：个人数据全部移入 `private/`（§1.4）；户型几何外置为 `#miniden-plan` JSON（committed=generic / 本地构建注入 mine）；bench 分层（入库 plan-independent / private plan-specific）；ui-gate 截 dist。**S11（2026-10-05）**：户型文档导出/导入（「工具 ⌄」→「导出户型 / 导入户型」+ `#docModal` 一次性确认，走 `applyImportedDoc` 同一条路；`ProjectDoc.floorOutline?` 纯增量可选字段保地板轮廓逐坐标保真）。**S11b（2026-10-05）**：导出必须无限制 → `ProjectDoc.plan?`（户型专属快照：roomSummary/refPhoto/calib/windowBand/patioPatch/islLabel/isl/kitchen/inner，同样不进投影），`freshDoc()` 从 PLAN 播种、消费端走 `planOf(k)`（文档优先、回退 PLAN）；厨房硬编码块数据化（顺带清除了公开文件里的真实坐标）。**S12（2026-10-05）**：放置类实体只认两个来源——用户画 / 导入读到的几何，不写启发式猜测；`Run` 台面柜体带实体 + 工具、DXF/PDF `furn` 轮廓按形状分类落地为 run、钢框窗改成窗实体的 `steel` 标志（`steelBands()` 与历史 windowBand 重合时只画一次）。**E18（2026-10-05）**：两个入口一个事实来源（§0.3）。**S13（2026-10-06）**：布局跟着 app 走——户型 JSON 新增 `layout`（内置布局），`load()` 在「这台浏览器对这份户型从没存过档」时用它播种（§1.2）；公开入口 `layout:null`（build.mjs 硬断言），测试台一律剥掉 layout（保持确定性 + plan-independence），`#calib` 不播种（§1.1）。待办：`git filter-repo` 历史清除（用户暂缓）、E5 CI（generic 子集）。加目录条目照 §8.1 / skill 走。
+**当前位置**：R1–R10 研究全部完成；S 系列全部落地（S1–S7 + S9 Warm Dark 2a–2d）。**S10（隐私 + plan 外部化，2026-09）**：个人数据全部移入 `private/`（§1.4）；户型几何外置为 `#miniden-plan` JSON（committed=generic / 本地构建注入 mine）；bench 分层（入库 plan-independent / private plan-specific）；ui-gate 截 dist。**S11（2026-10-05）**：户型文档导出/导入（「工具 ⌄」→「导出户型 / 导入户型」+ `#docModal` 一次性确认，走 `applyImportedDoc` 同一条路；`ProjectDoc.floorOutline?` 纯增量可选字段保地板轮廓逐坐标保真）。**S11b（2026-10-05）**：导出必须无限制 → `ProjectDoc.plan?`（户型专属快照：roomSummary/refPhoto/calib/windowBand/patioPatch/islLabel/isl/kitchen/inner，同样不进投影），`freshDoc()` 从 PLAN 播种、消费端走 `planOf(k)`（文档优先、回退 PLAN）；厨房硬编码块数据化（顺带清除了公开文件里的真实坐标）。**S12（2026-10-05）**：放置类实体只认两个来源——用户画 / 导入读到的几何，不写启发式猜测；`Run` 台面柜体带实体 + 工具、DXF/PDF `furn` 轮廓按形状分类落地为 run、钢框窗改成窗实体的 `steel` 标志（`steelBands()` 与历史 windowBand 重合时只画一次）。**E18（2026-10-05）**：两个入口一个事实来源（§0.3）。**S13（2026-10-06）**：布局跟着 app 走——户型 JSON 新增 `layout`（内置布局），`load()` 在「这台浏览器对这份户型从没存过档」时用它播种（§1.2）；公开入口 `layout:null`（build.mjs 硬断言），测试台一律剥掉 layout（保持确定性 + plan-independence），`#calib` 不播种（§1.1）。待办：`git filter-repo` 历史清除（用户暂缓）。**E5（2026-10-06）**：GitHub Actions CI 上线（`.github/workflows/ci.yml`，generic 子集：tsc → vitest → build → bench ×6 → ui-gate 双截；见 §3）。加目录条目照 §8.1 / skill 走。
 
 ---
 
@@ -198,7 +198,8 @@ open('/tmp/planner_check.js','w').write(m.group(1))
 #     + 重新生成 6 个 bench HTML（3 脚本 × source/dist，work/ 下 gitignore）
 #     改完 app.html / bench/*.js 之后必跑（dist 与根 planner.html 都是构建产物，不同步就是过期副本）
 
-# 3) 交互测试台（t_walledit 198 / t_3d 92 / t_pt 32 条断言，见 §3；dist 变体同断言，见 §5.7）
+# 3) 交互测试台（t_walledit 251 / t_3d 118 / t_pt 33 条断言，见 §3；dist 变体同断言，见 §5.7；
+#    推荐直接 node scripts/run-bench.mjs）
 # 4) 校准回归（§1.1）
 # 5) 视觉验证（截图 + 放大目检，见 §4）
 # 5b) UI 改动（样式/组件/交互流程）：跑七道验收关（见 §8.4），
@@ -216,9 +217,9 @@ open('/tmp/planner_check.js','w').write(m.group(1))
 
 | 脚本（源） | 位置 | 覆盖 | 断言 | 输出 `<pre id>` | 窗口 / virtual-time |
 |---|---|---|---|---|---|
-| `t_walledit.js` | **`private/bench/`（gitignore）**——含真实户型几何坐标断言 | 2D：墙/柱/门/洁具编辑、门垛联动、S5/S6 导入、双币种、视图/单位/面板、S7 描图、对话框 | 198 | `wetest` | 1700x1100 / 100000（dist 120000） |
-| `t_3d.js` | `bench/`（入库，plan-independent） | 3D：拾取/拖动/旋转、开关灯、**全目录建模+贴图体检**、缩略图、S5/S6 导入、双击进室内、座椅体检 | 92 | `t3d` | 1400x950 / 170000 |
-| `t_pt.js` | `bench/`（入库，plan-independent） | 光追：BVH、着色器、进度、降噪、萤火虫/NaN 判别、分块自适应、**白家具可辨识度**（满家具客厅） | 32 | `tpt` | 1200x850 / 600000 |
+| `t_walledit.js` | **`private/bench/`（gitignore）**——含真实户型几何坐标断言 | 2D：墙/柱/门/洁具编辑、门垛联动、S5/S6 导入、双币种、视图/单位/面板、S7 描图、对话框 | 251 | `wetest` | 1700x1100 / 100000（dist 120000） |
+| `t_3d.js` | `bench/`（入库，plan-independent） | 3D：拾取/拖动/旋转、开关灯、**全目录建模+贴图体检**、缩略图、S5/S6 导入、双击进室内、座椅体检 | 118 | `t3d` | 1400x950 / 170000 |
+| `t_pt.js` | `bench/`（入库，plan-independent） | 光追：GL 能力探针、BVH、着色器、进度、降噪、萤火虫/NaN 判别、分块自适应、**白家具可辨识度**（满家具客厅） | 33 | `tpt` | 1200x850 / 600000 |
 
 **Plan-independence 规则**（bench 脚本入库的前提）：
 - 所有坐标目标**从运行时派生**：`floorPts()`（`FLOORPTS` 常量的别名）的 bbox 中心，
@@ -243,8 +244,14 @@ open('/tmp/planner_check.js','w').write(m.group(1))
 页面根本不输出结果（症状是 `NO TEST OUTPUT`，很容易误判成页面崩溃）。
 每次跑之前先 `pkill -f 'Google Chrome.app.*--headless'`（别误杀 playwright 的 headless-shell）。
 
-**`t_pt` 的 `pt-kallax-visible` 探针会偶发全黑**（均值 0 / 标准差 0，headless 瞬态）：
-单跑一次 FAIL 时**原样重跑一次**再下结论，不要按它改代码。
+**`t_pt` 的 `pt-kallax-visible` 探针会偶发全黑**（均值 0 / 标准差 0，headless 瞬态；
+CI 的 Linux 软件 GL 上更易触发）：bench 内置自愈（读到全黑 0/0 → 重渲一次再断言），
+`scripts/run-bench.mjs` 还会对 FAIL 的 bench 整体原样重跑一次；两层都红才是真红。
+非全黑的失败（如标准差小）不会重试，不掩盖真回归。
+
+**Chrome ≥140 软件 WebGL 需显式 opt-in**：`--use-angle=swiftshader` 之外还要
+`--enable-unsafe-swiftshader`，否则 Linux runner 上 PT 的 float FBO 路径变 no-op
+（症状：图全黑均值 ≈4、亮像素≈窗面积、跑得快）。run-bench 已内置。
 
 **dist 变体**（E1 起）：验收口径 = source 与 dist **同样全绿**——dist 绿了才说明构建
 管线（plan 注入/ESM 重构）没改变行为。经典脚本→ESM 的坑见 §5.7。
@@ -263,6 +270,9 @@ pngjs 逐像素比。P1 那次就是这样才抓到「2D 0.79% / 3D 1.23%」的�
 改完记得 `rm _prev.html`。
 
 ### 运行
+
+**推荐：`node scripts/run-bench.mjs [bench.html...]`**（窗口/budget/pre-id 与下表一致，
+自动重跑瞬态，失败时输出 chrome 的 GL 诊断）。下面是等价的 ad-hoc 形式：
 
 ```bash
 R=/Users/dako/orca/workspaces/planner/add-catalog   # worktree 路径（bench HTML 必须从 worktree 跑）

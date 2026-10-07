@@ -56,7 +56,7 @@
 | E2 | **TypeScript**：schema 层已完成（`src/schema/`，tsc strict 干净 + 31 单测，S1 Phase 1）；其余模块随 E1 模块化推进 | 进行中 |
 | E3 | **JSON Schema + 迁移链**：Phase 1 已完成（validate()/migrate()/JSON Schema draft-07 导出，等价性硬验收 31 单测绿）；Phase 2 = planner.html 接入（见 S1） | 进行中 |
 | E4 | **vitest 单测**：vitest 接入完成 + schema 层 31 单测（含等价性/可重放性/原语误差）；其余纯函数（`fmtLen`/吸附/`ptPickGrid`）随模块化补齐 | 进行中 |
-| E5 | **GitHub Actions CI**（2026-10-06）：`.github/workflows/ci.yml` = npm ci → tsc → vitest（private fixture 套件自动 skip）→ build（含嵌入块一致性 + 公开入口隐私硬断言）→ plan-independent bench ×6（`scripts/run-bench.mjs`，FAIL 自动原样重跑一次 = AGENTS §3 瞬态口径）→ ui-gate 双截（CI 自建 generic 基线，验渲染确定性/可渲，**不是**视觉回归门禁）。calib md5 门禁需 private 资产 → 留本地。eslint 无配置 → 未纳入 | **done**：本地 CI 模拟（无 private/ 副本）全绿：vitest 149+6skip、t_3d 118×3、t_pt 32×3、ui-gate 8/8 @ 0.0000% |
+| E5 | **GitHub Actions CI**（2026-10-06）：`.github/workflows/ci.yml` = npm ci → tsc → vitest（private fixture 套件自动 skip）→ build（含嵌入块一致性 + 公开入口隐私硬断言）→ plan-independent bench ×6（`scripts/run-bench.mjs`，FAIL 自动原样重跑一次 = AGENTS §3 瞬态口径）→ ui-gate 双截（CI 自建 generic 基线，验渲染确定性/可渲，**不是**视觉回归门禁）。calib md5 门禁需 private 资产 → 留本地。eslint 无配置 → 未纳入。**踩坑**：Chrome≥140 软件 WebGL 需 `--enable-unsafe-swiftshader`（否则 Linux runner 上 PT float FBO 变 no-op → t_pt 全黑）；pt-kallax 全黑瞬态在慢速软件 GL 上更易触发 → bench 内置自愈重渲 | **done**：首跑全绿（run 37550330469）：t_3d 118×3 · t_pt 33×3 · ui-gate 8/8 @ 0.0000%；本地 CI 模拟（无 private/ 副本）同样全绿 |
 
 **P1 —— 质量 + 快捷（ADR-0006：快捷是一等特征）**
 
