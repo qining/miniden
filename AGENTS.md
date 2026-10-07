@@ -77,7 +77,7 @@
 | `docs/research/01–10` | 需要「依据」时（各结论的调研过程/数据） |
 | `docs/design/` | 户型输入 → 3D 的设计总文档 |
 
-**当前位置**：R1–R10 研究全部完成；S 系列全部落地（S1–S7 + S9 Warm Dark 2a–2d）。**S10（隐私 + plan 外部化，2026-09）**：个人数据全部移入 `private/`（§1.4）；户型几何外置为 `#miniden-plan` JSON（committed=generic / 本地构建注入 mine）；bench 分层（入库 plan-independent / private plan-specific）；ui-gate 截 dist。**S11（2026-10-05）**：户型文档导出/导入（「工具 ⌄」→「导出户型 / 导入户型」+ `#docModal` 一次性确认，走 `applyImportedDoc` 同一条路；`ProjectDoc.floorOutline?` 纯增量可选字段保地板轮廓逐坐标保真）。**S11b（2026-10-05）**：导出必须无限制 → `ProjectDoc.plan?`（户型专属快照：roomSummary/refPhoto/calib/windowBand/patioPatch/islLabel/isl/kitchen/inner，同样不进投影），`freshDoc()` 从 PLAN 播种、消费端走 `planOf(k)`（文档优先、回退 PLAN）；厨房硬编码块数据化（顺带清除了公开文件里的真实坐标）。**S12（2026-10-05）**：放置类实体只认两个来源——用户画 / 导入读到的几何，不写启发式猜测；`Run` 台面柜体带实体 + 工具、DXF/PDF `furn` 轮廓按形状分类落地为 run、钢框窗改成窗实体的 `steel` 标志（`steelBands()` 与历史 windowBand 重合时只画一次）。**E18（2026-10-05）**：两个入口一个事实来源（§0.3）。**S13（2026-10-06）**：布局跟着 app 走——户型 JSON 新增 `layout`（内置布局），`load()` 在「这台浏览器对这份户型从没存过档」时用它播种（§1.2）；公开入口 `layout:null`（build.mjs 硬断言），测试台一律剥掉 layout（保持确定性 + plan-independence），`#calib` 不播种（§1.1）。待办：`git filter-repo` 历史清除（用户暂缓）。**E5（2026-10-06）**：GitHub Actions CI 上线（`.github/workflows/ci.yml`，generic 子集：tsc → vitest → build → bench ×6 → ui-gate 双截；见 §3）。加目录条目照 §8.1 / skill 走。
+**当前位置**：R1–R10 研究全部完成；S 系列全部落地（S1–S7 + S9 Warm Dark 2a–2d）。**S10（隐私 + plan 外部化，2026-09）**：个人数据全部移入 `private/`（§1.4）；户型几何外置为 `#miniden-plan` JSON（committed=generic / 本地构建注入 mine）；bench 分层（入库 plan-independent / private plan-specific）；ui-gate 截 dist。**S11（2026-10-05）**：户型文档导出/导入（「工具 ⌄」→「导出户型 / 导入户型」+ `#docModal` 一次性确认，走 `applyImportedDoc` 同一条路；`ProjectDoc.floorOutline?` 纯增量可选字段保地板轮廓逐坐标保真）。**S11b（2026-10-05）**：导出必须无限制 → `ProjectDoc.plan?`（户型专属快照：roomSummary/refPhoto/calib/windowBand/patioPatch/islLabel/isl/kitchen/inner，同样不进投影），`freshDoc()` 从 PLAN 播种、消费端走 `planOf(k)`（文档优先、回退 PLAN）；厨房硬编码块数据化（顺带清除了公开文件里的真实坐标）。**S12（2026-10-05）**：放置类实体只认两个来源——用户画 / 导入读到的几何，不写启发式猜测；`Run` 台面柜体带实体 + 工具、DXF/PDF `furn` 轮廓按形状分类落地为 run、钢框窗改成窗实体的 `steel` 标志（`steelBands()` 与历史 windowBand 重合时只画一次）。**E18（2026-10-05）**：两个入口一个事实来源（§0.3）。**S13（2026-10-06）**：布局跟着 app 走——户型 JSON 新增 `layout`（内置布局），`load()` 在「这台浏览器对这份户型从没存过档」时用它播种（§1.2）；公开入口 `layout:null`（build.mjs 硬断言），测试台一律剥掉 layout（保持确定性 + plan-independence），`#calib` 不播种（§1.1）。待办：`git filter-repo` 历史清除（用户暂缓）。**E5（2026-10-06）**：GitHub Actions CI 上线（`.github/workflows/ci.yml`，generic 子集：tsc → vitest → build → bench ×6 → ui-gate 双截；见 §3）。**P1 收尾（2026-10-06）**：git filter-repo 历史清除 + force-push 已执行（§1.4）；E7 LICENSE/THIRD-PARTY、E8 README、E13 包体预算门禁同期落地。加目录条目照 §8.1 / skill 走。
 
 ---
 
@@ -161,10 +161,7 @@ md5 -q /tmp/ckc.png
 - **mine.json 必须逐位精确**（§5.1 有坑）：它是从原版硬编码常量**用 node eval 原代码
   提取**的（floorpts/walls/… 与浏览器运行时逐位一致，已用 #dump 全字段核对）。
   手绘/Python 转算的值会有末位漂移 → 2D auto-fit viewBox 整体位移 → ui-gate 18% 假红。
-- **历史里的个人数据（17 个 blob + 最早 commit `e73cb45` 里硬编码的真实户型坐标）尚未清除**：
-  用户 2026-10-05 明确「暂时不需要删除历史」，并授权直接 push。红线因此变成
-  **HEAD 必须干净**（新提交里不得出现真实坐标 / `private/` 资源引用 / `dist` 或根 `planner.html`）；
-  `git filter-repo` + force-push 仍是将来要做的收尾。
+- **历史已清（P1 收尾，2026-10-06）**：`git filter-repo` + force-push 已执行。剔除：实拍照片（704/705/708/709）、图纸扫描（clean_plan/clean4x）、旧 `work/golden/`（mine UI 基线）、旧 bench HTML（内嵌 mine plan JSON）、`tests/fixtures/legacy-geo.json`、`work/vih/`、过程探针（threeview_probe/_mkpt）；`planner.html` 历史版本全部剔除、**只保留 HEAD 一份（用户授权豁免）**；旧 commit 消息与 AGENTS/docs 历史版本里的个人词（旧默认名/城市+楼层/钢带真实坐标）已脱敏。**注意：清史后所有 commit 哈希已变**，文档里引用的旧哈希（如 `e73cb45`）仅作历史注记，新哈希见 `.git/filter-repo/commit-map` 时代的勘误提交。个人资产备份在 `~/backups/miniden-seattle-20261006/`（含清史前全历史 mirror）。
 - 新增任何「真实户型相关」的产物（截图/基线/坐标）默认放 `private/`，
   入库前问自己：「这个文件给陌生人看，泄露了我的家吗？」
 
@@ -384,7 +381,7 @@ sips -z 高 宽 /tmp/x.png --out /tmp/x_big.png               # 放大
 | **viewBox 单位 = ft×S**（所有 2D 绘制都乘 S） | `fit2DToContent` 直接用 ft 算 bbox → 导入后视图放大 S（22）倍，用户只见一个墙角（S5 潜在 bug，S6 bench 才暴露） | 任何写 viewBox 的代码都用 ft×S 单位；拿不准就和初始 viewBox（1232×1012 = 56×46 ft × 22）对量纲 |
 | **plan 坐标末位漂移 → auto-fit 视图整体位移**（S10） | Python/手算的 `px/11.2` 与浏览器 V8 逐位不同（末位 1 ulp）：calib（固定像素管线）看不出来，但 **2D auto-fit viewBox / 3D 相机取景**的 extent 变了 → 整体平移 → ui-gate 18~53% 假红，症状极像「UI 崩了」 | plan JSON 一律**用 node eval 原版代码提取**（V8 对 V8 逐位一致），再用 `#dump`/页面内探针与浏览器运行时值全字段比对（JSON.stringify 相等才算过） |
 | **calib 底图 w/h 写成文件分辨率**（2048×1370，实为 591×480 图纸 px） | SVG `<image>` 按 w/h 铺：放大 3.5 倍后潎满全画布，calib md5 整体变掉（diff 197k 像素、全画布、非位移） | 底图尺寸是**图纸 px**（与 viewBox 同量纲）；改 calib 字段后立刻跑 §1.1 md5 |
-| **把几何外置成 plan 数据时漏掉「某户型专属」的硬编码构件**（P1 实测：3D 落地窗带钢梁 `C(x1,y1)…` + 2D 黑方块示意 + 阳台楔形补板 + 中岛标签位） | 只按 `docImported()` 门控、不按 plan 门控 → 换个户型照画不误：钢梁斜穿整个户型，看着像「地板和墙错位」；而且真实坐标还留在公开文件里 | 外置几何后 `grep -nE 'C\([0-9]'`（以及任何裸数字坐标）扫一遍消费端，每处问「这是所有户型都有的，还是某一户专属？」——专属的一律挪进 plan JSON 并用 `PLAN.xxx` 存在性门控；验收：**generic 户型目检 2D+3D**（mine 全绿不代表 generic 没炸） |
+| **把几何外置成 plan 数据时漏掉「某户型专属」的硬编码构件**（P1 实测：3D 落地窗带钢梁 `C(x1,y1)…`（真实坐标已随 P1 清史从历史剔除） + 2D 黑方块示意 + 阳台楔形补板 + 中岛标签位） | 只按 `docImported()` 门控、不按 plan 门控 → 换个户型照画不误：钢梁斜穿整个户型，看着像「地板和墙错位」；而且真实坐标还留在公开文件里 | 外置几何后 `grep -nE 'C\([0-9]'`（以及任何裸数字坐标）扫一遍消费端，每处问「这是所有户型都有的，还是某一户专属？」——专属的一律挪进 plan JSON 并用 `PLAN.xxx` 存在性门控；验收：**generic 户型目检 2D+3D**（mine 全绿不代表 generic 没炸） |
 | **localStorage 存档不带户型标识**（P1：`planner_v1`/`planner_doc_v1` 单桶） | plan 外置后，mine 的存档被原样回放到 generic 上（斜墙/阳台/柱 + 满屋家具叠在通用户型里）；用户以为「渲染坏了」 | 键按户型指纹分桶（`planner_doc_v1:<fp>`，fp = name+sc+floorpts+walls 的 hash）；旧单桶键**只读兼容且不删**（它属于另一份户型，删了就是毁用户数据），采用前用 `docMatchesPlan()` 逐坐标核对内置实体 |
 | plan-independent 的 bench 里写死了某个户型的数量（镜子断言 `===3`） | 换户型就假红（generic 只有 1 面镜子），而 CI 只跑 generic → CI 永远红、本地永远绿 | 断言与**运行时投影**比（`const n = FX.filter(...).length`）或从 `floorPts()`/`LABELS` 派生；每个写死的户型数字都要问「另一个户型也是这个吗」 |
 | JS 正则字面量里未转义的 `/`（写成 `/(\.\./)?private\//`） | 字符类外的 `/` 直接结束字面量 → `Invalid regular expression: Unterminated group`，构建脚本连加载都失败 | 正则里的斜杠一律 `\/`；写完 `node --check` 一遍 |
