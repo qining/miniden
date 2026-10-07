@@ -207,11 +207,14 @@ async function runPT(){
       three.cam.position.set(_lab[0], EYE_H, _lab[1]+4.6); fpYaw=Math.PI; fpPitch=-0.02;
       if(typeof fpAim==='function') fpAim();
       await wait(400);
-      const kr = await new Promise(r=>{
-        ptRender(24, {maxPx:140*100, bounces:4, denoise:false, onDone:(cv,spp)=>r({cv,spp})});
-        setTimeout(()=>r(null), 300000);
-      });
-      if(kr && kr.cv){
+      let kalMean=null, kalSd=null, kalOk=false;
+      for(let kalTry=0; kalTry<2; kalTry++){
+        const kr = await new Promise(r=>{
+          ptRender(24, {maxPx:140*100, bounces:4, denoise:false, onDone:(cv,spp)=>r({cv,spp})});
+          setTimeout(()=>r(null), 300000);
+        });
+        if(!kr || !kr.cv){ kalOk=false; break; }
+        kalOk=true;
         const g6=kr.cv.getContext('2d'), w6=kr.cv.width, h6=kr.cv.height;
         const d6=g6.getImageData(0,0,w6,h6).data;
         // 只看画面中段（KALLAX 所在的横条），算亮度标准差 = 结构可辨识度
@@ -220,11 +223,16 @@ async function runPT(){
           for(let x=Math.floor(w6*0.25); x<Math.floor(w6*0.75); x++){
             const i=(y*w6+x)*4, v=d6[i]*0.299+d6[i+1]*0.587+d6[i+2]*0.114;
             sum+=v; sum2+=v*v; n++; }
-        const mean=sum/n, sd=Math.sqrt(Math.max(0, sum2/n - mean*mean));
-        T('pt-kallax-visible', sd > 18 && mean > 25 && mean < 235,
-          '格架区域 亮度均值 '+mean.toFixed(1)+' 标准差 '+sd.toFixed(1)
+        kalMean=sum/n; kalSd=Math.sqrt(Math.max(0, sum2/n - kalMean*kalMean));
+        // AGENTS §3：探针偶发全黑（均值 0/标准差 0，headless 瞬态）→ 原样重渲一次再下结论
+        if(kalMean===0 && kalSd===0 && kalTry===0){ await wait(600); continue; }
+        break;
+      }
+      if(kalOk && kalMean!==null)
+        T('pt-kallax-visible', kalSd > 18 && kalMean > 25 && kalMean < 235,
+          '格架区域 亮度均值 '+kalMean.toFixed(1)+' 标准差 '+kalSd.toFixed(1)
           +'（标准差太小=糊成一片，均值贴边=过曝或全黑）');
-      } else T('pt-kallax-visible', false, '渲染没返回');
+      else T('pt-kallax-visible', false, '渲染没返回');
       state.items=[]; refresh();
     }
     // 环境光填充不能压过真 GI：光追里的天光残留应该远小于光栅的 amb+hemi
