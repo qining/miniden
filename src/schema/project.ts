@@ -25,6 +25,7 @@ export type WallKind = 'wall' | 'thin' | 'opening' | 'passage'; // opening=门�
 export type WindowStyle = 'fixed' | 'slide' | 'casement' | 'awning';
 export type DoorKind = 'swing' | 'double' | 'slide' | 'bifold';
 export type FixtureType = 'counter' | 'basin' | 'toilet' | 'tub' | 'shower' | 'mirror';
+export const FIXTURE_TYPES: FixtureType[] = ['counter', 'basin', 'toilet', 'tub', 'shower', 'mirror'];
 export type EntitySrc = 'builtin' | 'user';
 
 export interface Wall {
@@ -363,6 +364,8 @@ export function validate(doc: unknown): ValidationError[] {
   // 洁具字段（矩形四角 + 旋转）
   if (Array.isArray(d.fixtures)) {
     (d.fixtures as Array<Record<string, unknown>>).forEach((e, i) => {
+      // t 必须合法：消费端（2D drawFixtures / 3D 洁具建模）按 t 分支，未知 t 渲成隐形件
+      if (FIXTURE_TYPES.indexOf(e.t as FixtureType) < 0) fail(`fixtures[${i}].t`, `非法洁具类型: ${String(e.t)}`);
       for (const k of ['x1', 'y1', 'x2', 'y2']) {
         if (e[k] !== undefined && !isNum(e[k])) fail(`fixtures[${i}].${k}`, `${k} 必须是数（ft）`);
       }

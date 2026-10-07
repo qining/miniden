@@ -145,3 +145,84 @@ describe('arcFrom3Points（三点定弧，ADR-0002 编辑交互）', () => {
     expect(arcFrom3Points([0, 0], [1, 1], [2, 2])).toBeNull();
   });
 });
+
+/* ---- 第二轮 bug 猎（2026-10-08）：三点定弧的 pm 不在弧中点 ---- */
+describe('arcFrom3Points — pm 在弧上任意位置（bug 猎 #1）', () => {
+  it('pm 偏离中点的劣弧：仍应返回弧而不是 null', () => {
+    // 90° 弧 (1,0)→(0,1)，pm 取 25° 处（不是 45° 中点）
+    const pm: [number, number] = [Math.cos((25 * Math.PI) / 180), Math.sin((25 * Math.PI) / 180)];
+    const res = arcFrom3Points([1, 0], pm, [0, 1]);
+    expect(res).not.toBeNull();
+    const a = res!.arc;
+    expect(a.cx).toBeCloseTo(0, 6);
+    expect(a.cy).toBeCloseTo(0, 6);
+    expect(a.r).toBeCloseTo(1, 6);
+    expect(a.dir).toBe(1);
+    expect(arcSweep(a)).toBeCloseTo(90, 3);
+    // pm 必须在弧上：弧上 25° 处 = pm
+    const onArc = arcPoint(a, 25);
+    expect(onArc[0]).toBeCloseTo(pm[0], 6);
+    expect(onArc[1]).toBeCloseTo(pm[1], 6);
+  });
+  it('pm 偏离中点的优弧（270°）：仍应返回弧而不是 null', () => {
+    // (1,0) → (0,-1) → (0,1)：走 θ 减小方向的 270° 优弧，pm 在 -90°（1/3 处）
+    const res = arcFrom3Points([1, 0], [0, -1], [0, 1]);
+    expect(res).not.toBeNull();
+    const a = res!.arc;
+    expect(a.dir).toBe(-1);
+    expect(arcSweep(a)).toBeCloseTo(-270, 3);
+  });
+  it('三点共圆且 pm 在劣弧上：取含 pm 的那条弧（互补分支只是数值兵底）', () => {
+    // (1,0)@0° → pm@-30° → (0,-1)@-90°：含 pm 的弧 = 90°（dir=-1）。
+    // 数学上：三点不共线则必共圆，且 pm 必在叉积方向定出的主弧上——
+    // 互补分支只能被接近共线的浮点误差触发，所以这里只断主弧结果正确。
+    const res = arcFrom3Points([1, 0], [Math.cos((-30 * Math.PI) / 180), Math.sin((-30 * Math.PI) / 180)], [0, -1]);
+    expect(res).not.toBeNull();
+    expect(res!.arc.dir).toBe(-1);
+    expect(arcSweep(res!.arc)).toBeCloseTo(-90, 3);
+    const onArc = arcPoint(res!.arc, -45); // 弧中点应在 -45°
+    expect(onArc[0]).toBeCloseTo(Math.cos((-45 * Math.PI) / 180), 6);
+    expect(onArc[1]).toBeCloseTo(Math.sin((-45 * Math.PI) / 180), 6);
+  });
+});
+
+/* ---- bug 猎 #2：显式闭合多边形（DXF 常见：末点重复首点）---- */
+describe('expand(poly) — 退化边一律跳过（bug 猎 #2）', () => {
+  it('末点重复首点的闭合多边形：不产生零长封口段', () => {
+    const segs = expand({
+      t: 'poly',
+      pts: [
+        [0, 0],
+        [4, 0],
+        [4, 3],
+        [0, 0],
+      ],
+    });
+    const zero = segs.filter(([a, b]) => dist(a, b) < 1e-9);
+    expect(zero).toEqual([]);
+    expect(segs.length).toBe(3); // 4 点 → 3 条有效边
+  });
+  it('两点退化多边形：仍为空链', () => {
+    expect(
+      expand({
+        t: 'poly',
+        pts: [
+          [1, 1],
+          [1, 1],
+        ],
+      })
+    ).toEqual([]);
+  });
+  it('正常三角形不受影响', () => {
+    expect(
+      expand({
+        t: 'poly',
+        pts: [
+          [0, 0],
+          [1, 0],
+          [0, 1],
+        ],
+      }).length
+    ).toBe(3);
+  });
+});

@@ -11,9 +11,9 @@
    纯模块：禁 import three / document（R7）。
    ===================================================================== */
 
-import { dist, segLen, type Pt, type Geom, type Seg } from './primitives';
+import { dist, expand, segLen, type Pt, type Geom, type Seg } from './primitives';
 import type { ProjectDoc, Wall, Window, Door, Solid, WindowStyle, DoorKind, FixtureType } from './project';
-import { blankDoc, nextId } from './project';
+import { blankDoc, FIXTURE_TYPES, nextId } from './project';
 
 /* ---------------------------------------------------------------------
    legacy 形状（= planner.html 现状；fixture 里存的就是这个）
@@ -317,7 +317,7 @@ export function migrateLegacyToV1(geo: LegacyGeo, user: LegacyUserGeo = EMPTY_US
   geo.fx.forEach((f, i) =>
     fixtures.push({
       id: `f${i + 1}`,
-      t: (['counter', 'basin', 'toilet', 'tub', 'shower', 'mirror'].includes(f.t) ? f.t : 'counter') as FixtureType,
+      t: (FIXTURE_TYPES.includes(f.t as FixtureType) ? f.t : 'counter') as FixtureType,
       x1: f.x1 / sc,
       y1: f.y1 / sc,
       x2: f.x2 / sc,
@@ -330,13 +330,19 @@ export function migrateLegacyToV1(geo: LegacyGeo, user: LegacyUserGeo = EMPTY_US
   );
 
   // —— hidden（索引 → id）——
+  // 越界下标 = 损坏存档（手改 JSON / 旧版本残留）：跳过而不是 TypeError 把整个载入弄挂（bug 猎 #4）。
   user.hiddenW.forEach((i) => {
     const s = geo.walls[i];
+    if (!s) return;
     if (s.t === 'g') doc.hidden.windows.push(`n${i + 1}`);
     else doc.hidden.walls.push(`w${i + 1}`);
   });
-  user.hiddenP.forEach((i) => doc.hidden.solids.push(`s${i + 1}`));
-  user.hiddenD.forEach((i) => doc.hidden.doors.push(`d${i + 1}`));
+  user.hiddenP.forEach((i) => {
+    if (geo.fixed[i]) doc.hidden.solids.push(`s${i + 1}`);
+  });
+  user.hiddenD.forEach((i) => {
+    if (geo.doors[i]) doc.hidden.doors.push(`d${i + 1}`);
+  });
 
   return doc;
 }
@@ -367,6 +373,21 @@ export interface LegacyProjection {
 const geomToSeg = (g: Geom): Seg => {
   if (g.t === 'seg') return { t: 'seg', x1: g.x1, y1: g.y1, x2: g.x2, y2: g.y2 };
   throw new Error('docToLegacy: legacy 投影只支持 seg（arc/poly 由消费端 expand，S3 起）');
+};
+
+/* 实心块的 legacy poly：poly 逐坐标透传；arc（DXF 圆 → fullCircle 柱）展开成多边形。
+   旧版对 arc 输出 []，导入的圆柱在 2D/3D/命中区/地板包围盒里静默消失（bug 猎 #3）。
+   内置文档的 solid 恒为 poly → 逐字节不变（无损性验收不受影响）。 */
+const solidPolyPts = (g: Geom): Pt[] => {
+  if (g.t === 'poly') return g.pts.map((p) => [p[0], p[1]] as Pt);
+  if (g.t === 'arc') {
+    const segs = expand(g);
+    if (!segs.length) return [];
+    const pts: Pt[] = [segs[0][0]];
+    for (const [, b] of segs) pts.push(b);
+    return pts;
+  }
+  return [];
 };
 
 export function docToLegacy(doc: ProjectDoc): LegacyProjection {
@@ -434,7 +455,10 @@ export function docToLegacy(doc: ProjectDoc): LegacyProjection {
   };
   [...doc.solids].sort(orderSolids).forEach((s) => {
     if (hiddenSol.has(s.id)) return;
-    const pts = s.geom.t === 'poly' ? s.geom.pts.map((p) => [p[0], p[1]] as Pt) : [];
+    /* 实心块的 legacy poly：poly 直接透传；arc（DXF 圆→ fullCircle 柱）必须展开成多边形，
+       否则 legacy 消费端（2D polygon / 3D / 命中区 / importedFloorPts）读到空数组，
+       导入的圆柱会静默消失（bug 猎 #3，2026-10-10）。内置文档的 solid 恒为 poly → 不受影响。 */
+    const pts = solidPolyPts(s.geom);
     fixed.push({
       name: s.src === 'user' ? '' : s.name || '', // legacy effFixed 丢弃用户 poly 名（复刻）
       poly: s.ovWrapped ? { poly: pts } : pts,

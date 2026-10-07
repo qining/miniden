@@ -94,8 +94,10 @@ export function expand(geom: Geom, opt: { chordTol?: number; segments?: number }
     for (let i = 0; i < pts.length; i++) {
       const a = pts[i],
         b = pts[(i + 1) % pts.length];
-      if (i + 1 < pts.length && dist(a, b) < 1e-9) continue;
-      if (i + 1 === pts.length && pts.length < 3 && dist(a, b) < 1e-9) continue;
+      // 退化边-pair 一律跳过（包括封口边：DXF 闭合轮廓常把首点重复在末尾）。
+      // 旧版只跳过 i+1<len 的内部退化边 + 两点多边形的封口，≥3 点显式闭合多边形
+      // 会多出一条零长段（bug 猎 #2，2026-10-10）。
+      if (dist(a, b) < 1e-9) continue;
       out.push([a, b]);
     }
     return out;
@@ -154,11 +156,12 @@ export function arcFrom3Points(p0: Pt, pm: Pt, p2: Pt): { arc: Arc; dir: 1 | -1 
   const r = Math.hypot(ax - ux, ay - uy);
   const ang = (p: Pt) => (Math.atan2(p[1] - uy, p[0] - ux) * 180) / Math.PI;
   const a0 = ang(p0),
-    a1 = ang(p2);
+    a1 = ang(p2),
+    am = ang(pm);
   // 方向：p0→pm→p2 的转向（y 向下：叉积 <0 = θ 减小）
   const cross = (bx - ax) * (cy - ay) - (by - ay) * (cx - ax);
   const dir: 1 | -1 = cross >= 0 ? 1 : -1;
-  // 把 a1 归一到与 a0 同圈（沿 dir 从 a0 到 a1，0 < sweep ≤ 360）
+  // 把 a1 归一到与 a0 同圈（沿 dir 从 a0 到 a1，0 < |sweep| ≤ 360）
   let sweep: number;
   if (dir > 0) {
     sweep = a1 - a0;
@@ -167,18 +170,28 @@ export function arcFrom3Points(p0: Pt, pm: Pt, p2: Pt): { arc: Arc; dir: 1 | -1 
     sweep = a1 - a0;
     while (sweep >= 0) sweep -= 360;
   }
-  // 中间点校验（保证 pm 在所选方向上）
-  const mid = a0 + sweep / 2;
-  const pmExp = arcPoint({ t: 'arc', cx: ux, cy: uy, r, a0, a1, dir }, mid);
-  if (dist(pmExp, pm) > Math.max(0.02, r * 0.01)) {
-    // 中间点落在另一侧 → 取补弧
-    const other = dir > 0 ? -360 - sweep : 360 + sweep;
-    const mid2 = a0 + other / 2;
-    const pmExp2 = arcPoint({ t: 'arc', cx: ux, cy: uy, r, a0, a1, dir: -dir as 1 | -1 }, mid2);
-    if (dist(pmExp2, pm) > Math.max(0.02, r * 0.01)) return null;
+  /* pm 是否在「a0 沿 dir 扫过 sweep」这段弧上（角进度 ∈ [0, |sweep|]）。
+     pm 只是弧上的一个中间点，不是弧中点——旧版按中点校验，pm 不在中点时
+     把合法弧误判为 null（bug 猎 #1，2026-10-08）。 */
+  const pmOnArc = (sw: number): boolean => {
+    let t: number;
+    if (sw > 0) {
+      t = am - a0;
+      while (t < 0) t += 360;
+      while (t >= 360) t -= 360;
+      return t <= sw + 1e-9;
+    }
+    t = a0 - am;
+    while (t < 0) t += 360;
+    while (t >= 360) t -= 360;
+    return t <= -sw + 1e-9;
+  };
+  if (pmOnArc(sweep)) return { arc: { t: 'arc', cx: ux, cy: uy, r, a0, a1: a0 + sweep, dir }, dir };
+  // pm 在互补弧上 → 取互补弧（sweep±360；旧公式 -360−sweep 是错的）
+  const other = sweep > 0 ? sweep - 360 : sweep + 360;
+  if (pmOnArc(other))
     return { arc: { t: 'arc', cx: ux, cy: uy, r, a0, a1: a0 + other, dir: -dir as 1 | -1 }, dir: -dir as 1 | -1 };
-  }
-  return { arc: { t: 'arc', cx: ux, cy: uy, r, a0, a1: a0 + sweep, dir }, dir };
+  return null;
 }
 
 /** 整圆（a1−a0 = 360，dir=1）。 */

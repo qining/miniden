@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { validate, blankDoc, nextId, projectSchema, type ProjectDoc } from '../../src/schema/project';
-import { docToLegacy } from '../../src/schema/migrate';
+import { docToLegacy, migrateLegacyToV1 } from '../../src/schema/migrate';
 import type { Seg, Pt } from '../../src/schema/primitives';
 import { fullCircle } from '../../src/schema/primitives';
 
@@ -444,5 +444,40 @@ describe('run 实体（S12）', () => {
     ];
     expect(nextId(d, 'run')).toBe('rn02');
     expect(nextId(d, 'room')).toBe('r01');
+  });
+});
+
+/* ---- bug 猎 #5：validate 必须拒掉非法洁具类型（消费端按 t 分支，未知 t = 隐形件）---- */
+describe('validate — fixtures[].t 枚举（bug 猎 #5）', () => {
+  const base = () => {
+    const d = blankDoc('t');
+    d.fixtures = [{ id: 'f1', t: 'toilet', x1: 0, y1: 0, x2: 2, y2: 1 }];
+    return d;
+  };
+  it('合法类型通过', () => {
+    expect(validate(base())).toEqual([]);
+  });
+  it('未知类型 / 缺失 t 被拒', () => {
+    const d = base();
+    (d.fixtures[0] as { t: string }).t = 'bidet';
+    const errs = validate(d);
+    expect(errs.some((e) => e.path === 'fixtures[0].t')).toBe(true);
+    const d2 = base();
+    delete (d2.fixtures[0] as { t?: string }).t;
+    expect(validate(d2).some((e) => e.path === 'fixtures[0].t')).toBe(true);
+  });
+  it('migrate 对未知 legacy t 归一成 counter（不会把脏数据带进文档）', () => {
+    const doc = migrateLegacyToV1({
+      sc: 11.2,
+      walls: [],
+      inner: [],
+      doors: [],
+      fixed: [],
+      labels: [],
+      fx: [{ t: 'bidet', x1: 0, y1: 0, x2: 11.2, y2: 22.4 }],
+      patio: [],
+    });
+    expect(doc.fixtures[0].t).toBe('counter');
+    expect(validate(doc)).toEqual([]);
   });
 });

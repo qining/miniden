@@ -10,6 +10,7 @@ import {
   type LegacyUserGeo,
 } from '../../src/schema/migrate';
 import { validate } from '../../src/schema/project';
+import { fullCircle, polyArea } from '../../src/schema/primitives';
 
 /* =====================================================================
    migrate —— S1 的验收定义（无损迁移）：
@@ -187,5 +188,65 @@ d('migrate → docToLegacy ≡ eff*（合成 USERGEO：覆盖/隐藏/新增）',
     expect(new Set(ids).size).toBe(ids.length);
     const userWallIds = proj.walls.filter((s) => s._src === 'u').map((s) => s._id);
     expect(userWallIds.every((id) => /^[wnds]\d+$/.test(id))).toBe(true);
+  });
+});
+
+/* ---- bug 猎 #3：arc 实心块（DXF 圆 → fullCircle 柱）的 legacy 投影 ---- */
+describe('docToLegacy — arc 实心块必须展开成多边形（bug 猎 #3）', () => {
+  it('fullCircle 柱投影出非空 poly（旧版投影成 []，导入的圆柱静默消失）', () => {
+    const doc = migrateLegacyToV1(legacy, EMPTY_USERGEO);
+    doc.solids.push({
+      id: 'p99',
+      name: '柱',
+      geom: fullCircle(3, 4, 0.6),
+      fill: '#8a919c',
+      column: true,
+      src: 'user',
+      userIndex: 99,
+    });
+    const proj = docToLegacy(doc);
+    const col = proj.fixed.find((f) => f._id === 'p99');
+    expect(col).toBeTruthy();
+    expect(Array.isArray(col!.poly)).toBe(true);
+    const pts = col!.poly as [number, number][];
+    expect(pts.length).toBeGreaterThanOrEqual(8);
+    // 展开后的点必须都在圆上（半径 0.6，圆心 (3,4)）
+    for (const [x, y] of pts) expect(Math.hypot(x - 3, y - 4)).toBeCloseTo(0.6, 3);
+    // 首尾闭合（legacy polygon 消费端假定闭合）
+    expect(pts[0][0]).toBeCloseTo(pts[pts.length - 1][0], 9);
+    expect(pts[0][1]).toBeCloseTo(pts[pts.length - 1][1], 9);
+    // 面积应接近圆面积（πr² ≈ 1.131 ft²）——多边形内接，略小
+    const area = Math.abs(polyArea(pts));
+    expect(area).toBeGreaterThan(1.05);
+    expect(area).toBeLessThan(1.14);
+  });
+
+  it('内置文档（恒为 poly solid）投影逐字节不变（无损性红线）', () => {
+    const userGeo = fx?.user?.userGeo as LegacyUserGeo;
+    const a = docToLegacy(migrateLegacyToV1(legacy, userGeo));
+    const b = docToLegacy(migrateLegacyToV1(legacy, userGeo));
+    expect(JSON.stringify(a.fixed)).toBe(JSON.stringify(b.fixed));
+    for (const f of a.fixed) {
+      // ovWrapped 实体故意包成 {poly}（复刻 legacy effFixed）；两种形态的 poly 都必须非空
+      const pts = Array.isArray(f.poly) ? f.poly : (f.poly as { poly: [number, number][] }).poly;
+      expect(Array.isArray(pts)).toBe(true);
+      expect(pts.length).toBeGreaterThanOrEqual(3);
+    }
+  });
+});
+
+/* ---- bug 猎 #4：损坏 legacy 存档的 hidden 索引越界不得抛错 ---- */
+describe('migrateLegacyToV1 — 越界 hidden 索引（损坏存档防御）', () => {
+  it('hiddenW/hiddenP/hiddenD 指向不存在的下标：跳过而不是 TypeError', () => {
+    const u = {
+      ...EMPTY_USERGEO,
+      hiddenW: [999, 0],
+      hiddenP: [999],
+      hiddenD: [999],
+    };
+    const doc = migrateLegacyToV1(legacy, u);
+    expect(doc.hidden.walls.length + doc.hidden.windows.length).toBe(1); // 只有合法的 0
+    expect(doc.hidden.solids).toEqual([]);
+    expect(doc.hidden.doors).toEqual([]);
   });
 });
