@@ -16803,6 +16803,11 @@ function nudgeDoor(signAlong, stepFt){ // 激活端点则改宽，否则整体�
   const dx=d.x2-d.x1, dy=d.y2-d.y1, L=Math.hypot(dx,dy)||1e-6, u=[dx/L,dy/L];
   let dd=stepFt*signAlong;
   const link=doorLinkage(d, s);
+  /* 整体滑动 = 两端同时位移 dd，所以 dd 必须同时落在两个端的允许范围里（交集）。
+     以前只取 range(0) 的下界 + range(1) 的上界：在「一根垛同时贴到门两端」的几何下
+     会越过另一端的限制把墙垓压到 STUB_MIN 以下（鼠标滑动取的是交集，键盘不取 → 两条路径不一致）。
+     探针实测：内置 4 门 + 导入 fixture 上两种夹取逐字节等价（最大差异 0.000ft）——
+     所以这是防御性统一，不是已复现的 bug（AGENTS §5.1.1 第⑨轮：量不出差异的怀疑不冒充 bug）。 */
   const cl=(k,v)=>{ const r=link.range(k); return Math.max(r[0], Math.min(r[1], v)); };
   if(wallEdit.dEndSel===0){
     dd=cl(0,dd); if(L-dd<DOOR_MIN) dd=L-DOOR_MIN;
@@ -16813,7 +16818,8 @@ function nudgeDoor(signAlong, stepFt){ // 激活端点则改宽，否则整体�
     if(Math.abs(dd)<1e-9) return true;
     link.apply(d.x1, d.y1, d.x2+u[0]*dd, d.y2+u[1]*dd);
   } else {
-    dd=Math.max(link.range(0)[0], Math.min(link.range(1)[1], dd));
+    const r0=link.range(0), r1=link.range(1);
+    dd=Math.max(Math.max(r0[0],r1[0]), Math.min(Math.min(r0[1],r1[1]), dd));
     if(Math.abs(dd)<1e-9) return true;
     link.apply(d.x1+u[0]*dd, d.y1+u[1]*dd, d.x2+u[0]*dd, d.y2+u[1]*dd);
   }
