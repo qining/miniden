@@ -378,3 +378,46 @@ describe('圆弧不读入必须说出来（bug 猎 #8）', () => {
     expect(info.warnings.some((w) => /圆弧/.test(w))).toBe(true);
   });
 });
+
+/* ---- bug 猎 #9：「柱」的判据必须是图纸自己的分类，不是面积大小 ----
+   旧版 column = areaM2 < 2：真实图纸里小面积闭合轮廓多半是家具/设备轮廓
+   （qcad_entities 29 个实心块，无一在 col 层），立成到顶的墙就是错的；
+   反过来 col 层的柱在 3D 里根本不出现（app.html 的 3D 只认内置户型的填充色）。
+   现在 column = 图纸说它是柱（col 层 / 圆）→ 3D 立实体、算结构块。 */
+describe('实心块分类：column 来自图纸（bug 猎 #9）', () => {
+  const raw: Raw = {
+    segs: [
+      { a: v(0, 0), b: v(6000, 0), cls: 'wall' },
+      { a: v(0, 240), b: v(6000, 240), cls: 'wall' },
+    ],
+    arcs: [],
+    circles: [{ c: v(3000, 1200), r: 300, cls: 'other' }],
+    closed: [
+      { pts: [v(1000, 1000), v(1400, 1000), v(1400, 1400), v(1000, 1400)], cls: 'col' }, // 0.16 m²，col 层
+      { pts: [v(3000, 3000), v(3800, 3000), v(3800, 3800), v(3000, 3800)], cls: 'other' }, // 0.64 m²，非柱
+    ],
+    skipped: { ellipses: 0, inserts: 0, texts: 0, other: 0 },
+  };
+  const { doc, info } = buildDocFromRaw(raw, { unit: 'mm', method: 'user' });
+
+  it('col 层轮廓 + 圆 → column:true；非柱轮廓 → column:false（旧版两者都 true）', () => {
+    expect(doc.solids).toHaveLength(3);
+    const byName = doc.solids.map((s) => (s.name === '柱' ? '柱' : '?'));
+    expect(byName).toEqual(['柱', '?', '柱']);
+    expect(doc.solids.map((s) => !!s.column)).toEqual([true, false, true]);
+  });
+  it('非柱实心块必须报出：2D 灰块、3D 不立实体，并给出改判办法', () => {
+    const w = info.warnings.filter((x) => /灰色块/.test(x));
+    expect(w).toHaveLength(1);
+    expect(w[0]).toContain('1 个闭合轮廓');
+    expect(w[0]).toContain('3D 不立实体');
+  });
+  it('全是柱时不报（不给用户噪音）', () => {
+    const only = buildDocFromRaw({ ...raw, closed: [raw.closed[0]!], circles: [] }, { unit: 'mm', method: 'user' });
+    expect(only.doc.solids.every((s) => s.column)).toBe(true);
+    expect(only.info.warnings.filter((x) => /灰色块/.test(x))).toHaveLength(0);
+  });
+  it('validate 通过（column 是可选布尔，不影响 schema）', () => {
+    expect(validate(doc)).toEqual([]);
+  });
+});

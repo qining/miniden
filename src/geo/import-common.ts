@@ -757,6 +757,7 @@ export function buildDocFromRaw(raw: Raw, opts: BuildDocOptions): ImportResult {
   const solids: Solid[] = [];
   const rooms: Room[] = [];
   const runs: Run[] = [];
+  let nNonCol = 0; // 图纸未归入柱层的小闭合轮廓数（警告用，见下方）
   {
     let ns = 0,
       nr = 0,
@@ -776,12 +777,17 @@ export function buildDocFromRaw(raw: Raw, opts: BuildDocOptions): ImportResult {
         }
       }
       if (areaM2 < SOLID_AREA) {
+        /* 「柱」的判据是图纸自己的分类（col 层），不是面积大小。真实图纸里小面积闭合轮廓
+           多半是家具/设备轮廓（QCAD 样例 29 个、无一在 col 层），把它们立成到顶的墙就是错的。
+           column 决定这件东西在 3D 里立不立起来、以及它算不算结构实体。 */
+        const isCol = c.cls === 'col';
+        if (!isCol) nNonCol++;
         solids.push({
           id: 'p' + String(++ns).padStart(2, '0'),
-          name: c.cls === 'col' ? '柱' : '',
+          name: isCol ? '柱' : '',
           geom: { t: 'poly', pts: c.pts.map((p) => [f2(p.x), f2(p.y)] as [number, number]) },
           fill: '#8a919c',
-          column: areaM2 < 2,
+          column: isCol,
           src: 'user',
           userIndex: solids.length,
         });
@@ -813,6 +819,12 @@ export function buildDocFromRaw(raw: Raw, opts: BuildDocOptions): ImportResult {
   }
 
   if (raw.skipped.inserts) warnings.push(`跳过 ${raw.skipped.inserts} 个块引用（未展开，门/窗符号可能缺失）`);
+  // bug 猎 #9：图纸没说是柱的闭合轮廓只在 2D 画成灰色块，3D 不立实体——必须说出来，
+  // 否则用户看到的是「3D 里少了个东西」而且不知道为什么。
+  if (nNonCol)
+    warnings.push(
+      `${nNonCol} 个闭合轮廓读成 2D 灰色块（图纸未归入柱层 → 3D 不立实体）；若是柱/墙块，请用墙体工具画闭合轮廓`
+    );
   if (raw.skipped.ellipses) warnings.push(`跳过 ${raw.skipped.ellipses} 个椭圆`);
   // v1 的墙/门/窗只认直线段（ADR-0002：弧墙是将来）——弧被丢弃必须说出来，
   // 否则用户只看到「墙少了一截」而不知道为什么（bug 猎 #8）。

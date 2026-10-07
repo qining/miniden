@@ -1630,6 +1630,69 @@ async function run3DTest() {
           ']'
       );
     }
+    // ===== bug 猎 #9：导入户型的柱（column 实体）必须在 3D 立起来 =====
+    // 导入的实心块填充色是管线固定的 #8a919c，不是内置户型的 #0c0d0f/#15171a。
+    // 旧代码只按填充色认结构块 → 导入的柱子 2D 有、3D 没有（探针实测 wallish=0）。
+    {
+      const WALL = 0xd8d5d0; // matWall
+      const vWall = () => {
+        let v = 0;
+        three.staticGroup.traverse((o) => {
+          if (o.isMesh && o.material && o.material.color && o.material.color.getHex() === WALL)
+            v += o.geometry.attributes.position.count;
+        });
+        return v;
+      };
+      // 水平射线（在接近层高的地方）：柱在不在，一测就知（比包围盒可靠）
+      const rc = new THREE.Raycaster();
+      const rayDist = () => {
+        three.staticGroup.updateMatrixWorld(true);
+        rc.set(new THREE.Vector3(CX3 - 2, CEIL_H * 0.9, CY3), new THREE.Vector3(1, 0, 0));
+        const h = rc.intersectObject(three.staticGroup, true);
+        return h.length ? h[0].distance : Infinity;
+      };
+      const w0 = vWall();
+      const d0 = rayDist();
+      const half = 0.5;
+      const s9 = {
+        id: SCHEMA.Project.nextId(DOC, 'solid'),
+        name: '柱',
+        geom: {
+          t: 'poly',
+          pts: [
+            [CX3 - half, CY3 - half],
+            [CX3 + half, CY3 - half],
+            [CX3 + half, CY3 + half],
+            [CX3 - half, CY3 + half],
+          ],
+        },
+        fill: '#8a919c', // 导入管线的填充色（不是内置结构块的填充色）
+        column: true, // 图纸把它读成柱 → 3D 必须立到顶
+        src: 'user',
+        userIndex: nextUserIndex('solids'),
+      };
+      DOC.solids.push(s9);
+      buildStatic3D();
+      await wait(150);
+      const dw = vWall() - w0;
+      const d1 = rayDist();
+      T(
+        's9-3d-imported-column-extrudes',
+        dw >= 30 && Math.abs(d1 - 1.5) < 0.2 && d1 < d0,
+        '墙材质顶点增量 ' + dw + ' · 射线命中距离 ' + d1.toFixed(2) + '（期望 1.50，无柱时 ' + d0.toFixed(2) + '）'
+      );
+      DOC.solids = DOC.solids.filter((x) => x.id !== s9.id);
+      buildStatic3D();
+      await wait(150);
+      const dw2 = vWall() - w0;
+      const d2 = rayDist();
+      // 移除后必须回到加柱之前的读数（不同户型在这条射线上本来就有别的东西，比如窗头带）
+      T(
+        's9-3d-imported-column-cleared',
+        dw2 === 0 && Math.abs(d2 - d0) < 0.05,
+        '移除后增量 ' + dw2 + ' · 射线 ' + d2.toFixed(2) + '（加柱前 ' + d0.toFixed(2) + '）'
+      );
+    }
     T('t3d-bench-done', true, __E3.length + ' tests', 'done');
   } catch (e) {
     log.push('EXC ' + e.message + ' | ' + (e.stack || '').split('\n')[1]);
