@@ -402,23 +402,36 @@ sips -z 高 宽 /tmp/x.png --out /tmp/x_big.png               # 放大
 | **管线静默丢弃输入**（DXF/PDF 的圆弧被扔掉，一声不响） | 用户只看到「墙少了一截」，不知道原因，也不会去补画；而测试把「无警告」当成了正确行为（qcad_example00 真实含 12 段弧） | 任何被丢弃的输入都要进 `info.warnings` 并说明判据与后果（「N 段圆弧未读入（v1 只读直线段）——曲线墙请用短段描出」） |
 
 | **在「靠 private fixture 门控」的测试文件里用普通 `describe` 加新测试**（同文件已有 `const d = fx ? describe : describe.skip`） | 本地全绿、**CI 红**：新测试解引用 `legacy`（fixture 缺失时是 null）→ `Cannot read properties of null (reading 'sc')`（E19 实测：CI run 37596752776 三红）。`describe.skip` 只挡住 `it` 体，不挡写在它外面的代码 | 新测试优先**不依赖 private fixture**（自己合成一份小 LegacyGeo）——CI 也能跑，覆盖面反而变大；确实需要真实几何的才放进 `d(...)`。本地验 CI 行为：`git archive HEAD \| tar -x -C /tmp/ci-sim` + 软链 node_modules + 在那里跑 vitest（无 private/ = CI 环境） |
+| **实体 id 前缀有两个生产者，查找器只认一个**（导入管线给实心块用 `'p01'`（沿用 legacy FIXED 的柱 id），`nextId(DOC,'solid')` 用 `'s01'`，而 `entById` 只映射 `w/n/d/s`） | `entById('p01')` 返回 null ⇒ 导入实体在编辑层「不存在」：`srcU()` 把它判成内置结构（拒删）、hover 不亮、`deleteSel` 从「移除」变成「隐藏」、`entById(f._id).column` 读不到 → **3D 也不立实体**（bug 猎 #9）。症状分散在四个不相干的入口，很难联想到一起 | 加新 id 前缀时 grep 一遍查找器；或者一律走 `SCHEMA.Project.nextId(doc, kind)`（单一来源）。查 id 的函数要按「类别 → 数组」映射，别把前缀当唯一事实 |
+| **消费端拿渲染属性当结构判据**（3D 结构块 / 2D 命中区都写成 `fill ∈ {#0c0d0f,#15171a}`） | 那是**内置户型**的填充色常量；导入管线的实心块填充色是 `#8a919c` → 导入的柱子 2D 画了、3D 没有、而且点不中（探针：层高高度水平射线命中 16.35ft 的远处墙而不是 1.00ft 的柱）。换个户型就丢构件，与「外置几何时漏掉户型专属构件」同一类病 | 判据要落在**文档字段**（`column` / `src` / `_src`），颜色只是渲染属性。写 `fill===` 前先问「另一个来源生成的同类实体也是这个颜色吗」 |
+| **用「包围盒覆盖」做 3D 存在性断言** | `mergeByMaterial` 把同材质 mesh 合并成一个桶，桶包围盒覆盖全图 → 任何室内点都被「覆盖」，断言永远绿；反过来，探针里 `half` 取得比被测件本身还大 → 永远不覆盖，假红 | 3D 存在性用**射线**（在接近层高的高度打水平射线，柱必须挡光）或**按材质桶的顶点增量**；两者都与合并无关、也与户型无关 |
 
-### 5.1.1 bug 猎方法论（2026-10 三轮，8 个 bug 全走这条路）
+### 5.1.1 bug 猎方法论（2026-10 四轮，9 个 bug 全走这条路）
 
 **先写失败测试，再改代码**。每个 bug 都是「按代码读出来的怀疑」→ 写一条应当红的
 vitest → 跑一次确认它按预期红（证明 bug 真存在、不是臆想）→ 修 → 转绿。
-三轮里 8 个 bug 中 6 个的失败测试在修前就红了，2 个（防御性越界、枚举校验）是
+四轮里 9 个 bug 中 7 个的失败测试在修前就红了，2 个（防御性越界、枚举校验）是
 「构造畸形输入 → 崩溃/隐形件」类，同样先红后修。**没有一条是凭感觉改的。**
 
 分轮口径（每轮一个高风险面，读完再动手）：① `src/schema`（纯函数层，最好测）
 ② `app.html` 持久化/编辑层（读逻辑、不写测试，找数据丢失类风险）
 ③ `build.mjs` / `scripts` 守卫（确认断言覆盖，不硬造 bug）④ `src/geo` 导入管线
-⑤ 文档导出/导入往返。**每轮结束跑完整回归**（bench ×7 + calib md5 + ui-gate +
+⑤ 文档导出/导入往返 ⑥ `import-pdf.ts` 细读（无新 bug，但验了弧拟合/尺度推断）
+⑦ **3D 消费端**（2D 有而 3D 没有的东西 = 消费端判据问题，靠探针页 + 射线量出硬数字再修）。
+**每轮结束跑完整回归**（bench ×7 + calib md5 + ui-gate +
 lint/format/typecheck）再提交，根因写进提交信息（AGENTS §10）。
+
+**UI 层的 bug 靠 bench 守，不靠 vitest**：vitest 测不到 `app.html` 里的消费端代码（它不在
+可导入模块里）。本轮的 3D 立实体 / 2D 命中区两条分别进了 `bench/t_3d.js`（入库、三入口、
+CI 跑）与 `private/bench/t_walledit.js`（本地跑）；语义层（`column` 判据）进 vitest。
 
 顺带查到的**不是 bug 但值得记**的结论：`bandWallId[bi]` 记的是该带最后一个区间的墙 id
 （门/窗的 `wallId` 因此不精确）——目前无消费端读它（`app.html` 三处 `wallId:null`），
 `validate` 只验存在性；将来 S2 做「窗挂墙」时要先修这条。
+`docToLegacy` 对实心块的 `{poly:[…]}` 包裹形态是**形状保持**（只当输入本身就是包裹时才包裹）：
+真实 legacy 存档的 `ovP` 永远是数组 → `ovWrapped` 永不被置位 → 输出永远是数组 → 消费端安全。
+fixture 里那个合成包裹（`ovP:{2:{poly:[…]}}`）不真实但与 oracle 兼容；现在在 `effFixed()`
+出口摊平，所以两种形态都不会伤消费端。
 
 ### 5.2 浏览器/three.js 类
 
