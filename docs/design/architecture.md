@@ -100,16 +100,32 @@ drawWallEdit L2699    sync3D L14122         → ACES + sRGB
 **判据纪律**（ADR-0002 + AGENTS §8.2）：实体只能来自「用户画的」或「导入读到的几何」。
 形状分类允许（对读到的轮廓做几何判据），启发式猜测不允许；任何被丢弃的输入必须进 `info.warnings`。
 
-### 3.3 持久化支路
+### 3.3 持久化支路（E10）
 
 ```
-DOC ──saveDoc()──→ localStorage['planner_doc_v1:' + PLAN_FP]
-state.items ─────→ localStorage['planner_v1:'   + PLAN_FP]
-面板宽度/折叠 ───→ localStorage['planner_panels_v1']
+DOC ──saveGeo()──→ STORE.set('planner_doc_v1:' + PLAN_FP)
+state.items ────→ STORE.set('planner_v1:'     + PLAN_FP)
+面板宽度/折叠 ───→ STORE.set('planner_panels_v1')
+「工具 ⌄」开合 ──→ STORE.set('md_proTools')
+                        │
+                        ▼  STORE = src/storage/store.ts 的门面（app.html 里的 <script id="miniden-storage">）
+          主存 IndexedDB 'miniden-planner' / store 'miniden_kv'
+          镜像 localStorage（≤1.5MB 的键才镜像）· 回退 localStorage
 
 PLAN_FP = fnv(name + sc + floorpts + walls + doors.length)   ← 按户型分桶，避免存档串户型
-旧单键（planner_doc_v1 / planner_v1 / planner_userGeo_v1）：只读兼容，采用前 docMatchesPlan() 逐坐标核对
+旧单键（planner_doc_v1 / planner_v1 / planner_userGeo_v1）：只读兼容、不迁移、不删，
+  走 STORE.lsGet / lsRemove；采用前 docMatchesPlan() 逐坐标核对
 ```
+
+**门面的四条红线**（`tests/storage/store.test.ts` 22 条守着）：
+
+1. **同步读**：`warm()` 未完成前 `get()` 直接读 localStorage —— 与旧行为逐字节一致，
+   所以 `#calib` md5 与 8 张 `#ui:` 黄金图完全不受影响（初始化路径是同步的，改成 async 要重排整个单文件）。
+2. **迁移只复制**：LS → 主存只复制、绝不删 LS（删了就是毁用户数据）。
+3. **降级标记**：主存写失败在 LS 留 `planner_store_degraded`，下次载入以 LS 为准并回灌主存；
+   标记只由「一次成功的回灌」撤销（会话中途某次写成功不代表之前失败过的键已同步）。
+4. **补载入要门控**：主存里有、页面同步没看见的值会触发补载入回调；校准 / 只显底图 / `#ui:` /
+   `testgeo` / 测试台一律不补——那些视图的定义就是「内置户型 + 空布局」，补载入会改变像素基线（§1.1）。
 
 **目录是 app 数据，摆法才是用户数据**：280 条目录（商品/尺寸/价格/模型代码）在 `app.html` 里，
 与 localStorage 无关；localStorage 里只有「哪件商品摆在哪个坐标」。
@@ -250,7 +266,7 @@ dist(generic) 三份。新工具或新家具换个户型就坏 → 立刻红。
 | `src/models/`、`src/textures/` | ❌ 仍在 `app.html`（MODELS 146 个 / 贴图 26 个） |
 | `src/render2d|render3d|pt|ui|main` | ❌ 未拆（classic→ESM 语义坑，AGENTS §5.7） |
 | `src/import/`（dxf/pdf/cv，跑 worker） | ⚠️ dxf/pdf/描摹已抽出且纯函数化，**但仍在主线程跑**，cv/OpenCV 未做 |
-| `src/storage/`（IndexedDB 门面） | ❌ 仍是 localStorage（= **E10**） |
+| `src/storage/`（IndexedDB 门面） | ✅ E10 已落地（`store.ts` + `entry.ts` + 22 单测；LS 作镜像与回退） |
 | lib/ 走 npm → esbuild 内联 | ⚠️ 已内联进 dist，但源仍是 `lib/` vendored 文件（不是 npm 依赖） |
 | worker 线程模型 | ❌ 未做 |
 | 迁移不变量清单 | ✅ 全部在守（本文 §7） |
