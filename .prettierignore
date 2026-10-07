@@ -1,0 +1,29 @@
+# 单文件应用本体：字节敏感（calib md5 / 黄金截图 / 逐位几何），不做自动格式化
+app.html
+planner.html
+
+# 构建产物
+dist/
+build/tmp/
+work/
+private/
+
+# vendored 第三方库（上游原样 + VENDORED 头）
+lib/
+
+# 生成物：build.mjs 对它们做「与最新编译输出逐字节一致」校验，格式化会直接炸构建
+src/geo/dist-geo.js
+src/schema/dist-schema.js
+
+# 测试夹具与户型数据（数据文件，非代码；generic.json 还被 build.mjs 逐字节比对）
+tests/fixtures/
+data/plans/
+
+# 文档与 skill（中文排版手工维护，prettier 重排表格/列表会破坏可读性）
+docs/
+*.md
+.claude/
+.agents/
+
+# 锁文件
+package-lock.json

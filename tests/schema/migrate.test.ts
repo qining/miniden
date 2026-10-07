@@ -3,8 +3,11 @@ import { readFileSync, existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-  migrateLegacyToV1, docToLegacy, EMPTY_USERGEO,
-  type LegacyGeo, type LegacyUserGeo,
+  migrateLegacyToV1,
+  docToLegacy,
+  EMPTY_USERGEO,
+  type LegacyGeo,
+  type LegacyUserGeo,
 } from '../../src/schema/migrate';
 import { validate } from '../../src/schema/project';
 
@@ -32,11 +35,21 @@ const toLegacy = (scenario: 'empty' | 'user'): LegacyGeo => ({
   sc: fx[scenario].meta.sc,
   ...fx[scenario].legacy,
 });
-const legacy = fx ? toLegacy('empty') : (null as never);   // fx 缺失时不在顶层解引用（describe.skip 的 it 体不会跑）
+const legacy = fx ? toLegacy('empty') : (null as never); // fx 缺失时不在顶层解引用（describe.skip 的 it 体不会跑）
 const stripMeta = (arr: object[]) =>
-  JSON.stringify(arr.map(e => { const { _src, _i, _id, ...rest } = e as Record<string, unknown>; return rest; }));
+  JSON.stringify(
+    arr.map((e) => {
+      const { _src, _i, _id, ...rest } = e as Record<string, unknown>;
+      return rest;
+    })
+  );
 const stripId = (arr: object[]) =>
-  JSON.stringify(arr.map(e => { const { _id, ...rest } = e as Record<string, unknown>; return rest; }));
+  JSON.stringify(
+    arr.map((e) => {
+      const { _id, ...rest } = e as Record<string, unknown>;
+      return rest;
+    })
+  );
 
 function checkEquivalence(userGeo: LegacyUserGeo, expected: { walls: unknown[]; fixed: unknown[]; doors: unknown[] }) {
   const doc = migrateLegacyToV1(legacy, userGeo);
@@ -57,31 +70,34 @@ d('migrate → docToLegacy ≡ eff*（空 USERGEO）', () => {
     const doc = migrateLegacyToV1(legacy, EMPTY_USERGEO);
     expect(doc.schema).toBe(1);
     expect(doc.sc).toBe(11.2);
-    expect(doc.walls).toHaveLength(65);   // 72 链段 − 7 窗（窗另在 windows[]）
+    expect(doc.walls).toHaveLength(65); // 72 链段 − 7 窗（窗另在 windows[]）
     expect(doc.walls[0].id).toBe('w1');
     expect(doc.windows).toHaveLength(7);
     // 9 个内置门洞都配到了门扇（wallId 非空）
-    const openings = doc.walls.filter(w => w.kind === 'opening');
+    const openings = doc.walls.filter((w) => w.kind === 'opening');
     expect(openings).toHaveLength(9);
-    const gapIds = new Set(openings.map(o => o.id));
-    const paired = doc.doors.filter(d => d.wallId && gapIds.has(d.wallId));
+    const gapIds = new Set(openings.map((o) => o.id));
+    const paired = doc.doors.filter((d) => d.wallId && gapIds.has(d.wallId));
     expect(paired).toHaveLength(9);
-    const unpaired = doc.doors.filter(d => !d.wallId && d.src === 'builtin');
-    expect(unpaired.map(d => d.kind)).toEqual(['bifold']); // 衣柜折叠门挂在实心块上，无链缺口
+    const unpaired = doc.doors.filter((d) => !d.wallId && d.src === 'builtin');
+    expect(unpaired.map((d) => d.kind)).toEqual(['bifold']); // 衣柜折叠门挂在实心块上，无链缺口
     // 窗样式映射（fixture 实测分布：3 普通 + 3 落地钢梁 + 1 推拉落地）
-    const styles = doc.windows
-      .map(w => `${w.style}${w.fullHeight ? 'F' : ''}${w.steel ? 'S' : ''}`)
-      .sort();
+    const styles = doc.windows.map((w) => `${w.style}${w.fullHeight ? 'F' : ''}${w.steel ? 'S' : ''}`).sort();
     expect(styles).toEqual(['fixed', 'fixed', 'fixed', 'fixedFS', 'fixedFS', 'fixedFS', 'slideF']);
     // 落地窗 sill=0 head=层高；普通窗 0.67m/2.25m
     for (const w of doc.windows) {
-      if (w.fullHeight) { expect(w.sill).toBe(0); expect(w.head).toBe(doc.ceilingH); }
-      else { expect(w.sill).toBeCloseTo(0.67 / 0.3048, 10); expect(w.head).toBeCloseTo(2.25 / 0.3048, 10); }
+      if (w.fullHeight) {
+        expect(w.sill).toBe(0);
+        expect(w.head).toBe(doc.ceilingH);
+      } else {
+        expect(w.sill).toBeCloseTo(0.67 / 0.3048, 10);
+        expect(w.head).toBeCloseTo(2.25 / 0.3048, 10);
+      }
     }
     // 柱 / 房间 / 洁具 / 阳台
-    expect(doc.solids.some(s => s.column && s.name === '柱')).toBe(true);
+    expect(doc.solids.some((s) => s.column && s.name === '柱')).toBe(true);
     expect(doc.rooms).toHaveLength(14);
-    expect(doc.rooms[0].d).toBe("13'2\" × 11'0\"");   // #calib 专用原始字符串保留
+    expect(doc.rooms[0].d).toBe('13\'2" × 11\'0"'); // #calib 专用原始字符串保留
     expect(doc.fixtures).toHaveLength(13);
     expect(doc.patio).not.toBeNull();
     // 隐藏列表为空
@@ -90,7 +106,7 @@ d('migrate → docToLegacy ≡ eff*（空 USERGEO）', () => {
 });
 
 d('migrate → docToLegacy ≡ eff*（合成 USERGEO：覆盖/隐藏/新增）', () => {
-  const userGeo = (fx?.user?.userGeo) as LegacyUserGeo;   // fx 缺失时不在 describe 体里解引用
+  const userGeo = fx?.user?.userGeo as LegacyUserGeo; // fx 缺失时不在 describe 体里解引用
 
   it('三条 eff* 输出逐字段相等（_i 来自原 USERGEO 数组下标）', () => {
     checkEquivalence(userGeo, fx.user.eff as never);
@@ -99,35 +115,35 @@ d('migrate → docToLegacy ≡ eff*（合成 USERGEO：覆盖/隐藏/新增）',
   it('ov 覆盖物化进实体、hidden 进过滤列表、新增实体 src=user', () => {
     const doc = migrateLegacyToV1(legacy, userGeo);
     // ovW['3']：端点增量平移、wd=8px→ft
-    const w4 = doc.walls.find(w => w.chainIndex === 3);
+    const w4 = doc.walls.find((w) => w.chainIndex === 3);
     expect(w4).toBeDefined();
     expect(w4!.thick).toBeCloseTo(8 / 11.2, 12);
     // ovP['2']：poly 被替换
-    const s3 = doc.solids.find(s => s.chainIndex === 2);
+    const s3 = doc.solids.find((s) => s.chainIndex === 2);
     expect(s3!.geom.t).toBe('poly');
     if (s3!.geom.t === 'poly') expect(s3!.geom.pts[0]).toEqual([1, 1]);
     // ovD['1']：side/hinge 覆盖
-    const d2 = doc.doors.find(d => d.chainIndex === 1);
+    const d2 = doc.doors.find((d) => d.chainIndex === 1);
     expect(d2!.side).toBe(-1);
     expect(d2!.hinge).toBe(0);
     // hidden：索引 → id
-    expect(doc.hidden.walls).toContain('w11');   // hiddenW [10]（'w' 段）
+    expect(doc.hidden.walls).toContain('w11'); // hiddenW [10]（'w' 段）
     expect(doc.hidden.solids).toContain('s6'); // hiddenP [5]
-    expect(doc.hidden.doors).toContain('d4');  // hiddenD [3]
+    expect(doc.hidden.doors).toContain('d4'); // hiddenD [3]
     // 新增（userIndex 保留原数组下标；SYN 有 4 段用户段，其中 3 段非窗）
-    const uWall = doc.walls.filter(w => w.src === 'user');
+    const uWall = doc.walls.filter((w) => w.src === 'user');
     expect(uWall).toHaveLength(3);
     expect(uWall[0].userIndex).toBe(0);
-    const uWin = doc.windows.filter(w => w.src === 'user');
+    const uWin = doc.windows.filter((w) => w.src === 'user');
     expect(uWin).toHaveLength(1);
     expect(uWin[0].userIndex).toBe(1);
     expect(uWin[0].thick).toBeCloseTo(3.5 / 11.2, 12);
-    expect(doc.solids.filter(s => s.src === 'user')).toHaveLength(1);
-    expect(doc.doors.filter(d => d.src === 'user')).toHaveLength(1);
+    expect(doc.solids.filter((s) => s.src === 'user')).toHaveLength(1);
+    expect(doc.doors.filter((d) => d.src === 'user')).toHaveLength(1);
     // 隐藏实体仍在数组里（取消隐藏即恢复）
-    expect(doc.walls.some(w => w.id === 'w11')).toBe(true);
-    expect(doc.solids.some(s => s.id === 's6')).toBe(true);
-    expect(doc.doors.some(d => d.id === 'd4')).toBe(true);
+    expect(doc.walls.some((w) => w.id === 'w11')).toBe(true);
+    expect(doc.solids.some((s) => s.id === 's6')).toBe(true);
+    expect(doc.doors.some((d) => d.id === 'd4')).toBe(true);
   });
 
   it('可重放性：doc → legacy 再 migrate，几何不变（_i/_src 重编号是预期）', () => {
@@ -141,29 +157,35 @@ d('migrate → docToLegacy ≡ eff*（合成 USERGEO：覆盖/隐藏/新增）',
         doors: proj1.doors as LegacyGeo['doors'],
         fixed: proj1.fixed as LegacyGeo['fixed'],
       },
-      EMPTY_USERGEO,
+      EMPTY_USERGEO
     );
     const proj2 = docToLegacy(replay);
-    expect(stripMeta(proj2.walls as unknown as Record<string, unknown>[])).toBe(stripMeta(proj1.walls as unknown as Record<string, unknown>[]));
-    expect(stripMeta(proj2.fixed as unknown as Record<string, unknown>[])).toBe(stripMeta(proj1.fixed as unknown as Record<string, unknown>[]));
-    expect(stripMeta(proj2.doors as unknown as Record<string, unknown>[])).toBe(stripMeta(proj1.doors as unknown as Record<string, unknown>[]));
+    expect(stripMeta(proj2.walls as unknown as Record<string, unknown>[])).toBe(
+      stripMeta(proj1.walls as unknown as Record<string, unknown>[])
+    );
+    expect(stripMeta(proj2.fixed as unknown as Record<string, unknown>[])).toBe(
+      stripMeta(proj1.fixed as unknown as Record<string, unknown>[])
+    );
+    expect(stripMeta(proj2.doors as unknown as Record<string, unknown>[])).toBe(
+      stripMeta(proj1.doors as unknown as Record<string, unknown>[])
+    );
   });
 
   it('投影带 _id（实体回指）：内置 = w/n/d/s{n+1}，用户 = nextId 生成且唯一', () => {
     const doc = migrateLegacyToV1(legacy, userGeo);
     const proj = docToLegacy(doc);
     // 内置实体：_id 与链内位置对应（与 migrate 的 id 规则一致）
-    const w1 = proj.walls.find(s => s._src === 'b' && s._i === 0);
+    const w1 = proj.walls.find((s) => s._src === 'b' && s._i === 0);
     expect(w1?._id).toBe('w1');
-    const n1 = proj.walls.find(s => s.t === 'g' && s._src === 'b');
-    if(n1) expect(n1._id).toBe(`n${n1._i + 1}`);
+    const n1 = proj.walls.find((s) => s.t === 'g' && s._src === 'b');
+    if (n1) expect(n1._id).toBe(`n${n1._i + 1}`);
     expect(!!n1).toBe(true);
     expect(proj.doors[0]._id).toBe('d1');
     expect(proj.fixed[0]._id).toBe('s1');
     // 用户实体：_id 全局唯一
-    const ids = [...proj.walls, ...proj.fixed, ...proj.doors].map(e => e._id as string);
+    const ids = [...proj.walls, ...proj.fixed, ...proj.doors].map((e) => e._id as string);
     expect(new Set(ids).size).toBe(ids.length);
-    const userWallIds = proj.walls.filter(s => s._src === 'u').map(s => s._id);
-    expect(userWallIds.every(id => /^[wnds]\d+$/.test(id))).toBe(true);
+    const userWallIds = proj.walls.filter((s) => s._src === 'u').map((s) => s._id);
+    expect(userWallIds.every((id) => /^[wnds]\d+$/.test(id))).toBe(true);
   });
 });

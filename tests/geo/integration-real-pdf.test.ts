@@ -19,7 +19,7 @@ import { fileURLToPath } from 'node:url';
 import { importPdf } from '../../src/geo/import-pdf';
 import type { PdfOpList, OpsTable } from '../../src/geo/import-pdf';
 
-const here = path.dirname(fileURLToPath(import.meta.url));   // <root>/tests/geo
+const here = path.dirname(fileURLToPath(import.meta.url)); // <root>/tests/geo
 const ROOT = path.resolve(here, '../..');
 const req = createRequire(import.meta.url);
 const { getDocument } = req(path.join(ROOT, 'lib/pdf.min.js'));
@@ -33,13 +33,23 @@ const FIX = path.join(ROOT, 'tests/fixtures/integration');
 
 /** 真实 pdf.js 4.10 op 表（探针实测） */
 const PDF_OPS: OpsTable = {
-  save: 10, restore: 11, transform: 12,
+  save: 10,
+  restore: 11,
+  transform: 12,
   constructPath: 91,
-  moveTo: 13, lineTo: 14, curveTo: 15, curveTo2: 16, curveTo3: 17,
-  closePath: 18, rectangle: 19,
-  stroke: 20, fill: 22,
-  setStrokeRGBColor: 58, setFillRGBColor: 59,
-  paintImageXObject: 85, paintInlineImageXObject: 86,
+  moveTo: 13,
+  lineTo: 14,
+  curveTo: 15,
+  curveTo2: 16,
+  curveTo3: 17,
+  closePath: 18,
+  rectangle: 19,
+  stroke: 20,
+  fill: 22,
+  setStrokeRGBColor: 58,
+  setFillRGBColor: 59,
+  paintImageXObject: 85,
+  paintInlineImageXObject: 86,
 };
 
 async function pdfOps(file: string): Promise<PdfOpList> {
@@ -53,32 +63,38 @@ async function pdfOps(file: string): Promise<PdfOpList> {
 /* ------------------------------------------------------------ 矢量户型 */
 describe('真实 PDF 集成（1:200 户型）', () => {
   it('推断 1:200（门弧 r→0.7m + 整图 4.6m 量级）', async () => {
-    const r = importPdf(await pdfOps('apartment-vector.pdf'), { w: 612, h: 792 }, PDF_OPS, { name: 'apartment-vector.pdf' });
+    const r = importPdf(await pdfOps('apartment-vector.pdf'), { w: 612, h: 792 }, PDF_OPS, {
+      name: 'apartment-vector.pdf',
+    });
     expect(r.info.scale).toBe(200);
     expect(r.info.scaleMethod).toBe('heuristic');
   });
 
   it('量级与计数（外框 4 + 内墙 2 + 窗两侧 = 7 段；1 门 0.7m；1 窗 0.9m）', async () => {
-    const r = importPdf(await pdfOps('apartment-vector.pdf'), { w: 612, h: 792 }, PDF_OPS, { name: 'apartment-vector.pdf' });
-    expect(r.info.scanned).toBeFalsy();   // 非扫描分支不设该字段
+    const r = importPdf(await pdfOps('apartment-vector.pdf'), { w: 612, h: 792 }, PDF_OPS, {
+      name: 'apartment-vector.pdf',
+    });
+    expect(r.info.scanned).toBeFalsy(); // 非扫描分支不设该字段
     expect(r.doc.walls.length).toBeGreaterThanOrEqual(5);
     expect(r.info.counts.walls).toBeGreaterThanOrEqual(5);
     expect(r.doc.doors).toHaveLength(1);
     const d = r.doc.doors[0]!;
-    expect(d.width).toBeCloseTo(0.7 / 0.3048, 1);   // 0.7m ≈ 2.30ft
+    expect(d.width).toBeCloseTo(0.7 / 0.3048, 1); // 0.7m ≈ 2.30ft
     expect(d.pos).toBeGreaterThanOrEqual(0);
     expect(d.pos).toBeLessThanOrEqual(1);
     expect(d.wallId).toBeTruthy();
     expect(r.doc.windows).toHaveLength(1);
     const w = r.doc.windows[0]!;
-    expect(w.width).toBeCloseTo(0.9 / 0.3048, 1);   // 0.9m ≈ 2.95ft
+    expect(w.width).toBeCloseTo(0.9 / 0.3048, 1); // 0.9m ≈ 2.95ft
     expect(w.wallId).toBeTruthy();
     expect(w.pos).toBeGreaterThanOrEqual(0);
     expect(w.pos).toBeLessThanOrEqual(1);
   });
 
   it('量级换算正确（45° 旋转的 56.7pt 外框 → 4.57m；1:200）', async () => {
-    const r = importPdf(await pdfOps('apartment-vector.pdf'), { w: 612, h: 792 }, PDF_OPS, { name: 'apartment-vector.pdf' });
+    const r = importPdf(await pdfOps('apartment-vector.pdf'), { w: 612, h: 792 }, PDF_OPS, {
+      name: 'apartment-vector.pdf',
+    });
     expect(r.info.extent.w).toBeCloseTo(4.57, 1);
     expect(r.info.extent.h).toBeCloseTo(3.35, 1);
   });
@@ -91,7 +107,10 @@ describe('真实 PDF 集成（1:200 户型）', () => {
   });
 
   it('手动比例覆盖（1:50 → 量级 ×5、method=fixed）', async () => {
-    const r = importPdf(await pdfOps('apartment-vector.pdf'), { w: 612, h: 792 }, PDF_OPS, { name: 'apartment-vector.pdf', scale: 50 });
+    const r = importPdf(await pdfOps('apartment-vector.pdf'), { w: 612, h: 792 }, PDF_OPS, {
+      name: 'apartment-vector.pdf',
+      scale: 50,
+    });
     expect(r.info.scale).toBe(50);
     expect(r.info.scaleMethod).toBe('fixed');
     expect(r.info.extent.w).toBeCloseTo(1.14, 2);
@@ -101,7 +120,9 @@ describe('真实 PDF 集成（1:200 户型）', () => {
 /* ------------------------------------------------------------ 扫描件 */
 describe('真实 PDF 集成（扫描件）', () => {
   it('图片主导 → scanned=true，几何为空（走 S7 矢量化）', async () => {
-    const r = importPdf(await pdfOps('scanned-floorplan.pdf'), { w: 595, h: 842 }, PDF_OPS, { name: 'scanned-floorplan.pdf' });
+    const r = importPdf(await pdfOps('scanned-floorplan.pdf'), { w: 595, h: 842 }, PDF_OPS, {
+      name: 'scanned-floorplan.pdf',
+    });
     expect(r.info.scanned).toBe(true);
     expect(r.doc.walls).toHaveLength(0);
     expect(r.doc.doors).toHaveLength(0);

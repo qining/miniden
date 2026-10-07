@@ -31,12 +31,7 @@ function load(name: string): DxfDoc {
   return new DxfParser().parseSync(readFileSync(join(INT, name), 'utf8')) as unknown as DxfDoc;
 }
 
-const ALL = [
-  'hack_canada_building.dxf',
-  'libredwg_example_2018.dxf',
-  'qcad_entities.dxf',
-  'qcad_example00.dxf',
-];
+const ALL = ['hack_canada_building.dxf', 'libredwg_example_2018.dxf', 'qcad_entities.dxf', 'qcad_example00.dxf'];
 
 describe('integration: 通用不变量（全部真实文件）', () => {
   for (const f of ALL) {
@@ -80,16 +75,16 @@ describe('integration: 每文件行为', () => {
       expect(r.info.unitMethod).toBe('insunits');
     });
     it('闭合 LWPOLYLINE 墙面经边对边配对得到真实墙厚（0.15/0.2yd = 0.45/0.6ft），无默认厚', () => {
-      const th = r.doc.walls.map(w => w.thick ?? 0).sort((a, b) => a - b);
+      const th = r.doc.walls.map((w) => w.thick ?? 0).sort((a, b) => a - b);
       expect(th.length).toBeGreaterThanOrEqual(100);
       // 两种真实厚度都要出现；默认厚 0.1m=0.3281ft 不应出现
-      expect(th.some(t => Math.abs(t - 0.45) < 0.01)).toBe(true);
-      expect(th.some(t => Math.abs(t - 0.6) < 0.01)).toBe(true);
-      expect(th.every(t => t > 0.4)).toBe(true);
+      expect(th.some((t) => Math.abs(t - 0.45) < 0.01)).toBe(true);
+      expect(th.some((t) => Math.abs(t - 0.6) < 0.01)).toBe(true);
+      expect(th.every((t) => t > 0.4)).toBe(true);
     });
     it('房间（131 个闭合矩形）与柱（48 个 S-COLS 闭合方）识别', () => {
       expect(r.info.counts.rooms).toBe(131);
-      expect(r.doc.solids.filter(s => s.column).length).toBe(48);
+      expect(r.doc.solids.filter((s) => s.column).length).toBe(48);
     });
     it('量级合理：22m × 125m（6 层堆叠的单层平面 + 场地）', () => {
       expect(r.info.extent.w).toBeGreaterThan(20);
@@ -99,7 +94,7 @@ describe('integration: 每文件行为', () => {
     it('块引用跳过被如实报告（门/窗符号在块里——文档化局限）', () => {
       expect(r.info.counts.doors).toBe(0);
       expect(r.info.counts.windows).toBe(0);
-      expect(r.info.warnings.some(w => w.includes('块引用') && w.includes('150'))).toBe(true);
+      expect(r.info.warnings.some((w) => w.includes('块引用') && w.includes('150'))).toBe(true);
     });
   });
 
@@ -110,11 +105,11 @@ describe('integration: 每文件行为', () => {
       expect(r.info.unitMethod).toBe('insunits');
     });
     it('大尺度图（363×216m）触发「量级偏大」警告', () => {
-      expect(r.info.warnings.some(w => w.includes('量级偏大'))).toBe(true);
+      expect(r.info.warnings.some((w) => w.includes('量级偏大'))).toBe(true);
     });
     it('3DFACE / DIMENSION / 椭圆等实体存在也不崩；房间闭合环仍识别', () => {
       expect(r.info.counts.rooms).toBe(11);
-      expect(r.info.warnings.some(w => w.includes('椭圆'))).toBe(true);
+      expect(r.info.warnings.some((w) => w.includes('椭圆'))).toBe(true);
     });
   });
 
@@ -134,7 +129,7 @@ describe('integration: 每文件行为', () => {
     });
     it('色样「colors」层不再误判为柱层（此前 S-COLS/彩色层误报）', () => {
       // 该文件的实体层无柱；若 'colors' 误判 col，会多出一批柱
-      expect(r.doc.solids.filter(s => s.column && s.name === '柱').length).toBe(0);
+      expect(r.doc.solids.filter((s) => s.column && s.name === '柱').length).toBe(0);
     });
   });
 });

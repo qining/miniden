@@ -18,32 +18,47 @@
 
 export type Pt = [number, number];
 
-export interface Seg { t: 'seg'; x1: number; y1: number; x2: number; y2: number }
+export interface Seg {
+  t: 'seg';
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+}
 export interface Arc {
   t: 'arc';
-  cx: number; cy: number; r: number;
-  a0: number; a1: number;          // 度数；a1−a0 = 360 即整圆
-  dir: 1 | -1;                     // +1 = θ 增大方向；−1 = θ 减小方向
+  cx: number;
+  cy: number;
+  r: number;
+  a0: number;
+  a1: number; // 度数；a1−a0 = 360 即整圆
+  dir: 1 | -1; // +1 = θ 增大方向；−1 = θ 减小方向
 }
-export interface Poly { t: 'poly'; pts: Pt[] }
+export interface Poly {
+  t: 'poly';
+  pts: Pt[];
+}
 export type Geom = Seg | Arc | Poly;
 
 /** 弧上的点：θ 度数 → [x, y]（y 向下坐标）。 */
 export function arcPoint(arc: Arc, aDeg: number): Pt {
-  const a = aDeg * Math.PI / 180;
+  const a = (aDeg * Math.PI) / 180;
   return [arc.cx + arc.r * Math.cos(a), arc.cy + arc.r * Math.sin(a)];
 }
 
 /** 有向扫过的角度总量（度数，含 dir 符号；整圆 = ±360）。 */
 export function arcSweep(arc: Arc): number {
   let d = arc.a1 - arc.a0;
-  if (arc.dir > 0) { if (d <= 0) d += 360; }
-  else { if (d >= 0) d -= 360; }
+  if (arc.dir > 0) {
+    if (d <= 0) d += 360;
+  } else {
+    if (d >= 0) d -= 360;
+  }
   return d; // 已含 dir 方向符号（dir=+1 → d≥0；dir=-1 → d≤0）
 }
 
 export function arcLen(arc: Arc): number {
-  return Math.abs(arcSweep(arc)) / 360 * 2 * Math.PI * arc.r;
+  return (Math.abs(arcSweep(arc)) / 360) * 2 * Math.PI * arc.r;
 }
 
 export function segLen(s: Seg): number {
@@ -66,13 +81,19 @@ export function expand(geom: Geom, opt: { chordTol?: number; segments?: number }
   const tol = opt.chordTol ?? 0.01;
   if (geom.t === 'seg') {
     if (dist([geom.x1, geom.y1], [geom.x2, geom.y2]) < 1e-9) return [];
-    return [[[geom.x1, geom.y1], [geom.x2, geom.y2]]];
+    return [
+      [
+        [geom.x1, geom.y1],
+        [geom.x2, geom.y2],
+      ],
+    ];
   }
   if (geom.t === 'poly') {
     const pts = geom.pts.length >= 2 ? geom.pts : [];
     const out: [Pt, Pt][] = [];
     for (let i = 0; i < pts.length; i++) {
-      const a = pts[i], b = pts[(i + 1) % pts.length];
+      const a = pts[i],
+        b = pts[(i + 1) % pts.length];
       if (i + 1 < pts.length && dist(a, b) < 1e-9) continue;
       if (i + 1 === pts.length && pts.length < 3 && dist(a, b) < 1e-9) continue;
       out.push([a, b]);
@@ -89,7 +110,7 @@ export function expand(geom: Geom, opt: { chordTol?: number; segments?: number }
   if (opt.segments != null) {
     n = Math.max(2, Math.round(opt.segments));
   } else {
-    const maxStep = tol >= geom.r ? 180 : 2 * Math.acos(1 - tol / geom.r) * 180 / Math.PI;
+    const maxStep = tol >= geom.r ? 180 : (2 * Math.acos(1 - tol / geom.r) * 180) / Math.PI;
     n = Math.max(2, Math.ceil(sweep / maxStep));
   }
   const out: [Pt, Pt][] = [];
@@ -108,7 +129,8 @@ export function expand(geom: Geom, opt: { chordTol?: number; segments?: number }
 export function polyArea(pts: Pt[]): number {
   let a = 0;
   for (let i = 0; i < pts.length; i++) {
-    const [x1, y1] = pts[i], [x2, y2] = pts[(i + 1) % pts.length];
+    const [x1, y1] = pts[i],
+      [x2, y2] = pts[(i + 1) % pts.length];
     a += x1 * y2 - x2 * y1;
   }
   return a / 2;
@@ -119,21 +141,32 @@ export function polyArea(pts: Pt[]): number {
  * → {arc, dir}。三点共线返回 null（调用方降级为 seg 或折线）。
  */
 export function arcFrom3Points(p0: Pt, pm: Pt, p2: Pt): { arc: Arc; dir: 1 | -1 } | null {
-  const ax = p0[0], ay = p0[1], bx = pm[0], by = pm[1], cx = p2[0], cy = p2[1];
+  const ax = p0[0],
+    ay = p0[1],
+    bx = pm[0],
+    by = pm[1],
+    cx = p2[0],
+    cy = p2[1];
   const d = 2 * (ax * (by - cy) + bx * (cy - ay) + cx * (ay - by));
-  if (Math.abs(d) < 1e-12) return null;   // 共线
+  if (Math.abs(d) < 1e-12) return null; // 共线
   const ux = ((ax * ax + ay * ay) * (by - cy) + (bx * bx + by * by) * (cy - ay) + (cx * cx + cy * cy) * (ay - by)) / d;
   const uy = ((ax * ax + ay * ay) * (cx - bx) + (bx * bx + by * by) * (ax - cx) + (cx * cx + cy * cy) * (bx - ax)) / d;
   const r = Math.hypot(ax - ux, ay - uy);
-  const ang = (p: Pt) => Math.atan2(p[1] - uy, p[0] - ux) * 180 / Math.PI;
-  const a0 = ang(p0), a1 = ang(p2);
+  const ang = (p: Pt) => (Math.atan2(p[1] - uy, p[0] - ux) * 180) / Math.PI;
+  const a0 = ang(p0),
+    a1 = ang(p2);
   // 方向：p0→pm→p2 的转向（y 向下：叉积 <0 = θ 减小）
   const cross = (bx - ax) * (cy - ay) - (by - ay) * (cx - ax);
   const dir: 1 | -1 = cross >= 0 ? 1 : -1;
   // 把 a1 归一到与 a0 同圈（沿 dir 从 a0 到 a1，0 < sweep ≤ 360）
   let sweep: number;
-  if (dir > 0) { sweep = a1 - a0; while (sweep <= 0) sweep += 360; }
-  else { sweep = a1 - a0; while (sweep >= 0) sweep -= 360; }
+  if (dir > 0) {
+    sweep = a1 - a0;
+    while (sweep <= 0) sweep += 360;
+  } else {
+    sweep = a1 - a0;
+    while (sweep >= 0) sweep -= 360;
+  }
   // 中间点校验（保证 pm 在所选方向上）
   const mid = a0 + sweep / 2;
   const pmExp = arcPoint({ t: 'arc', cx: ux, cy: uy, r, a0, a1, dir }, mid);
@@ -143,7 +176,7 @@ export function arcFrom3Points(p0: Pt, pm: Pt, p2: Pt): { arc: Arc; dir: 1 | -1 
     const mid2 = a0 + other / 2;
     const pmExp2 = arcPoint({ t: 'arc', cx: ux, cy: uy, r, a0, a1, dir: -dir as 1 | -1 }, mid2);
     if (dist(pmExp2, pm) > Math.max(0.02, r * 0.01)) return null;
-    return { arc: { t: 'arc', cx: ux, cy: uy, r, a0, a1: a0 + other, dir: (-dir as 1 | -1) }, dir: -dir as 1 | -1 };
+    return { arc: { t: 'arc', cx: ux, cy: uy, r, a0, a1: a0 + other, dir: -dir as 1 | -1 }, dir: -dir as 1 | -1 };
   }
   return { arc: { t: 'arc', cx: ux, cy: uy, r, a0, a1: a0 + sweep, dir }, dir };
 }

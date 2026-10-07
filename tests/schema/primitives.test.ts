@@ -1,7 +1,16 @@
 import { describe, it, expect } from 'vitest';
 import {
-  arcPoint, arcSweep, arcLen, segLen, dist, expand, polyArea, arcFrom3Points, fullCircle,
-  type Arc, type Seg,
+  arcPoint,
+  arcSweep,
+  arcLen,
+  segLen,
+  dist,
+  expand,
+  polyArea,
+  arcFrom3Points,
+  fullCircle,
+  type Arc,
+  type Seg,
 } from '../../src/schema/primitives';
 
 /* =====================================================================
@@ -25,9 +34,9 @@ describe('arcPoint / arcSweep / arcLen', () => {
 
   it('sweep：带符号、360 环绕、整圆', () => {
     expect(arcSweep(quarter)).toBe(90);
-    expect(arcSweep({ ...quarter, a0: 270, a1: 90, dir: 1 })).toBe(180);   // 跨 0°
-    expect(arcSweep({ ...quarter, a0: 90, a1: 0, dir: -1 })).toBe(-90);    // 顺向：90→0
-    expect(arcSweep({ ...quarter, a0: 0, a1: 270, dir: -1 })).toBe(-90);   // 顺向跨 0°
+    expect(arcSweep({ ...quarter, a0: 270, a1: 90, dir: 1 })).toBe(180); // 跨 0°
+    expect(arcSweep({ ...quarter, a0: 90, a1: 0, dir: -1 })).toBe(-90); // 顺向：90→0
+    expect(arcSweep({ ...quarter, a0: 0, a1: 270, dir: -1 })).toBe(-90); // 顺向跨 0°
     expect(arcSweep(full)).toBe(360);
   });
 
@@ -40,7 +49,12 @@ describe('arcPoint / arcSweep / arcLen', () => {
 describe('expand(seg / poly)', () => {
   it('seg → 单段链', () => {
     const s: Seg = { t: 'seg', x1: 0, y1: 0, x2: 3, y2: 4 };
-    expect(expand(s)).toEqual([[[0, 0], [3, 4]]]);
+    expect(expand(s)).toEqual([
+      [
+        [0, 0],
+        [3, 4],
+      ],
+    ]);
     expect(segLen(s)).toBe(5);
   });
 
@@ -49,10 +63,25 @@ describe('expand(seg / poly)', () => {
   });
 
   it('poly → 闭合链（首尾相接）', () => {
-    const out = expand({ t: 'poly', pts: [[0, 0], [2, 0], [2, 1], [0, 1]] });
+    const out = expand({
+      t: 'poly',
+      pts: [
+        [0, 0],
+        [2, 0],
+        [2, 1],
+        [0, 1],
+      ],
+    });
     expect(out).toHaveLength(4);
     expect(out[3][1]).toEqual(out[0][0]);
-    expect(polyArea([[0, 0], [2, 0], [2, 1], [0, 1]])).toBe(2);
+    expect(
+      polyArea([
+        [0, 0],
+        [2, 0],
+        [2, 1],
+        [0, 1],
+      ])
+    ).toBe(2);
   });
 });
 
@@ -90,7 +119,7 @@ describe('expand(arc) —— 矢高误差（ADR-0002 验收）', () => {
   it('dir=-1 反向走（90° → 0°，经第一象限）', () => {
     const a: Arc = { t: 'arc', cx: 0, cy: 0, r: 1, a0: 90, a1: 0, dir: -1 };
     const out = expand(a);
-    expect(close(out[0][0], [0, 1], 1e-12)).toBe(true);     // 起点 θ=90
+    expect(close(out[0][0], [0, 1], 1e-12)).toBe(true); // 起点 θ=90
     expect(close(out[out.length - 1][1], [1, 0], 1e-12)).toBe(true); // 终点 θ=0
     const mid = out[Math.floor(out.length / 2)][0];
     expect(mid[0]).toBeGreaterThan(0.5);

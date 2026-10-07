@@ -20,8 +20,8 @@
 export interface TraceSeg {
   a: { x: number; y: number };
   b: { x: number; y: number };
-  weight: number;      // 支撑像素数（描摹优先级/显示用）
-  theta: number;       // 法向角（度，0..180）
+  weight: number; // 支撑像素数（描摹优先级/显示用）
+  theta: number; // 法向角（度，0..180）
 }
 
 export interface TraceOpts {
@@ -40,13 +40,15 @@ export interface TraceOpts {
 
 export interface TraceResult {
   segs: TraceSeg[];
-  edgeCount: number;   // 滞后后的边像素数（诊断用：扫描件/噪声图会异常多）
-  inverted: boolean;   // 极性翻转过（深底浅字）
+  edgeCount: number; // 滞后后的边像素数（诊断用：扫描件/噪声图会异常多）
+  inverted: boolean; // 极性翻转过（深底浅字）
 }
 
 /* ---------- 内部小工具（确定性，无全局状态） ---------- */
 
-function clamp255(v: number): number { return v < 0 ? 0 : v > 255 ? 255 : v | 0; }
+function clamp255(v: number): number {
+  return v < 0 ? 0 : v > 255 ? 255 : v | 0;
+}
 
 /** Otsu 全局阈值；直方图退化（单值）时回退 128。 */
 function otsu(gray: ArrayLike<number>, n: number): number {
@@ -56,19 +58,36 @@ function otsu(gray: ArrayLike<number>, n: number): number {
   // 经典逐 t 扫描在双峰图（0/255）上最优阈值落在 t=0——g<0 恒假、墨层全空，
   // 这是 Otsu 的已知陷阱；用中点阈值后 0/255 图 → thr=127.5，黑线入墨。
   const vals: number[] = [];
-  let total = 0, sum = 0;
-  for (let t = 0; t < 256; t++) if (hist[t]) { vals.push(t); total += hist[t]; sum += t * hist[t]; }
-  if (vals.length < 2) return 128;          // 单值图：无墨
-  let wB = 0, sumB = 0, best = 128, bestV = -1;
+  let total = 0,
+    sum = 0;
+  for (let t = 0; t < 256; t++)
+    if (hist[t]) {
+      vals.push(t);
+      total += hist[t];
+      sum += t * hist[t];
+    }
+  if (vals.length < 2) return 128; // 单值图：无墨
+  let wB = 0,
+    sumB = 0,
+    best = 128,
+    bestV = -1;
   for (let k = 0; k < vals.length - 1; k++) {
-    const va = vals[k], vb = vals[k + 1];
+    const va = vals[k],
+      vb = vals[k + 1];
     // wB = 0..va 的累计（含 va）
-    for (let t = (k ? vals[k - 1] + 1 : 0); t <= va; t++) { wB += hist[t]; sumB += t * hist[t]; }
+    for (let t = k ? vals[k - 1] + 1 : 0; t <= va; t++) {
+      wB += hist[t];
+      sumB += t * hist[t];
+    }
     const wF = total - wB;
     if (!wF) continue;
-    const mB = sumB / wB, mF = (sum - sumB) / wF;
+    const mB = sumB / wB,
+      mF = (sum - sumB) / wF;
     const v = wB * wF * (mB - mF) * (mB - mF);
-    if (v > bestV) { bestV = v; best = (va + vb) / 2; }
+    if (v > bestV) {
+      bestV = v;
+      best = (va + vb) / 2;
+    }
   }
   return best;
 }
@@ -76,14 +95,20 @@ function otsu(gray: ArrayLike<number>, n: number): number {
 /** Sobel 幅值（对二值墨层）+ NMS。返回幅值（其余 0）与边像素坐标数组。 */
 function canny(bin: Uint8Array, w: number, h: number, lo: number, hi: number) {
   const n = w * h;
-  const gx = new Int32Array(n), gy = new Int32Array(n);
+  const gx = new Int32Array(n),
+    gy = new Int32Array(n);
   for (let y = 1; y < h - 1; y++) {
-    const r0 = (y - 1) * w, r1 = y * w, r2 = (y + 1) * w;
+    const r0 = (y - 1) * w,
+      r1 = y * w,
+      r2 = (y + 1) * w;
     for (let x = 1; x < w - 1; x++) {
-      gx[r1 + x] = (bin[r0 + x + 1] + 2 * bin[r1 + x + 1] + bin[r2 + x + 1])
-                 - (bin[r0 + x - 1] + 2 * bin[r1 + x - 1] + bin[r2 + x - 1]);
-      gy[r1 + x] = (bin[r2 + x - 1] + 2 * bin[r2 + x] + bin[r2 + x + 1])
-                 - (bin[r0 + x - 1] + 2 * bin[r0 + x] + bin[r0 + x + 1]);
+      gx[r1 + x] =
+        bin[r0 + x + 1] +
+        2 * bin[r1 + x + 1] +
+        bin[r2 + x + 1] -
+        (bin[r0 + x - 1] + 2 * bin[r1 + x - 1] + bin[r2 + x - 1]);
+      gy[r1 + x] =
+        bin[r2 + x - 1] + 2 * bin[r2 + x] + bin[r2 + x + 1] - (bin[r0 + x - 1] + 2 * bin[r0 + x] + bin[r0 + x + 1]);
     }
   }
   const mag = new Float32Array(n);
@@ -101,44 +126,72 @@ function canny(bin: Uint8Array, w: number, h: number, lo: number, hi: number) {
     for (let x = 1; x < w - 1; x++) {
       const i = r1 + x;
       const m = mag[i];
-      if (m < hi) { mag[i] = 0; continue; }
+      if (m < hi) {
+        mag[i] = 0;
+        continue;
+      }
       // atan2 归一化到 [0,π)（y 向下系，对称性不受影响）
       let a = Math.atan2(gy[i], gx[i]);
       if (a < 0) a += Math.PI;
-      const q = a < Math.PI / 4 || a >= 7 * Math.PI / 8 ? 0
-              : a < 3 * Math.PI / 4 ? (a < Math.PI / 2 ? 1 : 2)
-              : 3;
-      let n1 = 0, n2 = 0;
-      if (q === 0) { n1 = i + 1; n2 = i - 1; }
-      else if (q === 1) { n1 = i + 1 + w; n2 = i - 1 - w; }
-      else if (q === 2) { n1 = i + w; n2 = i - w; }
-      else { n1 = i - 1 + w; n2 = i + 1 - w; }
-      if (m >= magAt(n1) && m >= magAt(n2)) mag[i] = m;   // 严格大于邻居才保留（相等也保留，避免双线丢边）
+      const q = a < Math.PI / 4 || a >= (7 * Math.PI) / 8 ? 0 : a < (3 * Math.PI) / 4 ? (a < Math.PI / 2 ? 1 : 2) : 3;
+      let n1 = 0,
+        n2 = 0;
+      if (q === 0) {
+        n1 = i + 1;
+        n2 = i - 1;
+      } else if (q === 1) {
+        n1 = i + 1 + w;
+        n2 = i - 1 - w;
+      } else if (q === 2) {
+        n1 = i + w;
+        n2 = i - w;
+      } else {
+        n1 = i - 1 + w;
+        n2 = i + 1 - w;
+      }
+      if (m >= magAt(n1) && m >= magAt(n2))
+        mag[i] = m; // 严格大于邻居才保留（相等也保留，避免双线丢边）
       else mag[i] = 0;
     }
   }
   // 双阈值滞后（8 连通，显式栈）
-  const strong = new Uint8Array(n), edge = new Uint8Array(n);
+  const strong = new Uint8Array(n),
+    edge = new Uint8Array(n);
   const stack: number[] = [];
   for (let i = 0; i < n; i++) {
-    if (mag[i] >= hi) { strong[i] = 1; edge[i] = 1; stack.push(i); }
-    else if (mag[i] >= lo) strong[i] = 2;
+    if (mag[i] >= hi) {
+      strong[i] = 1;
+      edge[i] = 1;
+      stack.push(i);
+    } else if (mag[i] >= lo) strong[i] = 2;
   }
   while (stack.length) {
     const i = stack.pop()!;
-    const x = i % w, y = (i / w) | 0;
-    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
-      if (!dx && !dy) continue;
-      const nx = x + dx, ny = y + dy;
-      if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
-      const j = ny * w + nx;
-      if (strong[j] === 2) { strong[j] = 1; edge[j] = 1; stack.push(j); }
+    const x = i % w,
+      y = (i / w) | 0;
+    for (let dy = -1; dy <= 1; dy++)
+      for (let dx = -1; dx <= 1; dx++) {
+        if (!dx && !dy) continue;
+        const nx = x + dx,
+          ny = y + dy;
+        if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+        const j = ny * w + nx;
+        if (strong[j] === 2) {
+          strong[j] = 1;
+          edge[j] = 1;
+          stack.push(j);
+        }
+      }
+  }
+  const xs: number[] = [],
+    ys: number[] = [];
+  for (let y = 0; y < h; y++)
+    for (let x = 0; x < w; x++) {
+      if (edge[y * w + x]) {
+        xs.push(x);
+        ys.push(y);
+      }
     }
-  }
-  const xs: number[] = [], ys: number[] = [];
-  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-    if (edge[y * w + x]) { xs.push(x); ys.push(y); }
-  }
   return { xs, ys };
 }
 
@@ -155,9 +208,11 @@ function hough(xs: number[], ys: number[], w: number, h: number, o: Required<Tra
   const cand: { theta: number; rho: number; votes: number }[] = [];
   for (let ti = 0; ti < 180 / o.angleStep; ti++) {
     const th = ti * o.angleStep * DEG;
-    const nx = Math.cos(th), ny = Math.sin(th);
+    const nx = Math.cos(th),
+      ny = Math.sin(th);
     // ρ 范围
-    let rmin = Infinity, rmax = -Infinity;
+    let rmin = Infinity,
+      rmax = -Infinity;
     for (let i = 0; i < N; i++) {
       const r = xs[i] * nx + ys[i] * ny;
       if (r < rmin) rmin = r;
@@ -168,7 +223,7 @@ function hough(xs: number[], ys: number[], w: number, h: number, o: Required<Tra
     if (nBins > 20000) continue;
     const cnt = new Int32Array(nBins);
     for (let i = 0; i < N; i++) {
-      const b = ((xs[i] * nx + ys[i] * ny) - rmin) / 2 | 0;
+      const b = ((xs[i] * nx + ys[i] * ny - rmin) / 2) | 0;
       cnt[b]++;
     }
     for (let b = 0; b < nBins; b++) {
@@ -182,17 +237,23 @@ function hough(xs: number[], ys: number[], w: number, h: number, o: Required<Tra
     let dup = false;
     for (const k of kept) {
       const dth = Math.abs(c.theta - k.theta) % 180;
-      if (Math.min(dth, 180 - dth) < 4 && Math.abs(c.rho - k.rho) < 8) { dup = true; break; }
+      if (Math.min(dth, 180 - dth) < 4 && Math.abs(c.rho - k.rho) < 8) {
+        dup = true;
+        break;
+      }
     }
     if (!dup) kept.push(c);
     if (kept.length >= 80) break;
   }
   // 3) 每条候选线：回收近线像素 → 沿线投影 → 间隙断开
   const segs: TraceSeg[] = [];
-  const dx = (th: number) => -Math.sin(th * DEG), dy = (th: number) => Math.cos(th * DEG);
+  const dx = (th: number) => -Math.sin(th * DEG),
+    dy = (th: number) => Math.cos(th * DEG);
   for (const c of kept) {
-    const nx = Math.cos(c.theta * DEG), ny = Math.sin(c.theta * DEG);
-    const ddx = dx(c.theta), ddy = dy(c.theta);
+    const nx = Math.cos(c.theta * DEG),
+      ny = Math.sin(c.theta * DEG);
+    const ddx = dx(c.theta),
+      ddy = dy(c.theta);
     const s: number[] = [];
     for (let i = 0; i < N; i++) {
       if (Math.abs(xs[i] * nx + ys[i] * ny - c.rho) <= 2.5) s.push(xs[i] * ddx + ys[i] * ddy);
@@ -203,11 +264,13 @@ function hough(xs: number[], ys: number[], w: number, h: number, o: Required<Tra
     for (let i = 1; i <= s.length; i++) {
       const gap = i === s.length || s[i] - s[i - 1] > 10;
       if (!gap) continue;
-      const s0 = s[runStart], s1 = s[i - 1];
+      const s0 = s[runStart],
+        s1 = s[i - 1];
       if (s1 - s0 >= minLen) {
         // 沿线坐标 → 像素（取线中心 ρ）
         const toPt = (t: number) => ({ x: c.rho * nx + t * ddx, y: c.rho * ny + t * ddy });
-        const a = toPt(s0), b = toPt(s1);
+        const a = toPt(s0),
+          b = toPt(s1);
         segs.push({ a, b, weight: i - runStart, theta: c.theta });
       }
       runStart = i;
@@ -223,7 +286,7 @@ export function traceLines(gray: ArrayLike<number>, w: number, h: number, opts: 
   const o: Required<TraceOpts> = {
     minLen: opts.minLen ?? Math.max(24, Math.max(w, h) * 0.012),
     maxSegs: opts.maxSegs ?? 400,
-    minVotes: opts.minVotes ?? 0,   // 0 → hough() 内部再套默认
+    minVotes: opts.minVotes ?? 0, // 0 → hough() 内部再套默认
     angleStep: opts.angleStep ?? 1.5,
     cannyLow: opts.cannyLow ?? 120,
     cannyHigh: opts.cannyHigh ?? 250,
@@ -256,43 +319,65 @@ export function traceLines(gray: ArrayLike<number>, w: number, h: number, opts: 
 --------------------------------------------------------------------- */
 
 export interface BaseImageLike {
-  w: number; h: number; mPerPx: number; ox: number; oy: number; rot?: 0 | 90 | 180 | 270;
+  w: number;
+  h: number;
+  mPerPx: number;
+  ox: number;
+  oy: number;
+  rot?: 0 | 90 | 180 | 270;
 }
 
 export interface ImgTransform {
-  ftPerPx: number;          // ft/px
+  ftPerPx: number; // ft/px
   rot: 0 | 90 | 180 | 270;
-  bw: number; bh: number;   // 旋转后包围盒（像素，未乘 ft）
-  cx: number; cy: number;   // 图像中心（文档 ft）
+  bw: number;
+  bh: number; // 旋转后包围盒（像素，未乘 ft）
+  cx: number;
+  cy: number; // 图像中心（文档 ft）
   toDoc(px: number, py: number): [number, number];
-  toImg(x: number, y: number): [number, number];   // 文档 ft → 像素（可出界）
+  toImg(x: number, y: number): [number, number]; // 文档 ft → 像素（可出界）
 }
 
 export function imgTransform(bi: BaseImageLike): ImgTransform {
   const ftPerPx = bi.mPerPx / 0.3048;
   const rot = bi.rot ?? 0;
   const swap = rot === 90 || rot === 270;
-  const bw = swap ? bi.h : bi.w, bh = swap ? bi.w : bi.h;
-  const cx = bi.ox + (bw / 2) * ftPerPx, cy = bi.oy + (bh / 2) * ftPerPx;
+  const bw = swap ? bi.h : bi.w,
+    bh = swap ? bi.w : bi.h;
+  const cx = bi.ox + (bw / 2) * ftPerPx,
+    cy = bi.oy + (bh / 2) * ftPerPx;
   // R(rot)·(x,y)：y 向下系顺时针
   const R = (x: number, y: number): [number, number] => {
     switch (rot) {
-      case 0: return [x, y];
-      case 90: return [-y, x];
-      case 180: return [-x, -y];
-      default: return [y, -x];
+      case 0:
+        return [x, y];
+      case 90:
+        return [-y, x];
+      case 180:
+        return [-x, -y];
+      default:
+        return [y, -x];
     }
   };
   const Ri = (x: number, y: number): [number, number] => {
     switch (rot) {
-      case 0: return [x, y];
-      case 90: return [y, -x];
-      case 180: return [-x, -y];
-      default: return [-y, x];
+      case 0:
+        return [x, y];
+      case 90:
+        return [y, -x];
+      case 180:
+        return [-x, -y];
+      default:
+        return [-y, x];
     }
   };
   return {
-    ftPerPx, rot, bw, bh, cx, cy,
+    ftPerPx,
+    rot,
+    bw,
+    bh,
+    cx,
+    cy,
     toDoc(px, py) {
       const [rx, ry] = R((px - bi.w / 2) * ftPerPx, (py - bi.h / 2) * ftPerPx);
       return [cx + rx, cy + ry];

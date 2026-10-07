@@ -11,18 +11,25 @@ const root = dirname(dirname(fileURLToPath(import.meta.url)));
 // 预算（字节）。基线 2026-10-06：app.html 996,855 · dist/app.html 3,809,369（three 608KB +
 // dxf 25KB + pdf ~1MB 内联）。留 ~10-15% 余量吸收正常增长。
 const BUDGETS = [
-  { path: 'app.html',      max: 1_150_000, note: '唯一事实来源（含 275 条目录 + 146 模型）' },
+  { path: 'app.html', max: 1_150_000, note: '唯一事实来源（含 275 条目录 + 146 模型）' },
   { path: 'dist/app.html', max: 4_200_000, note: '公开入口单文件（运行时库全部内联）' },
 ];
 
 let fail = 0;
 for (const b of BUDGETS) {
   let size;
-  try { size = statSync(join(root, b.path)).size; }
-  catch { console.error(`FAIL  ${b.path}: 不存在（先 npm run build）`); fail++; continue; }
-  const pct = (size / b.max * 100).toFixed(1);
+  try {
+    size = statSync(join(root, b.path)).size;
+  } catch {
+    console.error(`FAIL  ${b.path}: 不存在（先 npm run build）`);
+    fail++;
+    continue;
+  }
+  const pct = ((size / b.max) * 100).toFixed(1);
   const ok = size <= b.max;
-  console.log(`${ok ? 'OK  ' : 'FAIL'} ${b.path}: ${(size / 1024).toFixed(0)}KB / 预算 ${(b.max / 1024).toFixed(0)}KB (${pct}%) — ${b.note}`);
+  console.log(
+    `${ok ? 'OK  ' : 'FAIL'} ${b.path}: ${(size / 1024).toFixed(0)}KB / 预算 ${(b.max / 1024).toFixed(0)}KB (${pct}%) — ${b.note}`
+  );
   if (!ok) fail++;
 }
 if (fail) {

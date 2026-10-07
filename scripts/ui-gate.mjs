@@ -27,27 +27,34 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const gold = join(root, 'private', 'golden');
 const shots = join(gold, 'shots');
 
-const CHROME = process.env.CHROME
-  || (process.env.CI === 'true' ? 'google-chrome'
-      : '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome');
+const CHROME =
+  process.env.CHROME ||
+  (process.env.CI === 'true' ? 'google-chrome' : '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome');
 const CI_FLAGS = process.env.CI === 'true' ? ['--no-sandbox', '--disable-dev-shm-usage'] : [];
 const [W, H] = (process.env.UG_WINDOW || '1700,1100').split(',').map(Number);
 const BUDGET = {
-  '2d': +(process.env.UG_BUDGET2D || 20000), '2d-sel': +(process.env.UG_BUDGET2D || 20000),
-  'ft': +(process.env.UG_BUDGET2D || 20000), 'collapsed': +(process.env.UG_BUDGET2D || 20000),
-  '3d': +(process.env.UG_BUDGET3D || 60000), 'fp': +(process.env.UG_BUDGET3D || 60000),
-  'night': +(process.env.UG_BUDGET3D || 60000), 'dlg': +(process.env.UG_BUDGET3D || 60000),
+  '2d': +(process.env.UG_BUDGET2D || 20000),
+  '2d-sel': +(process.env.UG_BUDGET2D || 20000),
+  ft: +(process.env.UG_BUDGET2D || 20000),
+  collapsed: +(process.env.UG_BUDGET2D || 20000),
+  '3d': +(process.env.UG_BUDGET3D || 60000),
+  fp: +(process.env.UG_BUDGET3D || 60000),
+  night: +(process.env.UG_BUDGET3D || 60000),
+  dlg: +(process.env.UG_BUDGET3D || 60000),
 };
-const THRESH = +(process.env.UG_THRESH || 0.003);      // 本地 ≤0.3%
-const TOL = 4;                                        // 单通道容差（抗 swiftshader 微噪声）
+const THRESH = +(process.env.UG_THRESH || 0.003); // 本地 ≤0.3%
+const TOL = 4; // 单通道容差（抗 swiftshader 微噪声）
 
 const ALL = Object.keys(BUDGET);
 const args = process.argv.slice(2);
 const update = args.includes('--update');
 const selftest = args.includes('--selftest');
-const want = args.filter(a => !a.startsWith('--'));
+const want = args.filter((a) => !a.startsWith('--'));
 const states = want.length ? want : ALL;
-if (states.some(s => !ALL.includes(s))) { console.error(`未知状态: ${states.filter(s=>!ALL.includes(s))}（可选 ${ALL}）`); process.exit(2); }
+if (states.some((s) => !ALL.includes(s))) {
+  console.error(`未知状态: ${states.filter((s) => !ALL.includes(s))}（可选 ${ALL}）`);
+  process.exit(2);
+}
 
 mkdirSync(shots, { recursive: true });
 
@@ -55,14 +62,22 @@ function shoot(state, out) {
   // S10：截 dist（本地注入了 mine.json，与 private/golden 的 mine 基线对应；
   // CI 无 private/ → dist 是 generic → CI 用自己的 golden）
   const url = `file://${join(root, 'dist', 'planner.html')}#ui:${state}`;
-  execFileSync(CHROME, ['--headless', '--use-angle=swiftshader',
-    ...CI_FLAGS,
-    `--screenshot=${out}`, `--window-size=${W},${H}`,
-    `--virtual-time-budget=${BUDGET[state]}`, url],
-    { stdio: 'ignore', env: { ...process.env, MallocNanoArena: '1' } });
+  execFileSync(
+    CHROME,
+    [
+      '--headless',
+      '--use-angle=swiftshader',
+      ...CI_FLAGS,
+      `--screenshot=${out}`,
+      `--window-size=${W},${H}`,
+      `--virtual-time-budget=${BUDGET[state]}`,
+      url,
+    ],
+    { stdio: 'ignore', env: { ...process.env, MallocNanoArena: '1' } }
+  );
   if (!existsSync(out)) throw new Error(`screenshot 未生成: ${out}`);
 }
-const md5 = f => createHash('md5').update(readFileSync(f)).digest('hex');
+const md5 = (f) => createHash('md5').update(readFileSync(f)).digest('hex');
 
 function diffPng(a, b) {
   const pa = PNG.sync.read(readFileSync(a));
@@ -71,10 +86,18 @@ function diffPng(a, b) {
     return { diff: 1, why: `尺寸不同 ${pa.width}x${pa.height} vs ${pb.width}x${pb.height}` };
   const n = pa.width * pa.height;
   let bad = 0;
-  const d = pa.data, e = pb.data;
-  for (let i = 0; i < n; i++) { const o = i * 4;
-    if (Math.abs(d[o]-e[o]) > TOL || Math.abs(d[o+1]-e[o+1]) > TOL ||
-        Math.abs(d[o+2]-e[o+2]) > TOL || Math.abs(d[o+3]-e[o+3]) > TOL) bad++; }
+  const d = pa.data,
+    e = pb.data;
+  for (let i = 0; i < n; i++) {
+    const o = i * 4;
+    if (
+      Math.abs(d[o] - e[o]) > TOL ||
+      Math.abs(d[o + 1] - e[o + 1]) > TOL ||
+      Math.abs(d[o + 2] - e[o + 2]) > TOL ||
+      Math.abs(d[o + 3] - e[o + 3]) > TOL
+    )
+      bad++;
+  }
   return { diff: bad / n, why: '' };
 }
 
@@ -84,7 +107,8 @@ if (selftest) {
   for (const s of states) {
     shoot(s, join(shots, `st1-${s}.png`));
     shoot(s, join(shots, `st2-${s}.png`));
-    const a = md5(join(shots, `st1-${s}.png`)), b = md5(join(shots, `st2-${s}.png`));
+    const a = md5(join(shots, `st1-${s}.png`)),
+      b = md5(join(shots, `st2-${s}.png`));
     const same = a === b;
     if (!same) ok = false;
     console.log(`${same ? 'PASS' : 'FAIL'} selftest:${s} | md5 ${a} vs ${b}`);
@@ -98,23 +122,43 @@ for (const s of states) {
   const shot = join(shots, `${s}.png`);
   const base = join(gold, `${s}.png`);
   shoot(s, shot);
-  if (update) { copyFileSync(shot, base); console.log(`UPDATE ${s} | md5 ${md5(shot)}`); continue; }
-  if (!existsSync(base)) { fail++; console.log(`FAIL ${s} | 缺基线 ${base}（先跑 --update 生成）`); continue; }
+  if (update) {
+    copyFileSync(shot, base);
+    console.log(`UPDATE ${s} | md5 ${md5(shot)}`);
+    continue;
+  }
+  if (!existsSync(base)) {
+    fail++;
+    console.log(`FAIL ${s} | 缺基线 ${base}（先跑 --update 生成）`);
+    continue;
+  }
   const r = diffPng(shot, base);
   if (r.diff > THRESH) {
     fail++;
     const pa = PNG.sync.read(readFileSync(shot));
     const pb = PNG.sync.read(readFileSync(base));
     const n = pa.width * pa.height;
-    const d = pa.data, e = pb.data;
-    for (let i = 0; i < n; i++) { const o = i*4;
-      if (Math.abs(d[o]-e[o])>TOL || Math.abs(d[o+1]-e[o+1])>TOL || Math.abs(d[o+2]-e[o+2])>TOL || Math.abs(d[o+3]-e[o+3])>TOL){ d[o]=255; d[o+1]=0; d[o+2]=0; } }
+    const d = pa.data,
+      e = pb.data;
+    for (let i = 0; i < n; i++) {
+      const o = i * 4;
+      if (
+        Math.abs(d[o] - e[o]) > TOL ||
+        Math.abs(d[o + 1] - e[o + 1]) > TOL ||
+        Math.abs(d[o + 2] - e[o + 2]) > TOL ||
+        Math.abs(d[o + 3] - e[o + 3]) > TOL
+      ) {
+        d[o] = 255;
+        d[o + 1] = 0;
+        d[o + 2] = 0;
+      }
+    }
     const out = join(gold, `diff-${s}.png`);
     writeFileSync(out, PNG.sync.write(pa));
-    console.log(`FAIL ${s} | diff ${(r.diff*100).toFixed(3)}% > ${(THRESH*100)}%${r.why} | diff图 ${out}`);
+    console.log(`FAIL ${s} | diff ${(r.diff * 100).toFixed(3)}% > ${THRESH * 100}%${r.why} | diff图 ${out}`);
   } else {
-    console.log(`PASS ${s} | diff ${(r.diff*100).toFixed(4)}% ≤ ${(THRESH*100)}%${r.why}`);
+    console.log(`PASS ${s} | diff ${(r.diff * 100).toFixed(4)}% ≤ ${THRESH * 100}%${r.why}`);
   }
 }
-console.log(`\nE16: ${states.length - fail}/${states.length} PASS（阈值 ${(THRESH*100)}%，窗口 ${W}x${H}）`);
+console.log(`\nE16: ${states.length - fail}/${states.length} PASS（阈值 ${THRESH * 100}%，窗口 ${W}x${H}）`);
 process.exit(fail ? 1 : 0);

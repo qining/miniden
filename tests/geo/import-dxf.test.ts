@@ -9,8 +9,14 @@ import { importDxf, classifyLayer, type DxfDoc } from '../../src/geo/import-dxf'
 import { validate } from '../../src/schema/project';
 import { expand, type Seg, type Geom } from '../../src/schema/primitives';
 import { docToLegacy } from '../../src/schema/migrate';
-import { buildDocFromRaw, type Raw, type RawClosed, type RawSeg, type V2, type LayerClass } from '../../src/geo/import-common';
-
+import {
+  buildDocFromRaw,
+  type Raw,
+  type RawClosed,
+  type RawSeg,
+  type V2,
+  type LayerClass,
+} from '../../src/geo/import-common';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const M_TO_FT = 1 / 0.3048;
@@ -67,9 +73,9 @@ describe('墙带配对', () => {
     expect(doc.walls).toHaveLength(6);
   });
   it('外墙厚 0.24m → 0.7874ft；内墙 0.12m → 0.3937ft', () => {
-    const thick = doc.walls.map(w => f2(w.thick ?? 0)).sort((a, b) => a - b);
-    expect(thick.filter(t => t > 0.7)).toHaveLength(4);
-    expect(thick.filter(t => t < 0.7)).toHaveLength(2);
+    const thick = doc.walls.map((w) => f2(w.thick ?? 0)).sort((a, b) => a - b);
+    expect(thick.filter((t) => t > 0.7)).toHaveLength(4);
+    expect(thick.filter((t) => t < 0.7)).toHaveLength(2);
     near(thick[0]!, 0.12 * M_TO_FT);
     near(thick[3]!, 0.24 * M_TO_FT);
   });
@@ -151,22 +157,36 @@ describe('文档质量', () => {
     expect(() => docToLegacy(doc)).not.toThrow();
   });
   it('warnings 不报量级异常', () => {
-    expect(info.warnings.some(w => w.includes('量级'))).toBe(false);
+    expect(info.warnings.some((w) => w.includes('量级'))).toBe(false);
   });
 });
 
 describe('边界', () => {
   it('空文档：不崩，0 墙 + 警告', () => {
-    const r = importDxf({ header: { '$INSUNITS': 1 }, entities: [] });
+    const r = importDxf({ header: { $INSUNITS: 1 }, entities: [] });
     expect(r.info.counts.walls).toBe(0);
-    expect(r.info.warnings.some(w => w.includes('未检出墙体'))).toBe(true);
+    expect(r.info.warnings.some((w) => w.includes('未检出墙体'))).toBe(true);
   });
   it('单线墙：默认厚 0.1m，仍成墙', () => {
     const d = {
-      header: { '$INSUNITS': 1 },
+      header: { $INSUNITS: 1 },
       entities: [
-        { type: 'LINE', layer: '0', vertices: [{ x: 0, y: 0 }, { x: 3000, y: 0 }] },
-        { type: 'LINE', layer: '0', vertices: [{ x: 0, y: 0 }, { x: 0, y: 3000 }] },
+        {
+          type: 'LINE',
+          layer: '0',
+          vertices: [
+            { x: 0, y: 0 },
+            { x: 3000, y: 0 },
+          ],
+        },
+        {
+          type: 'LINE',
+          layer: '0',
+          vertices: [
+            { x: 0, y: 0 },
+            { x: 0, y: 3000 },
+          ],
+        },
       ],
     };
     const r = importDxf(d as unknown as DxfDoc);
@@ -175,8 +195,17 @@ describe('边界', () => {
   });
   it('用户强制单位覆盖自动检测', () => {
     const d = {
-      header: { '$INSUNITS': 3 }, // m
-      entities: [{ type: 'LINE', layer: '0', vertices: [{ x: 0, y: 0 }, { x: 3, y: 0 }] }],
+      header: { $INSUNITS: 3 }, // m
+      entities: [
+        {
+          type: 'LINE',
+          layer: '0',
+          vertices: [
+            { x: 0, y: 0 },
+            { x: 3, y: 0 },
+          ],
+        },
+      ],
     };
     const r = importDxf(d as unknown as DxfDoc, { unit: 'cm' });
     expect(r.info.unit).toBe('cm');
@@ -186,11 +215,18 @@ describe('边界', () => {
 
 describe('S12：家具层轮廓 → 台面 run（读几何，不猜位置）', () => {
   const P = (x: number, y: number): V2 => ({ x, y });
-  const rawOf = (closed: RawClosed[], segs: RawSeg[]): Raw =>
-    ({ segs, arcs: [], circles: [], closed, skipped: { ellipses: 0, inserts: 0, texts: 0, other: 0 } });
-  const build = (pts: V2[], wall: [V2, V2] | null) => buildDocFromRaw(
-    rawOf([{ pts, cls: 'furn' as LayerClass }], wall ? [{ a: wall[0], b: wall[1], cls: 'wall' as LayerClass }] : []),
-    { unit: 'm', name: 't', method: 'user' });
+  const rawOf = (closed: RawClosed[], segs: RawSeg[]): Raw => ({
+    segs,
+    arcs: [],
+    circles: [],
+    closed,
+    skipped: { ellipses: 0, inserts: 0, texts: 0, other: 0 },
+  });
+  const build = (pts: V2[], wall: [V2, V2] | null) =>
+    buildDocFromRaw(
+      rawOf([{ pts, cls: 'furn' as LayerClass }], wall ? [{ a: wall[0], b: wall[1], cls: 'wall' as LayerClass }] : []),
+      { unit: 'm', name: 't', method: 'user' }
+    );
 
   it('柜体带形状（3.0m × 0.6m）→ run，深度取轮廓实际延伸，不再落成整高 solid', () => {
     const r = build([P(1, 0.05), P(4, 0.05), P(4, 0.65), P(1, 0.65)], [P(0, 0), P(6, 0)]);
@@ -204,10 +240,10 @@ describe('S12：家具层轮廓 → 台面 run（读几何，不猜位置）', (
   it('path 取靠墙那条长边（前沿贴墙）', () => {
     const r = build([P(1, 0.05), P(4, 0.05), P(4, 0.65), P(1, 0.65)], [P(0, 0), P(6, 0)]);
     const run = r.doc.runs![0]!;
-    const ys = run.path.map(p => p[1]);
-    expect(Math.max(...ys) - Math.min(...ys)).toBeLessThan(0.01);            // 水平边
+    const ys = run.path.map((p) => p[1]);
+    expect(Math.max(...ys) - Math.min(...ys)).toBeLessThan(0.01); // 水平边
     const wy = (r.doc.walls[0]!.geom as { y1: number }).y1;
-    near(Math.abs(ys[0] - wy), 0.05 * M_TO_FT, 0.01);                        // 就是贴墙那条
+    near(Math.abs(ys[0] - wy), 0.05 * M_TO_FT, 0.01); // 就是贴墙那条
     // 若挑的是对面那条边，距离会是 0.6m
     expect(Math.abs(ys[0] - wy)).toBeLessThan(0.1 * M_TO_FT);
   });
@@ -217,7 +253,7 @@ describe('S12：家具层轮廓 → 台面 run（读几何，不猜位置）', (
     expect(r.info.counts.runs).toBe(1);
     const run = r.doc.runs![0]!;
     const L = Math.hypot(run.path[1][0] - run.path[0][0], run.path[1][1] - run.path[0][1]);
-    near(L * 0.3048, 3.0, 0.02);                                            // 3.0m 长边
+    near(L * 0.3048, 3.0, 0.02); // 3.0m 长边
     near(run.depth! * 0.3048, 0.6, 0.02);
   });
 
@@ -235,7 +271,7 @@ describe('S12：家具层轮廓 → 台面 run（读几何，不猜位置）', (
 
   it('读入柜体带时给出可核对的警告（不是猜）', () => {
     const r = build([P(1, 0.05), P(4, 0.05), P(4, 0.65), P(1, 0.65)], [P(0, 0), P(6, 0)]);
-    const w = r.info.warnings.find(x => x.includes('柜体带'));
+    const w = r.info.warnings.find((x) => x.includes('柜体带'));
     expect(w).toBeTruthy();
     expect(w).toContain('1 个');
     expect(w).toContain('0.9m');

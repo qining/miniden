@@ -12,24 +12,46 @@
    坐标系：DXF 图纸 y 向上 → 文档 y 向下；单位：源单位 → m → ft（文档 ft 原生）。
    确定性：无随机（回归可比对）。
    ===================================================================== */
-import {
-  buildDocFromRaw, detectUnitsFromSamples, wallThicknessSamples, classifyLayer,
-} from './import-common';
+import { buildDocFromRaw, detectUnitsFromSamples, wallThicknessSamples, classifyLayer } from './import-common';
 import type { Unit, UnitMethod, ImportResult, Raw } from './import-common';
 
 /* 共享符号 re-export（既有测试/入口的 import 路径不变） */
 export {
-  classifyLayer, UNIT_TO_M, UNIT_NOMINAL, M_TO_FT,
-  detectBands, transform, segOnBand, isParallel, signedDist, overlapFrac,
+  classifyLayer,
+  UNIT_TO_M,
+  UNIT_NOMINAL,
+  M_TO_FT,
+  detectBands,
+  transform,
+  segOnBand,
+  isParallel,
+  signedDist,
+  overlapFrac,
 } from './import-common';
 export type {
-  Unit, UnitMethod, LayerClass, ImportInfo, ImportResult, Raw,
-  RawSeg, RawArc, RawCircle, RawClosed, V2, Band, BuildDocOptions,
+  Unit,
+  UnitMethod,
+  LayerClass,
+  ImportInfo,
+  ImportResult,
+  Raw,
+  RawSeg,
+  RawArc,
+  RawCircle,
+  RawClosed,
+  V2,
+  Band,
+  BuildDocOptions,
 } from './import-common';
 
 /* ---------------------------------------------------------------- 类型 */
 
-export interface DxfPt { x: number; y: number; z?: number; bulge?: number }
+export interface DxfPt {
+  x: number;
+  y: number;
+  z?: number;
+  bulge?: number;
+}
 export interface DxfEntity {
   type: string;
   layer?: string;
@@ -55,7 +77,10 @@ export interface DxfDoc {
 
 export type DxfUnit = 'mm' | 'cm' | 'm' | 'in' | 'ft' | 'yd' | 'mi';
 
-export interface UnitDetect { unit: Unit; method: UnitMethod }
+export interface UnitDetect {
+  unit: Unit;
+  method: UnitMethod;
+}
 
 /* ---------------------------------------------------------------- 常量 */
 
@@ -76,7 +101,10 @@ export function detectUnits(d: DxfDoc, wallThickSamplesSrc: number[]): UnitDetec
 
 /* ------------------------------------------------------------ 几何提取 */
 
-interface V2 { x: number; y: number }
+interface V2 {
+  x: number;
+  y: number;
+}
 const v = (x: number, y: number): V2 => ({ x, y });
 const sub = (a: V2, b: V2): V2 => v(a.x - b.x, a.y - b.y);
 const len = (a: V2) => Math.hypot(a.x, a.y);
@@ -84,7 +112,10 @@ const len = (a: V2) => Math.hypot(a.x, a.y);
 /** DXF 实体 → 原语集合（源单位、y-up、未平移）。 */
 export function extractRaw(d: DxfDoc): Raw {
   const raw: Raw = {
-    segs: [], arcs: [], circles: [], closed: [],
+    segs: [],
+    arcs: [],
+    circles: [],
+    closed: [],
     skipped: { ellipses: 0, inserts: 0, texts: 0, other: 0 },
   };
   for (const ent of d.entities ?? []) {
@@ -93,15 +124,16 @@ export function extractRaw(d: DxfDoc): Raw {
       case 'LINE': {
         const vv = ent.vertices;
         if (!vv || vv.length < 2) break;
-        const a = v(vv[0].x, vv[0].y), b = v(vv[1].x, vv[1].y);
+        const a = v(vv[0].x, vv[0].y),
+          b = v(vv[1].x, vv[1].y);
         if (len(sub(b, a)) > 1e-6) raw.segs.push({ a, b, cls });
         break;
       }
       case 'LWPOLYLINE':
       case 'POLYLINE': {
         const pts = (ent.vertices ?? [])
-          .filter(p => Number.isFinite(p.x) && Number.isFinite(p.y))
-          .map(p => v(p.x, p.y));
+          .filter((p) => Number.isFinite(p.x) && Number.isFinite(p.y))
+          .map((p) => v(p.x, p.y));
         if (pts.length < 2) break;
         if (ent.shape && pts.length >= 3) {
           if (cls === 'wall' || cls === 'door' || cls === 'window') {
@@ -110,7 +142,8 @@ export function extractRaw(d: DxfDoc): Raw {
             // 若只当多边形（closed）就永远进不了墙带配对（hack_canada 集成用例暴露）
             const nPts = pts.length;
             for (let i = 0; i < nPts; i++) {
-              const p = pts[i], q = pts[(i + 1) % nPts];
+              const p = pts[i],
+                q = pts[(i + 1) % nPts];
               const bulge = (ent.vertices?.[i] as DxfPt | undefined)?.bulge ?? 0;
               if (Math.abs(bulge) > 1e-6) {
                 const arc = bulgeToArc(p, q, bulge);
@@ -123,7 +156,8 @@ export function extractRaw(d: DxfDoc): Raw {
           break;
         }
         for (let i = 0; i < pts.length - 1; i++) {
-          const p = pts[i], q = pts[i + 1];
+          const p = pts[i],
+            q = pts[i + 1];
           const bulge = (ent.vertices?.[i] as DxfPt | undefined)?.bulge ?? 0;
           if (Math.abs(bulge) > 1e-6) {
             const arc = bulgeToArc(p, q, bulge);
@@ -148,18 +182,30 @@ export function extractRaw(d: DxfDoc): Raw {
         break;
       }
       case 'SPLINE': {
-        const src = ent.fitPoints && ent.fitPoints.length >= 2 ? ent.fitPoints : ent.controlPoints ?? [];
-        const pts = src.filter(p => p && Number.isFinite(p.x) && Number.isFinite(p.y)).map(p => v(p.x, p.y));
+        const src = ent.fitPoints && ent.fitPoints.length >= 2 ? ent.fitPoints : (ent.controlPoints ?? []);
+        const pts = src.filter((p) => p && Number.isFinite(p.x) && Number.isFinite(p.y)).map((p) => v(p.x, p.y));
         if (pts.length < 2) break;
-        if (ent.closed && pts.length >= 3) { raw.closed.push({ pts, cls }); break; }
+        if (ent.closed && pts.length >= 3) {
+          raw.closed.push({ pts, cls });
+          break;
+        }
         for (let i = 0; i < pts.length - 1; i++)
           if (len(sub(pts[i + 1], pts[i])) > 1e-6) raw.segs.push({ a: pts[i], b: pts[i + 1], cls });
         break;
       }
-      case 'ELLIPSE': raw.skipped.ellipses++; break;
-      case 'INSERT': raw.skipped.inserts++; break;
-      case 'TEXT': case 'MTEXT': raw.skipped.texts++; break;
-      default: raw.skipped.other++; break;
+      case 'ELLIPSE':
+        raw.skipped.ellipses++;
+        break;
+      case 'INSERT':
+        raw.skipped.inserts++;
+        break;
+      case 'TEXT':
+      case 'MTEXT':
+        raw.skipped.texts++;
+        break;
+      default:
+        raw.skipped.other++;
+        break;
     }
   }
   return raw;
@@ -172,8 +218,10 @@ function bulgeToArc(p: V2, q: V2, b: number): { c: V2; r: number; s: number; e: 
   const th = 4 * Math.atan(b);
   const r = L / 2 / Math.sin(Math.abs(th) / 2);
   if (!Number.isFinite(r) || r <= 0) return null;
-  const mx = (p.x + q.x) / 2, my = (p.y + q.y) / 2;
-  const ux = (q.x - p.x) / L, uy = (q.y - p.y) / L;
+  const mx = (p.x + q.x) / 2,
+    my = (p.y + q.y) / 2;
+  const ux = (q.x - p.x) / L,
+    uy = (q.y - p.y) / L;
   const sgn = b > 0 ? 1 : -1;
   const distMid = r * Math.cos(Math.abs(th) / 2);
   const c = v(mx - sgn * distMid * uy, my + sgn * distMid * ux);
@@ -196,10 +244,8 @@ export function importDxf(d: DxfDoc, opts: ImportOptions = {}): ImportResult {
   const detect = detectUnits(d, wallThicknessSamples(raw));
   const unit: Unit = opts.unit ?? detect.unit;
   const method = opts.unit ? 'user' : detect.method;
-  if (opts.unit && opts.unit !== detect.unit)
-    warnings.push(`单位按指定值 ${opts.unit}（自动检测为 ${detect.unit}）`);
-  if (detect.method === 'fallback' && !opts.unit)
-    warnings.push('无法自动判断单位（按 mm 处理）——请在左侧确认');
+  if (opts.unit && opts.unit !== detect.unit) warnings.push(`单位按指定值 ${opts.unit}（自动检测为 ${detect.unit}）`);
+  if (detect.method === 'fallback' && !opts.unit) warnings.push('无法自动判断单位（按 mm 处理）——请在左侧确认');
 
   return buildDocFromRaw(raw, { name: opts.name, unit, method, warnings });
 }

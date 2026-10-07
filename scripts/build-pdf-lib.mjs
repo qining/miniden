@@ -40,7 +40,8 @@ export async function buildPdfLibs() {
     out['lib/pdf.min.js'] =
       '/* VENDORED —— 由 scripts/build-pdf-lib.mjs 从 pdfjs-dist@4.10.38 (legacy) 编译生成，勿手改。\n' +
       '   npm run pdf:build 重新生成；build.mjs 校验逐字节一致。Apache-2.0 (Mozilla)。 */\n' +
-      r.outputFiles[0].text + '\n/* CJS 尾注（node require 用；浏览器无 module 不受影响）：*/\n' +
+      r.outputFiles[0].text +
+      '\n/* CJS 尾注（node require 用；浏览器无 module 不受影响）：*/\n' +
       'if (typeof module !== "undefined" && module.exports) module.exports = pdfjsLib;';
   }
 
@@ -56,9 +57,10 @@ export async function buildPdfLibs() {
       sourcemap: false,
       write: false,
       footer: {
-        js: 'if (typeof globalThis !== "undefined") {\n' +
-            '  globalThis.pdfjsWorker = { WorkerMessageHandler: PDFJS_WORKER_BUNDLE.WorkerMessageHandler };\n' +
-            '}',
+        js:
+          'if (typeof globalThis !== "undefined") {\n' +
+          '  globalThis.pdfjsWorker = { WorkerMessageHandler: PDFJS_WORKER_BUNDLE.WorkerMessageHandler };\n' +
+          '}',
       },
     });
     out['lib/pdf.worker.min.js'] =

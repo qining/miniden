@@ -27,12 +27,18 @@ const lines = body.split('\n');
 
 function extractBalanced(startLine) {
   // 从 startLine（0-based）的花括号块开始，数括号到配平
-  let depth = 0, started = false, out = [];
+  let depth = 0,
+    started = false,
+    out = [];
   for (let i = startLine; i < lines.length; i++) {
     const l = lines[i];
     for (const ch of l) {
-      if (ch === '{') { depth++; started = true; }
-      else if (ch === '}') { depth--; }
+      if (ch === '{') {
+        depth++;
+        started = true;
+      } else if (ch === '}') {
+        depth--;
+      }
     }
     out.push(l);
     if (started && depth === 0) break;
@@ -40,8 +46,12 @@ function extractBalanced(startLine) {
   return out.join('\n');
 }
 
-const idx = (re) => lines.findIndex(l => re.test(l));
-if ([1, idx(/^const DIMTXT/), idx(/^const GEO_VERSION /), idx(/^let USERGEO = /), idx(/^const USERGEO_VERSION /)].some(i => i < 0)) {
+const idx = (re) => lines.findIndex((l) => re.test(l));
+if (
+  [1, idx(/^const DIMTXT/), idx(/^const GEO_VERSION /), idx(/^let USERGEO = /), idx(/^const USERGEO_VERSION /)].some(
+    (i) => i < 0
+  )
+) {
   console.error('fixture 提取锚点缺失——app.html 结构变了，检查脚本');
   process.exit(1);
 }
@@ -138,4 +148,6 @@ const outPath = path.join(root, 'tests', 'fixtures', 'legacy-geo.json');
 mkdirSync(path.dirname(outPath), { recursive: true });
 writeFileSync(outPath, JSON.stringify(fixture, null, 1) + '\n');
 const kb = (readFileSync(outPath).length / 1024).toFixed(1);
-console.log(`legacy-geo.json: ${kb}KB — walls ${empty.legacy.walls.length}, doors ${empty.legacy.doors.length}, fixed ${empty.legacy.fixed.length}, labels ${empty.legacy.labels.length}, fx ${empty.legacy.fx.length}`);
+console.log(
+  `legacy-geo.json: ${kb}KB — walls ${empty.legacy.walls.length}, doors ${empty.legacy.doors.length}, fixed ${empty.legacy.fixed.length}, labels ${empty.legacy.labels.length}, fx ${empty.legacy.fx.length}`
+);

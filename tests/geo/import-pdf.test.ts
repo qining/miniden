@@ -14,30 +14,37 @@
      - 确定性：同输入两次 → JSON 完全一致
    ===================================================================== */
 import { describe, it, expect } from 'vitest';
-import {
-  extractRawPdf,
-  classifyPdfColor,
-  inferPdfScale,
-  importPdf,
-} from '../../src/geo/import-pdf';
+import { extractRawPdf, classifyPdfColor, inferPdfScale, importPdf } from '../../src/geo/import-pdf';
 import type { PdfOpList, OpsTable } from '../../src/geo/import-pdf';
 
 /* ---- 最小 OPS 表（pdf.js 4.10 数值；只含用到的） ---- */
 const O: OpsTable = {
-  save: 10, restore: 11, transform: 12,
+  save: 10,
+  restore: 11,
+  transform: 12,
   constructPath: 91,
-  moveTo: 13, lineTo: 14, curveTo: 15, curveTo2: 16, curveTo3: 17,
-  closePath: 18, rectangle: 19, stroke: 20,
-  setStrokeRGBColor: 58, setFillRGBColor: 59,
-  paintImageXObject: 85, paintInlineImageXObject: 86,
+  moveTo: 13,
+  lineTo: 14,
+  curveTo: 15,
+  curveTo2: 16,
+  curveTo3: 17,
+  closePath: 18,
+  rectangle: 19,
+  stroke: 20,
+  setStrokeRGBColor: 58,
+  setFillRGBColor: 59,
+  paintImageXObject: 85,
+  paintInlineImageXObject: 86,
 };
 
 /* ---- 90° 弧的 cubic 近似（标准 kappa，与 fixture 生成器同式） ---- */
 function arcCubics(cx: number, cy: number, r: number, a0: number, a1: number): [number, number][][] {
   const out: [number, number][][] = [];
-  const n = 2, step = (a1 - a0) / n;
+  const n = 2,
+    step = (a1 - a0) / n;
   for (let i = 0; i < n; i++) {
-    const b0 = a0 + i * step, b1 = b0 + step;
+    const b0 = a0 + i * step,
+      b1 = b0 + step;
     const k = (4 / 3) * Math.tan(step / 4);
     const p0: [number, number] = [cx + r * Math.cos(b0), cy + r * Math.sin(b0)];
     const p3: [number, number] = [cx + r * Math.cos(b1), cy + r * Math.sin(b1)];
@@ -109,12 +116,20 @@ describe('CTM 栈', () => {
   it('save / restore 隔离变换', () => {
     const ops: PdfOpList = {
       fnArray: [O.save, O.transform, O.constructPath, O.stroke, O.restore, O.constructPath, O.stroke],
-      argsArray: [null, [1, 0, 0, 1, 100, 0], pathOps([13, 14], [0, 0, 10, 0]), null, null, pathOps([13, 14], [0, 0, 10, 0]), null],
+      argsArray: [
+        null,
+        [1, 0, 0, 1, 100, 0],
+        pathOps([13, 14], [0, 0, 10, 0]),
+        null,
+        null,
+        pathOps([13, 14], [0, 0, 10, 0]),
+        null,
+      ],
     };
     const raw = extractRawPdf(ops, O);
     expect(raw.segs).toHaveLength(2);
-    expect(raw.segs[0]!.a.x).toBeCloseTo(100, 3);   // 有偏移
-    expect(raw.segs[1]!.a.x).toBeCloseTo(0, 3);     // restore 后回到原点
+    expect(raw.segs[0]!.a.x).toBeCloseTo(100, 3); // 有偏移
+    expect(raw.segs[1]!.a.x).toBeCloseTo(0, 3); // restore 后回到原点
   });
 });
 
@@ -137,7 +152,7 @@ describe('弧拟合', () => {
       ...arcCubics(0, 0, 10, rad(180), rad(270)),
       ...arcCubics(0, 0, 10, rad(270), rad(360)),
     ];
-    const fns = [13, 15, 13, 15, 13, 15, 13, 15, 13, 15, 13, 15, 13, 15, 13, 15];   // pdf.js 4.10：每段 cubic 前有（隐式）moveTo
+    const fns = [13, 15, 13, 15, 13, 15, 13, 15, 13, 15, 13, 15, 13, 15, 13, 15]; // pdf.js 4.10：每段 cubic 前有（隐式）moveTo
     const nums: number[] = [];
     segs.forEach((s) => {
       nums.push(s[0][0], s[0][1]);
@@ -183,7 +198,7 @@ describe('rectangle / 扫描件 / 单位', () => {
     };
     const raw = extractRawPdf(ops, O);
     expect(raw.closed).toHaveLength(1);
-    expect(raw.closed[0]!.pts).toHaveLength(5);   // 4 角 + 回首
+    expect(raw.closed[0]!.pts).toHaveLength(5); // 4 角 + 回首
   });
   it('有 paintImage 且矢量 < 8 → scanned', () => {
     const ops: PdfOpList = {
@@ -224,12 +239,12 @@ describe('rectangle / 扫描件 / 单位', () => {
 
 describe('inferPdfScale（比例尺推断）', () => {
   it('门弧 700mm@1:200 + 套型量级 → 1:200 胜出', () => {
-    const raw = extractRawPdf(doorArcOps(0, 0, 9.92), O);   // r=9.92pt
-    expect(raw.arcs).toHaveLength(1);   // 弧拟合成立是推断的前提
+    const raw = extractRawPdf(doorArcOps(0, 0, 9.92), O); // r=9.92pt
+    expect(raw.arcs).toHaveLength(1); // 弧拟合成立是推断的前提
     // 造一个 4m×3m@1:200 = 56.7pt 的量级
     raw.segs.push({ a: { x: 0, y: 0 }, b: { x: 56.7, y: 0 }, cls: 'other' });
     const inf = inferPdfScale(raw);
-    expect(inf.scale).toBe(200);   // 门弧 r→0.70m 落入 [0.4,1.2]，量级 4.7m 也落入 → 1:200 得分 0
+    expect(inf.scale).toBe(200); // 门弧 r→0.70m 落入 [0.4,1.2]，量级 4.7m 也落入 → 1:200 得分 0
     expect(inf.method).toBe('heuristic');
   });
   it('没有门元素 → 靠整图量级，并给警告', () => {
@@ -238,11 +253,11 @@ describe('inferPdfScale（比例尺推断）', () => {
         fnArray: [O.setStrokeRGBColor, O.constructPath, O.stroke],
         argsArray: [{ 0: 0, 1: 0, 2: 0 } as unknown as unknown[], pathOps([13, 14], [0, 0, 56.7, 0]), null],
       },
-      O,
+      O
     );
     const inf = inferPdfScale(raw);
-    expect(inf.scale).toBe(100);   // 单线 56.7pt：1:100→2.0m 与 1:200→4.0m 都落入 [2,30] → 并列取小
-    expect(inf.warnings.some(w => w.includes('未检出门元素'))).toBe(true);
+    expect(inf.scale).toBe(100); // 单线 56.7pt：1:100→2.0m 与 1:200→4.0m 都落入 [2,30] → 并列取小
+    expect(inf.warnings.some((w) => w.includes('未检出门元素'))).toBe(true);
   });
 });
 
