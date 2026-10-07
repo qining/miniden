@@ -191,10 +191,36 @@ d('migrate → docToLegacy ≡ eff*（合成 USERGEO：覆盖/隐藏/新增）',
   });
 });
 
-/* ---- bug 猎 #3：arc 实心块（DXF 圆 → fullCircle 柱）的 legacy 投影 ---- */
+/* ---- bug 猎 #3：arc 实心块（DXF 圆 → fullCircle 柱）的 legacy 投影 ----
+   这三条不依赖 private fixture：用一份合成 legacy（CI / 公开环境也跑）。 */
+const miniLegacy: LegacyGeo = {
+  sc: 11.2,
+  walls: [
+    { x1: 0, y1: 0, x2: 10, y2: 0, t: 'w', wd: 11.2 },
+    { x1: 0, y1: 0, x2: 0, y2: 5, t: 'w', wd: 11.2 },
+  ],
+  inner: [],
+  doors: [{ x1: 0, y1: 2, x2: 0, y2: 3, kind: 'swing', hinge: 0, side: 1, wood: true }],
+  fixed: [
+    {
+      name: '柱',
+      poly: [
+        [0, 0],
+        [1, 0],
+        [1, 1],
+        [0, 0],
+      ],
+      fill: '#8a919c',
+    },
+  ],
+  labels: [],
+  fx: [],
+  patio: [],
+};
+
 describe('docToLegacy — arc 实心块必须展开成多边形（bug 猎 #3）', () => {
   it('fullCircle 柱投影出非空 poly（旧版投影成 []，导入的圆柱静默消失）', () => {
-    const doc = migrateLegacyToV1(legacy, EMPTY_USERGEO);
+    const doc = migrateLegacyToV1(miniLegacy, EMPTY_USERGEO);
     doc.solids.push({
       id: 'p99',
       name: '柱',
@@ -220,8 +246,10 @@ describe('docToLegacy — arc 实心块必须展开成多边形（bug 猎 #3）'
     expect(area).toBeGreaterThan(1.05);
     expect(area).toBeLessThan(1.14);
   });
+});
 
-  it('内置文档（恒为 poly solid）投影逐字节不变（无损性红线）', () => {
+d('内置文档（恒为 poly solid）投影逐字节不变（bug 猎 #3 的无损红线，需 private fixture）', () => {
+  it('同一份 legacy 两次迁移的 fixed 投影逐字节相同；每件 poly 非空', () => {
     const userGeo = fx?.user?.userGeo as LegacyUserGeo;
     const a = docToLegacy(migrateLegacyToV1(legacy, userGeo));
     const b = docToLegacy(migrateLegacyToV1(legacy, userGeo));
@@ -244,7 +272,7 @@ describe('migrateLegacyToV1 — 越界 hidden 索引（损坏存档防御）', (
       hiddenP: [999],
       hiddenD: [999],
     };
-    const doc = migrateLegacyToV1(legacy, u);
+    const doc = migrateLegacyToV1(miniLegacy, u);
     expect(doc.hidden.walls.length + doc.hidden.windows.length).toBe(1); // 只有合法的 0
     expect(doc.hidden.solids).toEqual([]);
     expect(doc.hidden.doors).toEqual([]);

@@ -401,6 +401,8 @@ sips -z 高 宽 /tmp/x.png --out /tmp/x_big.png               # 放大
 | **y 翻转只翻点、不翻弧角**（`transform`：`(x,y)→(x,−y)` 后 `s/e` 原样保留） | φ 被映成 −φ 且扫掠方向反转，弧的像应是 `[−e, −s]`；消费端（`expand` / SVG `A`）会画出**镜像弧或补弧**。当前 `tf.arcs` 未被消费（v1 不导入弧墙）= 潜伏雷，将来收编弧墙时必炸 | 坐标变换必须同时变换所有派生量（角度、法线、绕序、UV 朝向）。整圆例外（取反会把 `e−s` 变成 −2π） |
 | **管线静默丢弃输入**（DXF/PDF 的圆弧被扔掉，一声不响） | 用户只看到「墙少了一截」，不知道原因，也不会去补画；而测试把「无警告」当成了正确行为（qcad_example00 真实含 12 段弧） | 任何被丢弃的输入都要进 `info.warnings` 并说明判据与后果（「N 段圆弧未读入（v1 只读直线段）——曲线墙请用短段描出」） |
 
+| **在「靠 private fixture 门控」的测试文件里用普通 `describe` 加新测试**（同文件已有 `const d = fx ? describe : describe.skip`） | 本地全绿、**CI 红**：新测试解引用 `legacy`（fixture 缺失时是 null）→ `Cannot read properties of null (reading 'sc')`（E19 实测：CI run 37596752776 三红）。`describe.skip` 只挡住 `it` 体，不挡写在它外面的代码 | 新测试优先**不依赖 private fixture**（自己合成一份小 LegacyGeo）——CI 也能跑，覆盖面反而变大；确实需要真实几何的才放进 `d(...)`。本地验 CI 行为：`git archive HEAD \| tar -x -C /tmp/ci-sim` + 软链 node_modules + 在那里跑 vitest（无 private/ = CI 环境） |
+
 ### 5.1.1 bug 猎方法论（2026-10 三轮，8 个 bug 全走这条路）
 
 **先写失败测试，再改代码**。每个 bug 都是「按代码读出来的怀疑」→ 写一条应当红的
