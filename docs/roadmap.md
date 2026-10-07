@@ -65,7 +65,7 @@
 | E6 | ESLint + Prettier（Prettier 单独一个格式化 commit） | **完**（2026-10-07）：两个提交分开——纯 Prettier 重排（28 文件，零逻辑变更）+ 工具链（eslint.config.mjs 扁平配置、npm scripts lint/format、CI 两步门禁、清 4 处 unused）。坑：typescript-eslint 上游 peer 只支持 TS <6.1，本仓库 TS 7 无 JS 编译器 API → .ts 暂不进 ESLint（tsc strict + Prettier 覆盖 TS 侧）；app.html/planner.html 字节敏感进 .prettierignore（ESLint 默认不碰 .html）；bench 脚本 no-undef 关闭（引用 app 运行时全局）；build/tmp/（esbuild 中间产物）要同时进两个 ignore 列表 |
 | E7 | LICENSE + THIRD-PARTY.md（three/OrbitControls MIT 署名义务；dxf-parser MIT；OpenCV.js Apache-2.0；pdf.js Apache-2.0） | **完**（2026-10-06）：MIT LICENSE + THIRD-PARTY.md（含完整许可证文本）；实测修正：产物不含 OpenCV.js（S7 是纯 JS 管线，已在文档里写明「明确未使用」）；补文件头署名：lib/OrbitControls.js（vendored 注记）+ dxf-parser（build-dxf-lib.mjs 生成时自动加头，保持可复现）；three.min.js/pdf.* 原本已带头 |
 | E8 | README（人看的）：功能/截图/打开方式/快捷键/指向 docs 与 AGENTS；**包含 add-catalog-item skill 作为交付物的说明** | **完**（2026-10-06）：功能清单/快速开始/快捷键表/仓库结构/开发命令/文档索引/许可；截图 docs/img/readme-2d.png + readme-3d.png（**generic 户型**，隐私安全）；skill 作为交付物在仓库结构表里说明 |
-| E9 | docs/ 架构文档：数据流图、模块边界（从 AGENTS.md 提炼人读版） | todo |
+| E9 | docs/ 架构文档：数据流图、模块边界（从 AGENTS.md 提炼人读版） | **done** → `docs/design/architecture.md`（现状版：一个事实来源→两个入口 / 几何数据流 / 模块边界 / 构建守卫 / 门禁矩阵 / 不变量 / 与 R7 目标图逐条对照） |
 | E10 | 持久化 localStorage → IndexedDB（`storage.js` 门面 + 迁移 3 个现有 key） | todo |
 | E14 | **快捷 SLO 套件**（ADR-0006：顶层 = 用户时间，不是原始性能）：首次 ≤3 分钟（打开→放家具→3D 印象）；导入 ≤3 分钟（上传→可用初稿）；子指标：启动 <1.5s、切视图 <300ms、拖拽 <16ms/帧、50 件场景内存 <1.5GB、DXF 10MB <3s（带进度）、目录包 1000 条 <1s。每项都要实测数字，不凭感觉 | todo |
 | E17 | **快捷 SLO 的 CI 门禁**（E14 的用户时间指标进 CI：进程墙钟 + 完成标记法，AGENTS §11；回归即红） | todo |

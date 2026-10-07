@@ -50,6 +50,7 @@ roadmap.md（状态推进）→ 代码 + AGENTS.md 沉淀
 | 文档 | 状态 |
 |---|---|
 | [floorplan-input-and-eng-audit.md](design/floorplan-input-and-eng-audit.md) | 研究/提案（未实施；含工程审计 P0-P2） |
+| [architecture.md](design/architecture.md) | **已实施（现状描述）**：一个事实来源→两个入口、几何数据流、模块边界、构建守卫、门禁矩阵、不变量清单、与 R7 目标模块图的差距 |
 
 ### research/
 
