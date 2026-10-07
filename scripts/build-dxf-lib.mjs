@@ -14,5 +14,7 @@ const root = dirname(fileURLToPath(import.meta.url));
 const umd = readFileSync(join(root, '..', 'node_modules', 'dxf-parser', 'dist', 'dxf-parser.js'), 'utf8');
 if (!/^!function\(e,a\)\{/.test(umd.trimStart()) || !umd.includes('DxfParser=a()'))
   throw new Error('node_modules/dxf-parser/dist/dxf-parser.js 不像 UMD（版本变了？人工检查）');
-writeFileSync(join(root, '..', 'lib', 'dxf-parser.iife.js'), umd + '\n');
+const header = '/* VENDORED dxf-parser@1.1.2 UMD (MIT, (c) 2015 mdgserver) —— 署名见 THIRD-PARTY.md；\n' +
+  '   node scripts/build-dxf-lib.mjs 从 node_modules 重新生成，勿手改。 */\n';
+writeFileSync(join(root, '..', 'lib', 'dxf-parser.iife.js'), header + umd + '\n');
 console.log(`lib/dxf-parser.iife.js = dxf-parser@1.1.2 UMD（${(umd.length/1024).toFixed(1)}KB）`);

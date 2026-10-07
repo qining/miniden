@@ -63,8 +63,8 @@
 | # | 工作项 | 状态 |
 |---|---|---|
 | E6 | ESLint + Prettier（Prettier 单独一个格式化 commit） | todo |
-| E7 | LICENSE + THIRD-PARTY.md（three/OrbitControls MIT 署名义务；dxf-parser MIT；OpenCV.js Apache-2.0；pdf.js Apache-2.0） | todo |
-| E8 | README（人看的）：功能/截图/打开方式/快捷键/指向 docs 与 AGENTS；**包含 add-catalog-item skill 作为交付物的说明** | todo |
+| E7 | LICENSE + THIRD-PARTY.md（three/OrbitControls MIT 署名义务；dxf-parser MIT；OpenCV.js Apache-2.0；pdf.js Apache-2.0） | **完**（2026-10-06）：MIT LICENSE + THIRD-PARTY.md（含完整许可证文本）；实测修正：产物不含 OpenCV.js（S7 是纯 JS 管线，已在文档里写明「明确未使用」）；补文件头署名：lib/OrbitControls.js（vendored 注记）+ dxf-parser（build-dxf-lib.mjs 生成时自动加头，保持可复现）；three.min.js/pdf.* 原本已带头 |
+| E8 | README（人看的）：功能/截图/打开方式/快捷键/指向 docs 与 AGENTS；**包含 add-catalog-item skill 作为交付物的说明** | **完**（2026-10-06）：功能清单/快速开始/快捷键表/仓库结构/开发命令/文档索引/许可；截图 docs/img/readme-2d.png + readme-3d.png（**generic 户型**，隐私安全）；skill 作为交付物在仓库结构表里说明 |
 | E9 | docs/ 架构文档：数据流图、模块边界（从 AGENTS.md 提炼人读版） | todo |
 | E10 | 持久化 localStorage → IndexedDB（`storage.js` 门面 + 迁移 3 个现有 key） | todo |
 | E14 | **快捷 SLO 套件**（ADR-0006：顶层 = 用户时间，不是原始性能）：首次 ≤3 分钟（打开→放家具→3D 印象）；导入 ≤3 分钟（上传→可用初稿）；子指标：启动 <1.5s、切视图 <300ms、拖拽 <16ms/帧、50 件场景内存 <1.5GB、DXF 10MB <3s（带进度）、目录包 1000 条 <1s。每项都要实测数字，不凭感觉 | todo |
@@ -77,7 +77,7 @@
 |---|---|---|
 | E11 | i18n（UI 字符串；目录名保留原文拼写） | todo |
 | E12 | PWA/service worker | todo |
-| E13 | 包体预算进 CI（796KB 基线） | todo（E5 的扩展） |
+| E13 | 包体预算进 CI（796KB 基线） | **完**（2026-10-06）：`scripts/size-budget.mjs` + `npm run size:check` + CI build 后门禁。基线修正（796KB 是 three 内联前的旧数）：app.html 973KB/预算 1123KB（86.7%）· dist/app.html 3720KB/预算 4102KB（90.7%，含 three 608KB+dxf 25KB+pdf ~1MB 内联）。预算是棘轮：上调必须显式并在提交信息说明（S10 目录扩容时会触发） |
 | E15 | `work/` 644MB 研究产物治理：**ref/ 保留入库**（建模 source of truth），过程产物（check_*.png/tv_*.png）移出跟踪或 LFS；交付后清理政策写进 AGENTS（R8 §3.4） | todo |
 | E16 | **UI 黄金截图门禁**（R10）：`#ui` hash 模式 + 8 张黄金基线 + 像素 diff 工具（本地 ≤0.3% / CI 确定性 md5） | **完**（本次提交）：`#ui:<state>` 规范化 8 态（2d / 2d-sel(Lunix 选中) / 3d / fp / night / ft / collapsed / dlg，全新内置文档+空布局+冻结光标，全 CALIB-gated）；`scripts/ui-gate.mjs`（pngjs）：截图→与 `work/golden/*.png` 比（≤0.3%、单通道容差 4），超限出红色 diff 图；`--update` 显式重拍；`--selftest` 同态双截 md5 必须一致——**本机实测 8/8 字节级确定**（含 3D/swiftshader，0.3% 留作跨 Chrome 版本余量）；npm `ui:gate` / `ui:gate:update` / `ui:gate:selftest`；窗口 1700×1100 固定（换窗口=重拍基线）。基线目检过（八态均与预期一致）；calib/bench 全绿 | S9 的前置；CI 侧（ubuntu 基线+md5 门禁）随 E5 落地 |
 

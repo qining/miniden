@@ -40,6 +40,9 @@ jobs:
       # dist/app.html 无 private/ 引用 + 户型=generic-2br + layout:null
       - run: npm run build
 
+      # E13 包体预算（棘轮：上调是显式动作）
+      - run: npm run size:check
+
       # plan-independent bench：source / dist / 公开入口 三份同一套脚本
       - run: node scripts/run-bench.mjs t_3d.html t_3d_dist.html t_3d_app.html
 
