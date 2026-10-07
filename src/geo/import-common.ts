@@ -346,7 +346,18 @@ export function transform(raw: Raw, unit: Unit, scale = 1): Transformed {
   const flip = (p: V2): V2 => v((p.x - minX) * k, (maxY - p.y) * k);
   const tf: Transformed = {
     segs: [],
-    arcs: raw.arcs.map((a) => ({ c: flip(a.c), r: a.r * k, s: a.s, e: a.e, cls: a.cls, full: a.full })),
+    // y 翻转 (x,y)→(x,−y) 把角度 φ 映成 −φ 并且扫掠方向反转：
+    // 弧的像 = 角度区间 [−e, −s]（沿 θ 增大方向）。只翻点不翻角会让消费端
+    // （expand / SVG A）画出镜像弧、甚至补弧（bug 猎 #7）。
+    // 整圆无所调（s/e 无意义，且取反会把 e−s 变成 −2π）。
+    arcs: raw.arcs.map((a) => ({
+      c: flip(a.c),
+      r: a.r * k,
+      s: a.full ? a.s : -a.e,
+      e: a.full ? a.e : -a.s,
+      cls: a.cls,
+      full: a.full,
+    })),
     circles: raw.circles.map((c) => ({ c: flip(c.c), r: c.r * k, cls: c.cls })),
     closed: raw.closed.map((c) => ({ pts: c.pts.map(flip), cls: c.cls })),
     extentM: { w: (maxX - minX) * kM, h: (maxY - minY) * kM },
@@ -463,14 +474,19 @@ function mergeCollinearBands(bands: Band[]): Band[] {
   if (bands.length < 2) return bands;
   const groups = new Map<string, Band[]>();
   for (const b of bands) {
-    // 规范化方向到 [0, π)：翻转使 (x>0 或 x==0 且 y>0)
+    // 规范化方向到 [0, π)：翻转使 (x>0 或 x==0 且 y>0)。
+    // 关键：dir 翻时 offset 必须跟着翻——法向 = dir 旋转 90°，翻 dir 就是翻法向，
+    // 中线坐标跟着反号。旧版只归一化 dir，同一条墙线被门洞切成两簇、两簇段方向相反时
+    // key 对不上（+0.394 vs −0.394）→ 不合并 → 缺口不存 → 导入户型丢门（bug 猎 #6）。
     let dx = b.dir.x,
       dy = b.dir.y;
+    let koff = b.offset;
     if (dx < 0 || (dx === 0 && dy < 0)) {
       dx = -dx;
       dy = -dy;
+      koff = -koff;
     }
-    const key = `${dx.toFixed(3)}|${dy.toFixed(3)}|${(Math.abs(b.offset) < 1e-9 ? 0 : b.offset).toFixed(3)}`;
+    const key = `${dx.toFixed(3)}|${dy.toFixed(3)}|${(Math.abs(koff) < 1e-9 ? 0 : koff).toFixed(3)}`;
     (groups.get(key) ?? groups.set(key, []).get(key)!).push(b);
   }
   const out: Band[] = [];
@@ -479,18 +495,22 @@ function mergeCollinearBands(bands: Band[]): Band[] {
       out.push(g[0]);
       continue;
     }
+    // 合并到第一条带的框架：反向带的沿线坐标取反（u → −u，区间端点跟着交换）、
+    // 法向偏移取反。否则两套框架的区间会被当作同一坐标轴合并，墙会错位。
+    const ref = g[0];
     const ivs: { u0: number; u1: number }[] = [];
     const srcs: number[] = [];
     let off = 0;
     const ths: number[] = [];
     for (const b of g) {
-      ivs.push(...b.intervals);
+      const same = dot(b.dir, ref.dir) >= 0;
+      for (const iv of b.intervals) ivs.push(same ? { u0: iv.u0, u1: iv.u1 } : { u0: -iv.u1, u1: -iv.u0 });
       srcs.push(...b.memberSrc);
-      off += b.offset;
+      off += same ? b.offset : -b.offset;
       ths.push(b.thick);
     }
     off /= g.length;
-    const dir = g[0].dir;
+    const dir = ref.dir;
     out.push({
       dir,
       origin: mul(v(-dir.y, dir.x), off),
@@ -794,6 +814,9 @@ export function buildDocFromRaw(raw: Raw, opts: BuildDocOptions): ImportResult {
 
   if (raw.skipped.inserts) warnings.push(`跳过 ${raw.skipped.inserts} 个块引用（未展开，门/窗符号可能缺失）`);
   if (raw.skipped.ellipses) warnings.push(`跳过 ${raw.skipped.ellipses} 个椭圆`);
+  // v1 的墙/门/窗只认直线段（ADR-0002：弧墙是将来）——弧被丢弃必须说出来，
+  // 否则用户只看到「墙少了一截」而不知道为什么（bug 猎 #8）。
+  if (tf.arcs.length) warnings.push(`${tf.arcs.length} 段圆弧未读入（v1 只读直线段）——曲线墙请在编辑器里用短段描出`);
   if (walls.length === 0) warnings.push('未检出墙体——请检查图层/单位，或在编辑器里手画');
   if (runs.length)
     warnings.push(`${runs.length} 个家具轮廓按柜体带读入（深度取轮廓实际延伸、台面高默认 0.9m，可在「台面」工具里改）`);

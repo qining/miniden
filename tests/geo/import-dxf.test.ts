@@ -11,6 +11,8 @@ import { expand, type Seg, type Geom } from '../../src/schema/primitives';
 import { docToLegacy } from '../../src/schema/migrate';
 import {
   buildDocFromRaw,
+  detectBands,
+  transform,
   type Raw,
   type RawClosed,
   type RawSeg,
@@ -22,6 +24,8 @@ const here = dirname(fileURLToPath(import.meta.url));
 const M_TO_FT = 1 / 0.3048;
 const f2 = (x: number) => Math.round(x * 10000) / 10000;
 const near = (a: number, b: number, eps = 0.005) => expect(Math.abs(a - b)).toBeLessThan(eps);
+const v = (x: number, y: number) => ({ x, y });
+const distFt = (a: { x: number; y: number }, b: { x: number; y: number }) => Math.hypot(b.x - a.x, b.y - a.y);
 // v1 里墙/门/窗的 geom 恒为 seg（ADR-0002：弧墙是将来）
 const seg = (g: Geom): Seg => g as Seg;
 
@@ -281,5 +285,96 @@ describe('S12：家具层轮廓 → 台面 run（读几何，不猜位置）', (
     const r = build([P(1, 0.05), P(4, 0.05), P(4, 0.65), P(1, 0.65)], [P(0, 0), P(6, 0)]);
     expect(validate(r.doc)).toEqual([]);
     expect(Object.keys(docToLegacy(r.doc))).toEqual(['walls', 'fixed', 'doors']);
+  });
+});
+
+/* ---- bug 猎 #6：同一条墙线被门洞切成两簇、两簇段方向相反时，
+   mergeCollinearBands 的 key 只归一化了 dir，没归一化 offset/intervals
+   → 两簇不合并 → 门洞看不见（导入户型丢门）。 ---- */
+describe('墙带合并 — 反向段（bug 猎 #6）', () => {
+  // 一条 6m 长、240mm 厚的水平墙，中间 0.9m 门洞；左半段指向 +x，右半段指向 −x
+  const raw: Raw = {
+    segs: [
+      { a: v(0, 0), b: v(3000, 0), cls: 'wall' },
+      { a: v(0, 240), b: v(3000, 240), cls: 'wall' },
+      { a: v(6000, 0), b: v(3900, 0), cls: 'wall' },
+      { a: v(6000, 240), b: v(3900, 240), cls: 'wall' },
+    ],
+    arcs: [],
+    circles: [],
+    closed: [],
+    skipped: { ellipses: 0, inserts: 0, texts: 0, other: 0 },
+  };
+  it('detectBands：反向段仍归并为同一条带（1 带 2 区间 = 门洞可见）', () => {
+    const tf = transform(raw, 'mm');
+    const segs = tf.segs.filter((s) => distFt(s.a, s.b) >= 0.1 * M_TO_FT);
+    const bands = detectBands(segs);
+    expect(bands).toHaveLength(1);
+    expect(bands[0]!.intervals).toHaveLength(2);
+    // 区间必须落在同一条法向坐标上（同一 dir 框架内）
+    const gapM = (bands[0]!.intervals[1].u0 - bands[0]!.intervals[0].u1) * 0.3048;
+    near(gapM, 0.9, 0.02);
+  });
+  it('buildDocFromRaw：门洞被读成 1 个门（旧版读成 0 个）', () => {
+    const { doc, info } = buildDocFromRaw(raw, { unit: 'mm', method: 'user' });
+    expect(doc.doors).toHaveLength(1);
+    expect(doc.walls).toHaveLength(2);
+    near(seg(doc.doors[0]!.gapGeom!).x2 - seg(doc.doors[0]!.gapGeom!).x1, 0.9 * M_TO_FT, 0.02);
+    expect(validate(doc)).toEqual([]);
+    expect(info.counts.doors).toBe(1);
+  });
+});
+
+/* ---- bug 猎 #7/#8：transform 的 y 翻转只翻了点，没翻弧角 ----
+   (x,y)→(x,−y) 把角度 φ 映成 −φ 且扫掠方向反转；原样保留 s/e 会让
+   消费端（expand / SVG A）画出镜像弧（甚至补弧）。
+   同时：v1 不读入弧墙，但旧版一声不响，用户只看到「墙少了」。 ---- */
+describe('transform — 圆弧（bug 猎 #7）', () => {
+  const raw: Raw = {
+    segs: [],
+    arcs: [{ c: v(0, 0), r: 1, s: 0, e: Math.PI / 2, cls: 'wall', full: false }],
+    circles: [],
+    closed: [],
+    skipped: { ellipses: 0, inserts: 0, texts: 0, other: 0 },
+  };
+  it('y 翻转后弧角取反并交换（s′=−e, e′=−s），端点逐位对上', () => {
+    const tf = transform(raw, 'm');
+    const a = tf.arcs[0]!;
+    near(a.s, -Math.PI / 2, 1e-9);
+    near(a.e, 0, 1e-9);
+    // 端点必须与「把原始端点直接 flip 后」的位置一致
+    const c = a.c;
+    const p0 = { x: c.x + a.r * Math.cos(a.s), y: c.y + a.r * Math.sin(a.s) };
+    const p1 = { x: c.x + a.r * Math.cos(a.e), y: c.y + a.r * Math.sin(a.e) };
+    near(p0.x, 1 * M_TO_FT, 1e-6);
+    near(p0.y, 0, 1e-6);
+    near(p1.x, 2 * M_TO_FT, 1e-6);
+    near(p1.y, 1 * M_TO_FT, 1e-6);
+  });
+  it('整圆不受影响（full 弧 s/e 无意义）', () => {
+    const full: Raw = {
+      ...raw,
+      arcs: [{ c: v(0, 0), r: 1, s: 0.3, e: 0.3 + 2 * Math.PI, cls: 'wall', full: true }],
+    };
+    const a = transform(full, 'm').arcs[0]!;
+    expect(a.full).toBe(true);
+    near(a.e - a.s, 2 * Math.PI, 1e-9);
+  });
+});
+
+describe('圆弧不读入必须说出来（bug 猎 #8）', () => {
+  it('含弧的原始数据 → 警告里写明跳过了几段弧', () => {
+    const raw: Raw = {
+      segs: [
+        { a: v(0, 0), b: v(3000, 0), cls: 'wall' },
+        { a: v(0, 240), b: v(3000, 240), cls: 'wall' },
+      ],
+      arcs: [{ c: v(1500, 120), r: 120, s: 0, e: Math.PI, cls: 'wall', full: false }],
+      circles: [],
+      closed: [],
+      skipped: { ellipses: 0, inserts: 0, texts: 0, other: 0 },
+    };
+    const { info } = buildDocFromRaw(raw, { unit: 'mm', method: 'user' });
+    expect(info.warnings.some((w) => /圆弧/.test(w))).toBe(true);
   });
 });

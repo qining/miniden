@@ -115,9 +115,12 @@ describe('integration: 每文件行为', () => {
 
   describe('qcad_example00（QCAD 样例 / AC1024 / $INSUNITS=4）', () => {
     const r = importDxf(load('qcad_example00.dxf'));
-    it('insunits → in，量级正常 → 无警告', () => {
+    it('insunits → in，量级正常 → 无「量级」警告；图里的 12 段弧如实报出', () => {
       expect(r.info.unit).toBe('in');
-      expect(r.info.warnings).toEqual([]);
+      expect(r.info.warnings.some((w) => /量级/.test(w))).toBe(false);
+      // bug 猎 #8：这份样例确实含 12 段圆弧，v1 不读入弧墙 → 必须告知用户
+      expect(r.info.warnings.filter((w) => /圆弧/.test(w))).toHaveLength(1);
+      expect(r.info.warnings[0]).toContain('12 段圆弧');
     });
   });
 
