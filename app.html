@@ -13956,15 +13956,6 @@ function furn3D(it, spec){
       if(kind==='desk'){ box(1.5,.9,.1, matD, 0, hf, -df/2+.5); }
       break;
     }
-    case 'chair': {
-      box(wf,.1,df,matWood,0,1.45,0);
-      box(wf,1.35,.1,matWood,0,1.55,-df/2+.05);
-      [[-1,-1],[1,-1],[1,1],[-1,1]].forEach(([a,b])=>{
-        const mm=new THREE.Mesh(new THREE.BoxGeometry(.08,1.45,.08),matWood);
-        mm.position.set(a*(wf/2-.08),.72,b*(df/2-.08)); mm.castShadow=true; g.add(mm);
-      });
-      break;
-    }
     case 'officeChair': {
       cyl(wf/2,.15,matD,0,1.2,0); box(wf*.9,1.4,.2,matD,0,1.5,-df/2+.15);
       cyl(.08,1.2,matMetal,0,0,0); cyl(wf/2.2,.06,matMetal,0,0,0);
