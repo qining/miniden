@@ -17,7 +17,10 @@
     "pdf:build": "node scripts/build-pdf-lib.mjs",
     "ui:gate": "node scripts/ui-gate.mjs",
     "ui:gate:update": "node scripts/ui-gate.mjs --update",
-    "ui:gate:selftest": "node scripts/ui-gate.mjs --selftest"
+    "ui:gate:selftest": "node scripts/ui-gate.mjs --selftest",
+    "slo": "node scripts/slo.mjs",
+    "slo:headful": "node scripts/slo.mjs --headful",
+    "slo:ci": "node scripts/slo.mjs --public --ci"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

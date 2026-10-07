@@ -52,6 +52,11 @@ jobs:
 
       - run: node scripts/run-bench.mjs t_pt.html t_pt_dist.html t_pt_app.html
 
+      # E14/E17 快捷 SLO（ADR-0006 顶层指标）。CI 跑软件 GL → 口径是「回归门禁」（抓 5× 级劣化）；
+      # 用户侧绝对值（启动 1.5s / 拖拽 16ms）由本地 `npm run slo:headful` 验。
+      - name: E14 quick SLO suite (software-GL regression gate)
+        run: npm run slo:ci
+
       # 渲染确定性（双截 md5 一致）+ 8 个 UI 态可渲
       - name: ui-gate determinism (CI-built generic baseline)
         run: |

@@ -15222,27 +15222,42 @@ $('#btnImportDxf').onclick=()=>{ $('#btnImportDxf').blur();
 $('#fileDxf').addEventListener('change', ev=>{
   const f=ev.target.files[0]; ev.target.value='';
   if(!f) return;
-  f.text().then(t=>{
-    let d=null;
-    try{ d=new window.DxfParser().parse(t); }catch(err){ console.warn('DxfParser', err); }
-    if(!d){ alert('无法解析 '+f.name+'（不是有效的 DXF 文本？）'); return; }
-    let res=null;
-    try{ res=window.MINIDEN_GEO.importDxf(d, {name:f.name.replace(/\.[^.]+$/,'')}); }
-    catch(err){ alert('DXF 导入失败：'+err.message); return; }
-    if(!res){ alert('这个 DXF 里没有可导入的墙（只认 WALL/墙、WINDOW/窗、DOOR/门、COLUMN/柱 图层）'); return; }
-    _dxfPending={dxf:d, doc:res.doc, info:res.info};
-    const e=res.info.extent, info=res.info, c=res.info.counts, doc=res.doc;
-    const uN={mm:'毫米',cm:'厘米',m:'米',in:'英寸',ft:'英尺',yd:'码',mi:'英里'};
-    const mth={insunits:'$INSUNITS 头信息',heuristic:'墙厚启发式',user:'手动指定',fallback:'默认（未检出）'};
-    let h=`<div class="dxfRow">文件：<b>${escHtml(doc.name)}</b></div>`;
-    h+=`<div class="dxfRow">单位：<b>${uN[info.unit]||info.unit}</b>（${mth[info.unitMethod]||info.unitMethod}）</div>`;
-    h+=`<div class="dxfRow">平面范围：${e.w.toFixed(2)} × ${e.h.toFixed(2)} m</div>`;
-    h+=`<div class="dxfRow">识别：墙 <b>${c.walls}</b> · 窗 <b>${c.windows}</b> · 门 <b>${c.doors}</b> · 柱/结构 <b>${c.solids}</b>${c.rooms?` · 房间 ${c.rooms}`:''}</div>`;
-    if(info.warnings.length) h+=`<div class="dxfWarn">${escHtml(info.warnings.join('；'))}</div>`;
-    h+=`<div class="dxfNote">导入将<b>替换当前整套户型</b>并清空已摆家具；之后用「重置内置」可随时回到内置户型。双线墙取双线间距为墙厚（单线墙默认 10cm）。</div>`;
-    $('#dxfInfo').innerHTML=h;
-    $('#dxfUnitSel').value=info.unit;
-    $('#dxfModal').style.display='flex';
+  /* E14：大文件解析是同步的（10MB 约 0.4s，更大更久）——先给进度提示，再让浏览器画出来，然后才进解析 */
+  toast('正在读取 ' + f.name + '（' + (f.size / 1048576).toFixed(1) + 'MB）…', 30000);
+  f.text().then((t) => {
+    setTimeout(() => {
+      toast('正在解析 DXF…（大文件需要几秒）', 60000);
+      setTimeout(() => {
+        let d=null;
+        try{ d=new window.DxfParser().parse(t); }catch(err){ console.warn('DxfParser', err); }
+        if(!d){ toast(''); alert('无法解析 '+f.name+'（不是有效的 DXF 文本？）'); return; }
+        let res=null;
+        try{ res=window.MINIDEN_GEO.importDxf(d, {name:f.name.replace(/\.[^.]+$/,'')}); }
+        catch(err){ toast(''); alert('DXF 导入失败：'+err.message); return; }
+        if (!res) {
+          toast('');
+          alert('这个 DXF 里没有可导入的墙（只认 WALL/墙、WINDOW/窗、DOOR/门、COLUMN/柱 图层）');
+          return;
+        }
+        toast('');
+        _dxfPending = { dxf: d, doc: res.doc, info: res.info };
+        const e = res.info.extent,
+          info = res.info,
+          c = res.info.counts,
+          doc = res.doc;
+        const uN = { mm: '毫米', cm: '厘米', m: '米', in: '英寸', ft: '英尺', yd: '码', mi: '英里' };
+        const mth = { insunits: '$INSUNITS 头信息', heuristic: '墙厚启发式', user: '手动指定', fallback: '默认（未检出）' };
+        let h = `<div class="dxfRow">文件：<b>${escHtml(doc.name)}</b></div>`;
+        h += `<div class="dxfRow">单位：<b>${uN[info.unit] || info.unit}</b>（${mth[info.unitMethod] || info.unitMethod}）</div>`;
+        h += `<div class="dxfRow">平面范围：${e.w.toFixed(2)} × ${e.h.toFixed(2)} m</div>`;
+        h += `<div class="dxfRow">识别：墙 <b>${c.walls}</b> · 窗 <b>${c.windows}</b> · 门 <b>${c.doors}</b> · 柱/结构 <b>${c.solids}</b>${c.rooms ? ` · 房间 ${c.rooms}` : ''}</div>`;
+        if (info.warnings.length) h += `<div class="dxfWarn">${escHtml(info.warnings.join('；'))}</div>`;
+        h += `<div class="dxfNote">导入将<b>替换当前整套户型</b>并清空已摆家具；之后用「重置内置」可随时回到内置户型。双线墙取双线间距为墙厚（单线墙默认 10cm）。</div>`;
+        $('#dxfInfo').innerHTML = h;
+        $('#dxfUnitSel').value = info.unit;
+        $('#dxfModal').style.display = 'flex';
+      }, 60);
+    }, 60);
   });
 });
 $('#dxfCancel').onclick=()=>{ _dxfPending=null; $('#dxfModal').style.display='none'; };
