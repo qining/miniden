@@ -39,6 +39,7 @@ work/t_walledit_dist.html
 work/t_3d_dist.html
 work/t_pt_dist.html
 src/schema/dist-schema.js
+src/storage/dist-storage.js
 work/golden/shots/
 work/golden/diff-*.png
 

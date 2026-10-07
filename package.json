@@ -14,6 +14,7 @@
     "fixtures": "node scripts/make-fixtures.mjs",
     "schema:build": "node scripts/build-schema.mjs",
     "geo:build": "node scripts/build-geo.mjs",
+    "storage:build": "node scripts/build-storage.mjs",
     "pdf:build": "node scripts/build-pdf-lib.mjs",
     "ui:gate": "node scripts/ui-gate.mjs",
     "ui:gate:update": "node scripts/ui-gate.mjs --update",

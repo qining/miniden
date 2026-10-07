@@ -534,6 +534,13 @@
 <script src="lib/three.min.js"></script>
 <script src="lib/OrbitControls.js"></script>
 <script src="lib/dxf-parser.iife.js"></script>
+<script id="miniden-storage">
+/* VENDORED —— 由 scripts/build-storage.mjs 从 src/storage/ 编译生成，勿手改。
+   src/ 是唯一事实来源（单测 + tsc strict）；改 src/storage/ 后跑 `npm run storage:build`。
+   build.mjs 校验本块与最新编译输出逐字节一致。 */
+"use strict";(()=>{var W="miniden-planner",V="miniden_kv",N="planner_store_degraded";function z(r){if(!r||typeof r.getItem!="function")return null;try{r.setItem("__miniden_probe","1"),r.removeItem("__miniden_probe")}catch{return null}return{name:"localStorage",read:async o=>{let t={};for(let a of o)try{let n=r.getItem(a);typeof n=="string"&&(t[a]=n)}catch{}return t},write:async(o,t)=>{try{return r.setItem(o,t),!0}catch{return!1}},remove:async o=>{try{return r.removeItem(o),!0}catch{return!1}}}}function T(r){return new Promise(o=>{let t=null;try{t=r()}catch{o(void 0);return}if(!t){o(void 0);return}t.onsuccess=()=>o(t.result),t.onerror=()=>o(void 0)})}function H(r,o=V){let t=a=>{if(!r.transaction)return null;let n;try{n=r.transaction(o,a)}catch{return null}if(!n||typeof n.objectStore!="function")return null;try{return n.objectStore(o)}catch{return null}};return{name:"indexedDB",read:async a=>{let n={};for(let s of a){let c=t("readonly");if(!c)break;let l=await T(()=>c.get(s));typeof l=="string"&&(n[s]=l)}return n},write:async(a,n)=>{let s=t("readwrite");return s?await T(()=>s.put(n,a))!==void 0:!1},remove:async a=>{let n=t("readwrite");return n?(await T(()=>n.delete(a)),!0):!1}}}function A(r=W,o=1,t=V){let n=globalThis.indexedDB;if(!n||typeof n.open!="function")return Promise.resolve(null);let s=n.open.bind(n);return new Promise(c=>{let l;try{l=s(r,o)}catch{c(null);return}l.onupgradeneeded=()=>{let f=l.result;if(f&&typeof f.createObjectStore=="function")try{f.createObjectStore(t)}catch{}},l.onsuccess=()=>{let f=l.result;if(!f||typeof f.transaction!="function"){c(null);return}c(H(f,t))},l.onerror=()=>c(null),l.onblocked=()=>c(null)})}function O(r){let o=r.mirrorLimit??15e5,t=r.debounceMs??200,a=r.degradedFlag??N,n=r.ls??null,s=new Map,c=new Map,l=new Set,f=new Set,R=new Set(r.warmKeys??[]),M=[],w=new Set,u={migrated:0,conflicts:0,idbWrites:0,idbFails:0,lsMirrors:0,lsFails:0,skippedMirror:0,hydrated:0},h=null,P=null,k=!1,x=null,p=null,v=e=>{if(!n)return null;try{let i=n.getItem(e);return typeof i=="string"?i:null}catch{return null}},_=(e,i)=>{if(!n)return!1;try{return n.setItem(e,i),!0}catch{return!1}},D=()=>{k=!0,_(a,"1")},G=()=>{if(k){k=!1;try{n?.removeItem(a)}catch{}}};function K(){if(t<=0){L();return}if(p!==null)return;let e=globalThis;if(typeof e.setTimeout!="function"){L();return}p=e.setTimeout(()=>{p=null,L()},t)}async function F(){return h||(P||(P=Promise.resolve(r.idb??null).then(e=>h=e??null)),P)}function q(e){for(let i of e??[])R.add(i);return x||(x=(async()=>{let i=await F(),S=Array.from(R),m=i?await i.read(S):{},I={};for(let d of S){let g=v(d);g!==null&&(I[d]=g)}k=v(a)==="1";let B=!1;for(let d of S){let g=m[d],b=I[d];if(f.has(d))continue;g!==void 0&&!k?(s.set(d,g),b!==void 0&&b!==g&&(u.conflicts++,g.length<=o&&_(d,g))):b!==void 0?(s.set(d,b),i&&(g===void 0?u.migrated++:g!==b&&u.conflicts++,await i.write(d,b)||(D(),B=!0))):g!==void 0&&s.set(d,g);let E=s.get(d);E!==void 0&&E!==b&&(w.add(d),u.hydrated++)}if(k&&(B?_(a,"1"):G()),w.size)for(let d of M)d(Array.from(w));return{...u}})()),x}async function L(){if(p!==null){let m=globalThis;typeof m.clearTimeout=="function"&&m.clearTimeout(p),p=null}let e=await F(),i=Array.from(c.entries()),S=Array.from(l);if(c.clear(),l.clear(),!e)return{...u};for(let[m,I]of i)await e.write(m,I)?u.idbWrites++:(u.idbFails++,D());for(let m of S)await e.remove(m)?u.idbWrites++:(u.idbFails++,D());return{...u}}return{warm:q,ready:()=>q(),get(e){return s.has(e)?s.get(e)??null:v(e)},set(e,i){s.set(e,i),f.add(e),c.set(e,i),l.delete(e),i.length<=o?_(e,i)?u.lsMirrors++:u.lsFails++:u.skippedMirror++,K()},remove(e){s.set(e,null),f.add(e),c.delete(e),l.add(e);try{n?.removeItem(e)}catch{}K()},has(e){return s.has(e)?s.get(e)!==null:v(e)!==null},lsGet:v,lsRemove(e){try{n?.removeItem(e)}catch{}},flush:L,onHydrate(e){M.push(e),w.size&&e(Array.from(w))},stats:()=>({...u}),degraded:()=>k,backend:()=>h?h.name:z(n)?"localStorage":"none"}}var y=globalThis,C=y.localStorage&&typeof y.localStorage.getItem=="function"?y.localStorage:null,j=O({idb:A(),ls:C});y.MINIDEN_STORE=j;if(typeof y.addEventListener=="function"){let r=y.addEventListener,o=()=>{try{j.flush()}catch{}};r("pagehide",o),r("visibilitychange",()=>{let t=y.document;t&&t.visibilityState==="hidden"&&o()})}})();
+
+</script><!-- /miniden-storage -->
 <script id="miniden-schema">
 /* VENDORED —— 由 scripts/build-schema.mjs 从 src/schema/ 编译生成，勿手改。
    src/ 是唯一事实来源（31 单测 + tsc strict）；改 src/schema/ 后跑 `npm run schema:build`。
@@ -1017,9 +1024,23 @@ const PLAN_FP = (()=>{
 })();
 const DOC_KEY = 'planner_doc_v1:'+PLAN_FP, DOC_KEY_OLD = 'planner_doc_v1';
 const ITEMS_KEY = 'planner_v1:'+PLAN_FP,  ITEMS_KEY_OLD = 'planner_v1';
+const PANEL_KEY = 'planner_panels_v1';   // 侧栏宽度/折叠（非户型专属）——E10 前定义在这里，下面 warm 要用
+const PRO_TOOLS_KEY = 'md_proTools';     // 「工具 ⌄」开合（S9 渐进披露）
+/* E10（ADR-0006 的工程侧）：持久化从 localStorage 换成 IndexedDB 主存 + localStorage 镜像/回退。
+   为什么：LS 预算是整个源约 5MB，而户型文档接下来要长出新东西（floorOutline、描图特征、
+   更大的 layout），第一个撞的就是它；而且 LS 在「清浏览器数据 / 无痕窗口」里看不见。
+   门面（src/storage/，单测守着）把异步 IDB 包成**同步读、异步写**：
+     · warm() 还没完成时 store.get() 直接读 localStorage —— 与旧行为逐字节一致
+       （#calib / #ui: 的像素基线因此不受影响）；
+     · 旧键（单桶 planner_doc_v1 / planner_v1 / planner_userGeo_v1）只读、不迁移、不删
+       —— 走 lsGet/lsRemove，它属于另一份户型（AGENTS：删了就是毁用户数据）；
+     · IDB 写失败会在 LS 里留降级标记，下次载入以 LS 为准并回灌，避免「主存存的是旧值」
+       反过来覆盖用户的新存档。 */
+const STORE = window.MINIDEN_STORE;
+STORE.warm([DOC_KEY, ITEMS_KEY, PANEL_KEY, PRO_TOOLS_KEY]);   // 异步预热 + 旧键迁移（不 await：读路径本来就是同步的）
 let legacyOwned = true;   // 旧单桶存档是否属于当前户型（loadDoc 里判定）
 function save(){
-  try{ localStorage.setItem(ITEMS_KEY, JSON.stringify({geo:GEO_VERSION, items:state.items, customCat:state.customCat, unit:state.unit})); }catch(e){}
+  try{ STORE.set(ITEMS_KEY, JSON.stringify({geo:GEO_VERSION, items:state.items, customCat:state.customCat, unit:state.unit})); }catch(e){}
 }
 /* S13：布局跟着 app 走。
    家具「目录」是 app 数据（就在 app.html 里，275 条，永远跟着文件走）；
@@ -1042,9 +1063,9 @@ function seedLayout(){
 }
 function load(){
   let archived=false;   // 这台浏览器对这份户型存过档吗（存过就以它为准，不播种）
-  try{ const raw=localStorage.getItem(ITEMS_KEY); if(raw!==null) archived=true; if(takeArchive(JSON.parse(raw))) return true; }catch(e){}
+  try{ const raw=STORE.get(ITEMS_KEY); if(raw!==null) archived=true; if(takeArchive(JSON.parse(raw))) return true; }catch(e){}
   // 旧单桶家具存档：只有在旧文档也属于当前户型时才认（否则是别的户型的布局，坐标对不上）
-  if(legacyOwned){ try{ const raw=localStorage.getItem(ITEMS_KEY_OLD); if(raw!==null) archived=true; if(takeArchive(JSON.parse(raw))) return true; }catch(e){} }
+  if(legacyOwned){ try{ const raw=STORE.lsGet(ITEMS_KEY_OLD); if(raw!==null) archived=true; if(takeArchive(JSON.parse(raw))) return true; }catch(e){} }
   if(!CALIB && !archived && seedLayout()) return true;   // S13：内置布局播种（文件即存档）
   // CALIB 不播种：#calib 是几何校准视图，基线 md5 是在干净浏览器（无存档）下拍的，
   // 播种会把家具画进去 → md5 变（§1.1 硬红线）。真实用户自己的存档照旧可见。
@@ -1090,25 +1111,25 @@ function loadDoc(){
   const A=v=>Array.isArray(v)?v:[], O=v=>(v&&typeof v==='object'&&!Array.isArray(v))?v:{};
   const usable=(d)=>!SCHEMA.Project.validate(d).length && (d.imported || d.dataV===DOC_DATA_VERSION);
   // 1) 本户型的文档快照：validate 通过且 dataV 匹配 → 原样采用
-  try{ const ds=localStorage.getItem(DOC_KEY);
+  try{ const ds=STORE.get(DOC_KEY);
     if(ds){ const d=JSON.parse(ds);
       // imported 文档（S5 DXF 导入）不含内置实体，dataV 对它无意义 → 不跟内置版本闸
       if(usable(d)) return d;
-      localStorage.removeItem(DOC_KEY); } }catch(e){}
+      STORE.remove(DOC_KEY); } }catch(e){}
   // 1b) 旧单桶文档（P1 之前的存档）：几何对得上当前户型才采用；对不上就原样留着
   //     （它属于另一份户型——别删，等那份户型打开时还要用）
-  try{ const ds=localStorage.getItem(DOC_KEY_OLD);
+  try{ const ds=STORE.lsGet(DOC_KEY_OLD);
     if(ds){ const d=JSON.parse(ds);
       if(usable(d) && docMatchesPlan(d)) return d;
       legacyOwned = false; } }catch(e){ legacyOwned = false; }
   // 2) 旧格式一次性迁移（planner_userGeo_v1）
-  try{ const s=JSON.parse(localStorage.getItem('planner_userGeo_v1'));
+  try{ const s=JSON.parse(STORE.lsGet('planner_userGeo_v1'));
     if(s && s.geo===GEO_VERSION && s.uv===USERGEO_VERSION){
       const U={walls:A(s.walls), polys:A(s.polys).filter(p=>p&&Array.isArray(p.pts)), doors:A(s.doors),
                hiddenW:A(s.hiddenW), hiddenP:A(s.hiddenP), hiddenD:A(s.hiddenD), ovW:O(s.ovW), ovP:O(s.ovP), ovD:O(s.ovD)};
       const d=SCHEMA.Migrate.migrateLegacyToV1(buildRawGeo(), U);
       d.dataV=DOC_DATA_VERSION;
-      try{ localStorage.removeItem('planner_userGeo_v1'); }catch(_){}
+      try{ STORE.lsRemove('planner_userGeo_v1'); }catch(_){}
       return d;
     } }catch(e){}
   return freshDoc();
@@ -1118,7 +1139,7 @@ applyPlanChrome();                  // S11b：标题/照片/层高在文档就�
 function currentDoc(){ return DOC; }
 function resetDoc(){ DOC = freshDoc(); }   // 丢弃全部几何改动（含用户新增），回到内置户型
 function saveGeoImpl(){
-  try{ localStorage.setItem(DOC_KEY, JSON.stringify(DOC)); }catch(e){}
+  try{ STORE.set(DOC_KEY, JSON.stringify(DOC)); }catch(e){}
 }
 let saveGeo = saveGeoImpl;   // let：testgeo 测试种子会把它重赋值为 no-op（ESM 兼容）
 function geoChanged(){ geoDirty3D=true; saveGeo(); build2D(); if(typeof requestShadowUpdate==='function') requestShadowUpdate(); }
@@ -2253,10 +2274,10 @@ function setProTools(open){
   b.classList.toggle('open', open);
   b.setAttribute('aria-expanded', String(open));
   b.textContent = open?'工具 ⌃':'工具 ⌄';
-  try{ localStorage.setItem('md_proTools', open?'1':'0'); }catch(e){}
+  try{ STORE.set(PRO_TOOLS_KEY, open?'1':'0'); }catch(e){}
 }
 $('#btnMore').onclick=()=>{ $('#btnMore').blur(); setProTools(!proToolsOpen); };
-setProTools(!CALIB && (function(){ try{ return localStorage.getItem('md_proTools')==='1'; }catch(e){ return false; } })());
+setProTools(!CALIB && (function(){ try{ return STORE.get(PRO_TOOLS_KEY)==='1'; }catch(e){ return false; } })());
 window.addEventListener('keydown', ev=>{
   const tag=ev.target.tagName;
   if(meas.on && ev.key==='Escape' && !['INPUT','SELECT','TEXTAREA'].includes(tag)){ measEnd(); return; }
@@ -14664,12 +14685,11 @@ document.querySelectorAll('#unitSeg button').forEach(b=>{
 
 /* ===== 侧栏：收起 / 拖宽 =====
    挑家具是个费眼的活，得能把目录拉宽；不挑的时候又能收起来把画布让出来。
-   宽度和折叠状态都记在 localStorage 里。 */
-const PANEL_KEY = 'planner_panels_v1';
+   宽度和折叠状态走持久化门面（E10；键 planner_panels_v1 在持久化段定义）。 */
 function panelState(){
-  try{ return JSON.parse(localStorage.getItem(PANEL_KEY)) || {}; }catch(e){ return {}; }
+  try{ return JSON.parse(STORE.get(PANEL_KEY)) || {}; }catch(e){ return {}; }
 }
-function panelSave(p){ try{ localStorage.setItem(PANEL_KEY, JSON.stringify(p)); }catch(e){} }
+function panelSave(p){ try{ STORE.set(PANEL_KEY, JSON.stringify(p)); }catch(e){} }
 function applyPanels(){
   if(CALIB || IMGONLY) return;             // 校准模式锁死布局
   const p = panelState();
@@ -15710,6 +15730,21 @@ if(UIH && !CALIB && !IMGONLY){
   if(uist==='dlg')    setTimeout(()=>{ openPTDialog(); }, 800);
   refresh();
 }
+/* ---------- E10：主存补载入（IndexedDB 比页面刚才同步读到的值更新） ----------
+   warm() 是异步的：页面启动时同步读到的是 localStorage（或什么都没有），而主存里
+   可能存着另一份值 —— 典型场景：localStorage 被清过、或值太大没镜像进 LS。
+   这时补一次载入，用户的存档才真正回到界面上。
+   校准 / 只显底图 / #ui: 黄金态 / testgeo 一律不补：那些视图的定义就是「内置户型 + 空布局」，
+   补载入会改变像素基线（§1.1 硬红线）。 */
+STORE.onHydrate((keys)=>{
+  if(CALIB || IMGONLY || UIH || location.search.indexOf('testgeo')>=0 || window.__MINIDEN_BENCH__) return;
+  if(keys.indexOf(DOC_KEY)>=0){ DOC = loadDoc(); applyPlanChrome(); }
+  if(keys.indexOf(ITEMS_KEY)>=0) load();
+  build2D(); refresh();
+  if(typeof updatePlacedList==='function') updatePlacedList();
+  if(typeof updateTotals==='function') updateTotals();
+  toast('已从浏览器存档（IndexedDB）里恢复', 4000);
+});
 window.addEventListener('hashchange', ()=>location.reload()); // hash 切换时强制重载，避免旧页面残留
 // 同步3D当家具变动（简单节流）
 const _origDraw = drawFurniture;

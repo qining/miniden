@@ -26,6 +26,7 @@ import { fileURLToPath } from 'node:url';
 import esbuild from 'esbuild';
 import { bundleSchema } from './scripts/build-schema.mjs';
 import { bundleGeo } from './scripts/build-geo.mjs';
+import { bundleStorage } from './scripts/build-storage.mjs';
 
 const root = dirname(fileURLToPath(import.meta.url));
 const TMP = join(root, 'build', 'tmp');
@@ -60,6 +61,21 @@ if (geoEmbedded !== freshGeo) {
   process.exit(1);
 }
 console.log('  geo: 嵌入块与 src/geo/ 最新编译一致');
+
+// --- E10：校验嵌入的 storage 块 == src/storage/ 最新编译 ---
+const freshStorage = await bundleStorage();
+const STORE_START = '<script id="miniden-storage">\n';
+const STORE_END = '\n</script><!-- /miniden-storage -->';
+const stA = html.indexOf(STORE_START);
+if (stA < 0) throw new Error('app.html 缺 <script id="miniden-storage">（跑 npm run storage:build）');
+const stB = html.indexOf(STORE_END, stA);
+if (stB < 0) throw new Error('app.html 的 miniden-storage 块缺结束标记');
+const storageEmbedded = html.slice(stA + STORE_START.length, stB);
+if (storageEmbedded !== freshStorage) {
+  console.error('✗ 嵌入的 storage 块与 src/storage/ 最新编译不一致。跑 `npm run storage:build` 后重试。');
+  process.exit(1);
+}
+console.log('  storage: 嵌入块与 src/storage/ 最新编译一致');
 
 // --- S10：校验嵌入的 #miniden-plan 块 == data/plans/generic.json（入库版唯一事实来源）---
 // 两者静默分叉的话，CI 跑的户型和 data/ 里的不是同一个，查起来很贵。
@@ -355,6 +371,14 @@ if (hasMine) {
 //   work/t_walledit.html / t_walledit_dist.html ← 仅本地（mine plan）
 function makeBench(pageHtml, scriptPath, outPath) {
   pageHtml = stripPlanLayout(pageHtml); // S13：测试台不带个人布局
+  // 测试台标记：必须赶在存储块启动预热之前立好。
+  // 原因：测试台会直接摆弄存档（s13 删键、s5 清文档），而 IndexedDB 在同一个 profile 里跳轮次保留——
+  // 上一轮留下的主存值会在本轮中途触发「补载入」，把测试台刚设好的状态洗掉（不确定）。
+  // 与 calib / #ui: / testgeo 同理：测试页不是用户会话， hydration 不跑。
+  const flag = '<script>window.__MINIDEN_BENCH__=1;</script>\n';
+  const anchorIdx = pageHtml.indexOf('<script id="miniden-storage">');
+  if (anchorIdx >= 0) pageHtml = pageHtml.slice(0, anchorIdx) + flag + pageHtml.slice(anchorIdx);
+  else pageHtml = pageHtml.replace('</head>', flag + '</head>', 1);
   const script = readFileSync(join(root, scriptPath), 'utf8');
   // $ 转义（AGENTS §5.1）：String.replace 替换串会解释 $'/$`/$$/$n。
   // 转义只有一层：$ → $$（'$$$$' 被替换引擎解释为字面 $$），外层 replace 再把 $$ 解回 $。

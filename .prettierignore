@@ -14,6 +14,7 @@ lib/
 # 生成物：build.mjs 对它们做「与最新编译输出逐字节一致」校验，格式化会直接炸构建
 src/geo/dist-geo.js
 src/schema/dist-schema.js
+src/storage/dist-storage.js
 
 # 测试夹具与户型数据（数据文件，非代码；generic.json 还被 build.mjs 逐字节比对）
 tests/fixtures/

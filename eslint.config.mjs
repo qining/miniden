@@ -19,6 +19,7 @@ export default [
       'node_modules/**',
       'src/geo/dist-geo.js',
       'src/schema/dist-schema.js',
+      'src/storage/dist-storage.js',
       'tests/fixtures/**',
     ],
   },
