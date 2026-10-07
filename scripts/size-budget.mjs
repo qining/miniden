@@ -2,7 +2,7 @@
 // E13: 包体预算门禁。防止单文件产物无感膨胀（依赖内联、资源误入库、建模代码失控）。
 // 预算是棘轮：上调必须是显式动作并在提交信息里说明原因（如 S10 目录扩容）。
 // 用法: node scripts/size-budget.mjs   （CI 在 build 之后跑；本地 npm run size:check）
-import { readFileSync, statSync } from 'node:fs';
+import { statSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 

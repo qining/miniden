@@ -34,6 +34,10 @@ jobs:
 
       - run: npm run typecheck
 
+      # E6: 代码卫生门禁（ESLint = JS 工具面；Prettier = 全手写代码面，生成物/单文件应用已 ignore）
+      - run: npm run lint
+      - run: npm run format:check
+
       - run: npm test
 
       # 构建守卫：嵌入 schema/geo/plan 块 == src 最新编译；

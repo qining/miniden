@@ -25,27 +25,6 @@ const html = readFileSync(path.join(root, 'app.html'), 'utf8');
 const body = html.slice(html.indexOf('<script>\n') + '<script>\n'.length, html.lastIndexOf('</script>'));
 const lines = body.split('\n');
 
-function extractBalanced(startLine) {
-  // 从 startLine（0-based）的花括号块开始，数括号到配平
-  let depth = 0,
-    started = false,
-    out = [];
-  for (let i = startLine; i < lines.length; i++) {
-    const l = lines[i];
-    for (const ch of l) {
-      if (ch === '{') {
-        depth++;
-        started = true;
-      } else if (ch === '}') {
-        depth--;
-      }
-    }
-    out.push(l);
-    if (started && depth === 0) break;
-  }
-  return out.join('\n');
-}
-
 const idx = (re) => lines.findIndex((l) => re.test(l));
 if (
   [1, idx(/^const DIMTXT/), idx(/^const GEO_VERSION /), idx(/^let USERGEO = /), idx(/^const USERGEO_VERSION /)].some(

@@ -7,6 +7,10 @@
     "size:check": "node scripts/size-budget.mjs",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "fixtures": "node scripts/make-fixtures.mjs",
     "schema:build": "node scripts/build-schema.mjs",
     "geo:build": "node scripts/build-geo.mjs",
@@ -16,11 +20,15 @@
     "ui:gate:selftest": "node scripts/ui-gate.mjs --selftest"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@types/node": "^26.6.1",
     "dxf-parser": "^1.1.2",
     "esbuild": "^0.28.2",
+    "eslint": "^10.12.0",
+    "globals": "^17.13.0",
     "pdfjs-dist": "^4.10.38",
     "pngjs": "^7.0.0",
+    "prettier": "^3.9.9",
     "typescript": "^7.0.2",
     "vitest": "^5.0.1"
   }

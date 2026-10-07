@@ -13,7 +13,7 @@
 // 单一事实来源 = node_modules/pdfjs-dist（devDep 锁 4.10.38）：
 //   - 本脚本重新生成两个 lib/ 文件（npm run pdf:build）
 //   - build.mjs 每次构建校验 lib/ 与最新编译输出逐字节一致（不一致即失败）
-import { readFileSync, writeFileSync } from 'node:fs';
+import { writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import esbuild from 'esbuild';
