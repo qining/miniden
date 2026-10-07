@@ -538,9 +538,54 @@ export function validate(doc: unknown): ValidationError[] {
   return errs;
 }
 
-/* ---------------------------------------------------------------------
-   JSON Schema（draft-07）——给外部生产者（S5/S6 导入）与文档站用
-   ------------------------------------------------------------------- */
+/** 几何字段形状检查。validate() 只验「geom 是个对象」，这里验它内部字段：
+ *  缺字段 / NaN 会让 expand() 产出 NaN，整个构件在 2D/3D 里消失而且不报错。
+ *
+ *  只用于**导入闸门**（户型文档导入 / DXF·PDF 导入确认）：
+ *  loadDoc 的 usable() 不调它——把已有存档判坏等于 removeItem 删用户数据。 */
+export function checkGeoms(doc: unknown): ValidationError[] {
+  const errs: ValidationError[] = [];
+  const fail = (path: string, message: string) => errs.push({ path, message });
+  if (typeof doc !== 'object' || doc === null) return (fail('doc', '不是对象'), errs);
+  const d = doc as Record<string, unknown>;
+  const num = (v: unknown) => typeof v === 'number' && Number.isFinite(v);
+  const one = (g: unknown, path: string) => {
+    if (typeof g !== 'object' || g === null) return fail(path, 'geom 必须是原语对象');
+    const e = g as Record<string, unknown>;
+    if (e.t === 'seg') {
+      for (const k of ['x1', 'y1', 'x2', 'y2']) if (!num(e[k])) fail(`${path}.${k}`, `${k} 必须是有限数（ft）`);
+    } else if (e.t === 'arc') {
+      for (const k of ['cx', 'cy', 'a0', 'a1']) if (!num(e[k])) fail(`${path}.${k}`, `${k} 必须是有限数`);
+      if (!num(e.r) || (e.r as number) <= 0) fail(`${path}.r`, 'r 必须是正数（ft）');
+      if (e.dir !== 1 && e.dir !== -1) fail(`${path}.dir`, 'dir 必须是 1 或 −1');
+    } else if (e.t === 'poly') {
+      const p = e.pts;
+      if (!Array.isArray(p) || p.length < 2) return fail(`${path}.pts`, 'pts 必须是 ≥2 个 [x, y]');
+      p.forEach((q, j) => {
+        if (!Array.isArray(q) || q.length !== 2 || !num(q[0]) || !num(q[1]))
+          fail(`${path}.pts[${j}]`, '必须是 [x, y]（ft）');
+      });
+    } else {
+      fail(`${path}.t`, `geom.t 必须是 seg|arc|poly，实际 ${String(e.t)}`);
+    }
+  };
+  for (const k of ['walls', 'windows', 'doors', 'solids'] as const) {
+    const arr = d[k];
+    if (!Array.isArray(arr)) continue;
+    arr.forEach((raw, i) => {
+      if (typeof raw !== 'object' || raw === null) return;
+      const e = raw as Record<string, unknown>;
+      if (e.geom === undefined) return fail(`${k}[${i}].geom`, 'geom 必填');
+      one(e.geom, `${k}[${i}].geom`);
+      if (k === 'doors' && e.gapGeom !== undefined) one(e.gapGeom, `doors[${i}].gapGeom`);
+    });
+  }
+  if (d.patio != null && typeof d.patio === 'object') {
+    const p = d.patio as Record<string, unknown>;
+    if (p.geom !== undefined) one(p.geom, 'patio.geom');
+  }
+  return errs;
+}
 
 export function projectSchema(): object {
   return {

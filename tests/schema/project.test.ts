@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { validate, blankDoc, nextId, projectSchema, type ProjectDoc } from '../../src/schema/project';
+import { validate, checkGeoms, blankDoc, nextId, projectSchema, type ProjectDoc } from '../../src/schema/project';
 import { docToLegacy, migrateLegacyToV1 } from '../../src/schema/migrate';
 import type { Seg, Pt } from '../../src/schema/primitives';
 import { fullCircle } from '../../src/schema/primitives';
@@ -479,5 +479,110 @@ describe('validate — fixtures[].t 枚举（bug 猎 #5）', () => {
     });
     expect(doc.fixtures[0].t).toBe('counter');
     expect(validate(doc)).toEqual([]);
+  });
+});
+
+/* ---- bug 猎 #10：validate 只验「geom 是个对象」，不验它内部字段。
+   缺字段 / NaN 会让 expand() 产出 NaN → 构件在 2D/3D 里消失且不报错。
+   checkGeoms 补上这一层，只挂在导入闸门（不动 loadDoc 的 usable，避免删用户存档）。 ---- */
+describe('checkGeoms —— 几何字段形状（bug 猎 #10）', () => {
+  const base = (): ProjectDoc => {
+    const d = blankDoc();
+    d.walls.push({ id: 'w01', kind: 'wall', geom: seg() });
+    d.solids.push({
+      id: 's01',
+      geom: {
+        t: 'poly',
+        pts: [
+          [0, 0],
+          [2, 0],
+          [2, 1],
+        ],
+      },
+      fill: '#0c0d0f',
+    });
+    d.doors.push({
+      id: 'd01',
+      geom: seg(0.9),
+      gapGeom: { t: 'seg', x1: 3, y1: 0, x2: 3.9, y2: 0 },
+      pos: 0.5,
+      width: 0.9,
+      kind: 'swing',
+    });
+    return d;
+  };
+
+  it('合法文档（含 seg / poly / gapGeom）通过', () => {
+    expect(checkGeoms(base())).toEqual([]);
+  });
+  it('内置户型迁移出来的文档通过（不给真实数据找茬）', () => {
+    const doc = migrateLegacyToV1({
+      sc: 11.2,
+      walls: [{ x1: 0, y1: 0, x2: 112, y2: 0, t: 'w' }],
+      inner: [],
+      doors: [],
+      fixed: [
+        {
+          name: '柱',
+          poly: [
+            [0, 0],
+            [11, 0],
+            [11, 11],
+          ],
+          fill: '#0c0d0f',
+        },
+      ], // legacy poly = [x, y] 数组（与 plan JSON 同形）
+      labels: [],
+      fx: [],
+      patio: [],
+    });
+    expect(checkGeoms(doc)).toEqual([]);
+    const lp = docToLegacy(doc).fixed[0]!.poly as Pt[]; // legacy 投影：poly 数组（或 {poly} 包裹）
+    expect(Array.isArray(lp) && lp.length).toBe(3);
+  });
+  it('validate 放行、checkGeoms 拒：seg 缺 x2/y2（这就是那条缺口）', () => {
+    const d = base();
+    (d.walls[0].geom as { x2?: number }).x2 = undefined as unknown as number;
+    expect(validate(d).some((e) => /geom/.test(e.path))).toBe(false); // 旧闸门看不见
+    const errs = checkGeoms(d);
+    expect(errs.map((e) => e.path)).toContain('walls[0].geom.x2');
+  });
+  it('NaN 坐标被拒（expand 会产出 NaN → 构件隐形）', () => {
+    const d = base();
+    (d.solids[0].geom as { pts: Pt[] }).pts = [
+      [0, 0],
+      [Number.NaN, 0],
+      [2, 1],
+    ];
+    expect(checkGeoms(d).map((e) => e.path)).toContain('solids[0].geom.pts[1]');
+  });
+  it('arc：r≤0 / dir 非法 / 缺 a0 被拒；fullCircle 通过', () => {
+    const ok = base();
+    ok.solids.push({ id: 's02', geom: fullCircle(1, 1, 0.5), fill: '#8a919c', column: true });
+    expect(checkGeoms(ok)).toEqual([]);
+    for (const patch of [
+      (g: Record<string, unknown>) => (g.r = 0),
+      (g: Record<string, unknown>) => (g.dir = 0),
+      (g: Record<string, unknown>) => delete g.a0,
+    ]) {
+      const d = base();
+      const g = fullCircle(1, 1, 0.5) as unknown as Record<string, unknown>;
+      patch(g);
+      d.solids.push({ id: 's02', geom: g as never, fill: '#8a919c' });
+      expect(checkGeoms(d).length).toBeGreaterThan(0);
+    }
+  });
+  it('geom.t 不是 seg|arc|poly 被拒；doors.gapGeom 也查', () => {
+    const d = base();
+    (d.walls[0] as { geom: unknown }).geom = { t: 'circle', r: 1 };
+    expect(checkGeoms(d).map((e) => e.path)).toContain('walls[0].geom.t');
+    const d2 = base();
+    (d2.doors[0] as { gapGeom: unknown }).gapGeom = { t: 'seg', x1: 0, y1: 0, x2: '3.9', y2: 0 };
+    expect(checkGeoms(d2).map((e) => e.path)).toContain('doors[0].gapGeom.x2');
+  });
+  it('geom 必填（缺了就不是原语链）', () => {
+    const d = base();
+    delete (d.solids[0] as { geom?: unknown }).geom;
+    expect(checkGeoms(d).map((e) => e.path)).toContain('solids[0].geom');
   });
 });
