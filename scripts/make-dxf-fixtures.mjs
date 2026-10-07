@@ -1,6 +1,6 @@
 // S5 测试 fixture：生成两个最小但完整的 DXF（R1 场景：双线墙 + 门洞 + 窗 + 圆柱 + 房间环）
 //
-//   tests/fixtures/apartment-mm.dxf — 单位 mm（$INSUNITS=1，INSUNITS 路径）
+//   tests/fixtures/apartment-mm.dxf — 单位 mm（$INSUNITS=4，INSUNITS 路径；DXF 规范 4=Millimeters）
 //   tests/fixtures/apartment-cm.dxf — 单位 cm（$INSUNITS=0，启发式路径）
 //
 // 户型（米，y-up）：10×8 外框（八条线，四道双线带 240），内墙 x=6（双线 120，留 1.5..2.7 门洞 1.2m），
@@ -109,6 +109,6 @@ const layers = [
   ['ROOM', 5],
 ];
 
-writeFileSync(join(out, 'apartment-mm.dxf'), dxf(1, 1000, layers, geom(1000))); // mm
+writeFileSync(join(out, 'apartment-mm.dxf'), dxf(4, 1000, layers, geom(1000))); // mm（DXF 规范：$INSUNITS=4）
 writeFileSync(join(out, 'apartment-cm.dxf'), dxf(0, 100, layers, geom(100))); // cm
 console.log('fixtures: apartment-mm.dxf, apartment-cm.dxf →', out);

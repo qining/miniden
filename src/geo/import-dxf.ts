@@ -84,7 +84,11 @@ export interface UnitDetect {
 
 /* ---------------------------------------------------------------- 常量 */
 
-const INSUNITS: Record<number, DxfUnit> = { 1: 'mm', 2: 'cm', 3: 'm', 4: 'in', 5: 'ft', 6: 'yd', 7: 'mi' };
+/* DXF 规范码表（Autodesk DXF Reference / ezdxf）：1=Inches 2=Feet 3=Miles 4=Millimeters
+   5=Centimeters 6=Meters 7=Kilometers … 19=Yards。
+   AutoCAD / Fusion 导出的 mm 图纸写的是 4 —— 以前这张表错位（1 当 mm、4 当 in），
+   真实 mm 图纸会被读成英寸（25.4× 尺度错 → 240mm 墙厚变 6.1m → 整个户型读不出墙）。 */
+const INSUNITS: Record<number, DxfUnit> = { 1: 'in', 2: 'ft', 3: 'mi', 4: 'mm', 5: 'cm', 6: 'm', 19: 'yd' };
 
 /* ---------------------------------------------------------------- 单位 */
 

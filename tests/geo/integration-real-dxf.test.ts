@@ -70,16 +70,16 @@ describe('integration: 通用不变量（全部真实文件）', () => {
 describe('integration: 每文件行为', () => {
   describe('hack_canada_building（ezdxf 建筑图：6 层、闭合墙面轮廓、150 个块引用）', () => {
     const r = importDxf(load('hack_canada_building.dxf'));
-    it('$INSUNITS=6 → yd（此前映射缺失 → mm fallback → 量级错 1000× + 0 墙）', () => {
-      expect(r.info.unit).toBe('yd');
+    it('$INSUNITS=6 → m（DXF 规范 6=Meters；码表曾整体错位一格）', () => {
+      expect(r.info.unit).toBe('m');
       expect(r.info.unitMethod).toBe('insunits');
     });
-    it('闭合 LWPOLYLINE 墙面经边对边配对得到真实墙厚（0.15/0.2yd = 0.45/0.6ft），无默认厚', () => {
+    it('闭合 LWPOLYLINE 墙面经边对边配对得到真实墙厚（0.15/0.2m = 0.49/0.66ft），无默认厚', () => {
       const th = r.doc.walls.map((w) => w.thick ?? 0).sort((a, b) => a - b);
       expect(th.length).toBeGreaterThanOrEqual(100);
       // 两种真实厚度都要出现；默认厚 0.1m=0.3281ft 不应出现
-      expect(th.some((t) => Math.abs(t - 0.45) < 0.01)).toBe(true);
-      expect(th.some((t) => Math.abs(t - 0.6) < 0.01)).toBe(true);
+      expect(th.some((t) => Math.abs(t - 0.492) < 0.01)).toBe(true);
+      expect(th.some((t) => Math.abs(t - 0.656) < 0.01)).toBe(true);
       expect(th.every((t) => t > 0.4)).toBe(true);
     });
     it('房间（131 个闭合矩形）与柱（48 个 S-COLS 闭合方）识别', () => {
@@ -98,29 +98,31 @@ describe('integration: 每文件行为', () => {
     });
   });
 
-  describe('libredwg_example_2018（AC1032 / R2018 / $INSUNITS=4 英寸 / 826KB）', () => {
+  describe('libredwg_example_2018（AC1032 / R2018 / $INSUNITS=4 毫米 / 826KB）', () => {
     const r = importDxf(load('libredwg_example_2018.dxf'));
-    it('$INSUNITS=4 → in，insunits 方法', () => {
-      expect(r.info.unit).toBe('in');
+    it('$INSUNITS=4 → mm，insunits 方法', () => {
+      expect(r.info.unit).toBe('mm');
       expect(r.info.unitMethod).toBe('insunits');
     });
-    it('大尺度图（363×216m）触发「量级偏大」警告', () => {
-      expect(r.info.warnings.some((w) => w.includes('量级偏大'))).toBe(true);
+    it('按 mm 读入后是 14.3×8.5m 的正常平面 → 不再有误报的「量级偏大」', () => {
+      expect(r.info.warnings.some((w) => w.includes('量级'))).toBe(false);
+      expect(r.info.extent.w).toBeGreaterThan(10);
+      expect(r.info.extent.w).toBeLessThan(20);
     });
-    it('3DFACE / DIMENSION / 椭圆等实体存在也不崩；房间闭合环仍识别', () => {
-      expect(r.info.counts.rooms).toBe(11);
+    it('3DFACE / DIMENSION / 椭圆等实体存在也不崩；闭合环识别（按 mm 读入后真实房间环 1 个）', () => {
+      expect(r.info.counts.rooms).toBe(1);
       expect(r.info.warnings.some((w) => w.includes('椭圆'))).toBe(true);
     });
   });
 
-  describe('qcad_example00（QCAD 样例 / AC1024 / $INSUNITS=4）', () => {
+  describe('qcad_example00（QCAD 样例 / AC1024 / $INSUNITS=4=毫米）', () => {
     const r = importDxf(load('qcad_example00.dxf'));
-    it('insunits → in，量级正常 → 无「量级」警告；图里的 12 段弧如实报出', () => {
-      expect(r.info.unit).toBe('in');
-      expect(r.info.warnings.some((w) => /量级/.test(w))).toBe(false);
+    it('insunits → mm；这份样例本身就是 0.42×0.23m 的小样图 → 量级警告如实报出，12 段弧也如实报出', () => {
+      expect(r.info.unit).toBe('mm');
+      expect(r.info.warnings.some((w) => w.includes('量级偏小'))).toBe(true);
       // bug 猎 #8：这份样例确实含 12 段圆弧，v1 不读入弧墙 → 必须告知用户
       expect(r.info.warnings.filter((w) => /圆弧/.test(w))).toHaveLength(1);
-      expect(r.info.warnings[0]).toContain('12 段圆弧');
+      expect(r.info.warnings.some((w) => w.includes('12 段圆弧'))).toBe(true);
     });
   });
 

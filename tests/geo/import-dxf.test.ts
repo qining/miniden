@@ -71,6 +71,44 @@ describe('units: 启发式路径（$INSUNITS=0）', () => {
   });
 });
 
+describe('units: $INSUNITS 码表必须照 DXF 规范', () => {
+  // DXF 规范（Autodesk DXF Reference / ezdxf）：1=Inches 2=Feet 3=Miles 4=Millimeters
+  // 5=Centimeters 6=Meters 7=Kilometers … 19=Yards。AutoCAD/Fusion 导出的 mm 图纸写的是 4。
+  const codes: Array<[number, string]> = [
+    [1, 'in'],
+    [2, 'ft'],
+    [4, 'mm'],
+    [5, 'cm'],
+    [6, 'm'],
+    [19, 'yd'],
+  ];
+  for (const [code, unit] of codes) {
+    it(`$INSUNITS=${code} → ${unit}`, () => {
+      const r = importDxf({ header: { $INSUNITS: code }, entities: [] } as unknown as DxfDoc);
+      expect(r.info.unit).toBe(unit);
+      expect(r.info.unitMethod).toBe('insunits');
+    });
+  }
+  it('规范里有、我们没有的单位（7=公里）→ 回退启发式，不硬套', () => {
+    const r = importDxf({ header: { $INSUNITS: 7 }, entities: [] } as unknown as DxfDoc);
+    expect(r.info.unitMethod).not.toBe('insunits');
+  });
+  it('真实 mm 图纸（$INSUNITS=4）的 240 墙厚读成 0.24m，不是 6.1m', () => {
+    const d = {
+      header: { $INSUNITS: 4 },
+      entities: [
+        { type: 'LINE', layer: 'WALL', vertices: [v(0, 0), v(3000, 0)] },
+        { type: 'LINE', layer: 'WALL', vertices: [v(0, 240), v(3000, 240)] },
+      ],
+    } as unknown as DxfDoc;
+    const r = importDxf(d);
+    expect(r.info.unit).toBe('mm');
+    expect(r.info.counts.walls).toBe(1);
+    near(r.doc.walls[0]!.thick ?? 0, 0.24 * M_TO_FT, 0.02);
+    expect(r.info.warnings.some((w) => w.includes('量级'))).toBe(false);
+  });
+});
+
 describe('墙带配对', () => {
   const { doc } = run('apartment-mm.dxf');
   it('6 条墙：4 外 + 内墙被门洞切成 2 段', () => {
@@ -167,13 +205,13 @@ describe('文档质量', () => {
 
 describe('边界', () => {
   it('空文档：不崩，0 墙 + 警告', () => {
-    const r = importDxf({ header: { $INSUNITS: 1 }, entities: [] });
+    const r = importDxf({ header: { $INSUNITS: 4 }, entities: [] });
     expect(r.info.counts.walls).toBe(0);
     expect(r.info.warnings.some((w) => w.includes('未检出墙体'))).toBe(true);
   });
   it('单线墙：默认厚 0.1m，仍成墙', () => {
     const d = {
-      header: { $INSUNITS: 1 },
+      header: { $INSUNITS: 4 },
       entities: [
         {
           type: 'LINE',
@@ -199,7 +237,7 @@ describe('边界', () => {
   });
   it('用户强制单位覆盖自动检测', () => {
     const d = {
-      header: { $INSUNITS: 3 }, // m
+      header: { $INSUNITS: 6 }, // m（DXF 规范 6=Meters）
       entities: [
         {
           type: 'LINE',

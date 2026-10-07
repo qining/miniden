@@ -106,3 +106,14 @@
 - dxf-parser README / wiki Example-Output（cdn.jsdelivr.net/npm/dxf-parser@1.1.2）
 - pdf.js 源码 `src/display/api.js`、`src/shared/util.js`（github master，2026-09 抓取）
 - 酷家乐帮助中心：上传户型 CAD 要求 / 如何提高图纸识别效率 / 如何导入 CAD / 如何清理 CAD 图纸（kujiale.com/hc，2026-09 抓取）
+
+## 修订记录
+
+- **2026-10-08（bug 猎第六轮 / E14）**：文头「$INSUNITS 标准值」那一行**是错的**（当初凭印象写的，
+  实现照抄了它，结果整张码表错位一格）。AutoCAD DXF Reference / ezdxf 的实际码表：
+  `0=未指定, 1=Inches, 2=Feet, 3=Miles, 4=Millimeters, 5=Centimeters, 6=Meters, 7=Kilometers, 19=Yards`。
+  错误码表的后果：AutoCAD/Fusion 导出的 mm 图纸（$INSUNITS=4）被读成**英寸** → 25.4× 尺度错
+  → 240mm 墙厚变 6.1m → 整个户型「未检出墙体」。已修 `src/geo/import-dxf.ts` 的 INSUNITS 表 +
+  重新生成 fixture（apartment-mm.dxf 现在写 4）+ 集成测试期望按规范重算
+  （hack_canada=米、libredwg/qcad_example00=毫米）。教训：**规范类常量表必须当场核对来源，
+  不能凭记忆；fixture 若按错误实现生成，会把 bug 固化成「测试通过」。**
