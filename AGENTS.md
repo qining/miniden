@@ -24,9 +24,9 @@
 | `.claude/skills/add-catalog-item/SKILL.md` | **加家具/灯具/地毯/游具入库的作业指导书**（唯一一份，下面两个 agent 都读它）。详细版是本文 §8.1，冲突以 §8.1 为准 |
 | `.claude/skills/add-catalog-item/check-item.py` | 单件体检 + 全量回归：`python3 .claude/skills/add-catalog-item/check-item.py <条目id>` / `--regress` |
 | `.agents/skills` → `../.claude/skills` | **给 pi coding agent 用的软链**（git 存 mode 120000）。pi 只扫 `.agents/skills`，不认 `.claude/`；Claude Code 反过来不认 `.agents/`。软链让两边共用同一份文件，改一处两边同时生效 |
-| `bench/t_3d.js` `bench/t_pt.js` + `private/bench/t_walledit.js` | 三个自动化测试台脚本（§3）。**bench/*.js 入库且 plan-independent**；t_walledit 含真实户型几何断言，只能在 private/（§1.4） |
+| `bench/t_3d.js` `bench/t_pt.js` `bench/t_planbuild.js` + `private/bench/t_walledit.js` | 四个自动化测试台脚本（§3）。**bench/*.js 入库且 plan-independent**；t_walledit 含真实户型几何断言，只能在 private/（§1.4） |
 | `data/plans/generic.json` | 入库的通用户型（2室1卫，无个人数据）；`private/plans/mine.json` = 真实户型（gitignore，逐位精确提取，§1.4） |
-| `build.mjs` + `package.json` | 构建管线：**一个事实来源 `app.html` → 两个入口**（E18，§0.3）。esbuild 捆成单文件 `dist/app.html`（公开）+ `dist/planner.html`（个人，注入 mine plan + 修复 private/ 路径）+ 根目录 `planner.html`（个人入口源形式），并重新生成 **8 个 bench HTML**（§3、§5.7） |
+| `build.mjs` + `package.json` | 构建管线：**一个事实来源 `app.html` → 两个入口**（E18，§0.3）。esbuild 捆成单文件 `dist/app.html`（公开）+ `dist/planner.html`（个人，注入 mine plan + 修复 private/ 路径）+ 根目录 `planner.html`（个人入口源形式），并重新生成 **12 个 bench HTML**（§3、§5.7） |
 | `scripts/ui-gate.mjs` | E16 UI 黄金截图门禁：截 **dist**（本地=mine / CI=generic）对 golden（§3） |
 | `scripts/run-bench.mjs` | bench 运行器（本地 + CI 通用）：窗口/budget/pre-id 与 §3 表格一致；FAIL 自动原样重跑一次（§3 瞬态口径）；`CI=true` 时切 google-chrome + `--no-sandbox` |
 | `.github/workflows/ci.yml` | E5 CI（generic 子集，§3）：npm ci → tsc → vitest → build → bench ×6 → ui-gate 双截（CI 自建 generic 基线 = 确定性门禁，不是视觉回归门禁）；calib md5 门禁需 private 资产→留本地 |
@@ -77,7 +77,7 @@
 | `docs/research/01–10` | 需要「依据」时（各结论的调研过程/数据） |
 | `docs/design/` | 户型输入 → 3D 的设计总文档 |
 
-**当前位置**：R1–R10 研究全部完成；S 系列全部落地（S1–S7 + S9 Warm Dark 2a–2d）。**S10（隐私 + plan 外部化，2026-09）**：个人数据全部移入 `private/`（§1.4）；户型几何外置为 `#miniden-plan` JSON（committed=generic / 本地构建注入 mine）；bench 分层（入库 plan-independent / private plan-specific）；ui-gate 截 dist。**S11（2026-10-05）**：户型文档导出/导入（「工具 ⌄」→「导出户型 / 导入户型」+ `#docModal` 一次性确认，走 `applyImportedDoc` 同一条路；`ProjectDoc.floorOutline?` 纯增量可选字段保地板轮廓逐坐标保真）。**S11b（2026-10-05）**：导出必须无限制 → `ProjectDoc.plan?`（户型专属快照：roomSummary/refPhoto/calib/windowBand/patioPatch/islLabel/isl/kitchen/inner，同样不进投影），`freshDoc()` 从 PLAN 播种、消费端走 `planOf(k)`（文档优先、回退 PLAN）；厨房硬编码块数据化（顺带清除了公开文件里的真实坐标）。**S12（2026-10-05）**：放置类实体只认两个来源——用户画 / 导入读到的几何，不写启发式猜测；`Run` 台面柜体带实体 + 工具、DXF/PDF `furn` 轮廓按形状分类落地为 run、钢框窗改成窗实体的 `steel` 标志（`steelBands()` 与历史 windowBand 重合时只画一次）。**E18（2026-10-05）**：两个入口一个事实来源（§0.3）。**S13（2026-10-06）**：布局跟着 app 走——户型 JSON 新增 `layout`（内置布局），`load()` 在「这台浏览器对这份户型从没存过档」时用它播种（§1.2）；公开入口 `layout:null`（build.mjs 硬断言），测试台一律剥掉 layout（保持确定性 + plan-independence），`#calib` 不播种（§1.1）。待办：无（`git filter-repo` 已执行，见下）。**E5（2026-10-06）**：GitHub Actions CI 上线（`.github/workflows/ci.yml`，generic 子集：tsc → vitest → build → bench ×6 → ui-gate 双截；见 §3）。**P1 收尾（2026-10-06）**：git filter-repo 历史清除 + force-push 已执行（§1.4）；E7 LICENSE/THIRD-PARTY、E8 README、E13 包体预算门禁同期落地。**E6（2026-10-07）**：ESLint 10 + Prettier 3.9 落地（格式化单独提交；TS 侧因 typescript-eslint 不支持 TS7 暂由 tsc strict + Prettier 覆盖，见 §2）。**E19（2026-10-07~08）**：多轮 bug 猎（十五轮：schema / 导入管线 / 3D 消费端 / 校验层 / 交互层 / $INSUNITS 码表 / 导入启发式的单位口径 / 存储后端成败判据 / DXF 圆弧 / 目录数据不变量 / 目录字段的消费端），19 个真 bug + 1 处防御性统一，方法论见 §5.1.1。**E20（2026-10-07）**：可测性/覆盖率治理——覆盖率棘轮进 CI（`vitest.config.mjs` thresholds，只许涨不许跌）+ `scripts/storage-probe.mjs`（真实 IDB 落盘门禁，headful 真实时间，理由同 §5.5）。**E9（2026-10-07）**：`docs/design/architecture.md`（人读版架构：数据流 / 模块边界 / 构建守卫 / 门禁矩阵 / 不变量红线）。**E14+E17（2026-10-07）**：快捷 SLO 套件（`scripts/slo.mjs`，七项实测数字）+ 它的 CI 门禁。**E10（2026-10-07）**：持久化从 localStorage 换成 IndexedDB 主存（存储门面，见 §1.2）。**E21（2026-10-08）**：真实输入 E2E（`scripts/e2e.mjs` + `scripts/e2e-flows.mjs`，14 条流程 / 60 断言，两个入口 + CI 口径各 60/60）——第四种证据：真实鼠标/键盘/confirm/文件选择/下载/刷新，见 §3；它抓到并修了 3 个真实交互缺口（§5.1）。加目录条目照 §8.1 / skill 走。
+**当前位置**：R1–R10 研究全部完成；S 系列全部落地（S1–S7 + S9 Warm Dark 2a–2d）。**S10（隐私 + plan 外部化，2026-09）**：个人数据全部移入 `private/`（§1.4）；户型几何外置为 `#miniden-plan` JSON（committed=generic / 本地构建注入 mine）；bench 分层（入库 plan-independent / private plan-specific）；ui-gate 截 dist。**S11（2026-10-05）**：户型文档导出/导入（「工具 ⌄」→「导出户型 / 导入户型」+ `#docModal` 一次性确认，走 `applyImportedDoc` 同一条路；`ProjectDoc.floorOutline?` 纯增量可选字段保地板轮廓逐坐标保真）。**S11b（2026-10-05）**：导出必须无限制 → `ProjectDoc.plan?`（户型专属快照：roomSummary/refPhoto/calib/windowBand/patioPatch/islLabel/isl/kitchen/inner，同样不进投影），`freshDoc()` 从 PLAN 播种、消费端走 `planOf(k)`（文档优先、回退 PLAN）；厨房硬编码块数据化（顺带清除了公开文件里的真实坐标）。**S12（2026-10-05）**：放置类实体只认两个来源——用户画 / 导入读到的几何，不写启发式猜测；`Run` 台面柜体带实体 + 工具、DXF/PDF `furn` 轮廓按形状分类落地为 run、钢框窗改成窗实体的 `steel` 标志（`steelBands()` 与历史 windowBand 重合时只画一次）。**E18（2026-10-05）**：两个入口一个事实来源（§0.3）。**S13（2026-10-06）**：布局跟着 app 走——户型 JSON 新增 `layout`（内置布局），`load()` 在「这台浏览器对这份户型从没存过档」时用它播种（§1.2）；公开入口 `layout:null`（build.mjs 硬断言），测试台一律剥掉 layout（保持确定性 + plan-independence），`#calib` 不播种（§1.1）。待办：无（`git filter-repo` 已执行，见下）。**E5（2026-10-06）**：GitHub Actions CI 上线（`.github/workflows/ci.yml`，generic 子集：tsc → vitest → build → bench ×9 → ui-gate 双截；见 §3）。**P1 收尾（2026-10-06）**：git filter-repo 历史清除 + force-push 已执行（§1.4）；E7 LICENSE/THIRD-PARTY、E8 README、E13 包体预算门禁同期落地。**E6（2026-10-07）**：ESLint 10 + Prettier 3.9 落地（格式化单独提交；TS 侧因 typescript-eslint 不支持 TS7 暂由 tsc strict + Prettier 覆盖，见 §2）。**E19（2026-10-07~08）**：多轮 bug 猎（十五轮：schema / 导入管线 / 3D 消费端 / 校验层 / 交互层 / $INSUNITS 码表 / 导入启发式的单位口径 / 存储后端成败判据 / DXF 圆弧 / 目录数据不变量 / 目录字段的消费端），19 个真 bug + 1 处防御性统一，方法论见 §5.1.1。**E20（2026-10-07）**：可测性/覆盖率治理——覆盖率棘轮进 CI（`vitest.config.mjs` thresholds，只许涨不许跌）+ `scripts/storage-probe.mjs`（真实 IDB 落盘门禁，headful 真实时间，理由同 §5.5）。**E9（2026-10-07）**：`docs/design/architecture.md`（人读版架构：数据流 / 模块边界 / 构建守卫 / 门禁矩阵 / 不变量红线）。**E14+E17（2026-10-07）**：快捷 SLO 套件（`scripts/slo.mjs`，七项实测数字）+ 它的 CI 门禁。**E10（2026-10-07）**：持久化从 localStorage 换成 IndexedDB 主存（存储门面，见 §1.2）。**E21（2026-10-08）**：真实输入 E2E（`scripts/e2e.mjs` + `scripts/e2e-flows.mjs`，14 条流程 / 60 断言，两个入口 + CI 口径各 60/60）——第四种证据：真实鼠标/键盘/confirm/文件选择/下载/刷新，见 §3；它抓到并修了 3 个真实交互缺口（§5.1）。**E22（2026-10-08）**：`bench/t_planbuild.js`（plan-independent 户型构建 bench，78 断言×3 入口）——把「画墙 / 开门 / 放洁具 / 导入后编辑」这条 2D 主路径的断言从 private 那份里挑到入库侧，CI（generic）从此覆盖它（§3）。加目录条目照 §8.1 / skill 走。
 
 ---
 
@@ -203,7 +203,7 @@ open('/tmp/planner_check.js','w').write(m.group(1))
 # 2b) 构建（E1/S10/E18 起）：node build.mjs
 #     → dist/app.html（公开入口 generic）+ dist/planner.html（个人入口单文件，注入 mine + private/ 路径修复）
 #       + 根目录 planner.html（个人入口源形式）；无 private/ 时个人入口退回 generic
-#     + 重新生成 6 个 bench HTML（3 脚本 × source/dist，work/ 下 gitignore）
+#     + 重新生成 12 个 bench HTML（4 脚本 × source/dist/公开入口，work/ 下 gitignore）
 #     改完 app.html / bench/*.js 之后必跑（dist 与根 planner.html 都是构建产物，不同步就是过期副本）
 
 # 3) 交互测试台（t_walledit 251 / t_3d 118 / t_pt 33 条断言，见 §3；dist 变体同断言，见 §5.7；
@@ -225,8 +225,9 @@ open('/tmp/planner_check.js','w').write(m.group(1))
 
 | 脚本（源） | 位置 | 覆盖 | 断言 | 输出 `<pre id>` | 窗口 / virtual-time |
 |---|---|---|---|---|---|
-| `t_walledit.js` | **`private/bench/`（gitignore）**——含真实户型几何坐标断言 | 2D：墙/柱/门/洁具编辑、门垛联动、S5/S6 导入、双币种、视图/单位/面板、S7 描图、对话框 | 251 | `wetest` | 1700x1100 / 100000（dist 120000） |
-| `t_3d.js` | `bench/`（入库，plan-independent） | 3D：拾取/拖动/旋转、开关灯、**全目录建模+贴图体检**、缩略图、S5/S6 导入、双击进室内、座椅体检 | 118 | `t3d` | 1400x950 / 170000 |
+| `t_walledit.js` | **`private/bench/`（gitignore）**——含真实户型几何坐标断言 | 2D：墙/柱/门/洁具编辑、门垛联动、S5/S6 导入、双币种、视图/单位/面板、S7 描图、对话框、E10 存储 | 259 | `wetest` | 1700x1100 / 100000（dist 120000） |
+| `t_planbuild.js` | `bench/`（入库，plan-independent） | **E22 户型构建**：进入编辑模式、选中/命中/抖动点击不脏内置、拖整段(Esc 回滚)/拖端点、画墙(右键不加点/Backspace/Enter/太短拒收)、画柱→2D 命中+3D 立到顶、门系统(款式/开向/滑动联动/调宽/方向键安全边界)、洁具(放置/贴墙契约/拖动/微调/删除权限)、编辑→3D 一致性、**导入后编辑**、持久化往返 | 78 | `pbtest` | 1700x1100 / 200000（dist 220000） |
+| `t_3d.js` | `bench/`（入库，plan-independent） | 3D：拾取/拖动/旋转、开关灯、**全目录建模+贴图体检**、缩略图、S5/S6 导入、双击进室内、座椅体检 | 125 | `t3d` | 1400x950 / 170000 |
 | `t_pt.js` | `bench/`（入库，plan-independent） | 光追：GL 能力探针、BVH、着色器、进度、降噪、萤火虫/NaN 判别、分块自适应、**白家具可辨识度**（满家具客厅） | 33 | `tpt` | 1200x850 / 600000 |
 
 **Plan-independence 规则**（bench 脚本入库的前提）：
@@ -236,14 +237,16 @@ open('/tmp/planner_check.js','w').write(m.group(1))
   ——bbox 中心 ≠ 房间中心，平移过去家具就移出租界，firefly 从 43 涨到 75 破限
   （2026-09 实测：HEAD 原版锚点恰是客厅标签位置，用标签派生后逐像素复现）。
 - t_walledit 含真实户型坐标断言（门/墙的具体位置），**只能放 private/**（§1.4）；
-  CI 只跑 t_3d/t_pt（generic plan 上同样全绿——这就是 plan-independence 的验收）。
-  **E5 CI**（`.github/workflows/ci.yml`）：用 `node scripts/run-bench.mjs` 跑 6 个 bench；
+  CI 只跑 t_3d / **t_planbuild** / t_pt（generic plan 上同样全绿——这就是 plan-independence 的验收）。
+  **E22 的动机就在这里**：t_planbuild 之前，「画墙 / 开门 / 放洁具」这条 2D 主路径的断言
+  只存在于 private 那份里，公开入口那侧零覆盖。
+  **E5 CI**（`.github/workflows/ci.yml`）：用 `node scripts/run-bench.mjs` 跑 9 个 bench；
   ui-gate 在 CI 里先 `--update` 自建 generic 基线再 gate 比对（双截 0.0000% = 验渲染确定性，
   **不验视觉回归**，§3 开头的「--update 什么都不证明」同样适用于 CI）；
   calib md5 门禁需要 private/ 资产，CI 跑不了，留在本地（§1.1）。
 
-**生成**：`node build.mjs` 把三个脚本注入 **source(mine) / dist(mine) / dist(generic)** 三份页面，
-产出 `work/t_*.html` + `work/t_*_dist.html` + `work/t_*_app.html`（8 个，全 gitignore，每次构建重新生成）。
+**生成**：`node build.mjs` 把四个脚本注入 **source(mine) / dist(mine) / dist(generic)** 三份页面，
+产出 `work/t_*.html` + `work/t_*_dist.html` + `work/t_*_app.html`（12 个，全 gitignore，每次构建重新生成）。
 **`*_app.html` 是 E18 的同步门禁**：同一套断言跑在公开入口 `dist/app.html`（generic 户型）上。
 **脚本改了就重跑 build.mjs，不要手工维护 HTML 副本**。注入用 Python `str.replace`
 （`$` 陷阱见 §5.1）+ 注入后 `node --check`。
@@ -299,6 +302,8 @@ for f in fails[:5]: print('   ',f)"
 }
 run t_walledit.html 100000 1700,1100 wetest
 run t_walledit_dist.html 120000 1700,1100 wetest
+run t_planbuild.html 200000 1700,1100 pbtest
+run t_planbuild_dist.html 220000 1700,1100 pbtest
 run t_3d.html 170000 1400,950 t3d
 run t_3d_dist.html 170000 1400,950 t3d
 run t_pt.html 600000 1200,850 tpt
@@ -479,6 +484,11 @@ sips -z 高 宽 /tmp/x.png --out /tmp/x_big.png               # 放大
 | **`state.view` 立刻变，3D 状态不是**（`setView` 把 `init3D/buildStatic3D/sync3D/setCamMode` 放在 `setTimeout(…, 40)` 里派发） | 断言 `state.view==='fp'` 通过后马上读 `three.cam.position.y`，读到的是娃娃屋的 42ft → 报「眼高不对」，其实页面还在切场景 | 断言 3D 状态要等**那个状态本身**（`three.camMode==='fp'`、场景 mesh 数 >20），不要等 `state.view`；读场景用带重试的 `evalRetry`（场景重建期间 `three` 会短暂为 null） |
 | **同一屏上两处文字用不同单位**（切英尺后房间标注是 `13' 2"`，目录卡片还是 `137 cm`） | 用户以为单位切换「只影响了一半界面」。根因：`build2D()` 重画了标注，目录卡片是 `buildCatalog()` 时按 `fmtLen(state.unit)` 生成的，不重建就停在旧单位 | 改「显示口径」时要枚举**所有渲染该口径的地方**（平面图、目录卡片、检视面板、工具条），逐个确认都重建；黄金态 `#ui:ft` 同步加 `buildCatalog()`，让黄金态与「用户真的点了按钮」同形 |
 | **黄金基线把一个 bug 拍了进去**（`#ui:ft` 旧基线里目录卡片是 cm） | 修好之后 ui-gate 差 0.188%（在阈值内，但**不是 0**）——如果只看「PASS」就会漏掉「基线本身是错的」这件事 | 基线 diff 不为 0 时先**裁同一区域新旧各一张目检**，确认变化正是意图（这次是 `209 cm×211 cm` → `6' 10"×6' 11"`），再显式 `ui:gate:update` 重拍并在提交信息里写清变化 |
+| **`entById(id)` 返回的是文档实体本身，不是快照**，而 bench 拿它做「改前 / 改后」对比 | `const b = entById(id); …改…; const a = entById(id);` 里 `a === b`（同一个对象）→ `a.geom.x2 - b.geom.x2` 恒等于 0 → 「方向键把激活端推了 1cm」这类断言永远读到 0 位移，**怎么修都红、怎么坏也不绿**（假断言） | 前后对比必须先把几何取成**数字**（`const x0 = e.geom.x2` 或 `snap()` 返一个半新对象）。同理 `effDoors()` 返的是每次新建的投影副本（可当快照），两套语义别混用 |
+| **工具模式的 pointerdown 早退分支让「拖拽」在工具下不可用**（`wallEdit.tool==='door'` 点已有门 = 选中后 `return`） | bench 在 door 工具下拖门体→ 完全不动，看上去像拖动逻辑坏了。实际拖移动只在 `select` 工具下成立（而 `.dEnd` 手柄在 door 工具下能拖，因为手柄检测在工具分支之前） | 写点击/拖动类断言前先读命中分支的**早退顺序**（手柄检测 → 工具分支 → 放置）；需要拖实体就 `setTool('select')` |
+| **Raycaster 从封闭体内部往外打，只会打到背面 → 被 `material.side` 剔** | 验证「柱在 3D 里立到顶」：从柱内 (0,1,0) 向上打 → 先撞天花板底面（FrontSide 法线朝下 = 背面）→ 被剔后继续 → 又撞柱底面背面 → 报「无命中」，看着像柱没建 | 验竖直构件从**天花板上方**往下打（`CEIL_H + 1.5`, dir `(0,-1,0)`）：天花板底面是背面被剔 → 射线穿过 → 第一个命中就是柱/门洞过梁顶面（法线 +y） |
+| **基线顶点数在变异之后才取**（3D 重建是异步的） | `setView('3d')` 里 `buildStatic3D()` 已把新柱烘进去，再取 `vBefore` 就与 `vAfter` 相等 → 「顶点增量」断言永远红 | 基线必须在**变异之前**采（或先切 3D 采基线 → 切回 2D 变异 → 再切 3D 采对比）；存在性用射线命中作主断言，顶点数只作旁证（§5.1 bbox 覆盖不可靠） |
+| **把「合法夹取」当成 bug 断言**（内置门的 1cm 方向键微调常被 `STUB_MIN` 夹住） | 新门垛长 1cm < STUB_MIN=5.5cm → `range()` 把位移夹到 0，这是**设计行为**（不让用户用键盘压出比阈值更薄的门垛）。断言「一定能动 1cm」在两份户型上都红 | 先量「能不能动」（INFO 如实报），再断不变量：位移不得超过一步、门不得短于 `DOOR_MIN`、门垛不得为负。**要验逐厘米精度，就造一个无约束的对象**（用户开口 + 用户门），而不是在受约束的内置件上硬断 |
 ### 5.1.1 bug 猎方法论（2026-10 十五轮，19 个 bug 全走这条路）
 
 **先写失败测试，再改代码**。每个 bug 都是「按代码读出来的怀疑」→ 写一条应当红的
@@ -505,7 +515,7 @@ vitest → 跑一次确认它按预期红（证明 bug 真存在、不是臆想�
 **量不出差异的怀疑就如实标成防御性统一，不冒充 bug**（第 ⑨ 轮：门整体滑动的夹取只取了
 一端的下界 + 另一端的上界，逐门量两份户型的两种夹取 → 最大差异 0.000ft → 只统一写法，
 并在提交信息里写清「为什么现在不会暴露」）。
-**每轮结束跑完整回归**（bench ×7 + calib md5 + ui-gate +
+**每轮结束跑完整回归**（bench ×9 + calib md5 + ui-gate +
 lint/format/typecheck）再提交，根因写进提交信息（AGENTS §10）。
 
 **UI 层的 bug 靠 bench 守，不靠 vitest**：vitest 测不到 `app.html` 里的消费端代码（它不在
@@ -1236,7 +1246,7 @@ requestRender();
 - [ ] 材质像不像？（木纹 / 织物 / 塑料 / 金属，纹理密度合不合理）
 - [ ] 特征细节在不在？（把手、缝线、螺丝、logo、脚垫）
 
-**最后照 §2 走完整回归**：重新生成三个测试台 → 全跑 → `#calib` md5 核对 → 目检 → 提交。
+**最后照 §2 走完整回归**：重新生成测试台 → 全跑 → `#calib` md5 核对 → 目检 → 提交。
 
 ---
 
