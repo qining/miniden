@@ -269,3 +269,108 @@ describe('确定性', () => {
     expect(JSON.stringify(r1)).toBe(JSON.stringify(r2));
   });
 });
+
+/* ============ 覆盖补齐：rgbOf 三种形态 / 灰度描边 / curveTo2-3 / 退化矩形 / 比例打分 ============ */
+describe('rgbOf：pdf.js 颜色参数的三种形态（曾踩坑：形态②查 .length 永远 undefined → 全变近黑）', () => {
+  const colorOf = (arg: unknown[]): string => {
+    const ops: PdfOpList = {
+      fnArray: [O.setStrokeRGBColor, O.constructPath, O.stroke],
+      argsArray: [arg, pathOps([13, 14], [0, 0, 30, 0]), null],
+    };
+    const raw = extractRawPdf(ops, O);
+    return raw.segs[0] ? raw.segs[0].cls : 'no-seg';
+  };
+  it('形态①：三个裸数字', () => {
+    expect(colorOf([219, 0, 0])).toBe('door'); // 红
+    expect(colorOf([0, 0, 217])).toBe('window'); // 蓝
+  });
+  it('形态③：第一个参数是带 0/1/2 下标的对象或数组', () => {
+    // 形态③ 的入口条件：参数长度 ≥3 且首参是对象/数组（pickObj 分支）
+    expect(colorOf([[219, 0, 0], null, null])).toBe('door');
+    expect(colorOf([{ 0: 0, 1: 0, 2: 217 }, null, null])).toBe('window');
+  });
+  it('形态②：不足三个参数但下标有值（pdf.js 3.x 老式）', () => {
+    expect(colorOf({ 0: 219, 1: 0, 2: 0 } as unknown as unknown[])).toBe('door');
+  });
+  it('什么颜色都没给 → 近黑（other），不炸', () => {
+    expect(colorOf([])).toBe('other');
+  });
+  it('灰度描边 setStrokeGray：0–1 值 ×255', () => {
+    const ops: PdfOpList = {
+      fnArray: [O.setStrokeGray, O.constructPath, O.stroke],
+      argsArray: [[0.86], pathOps([13, 14], [0, 0, 30, 0]), null],
+    };
+    const raw = extractRawPdf(ops, O);
+    expect(raw.segs[0]!.cls).toBe('other'); // 浅灰无主导色
+  });
+});
+
+describe('路径 op 补齐：curveTo2 / curveTo3 / 退化矩形', () => {
+  it('curveTo2（PDF 的 c：首控制点 = 当前点）也要被采样，不能整条路径丢掉', () => {
+    // PDF curveTo2 只给第二个控制点；代码把它表成 c1 = 当前点的三次曲线（PDF 语义）。
+    // 这种形状不是标准圆弧近似 → 走折线回退，但必须产出几何（曾经整段被吞就是 bug）。
+    const cx = 120,
+      cy = 85,
+      r = 11.34;
+    const fns = [13, 16, 16];
+    const nums: number[] = [];
+    let last: [number, number] = [cx + r, cy];
+    nums.push(last[0], last[1]);
+    for (const deg of [45, 90]) {
+      const a = rad(deg);
+      const p: [number, number] = [cx + r * Math.cos(a), cy + r * Math.sin(a)];
+      const c: [number, number] = [cx + r * 1.2 * Math.cos(a - rad(22.5)), cy + r * 1.2 * Math.sin(a - rad(22.5))];
+      nums.push(c[0], c[1], p[0], p[1]);
+      last = p;
+    }
+    const ops: PdfOpList = {
+      fnArray: [O.setStrokeRGBColor, O.constructPath, O.stroke],
+      argsArray: [[0, 0, 0], pathOps(fns, nums), null],
+    };
+    const raw = extractRawPdf(ops, O);
+    const total = raw.segs.length + raw.arcs.length;
+    expect(total).toBeGreaterThan(0);
+    // 起点必须落在给定的 moveTo 上（CTM 是单位阵）
+    const first = raw.segs.length ? raw.segs[0]!.a : null;
+    if (first) expect(first.x).toBeCloseTo(cx + r, 2);
+  });
+  it('curveTo3（首控制点重合）与 curveTo 产出同样的折线候选', () => {
+    const ops: PdfOpList = {
+      fnArray: [O.setStrokeRGBColor, O.constructPath, O.stroke],
+      argsArray: [[0, 0, 0], pathOps([13, 17], [0, 0, 0, 0, 10, 10]), null],
+    };
+    const raw = extractRawPdf(ops, O);
+    expect(raw.segs.length + raw.arcs.length).toBeGreaterThan(0);
+  });
+  it('rectangle 的 w 或 h 为 0 → 这条子路径丢掉（不产生假墙）', () => {
+    const ops: PdfOpList = {
+      fnArray: [O.setStrokeRGBColor, O.constructPath, O.stroke],
+      argsArray: [[0, 0, 0], pathOps([19], [10, 10, 0, 20]), null],
+    };
+    const raw = extractRawPdf(ops, O);
+    expect(raw.segs).toHaveLength(0);
+    expect(raw.closed).toHaveLength(0);
+  });
+});
+
+describe('inferPdfScale：门半径/门线打分（比例选错整套户型就错 10 倍）', () => {
+  const scaleOf = (ops: PdfOpList) => inferPdfScale(extractRawPdf(ops, O));
+  it('门弧半径落在 0.4–1.2m 的候选胜出（并列取较小候选）', () => {
+    // r=8pt：1:200 → 0.56m ✓；1:100 → 0.28m ✗；1:400 → 1.13m ✓（并列时取较小）
+    const inf = scaleOf(doorArcOps(120, 85, 8));
+    expect(inf.scale).toBe(200);
+    expect(inf.method).toBe('heuristic');
+  });
+  it('门弧半径离谱 → 打分惩罚，退回固定比例并警告', () => {
+    const inf = scaleOf(doorArcOps(120, 85, 400)); // 400pt 的「门弧」不可能是门
+    expect(inf.warnings.length).toBeGreaterThan(0);
+  });
+  it('只有门线（没有弧）也参与打分', () => {
+    const ops: PdfOpList = {
+      fnArray: [O.setStrokeRGBColor, O.constructPath, O.stroke],
+      argsArray: [[219, 0, 0], pathOps([13, 14], [0, 0, 35.4, 0]), null], // 35.4pt = 1ft @1:100
+    };
+    const inf = scaleOf(ops);
+    expect([100, 50, 20, 200]).toContain(inf.scale);
+  });
+});

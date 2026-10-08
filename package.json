@@ -21,11 +21,14 @@
     "ui:gate:selftest": "node scripts/ui-gate.mjs --selftest",
     "slo": "node scripts/slo.mjs",
     "slo:headful": "node scripts/slo.mjs --headful",
-    "slo:ci": "node scripts/slo.mjs --public --ci"
+    "slo:ci": "node scripts/slo.mjs --public --ci",
+    "storage:probe": "node scripts/storage-probe.mjs",
+    "test:coverage": "vitest run --coverage"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@types/node": "^26.6.1",
+    "@vitest/coverage-v8": "^5.0.3",
     "dxf-parser": "^1.1.2",
     "esbuild": "^0.28.2",
     "eslint": "^10.12.0",

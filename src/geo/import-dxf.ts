@@ -114,6 +114,16 @@ const sub = (a: V2, b: V2): V2 => v(a.x - b.x, a.y - b.y);
 const len = (a: V2) => Math.hypot(a.x, a.y);
 
 /** DXF 实体 → 原语集合（源单位、y-up、未平移）。 */
+/** RawArc 的模型里没有「方向」：约定 s→e 沿角度增大方向走。
+    两种情况会破坏这个约定 —— ① ARC 跨过 0°/360° 接缝（endAngle < startAngle）；
+    ② 折线的负 bulge（弧反过来走）。不归一的话 transform 的 (−e,−s) 与 expand
+    都会算出负扫角，画出补弧（bug 猎 #16）。
+    扫角为负 = 同一段弧反向走 = 点集不变 → 交换 s/e 即保真。 */
+function normArc<A extends { c: V2; r: number; s: number; e: number; full: boolean }>(a: A): A {
+  if (a.full || a.e >= a.s) return a;
+  return { ...a, s: a.e, e: a.s };
+}
+
 export function extractRaw(d: DxfDoc): Raw {
   const raw: Raw = {
     segs: [],
@@ -165,7 +175,7 @@ export function extractRaw(d: DxfDoc): Raw {
           const bulge = (ent.vertices?.[i] as DxfPt | undefined)?.bulge ?? 0;
           if (Math.abs(bulge) > 1e-6) {
             const arc = bulgeToArc(p, q, bulge);
-            if (arc) raw.arcs.push({ ...arc, cls });
+            if (arc) raw.arcs.push(normArc({ ...arc, cls }));
           } else if (len(sub(q, p)) > 1e-6) raw.segs.push({ a: p, b: q, cls });
         }
         break;
@@ -177,7 +187,8 @@ export function extractRaw(d: DxfDoc): Raw {
         let sweep = e - s;
         if (sweep <= 1e-9) sweep += 2 * Math.PI;
         const full = sweep >= 2 * Math.PI - 1e-6;
-        raw.arcs.push({ c: v(ent.center.x, ent.center.y), r: ent.radius, s, e: full ? s + 2 * Math.PI : e, cls, full });
+        // e 必须是 s + 修正后的扫角：留着原始 e 的话下游又算出负扫角（修正等于白算）
+        raw.arcs.push(normArc({ c: v(ent.center.x, ent.center.y), r: ent.radius, s, e: s + sweep, cls, full }));
         break;
       }
       case 'CIRCLE': {
@@ -216,7 +227,7 @@ export function extractRaw(d: DxfDoc): Raw {
 }
 
 /** bulge 边 → 圆弧（y-up；sweep = 4·atan(b) 带符号）。 */
-function bulgeToArc(p: V2, q: V2, b: number): { c: V2; r: number; s: number; e: number; full: boolean } | null {
+export function bulgeToArc(p: V2, q: V2, b: number): { c: V2; r: number; s: number; e: number; full: boolean } | null {
   const L = len(sub(q, p));
   if (L < 1e-9) return null;
   const th = 4 * Math.atan(b);

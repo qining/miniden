@@ -38,7 +38,7 @@ jobs:
       - run: npm run lint
       - run: npm run format:check
 
-      - run: npm test
+      - run: npm run test:coverage # 覆盖率棘轮（vitest.config.mjs thresholds）：跌了就红
 
       # 构建守卫：嵌入 schema/geo/plan 块 == src 最新编译；
       # dist/app.html 无 private/ 引用 + 户型=generic-2br + layout:null
@@ -51,6 +51,10 @@ jobs:
       - run: node scripts/run-bench.mjs t_3d.html t_3d_dist.html t_3d_app.html
 
       - run: node scripts/run-bench.mjs t_pt.html t_pt_dist.html t_pt_app.html
+
+      # E10 存储门禁：真实时间（无虚拟时间）验 IndexedDB 真的落盘 / 旧键没被搬走 / LS 镜像在
+      - name: E10 storage probe (IndexedDB landing, real time)
+        run: node scripts/storage-probe.mjs
 
       # E14/E17 快捷 SLO（ADR-0006 顶层指标）。CI 跑软件 GL → 口径是「回归门禁」（抓 5× 级劣化）；
       # 用户侧绝对值（启动 1.5s / 拖拽 16ms）由本地 `npm run slo:headful` 验。
