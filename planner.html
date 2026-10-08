@@ -3085,6 +3085,10 @@ function freshDoc(){
   const d = SCHEMA.Migrate.migrateLegacyToV1(buildRawGeo(), SCHEMA.Migrate.EMPTY_USERGEO);
   d.dataV = DOC_DATA_VERSION;
   d.plan = planSnapshot();          // S11b：内置 plan 的专属构件作为种子，随文档走
+  // 内置户型自带名字（roomSummary）→ 导出文件名/导入确认框读得出是哪份户型。
+  // 之前导出叫「未命名户型.json」，用户分不清自己导的是哪一份（E2E 抓到）。
+  // 只影响显示与文件名：户型指纹走 PLAN.name，存档可用性走 docMatchesPlan 逐坐标比，都不读 d.name。
+  if(PLAN.roomSummary || PLAN.name) d.name = PLAN.roomSummary || PLAN.name;
   return d;
 }
 /* 文档里的内置实体是否就是当前 plan 的几何（按 chainIndex 对 PLAN.walls 逐坐标比）。
@@ -4319,7 +4323,12 @@ window.addEventListener('keydown', ev=>{
     if((ev.key==='Delete'||ev.key==='Backspace') && wallEdit.sel){ deleteSel(); ev.preventDefault(); return; }
     return; // 编辑模式屏蔽家具快捷键
   }
-  if(['INPUT','SELECT','TEXTAREA','BUTTON'].includes(tag)) return;
+  if(['INPUT','SELECT','TEXTAREA'].includes(tag)) return;
+  // 焦点在按钮上不该挡住家具快捷键（与墙体编辑模式同一口径：见上面那句「按钮焦点不挡编辑快捷键」）。
+  // 实测：点「+90°」再按 Delete 原本什么都不发生（E2E 抓到）。
+  // 例外：对话框开着时键盘归对话框，不隔窗改后面的家具。
+  if(tag==='BUTTON' && ['dxfModal','pdfModal','imgModal','docModal','ptModal','photoModal']
+      .some((id)=>{ const m = document.getElementById(id); return m && m.style.display && m.style.display!=='none'; })) return;
   if(selected==null) return;
   const it = state.items.find(i=>i.uid===selected); if(!it) return;
   if(ev.key==='Delete'||ev.key==='Backspace'){ state.items=state.items.filter(i=>i.uid!==selected); selected=null; drawFurniture(); save(); }
@@ -16695,6 +16704,7 @@ document.querySelectorAll('#unitSeg button').forEach(b=>{
   b.onclick=()=>{ state.unit=b.dataset.u; b.blur();
     document.querySelectorAll('#unitSeg button').forEach(x=>x.classList.toggle('on',x===b));
     build2D();                          // 房间尺寸标注写在平面图里，只重画家具是不够的
+    buildCatalog();                     // 目录卡片的尺寸文字同样走 fmtLen —— 不重建就停在旧单位（E2E 抓到）
     updateProps(); if(wallEdit.on) updateWallBarFromSel(); save(); };
 });
 
@@ -17739,7 +17749,7 @@ if(UIH && !CALIB && !IMGONLY){
   if(uist==='3d' || uist==='night') setView('doll');
   if(uist==='fp' || uist==='dlg')  setView('fp');
   if(uist!=='3d' && uist!=='night' && uist!=='fp' && uist!=='dlg') build2D();
-  if(uist==='ft'){ syncUnitUI(); build2D(); }
+  if(uist==='ft'){ syncUnitUI(); buildCatalog(); build2D(); }   // 黄金态必须与「用户点了英尺按钮」完全同形
   if(uist==='collapsed') applyPanels();
   if(uist==='2d-sel') setTimeout(()=>{ addItem('lunix-0'); updateProps(); }, 150);
   if(uist==='night')  setTimeout(()=>{ if(three){ setDayNight(true); requestRender(); } }, 800);
