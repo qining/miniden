@@ -26,7 +26,8 @@
     "test:coverage": "vitest run --coverage",
     "e2e": "node scripts/e2e.mjs",
     "e2e:ci": "node scripts/e2e.mjs --ci",
-    "e2e:public": "node scripts/e2e.mjs --public"
+    "e2e:public": "node scripts/e2e.mjs --public",
+    "e2e:all": "node scripts/e2e.mjs --entry=all"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

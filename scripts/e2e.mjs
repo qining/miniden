@@ -8,11 +8,13 @@
  * 也不会触发 pointer capture / hover / focus / 真实 dblclick / 真实文件选择 / 页面刷新。
  *
  * 用法：
- *   node scripts/e2e.mjs                    headful（人可看着），个人入口 dist/planner.html
+ *   node scripts/e2e.mjs                    headful（人可看着），默认两个入口：dist/planner + dist/app
  *   node scripts/e2e.mjs --flow=units       只跑一条
  *   node scripts/e2e.mjs --fast             不减速（CI / 快速回归）
- *   node scripts/e2e.mjs --public           公开入口 dist/app.html（generic 户型）
- *   node scripts/e2e.mjs --ci               headless=new + swiftshader + fast + public
+ *   node scripts/e2e.mjs --public           只跑公开入口 dist/app.html（generic 户型）
+ *   node scripts/e2e.mjs --entry=all        四个入口全跑：dist/planner · dist/app · planner.html · app.html
+ *   node scripts/e2e.mjs --entry=src-app    只跑入库的源文件 app.html（外链 lib/，generic 户型）
+ *   node scripts/e2e.mjs --ci               headless=new + swiftshader + fast + 入口 dist/app.html + app.html
  * 产物（全部 gitignore）：work/e2e/report.html（逐步截图 + 断言，人可审）、log.json、shots/
  */
 import { spawn } from 'node:child_process';
@@ -40,14 +42,36 @@ const SHOTS = join(OUT, 'shots');
 const CHROME_MAC = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 const CHROME_CI = process.env.CHROME || process.env.CHROME_BIN || '/usr/bin/chromium-browser';
 
-const entry = PUBLIC ? 'dist/app.html' : 'dist/planner.html';
-const entryPath = join(root, entry);
-if (!existsSync(entryPath)) {
-  console.error('入口不存在：' + entry + '（先 npm run build）');
-  process.exit(2);
+/* 入口口径（E18：一个事实来源 app.html → 两个入口）。
+   默认跑「两个入口都跑」——同一套流程在个人入口与公开入口上各跑一遍，
+   换户型就坏的断言当场暴露（bench 的 source/dist/dist-generic 三份同理）。
+   --entry= 可指定：planner | app | src-planner | src-app | both | all（逗号可组合） */
+const ENTRY_ALIAS = {
+  planner: ['dist/planner.html'],
+  app: ['dist/app.html'],
+  'src-planner': ['planner.html'],
+  'src-app': ['app.html'],
+  both: ['dist/planner.html', 'dist/app.html'],
+  all: ['dist/planner.html', 'dist/app.html', 'planner.html', 'app.html'],
+};
+function resolveEntries() {
+  const raw = val('--entry', null) || (CI ? 'app,src-app' : PUBLIC ? 'app' : 'both');
+  const out = [];
+  for (const part of String(raw).split(',')) {
+    const k = part.trim();
+    if (!k) continue;
+    const list = ENTRY_ALIAS[k];
+    if (!list) {
+      console.error('--entry 不认识：' + k + '（可选 ' + Object.keys(ENTRY_ALIAS).join(' | ') + '）');
+      process.exit(2);
+    }
+    for (const e of list) if (!out.includes(e)) out.push(e);
+  }
+  return out;
 }
+const ENTRIES = resolveEntries();
 
-function chromeArgs() {
+function chromeArgs(entryPath) {
   const a = [
     `--user-data-dir=${PROFILE}`,
     `--remote-debugging-port=${PORT}`,
@@ -66,13 +90,14 @@ function chromeArgs() {
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-async function main() {
-  rmSync(PROFILE, { recursive: true, force: true });
-  rmSync(OUT, { recursive: true, force: true });
+async function runEntry(entry) {
+  const entryPath = join(root, entry);
+  const slug = entry.replace(/[^A-Za-z0-9._-]/g, '_');
+  rmSync(PROFILE, { recursive: true, force: true }); // 每个入口一个干净 profile
   mkdirSync(SHOTS, { recursive: true });
 
   const bin = process.env.CHROME_BIN || (CI ? CHROME_CI : CHROME_MAC);
-  const proc = spawn(bin, chromeArgs(), { stdio: ['ignore', 'pipe', 'pipe'] });
+  const proc = spawn(bin, chromeArgs(entryPath), { stdio: ['ignore', 'pipe', 'pipe'] });
   const chromeLog = [];
   proc.stdout.on('data', (d) => chromeLog.push(String(d)));
   proc.stderr.on('data', (d) => chromeLog.push(String(d)));
@@ -183,7 +208,8 @@ async function main() {
 
   const shot = async (label) => {
     const r = await cdp('Page.captureScreenshot', { format: 'png' });
-    const name = String(++shotNo).padStart(3, '0') + '-' + label.replace(/[^A-Za-z0-9._-]/g, '_') + '.png';
+    const name =
+      String(++shotNo).padStart(3, '0') + '-' + slug + '-' + label.replace(/[^A-Za-z0-9._-]/g, '_') + '.png';
     writeFileSync(join(SHOTS, name), Buffer.from(r.data, 'base64'));
     return name;
   };
@@ -434,45 +460,75 @@ async function main() {
     }
   }
 
-  /* ---------- 报告 ---------- */
+  ws.close();
+  proc.kill('SIGKILL');
+  await sleep(400);
+  rmSync(PROFILE, { recursive: true, force: true });
+
   const passed = results.filter((r) => r.kind === 'assert' && r.ok).length;
   const total = results.filter((r) => r.kind === 'assert').length;
-  writeFileSync(join(OUT, 'log.json'), JSON.stringify({ entry, ci: CI, speed: SPEED, results }, null, 1));
+  console.log('\n[' + entry + '] ' + passed + '/' + total + ' 断言通过 · 失败 ' + failures);
+  return { entry, slug, results, passed, total, failures, shotNo };
+}
+
+/* ---------- 多入口：同一套流程逐个入口各跑一遍，合并成一份报告（E18 口径） ---------- */
+async function main() {
+  rmSync(OUT, { recursive: true, force: true });
+  mkdirSync(SHOTS, { recursive: true });
+
+  const have = ENTRIES.filter((e) => existsSync(join(root, e)));
+  for (const m of ENTRIES) if (!have.includes(m)) console.log('跳过入口（文件不存在，先 npm run build）：' + m);
+  if (!have.length) {
+    console.error('没有可跑的入口（先 npm run build）');
+    process.exit(2);
+  }
+
+  const runs = [];
+  for (const e of have) runs.push(await runEntry(e));
+
+  const results = runs.flatMap((r) => r.results.map((x) => ({ ...x, entry: r.entry })));
+  const passed = runs.reduce((a, r) => a + r.passed, 0);
+  const total = runs.reduce((a, r) => a + r.total, 0);
+  const failures = runs.reduce((a, r) => a + r.failures, 0);
+  writeFileSync(
+    join(OUT, 'log.json'),
+    JSON.stringify({ entries: have, ci: CI, speed: SPEED, results }, null, 1)
+  );
 
   const byFlow = new Map();
   for (const r of results) {
-    if (!byFlow.has(r.flow)) byFlow.set(r.flow, []);
-    byFlow.get(r.flow).push(r);
+    const k = r.entry + ' · ' + r.flow;
+    if (!byFlow.has(k)) byFlow.set(k, []);
+    byFlow.get(k).push(r);
   }
+  const allShots = existsSync(SHOTS) ? (await import('node:fs')).readdirSync(SHOTS) : [];
   let html =
     `<!doctype html><meta charset="utf-8"><title>MiniDen E2E 报告</title>` +
     `<style>body{background:#12151a;color:#e8e6e1;font:14px/1.5 system-ui;margin:24px}` +
-    `h2{margin:26px 0 8px} .a{padding:6px 10px;border-left:4px solid #26e0a8;margin:4px 0;background:#181c22}` +
+    `h1{font-size:20px} h2{margin:26px 0 8px;font-size:15px;color:#9fb3c8}` +
+    `.a{padding:6px 10px;border-left:4px solid #26e0a8;margin:4px 0;background:#181c22}` +
     `.a.f{border-color:#e05656;background:#241a1c} .i{border-color:#7fb8ff;opacity:.85}` +
     `img{max-width:520px;border:1px solid #2a2f36;margin:6px 8px 6px 0;vertical-align:top}` +
     `pre{white-space:pre-wrap;margin:0;font:12px/1.4 ui-monospace}</style>` +
-    `<h1>E2E 报告 · ${entry} · ${CI ? 'CI(headless)' : 'headful'}</h1>` +
-    `<p>断言 ${passed}/${total} 通过 · 截图 ${shotNo} 张 · 每步 ${SPEED}ms</p>`;
+    `<h1>E2E 报告 · 入口 ${have.join(' + ')} · ${CI ? 'CI(headless)' : 'headful'}</h1>` +
+    `<p>断言 ${passed}/${total} 通过 · 失败 ${failures} · 截图 ${runs.reduce((a, r) => a + r.shotNo, 0)} 张 · 每步 ${SPEED}ms</p>`;
+  for (const r of runs) {
+    html += `<p><b>${r.entry}</b>：${r.passed}/${r.total} 通过 · 失败 ${r.failures}</p>`;
+  }
   for (const [flow, rows] of byFlow) {
     html += `<h2>${flow}</h2>`;
     for (const r of rows) {
       const cls = r.kind === 'info' ? 'i' : r.ok ? 'a' : 'a f';
       html += `<div class="${cls}">${r.ok ? 'PASS' : r.kind === 'info' ? 'INFO' : 'FAIL'} ${r.name}<pre>${(r.detail || '').replace(/</g, '&lt;')}</pre></div>`;
     }
-    const imgs = (existsSync(SHOTS) ? (await import('node:fs')).readdirSync(SHOTS) : []).filter((n) =>
-      n.includes(flow.replace(/[^A-Za-z0-9._-]/g, '_'))
-    );
-    for (const n of imgs) html += `<img src="shots/${n}" alt="${n}">`;
+    const run = runs.find((x) => x.entry === rows[0].entry);
+    const key = run.slug + '-' + rows[0].flow.replace(/[^A-Za-z0-9._-]/g, '_');
+    for (const n of allShots.filter((n) => n.includes(key))) html += `<img src="shots/${n}" alt="${n}">`;
   }
   writeFileSync(join(OUT, 'report.html'), html);
 
-  console.log('\nE2E: ' + passed + '/' + total + ' 断言通过 · 失败 ' + failures);
+  console.log('\nE2E 合计: ' + passed + '/' + total + ' 断言通过 · 失败 ' + failures + ' · 入口 ' + have.join(' + '));
   console.log('报告：file://' + join(OUT, 'report.html'));
-
-  ws.close();
-  proc.kill('SIGKILL');
-  await sleep(400);
-  rmSync(PROFILE, { recursive: true, force: true });
   process.exit(failures ? 1 : 0);
 }
 

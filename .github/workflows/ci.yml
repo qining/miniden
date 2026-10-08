@@ -68,9 +68,11 @@ jobs:
           node scripts/ui-gate.mjs
 
       # E21 真实输入 E2E：CDP 驱动真 Chrome（真实鼠标/键盘/confirm 弹窗/文件选择/下载/刷新）。
-      # 跑公开入口（generic 户型）——流程断言全部 plan-independent：坐标从运行时派生，
-      # 每个 flow 前清存档（localStorage + IndexedDB），流程之间/运行之间都确定。
-      - name: E21 E2E flows (real input · real dialogs · real files)
+      # 跑两个公开侧入口：dist/app.html（构建产物）+ app.html（入库的源文件，外链 lib/）——
+      # 这就是 E18「一个事实来源」的同步门禁：只修源不重捆、或只重捆不修源，这里就红。
+      # 流程断言全部 plan-independent：坐标从运行时派生，每个 flow 前清存档（localStorage + IndexedDB）。
+      - name: E21 E2E flows (real input · real dialogs · real files · 2 entries)
+        timeout-minutes: 12
         run: npm run e2e:ci
 
       - uses: actions/upload-artifact@v4

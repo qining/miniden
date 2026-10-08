@@ -314,14 +314,23 @@ bench 的证据类型是「合成 PointerEvent + `--virtual-time-budget`」：�
 
 ```bash
 npm run e2e            # headful：能看着它点（每步 620ms；--speed=0 加速，--fast 即 0）
-npm run e2e:public     # 公开入口 dist/app.html（generic 户型）
-npm run e2e:ci         # CI 口径：--headless=new + swiftshader
+                       #   默认跑两个入口：dist/planner.html（个人）+ dist/app.html（公开）
+npm run e2e:all        # 四个入口全跑：dist/planner · dist/app · planner.html · app.html
+npm run e2e:public     # 只跑公开入口 dist/app.html（generic 户型）
+npm run e2e:ci         # CI 口径：--headless=new + swiftshader，入口 dist/app.html + app.html
+node scripts/e2e.mjs --entry=src-app --fast   # 只跑入库的源文件 app.html
 node scripts/e2e.mjs --flow=view-3d-fp --fast   # 只跑一条（调试）
 node scripts/e2e.mjs --keep-state               # 保留上一个 flow 的状态（调试用）
 ```
 
+**入口口径（E18：一个事实来源 → 两个入口）**：`--entry=` 可选
+`planner`(dist/planner.html) · `app`(dist/app.html) · `src-planner`(planner.html) · `src-app`(app.html) ·
+`both`(默认) · `all`，逗号可组合。本地默认两个入口各跑一遍（120/120）；CI 跑公开侧两个
+（`dist/app.html` 构建产物 + `app.html` 入库源文件）——**只改源不重捆、或只重捆不修源，这里就红**。
+入口文件不存在时跳过并打印（CI 里没有 `private/` → 没有 `dist/planner.html`）。
+
 报告：`work/e2e/report.html`（每步截图 + 断言 + 弹窗记录）+ `work/e2e/log.json`（gitignore）。
-14 条流程 / 60 断言；**两个入口各 60/60，CI 口径 60/60，约 26s**。
+14 条流程 / 60 断言；**默认两个入口各 60/60（120/120），四个入口全跑 240/240，CI 口径 120/120**。
 
 它比 bench 多出来的真实东西：`Input.dispatchMouseEvent/dispatchKeyEvent/insertText`
 （trusted event）、`Page.javascriptDialogOpening` + `handleJavaScriptDialog`
