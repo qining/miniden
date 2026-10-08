@@ -23,7 +23,10 @@
     "slo:headful": "node scripts/slo.mjs --headful",
     "slo:ci": "node scripts/slo.mjs --public --ci",
     "storage:probe": "node scripts/storage-probe.mjs",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "e2e": "node scripts/e2e.mjs",
+    "e2e:ci": "node scripts/e2e.mjs --ci",
+    "e2e:public": "node scripts/e2e.mjs --public"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
