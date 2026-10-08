@@ -169,12 +169,13 @@ function mergeIntervals(ivs: { u0: number; u1: number }[], gapFt: number) {
 /**
  * 图层名 → 语义类（DXF 用；PDF 用 classifyPdfColor 映射到同一集合）。
  * COL 严格匹配词边界：'colors'（QCAD 色样层）不能命中 'col'（真实集成数据里发生的误判）；
- * 'COL' / 'COLS' / 'COLUMN' / 'COLUMNS' / 'WALL-COLS' 都要命中。
+ * 'COL' / 'COLS' / 'COLUMN' / 'COLUMNS' / 'S-COLS' 都要命中。
+ * 优先级：墙 > 柱 —— 层名同时提到两者（'WALL-COLS'）按墙算（不是 col）。
  */
 export function classifyLayer(name: string | undefined): LayerClass {
   const n = String(name ?? '').toUpperCase();
   if (!n || n === '0') return 'other';
-  if (/WALL|墙/.test(n)) return 'wall';
+  if (/WALL|墙/.test(n)) return 'wall'; // 墙先于柱：层名同时提到墙和柱（WALL-COLS）按墙算（集成测试守着）
   if (/DOOR|门/.test(n)) return 'door';
   if (/WIN|窗/.test(n)) return 'window';
   if (/\bCOL(?:S|UM(?:NS?)?)?\b|柱/.test(n)) return 'col';
@@ -192,17 +193,11 @@ export interface UnitDetect {
 }
 
 /** 量级表（R1：酷家乐启发式）——240mm 砖墙在各单位下的标称值。
- *  pt（PDF 原生点）：240mm = 68.03pt。 */
-export const UNIT_NOMINAL: Record<Unit, number> = {
-  mm: 240,
-  cm: 24,
-  m: 0.24,
-  in: 9.45,
-  ft: 0.787,
-  yd: 0.2625,
-  mi: 0.000149,
-  pt: 68.03,
-};
+ *  由 UNIT_TO_M 推导（0.24m ÷ 该单位的米数），不再手拄：手拄过一次 10 倍 typo
+ *  （pt 写成 68.03，而 240mm = 680.3pt → 点制图纸读不成 pt 而退回 mm，240mm 墙变 680mm）。 */
+export const UNIT_NOMINAL: Record<Unit, number> = Object.fromEntries(
+  (Object.keys(UNIT_TO_M) as Unit[]).map((u) => [u, Number((0.24 / UNIT_TO_M[u]).toFixed(6))])
+) as Record<Unit, number>;
 
 /**
  * 墙厚样本必须是**源单位**数值（未换算）。
@@ -563,16 +558,42 @@ export function buildDocFromRaw(raw: Raw, opts: BuildDocOptions): ImportResult {
   const walls: Wall[] = [];
   const wallSeq = { n: 0 };
   const mkWallId = () => 'w' + String(++wallSeq.n).padStart(2, '0');
-  const bandWallId: (string | null)[] = bands.map(() => null);
+  // 每个墙带的每个区间 → 它那段墙的 id（太短没建墙的记 null，保持与 intervals 同下标）。
+  // 门/窗的 wallId 要按「它落在哪个区间」取，不能取「最后一个区间」：
+  // 一条墙带被门缝切成两段时，后者会把第一段上的窗指到第二段墙去。
+  const bandWallIds: (string | null)[][] = bands.map(() => []);
+  // 区间→墙 id 的取法：落在哪个区间就是哪段；都不包含时取最近的那段
+  const pickBandWallId = (bi: number, u: number): string | null => {
+    const list = bandWallIds[bi];
+    let best: string | null = null,
+      bestD = Infinity;
+    for (let k = 0; k < list.length; k++) {
+      const id = list[k];
+      if (!id) continue;
+      const iv = bands[bi].intervals[k];
+      const lo = Math.min(iv.u0, iv.u1),
+        hi = Math.max(iv.u0, iv.u1);
+      if (u >= lo - 1e-9 && u <= hi + 1e-9) return id;
+      const d = u < lo ? lo - u : u - hi;
+      if (d < bestD) {
+        bestD = d;
+        best = id;
+      }
+    }
+    return best;
+  };
   {
     for (let bi = 0; bi < bands.length; bi++) {
       const bd = bands[bi];
       for (const iv of bd.intervals) {
         const a = pointOnLine(bd, iv.u0),
           b = pointOnLine(bd, iv.u1);
-        if (distFt(a, b) < minLenFt) continue;
+        if (distFt(a, b) < minLenFt) {
+          bandWallIds[bi].push(null);
+          continue;
+        }
         const id = mkWallId();
-        bandWallId[bi] = id;
+        bandWallIds[bi].push(id);
         walls.push({
           id,
           kind: bd.thick < 0.07 * M_TO_FT ? 'thin' : 'wall',
@@ -652,7 +673,7 @@ export function buildDocFromRaw(raw: Raw, opts: BuildDocOptions): ImportResult {
           id: 'd' + String(++n).padStart(2, '0'),
           geom: { t: 'seg', x1: leaf.a.x, y1: leaf.a.y, x2: leaf.b.x, y2: leaf.b.y },
           gapGeom: { t: 'seg', x1: a.x, y1: a.y, x2: b.x, y2: b.y },
-          wallId: bandWallId[bi],
+          wallId: bandWallIds[bi][k] ?? bandWallIds[bi][k + 1] ?? pickBandWallId(bi, uMid),
           pos: f2(pos),
           width: f2(distFt(leaf.a, leaf.b)),
           kind: 'swing',
@@ -688,7 +709,7 @@ export function buildDocFromRaw(raw: Raw, opts: BuildDocOptions): ImportResult {
         windows.push({
           id: 'win' + String(++n).padStart(2, '0'),
           geom: { t: 'seg', x1: s.a.x, y1: s.a.y, x2: s.b.x, y2: s.b.y },
-          wallId: bandWallId[bi],
+          wallId: pickBandWallId(bi, uMid),
           pos: f2(pos),
           width: f2(w * M_TO_FT),
           sill: f2(0.9 * M_TO_FT),
@@ -893,7 +914,7 @@ function runFromContour(pts: V2[], bands: Band[]): Run | null {
   const n = v(-d.y, d.x);
   let maxOff = 0;
   for (const p of pts) maxOff = Math.max(maxOff, Math.abs(dot(sub(p, pick.a), n)));
-  if (maxOff < 0.1) return null;
+  if (maxOff < 0.1 * M_TO_FT) return null; // 深度阈值 10cm（以前是个裸 0.1，在 ft 空间里 = 3.05cm → 图纸里的细线/符号会变成台面）
   return {
     id: '',
     src: 'user',
