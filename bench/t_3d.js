@@ -1201,6 +1201,54 @@ async function run3DTest() {
       CATALOG.filter((c) => c.kind === 'climber').length + ' 款爬爬架'
     );
 
+    /* ===== 目录数据不变量（bug 猎第十四轮）
+       圆形实物（w===d）必须按圆处理：碰撞检测 + 2D 图例。
+       实测过的 bug：圆形蹦床（8 款）既不在 obbCorners 的 round 名单里，2D 也画成方框 ——
+       蹦床(221.6cm 圆) 与凳子斜 45° 摆：中心距 4.950ft、半径和 4.373ft（物理不接触），
+       方盒角却判 obbOverlap=true → 界面凭空给两件都描红「重叠」。 */
+    {
+      const ciTramp = CATALOG.find((c) => c.kind === 'trampoline' && c.w === c.d);
+      const ciStool = CATALOG.find((c) => c.kind === 'stool');
+      const ciA = { uid: -1, ref: ciTramp.id, x: 0, y: 0, rot: 0 };
+      const ciB = { uid: -2, ref: ciStool.id, x: 3.5, y: 3.5, rot: 0 };
+      const ciDist = Math.hypot(3.5, 3.5);
+      const ciSumR = (ciTramp.w + ciStool.w) / 2 / 30.48;
+      const ciFree = obbOverlap(ciA, ciTramp, ciB, ciStool);
+      // 对照组：真重叠必须报 true，否则这条断言什么都不证明
+      const ciTouch = obbOverlap(ciA, ciTramp, { uid: -3, ref: ciStool.id, x: 1, y: 1, rot: 0 }, ciStool);
+      T(
+        'catalog-round-collision',
+        ciFree === false && ciTouch === true,
+        '圆蹦床+凳 斜45°: 中心距 ' +
+          ciDist.toFixed(3) +
+          'ft > 半径和 ' +
+          ciSumR.toFixed(3) +
+          'ft → obbOverlap ' +
+          ciFree +
+          '（对照真重叠 ' +
+          ciTouch +
+          '）'
+      );
+      const ciLegend = furnShape(ciA, ciTramp);
+      T(
+        'catalog-legend-round',
+        !!ciLegend.querySelector('circle'),
+        '蹦床 2D 图例: ' + (ciLegend.querySelector('circle') ? '圆形' : '仍是方框（与实物不符）')
+      );
+      // 同品类必须同图例：铁架床条目（架 + 床垫）原先落到通用矩形
+      const ciBed = CATALOG.find((c) => c.kind === 'bed');
+      const ciMetal = CATALOG.find((c) => c.kind === 'bedMetal');
+      const nOf = (sp) => furnShape({ uid: -4, ref: sp.id, x: 0, y: 0, rot: 0 }, sp).querySelectorAll('*').length;
+      const ciGeneric = nOf(Object.assign({}, CATALOG[0], { kind: '__no_such_kind__' }));
+      const nBed = nOf(ciBed),
+        nMetal = nOf(ciMetal);
+      T(
+        'catalog-legend-bedmetal',
+        nMetal >= ciGeneric + 2 && nMetal >= nBed - 2,
+        'bed ' + nBed + ' 个图元 / bedMetal ' + nMetal + ' 个 / 通用回退 ' + ciGeneric
+      );
+    }
+
     /* ===== 双击 = 进室内视角（2D 和俯瞰都要支持）
        S10：目标点从 floorPts() 中心派生（plan-independent：generic/mine 两个户型同一套脚本） ===== */
     setView('2d');

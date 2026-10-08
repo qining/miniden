@@ -3985,7 +3985,7 @@ function furnShape(it, spec){
     }
   } else
   // 主体
-  if(kind==='tableRound' || (kind==='sideTable' && spec.w===spec.d && spec.w>=60)){
+  if(kind==='tableRound' || kind==='trampoline' || (kind==='sideTable' && spec.w===spec.d && spec.w>=60)){
     el('circle',{cx:0,cy:0,r:wp/2,fill:col,stroke:'rgba(0,0,0,.4)','stroke-width':1.2},body);
   } else {
     R(-wf/2,-df/2,wf,df, isRug?3:4, col, {stroke:'rgba(0,0,0,.45)','stroke-width':isRug?0.8:1.2, opacity:isRug?0.82:1});
@@ -4000,7 +4000,7 @@ function furnShape(it, spec){
   } else if(kind==='sofaL'){
     R(-wf/2+.08,-df/2+.08, wf-.16, df*.2,3, dk);
     R(wf/2-cm2ft(78), -df/2+df*.2, cm2ft(78), df*.8-.08, 3, 'rgba(0,0,0,.12)'); // 贵妃位
-  } else if(kind==='bed'){
+  } else if(kind==='bed'||kind==='bedMetal'){   // 铁架床条目也是「架 + 床垫」，图例必须与床一致
     R(-wf/2+.12,-df/2+.55, wf-.24, df-.7, 3, 'rgba(255,255,255,.5)');           // 床垫
     R(-wf/2+.28,-df/2+.75, wf*.42-.3, 1.05, 2, lt);                              // 枕头
     R(.02,-df/2+.75, wf*.42-.3, 1.05, 2, lt);
@@ -4165,7 +4165,8 @@ function vOverlap(sa,sb){
 }
 function obbCorners(it,spec){
   // 圆形家具（圆桌/转椅/圆几）按内接方近似，避免方角误报碰撞
-  const round = spec.w===spec.d && ['tableRound','sideTable','lamp','officeChair','stool','ballPit'].includes(spec.kind);
+  // 实物是圆的（w===d）就要按圆算：方盒角比圆外凸 (√2−1)r ≈ 41% 半径，斜着摆会假报警
+  const round = spec.w===spec.d && ['tableRound','sideTable','lamp','officeChair','stool','ballPit','trampoline'].includes(spec.kind);
   const k = round? 0.72 : 1;
   const wf=cm2ft(spec.w)/2*k, df=cm2ft(spec.d)/2*k, r=it.rot*Math.PI/180;
   const c=Math.cos(r), s=Math.sin(r);
