@@ -122,6 +122,26 @@ function reqPromise<T>(make: () => IdbRequestLike | null): Promise<T | undefined
   });
 }
 
+/** 只关心「请求成功还是失败」。delete() 的 result 本来就是 undefined，
+    用 result 判成败会把「删成功」误判成失败（写路径才恰好能用 result）。 */
+function reqDone(make: () => IdbRequestLike | null): Promise<boolean> {
+  return new Promise((resolve) => {
+    let r: IdbRequestLike | null = null;
+    try {
+      r = make();
+    } catch (_e) {
+      resolve(false);
+      return;
+    }
+    if (!r) {
+      resolve(false);
+      return;
+    }
+    r.onsuccess = () => resolve(true);
+    r.onerror = () => resolve(false);
+  });
+}
+
 export function idbBackend(db: IdbDbLike, storeName: string = IDB_STORE): KVBackend {
   const store = (mode: string): IdbStoreLike | null => {
     if (!db.transaction) return null;
@@ -153,14 +173,14 @@ export function idbBackend(db: IdbDbLike, storeName: string = IDB_STORE): KVBack
     write: async (k, v) => {
       const s = store('readwrite');
       if (!s) return false;
-      const r = await reqPromise<unknown>(() => s.put(v, k));
-      return r !== undefined; // put 的 result 就是写入用的键（字符串）；出错才是 undefined
+      return reqDone(() => s.put(v, k));
     },
     remove: async (k) => {
       const s = store('readwrite');
       if (!s) return false;
-      await reqPromise<unknown>(() => s.delete(k));
-      return true;
+      // 删失败必须报 false：门面据此标降级。报 true 的后果是 LS 里删了、主存里还在 →
+      // 下次载入又把本该消失的存档读回来（loadDoc 里 remove(DOC_KEY) 就是这条路径）。
+      return reqDone(() => s.delete(k));
     },
   };
 }
@@ -183,6 +203,12 @@ export function openIdb(
     try {
       req = open(dbName, version);
     } catch (_e) {
+      resolve(null);
+      return;
+    }
+    if (!req) {
+      // 防御：某些环境（隐私模式垫片）会让 open() 返回空。不挡住的话下面赋值直接抛，
+      // 整个 openIdb 变成 rejected promise → 存储永远 ready 不了。
       resolve(null);
       return;
     }
