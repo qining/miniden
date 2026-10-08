@@ -77,7 +77,7 @@
 | `docs/research/01–10` | 需要「依据」时（各结论的调研过程/数据） |
 | `docs/design/` | 户型输入 → 3D 的设计总文档 |
 
-**当前位置**：R1–R10 研究全部完成；S 系列全部落地（S1–S7 + S9 Warm Dark 2a–2d）。**S10（隐私 + plan 外部化，2026-09）**：个人数据全部移入 `private/`（§1.4）；户型几何外置为 `#miniden-plan` JSON（committed=generic / 本地构建注入 mine）；bench 分层（入库 plan-independent / private plan-specific）；ui-gate 截 dist。**S11（2026-10-05）**：户型文档导出/导入（「工具 ⌄」→「导出户型 / 导入户型」+ `#docModal` 一次性确认，走 `applyImportedDoc` 同一条路；`ProjectDoc.floorOutline?` 纯增量可选字段保地板轮廓逐坐标保真）。**S11b（2026-10-05）**：导出必须无限制 → `ProjectDoc.plan?`（户型专属快照：roomSummary/refPhoto/calib/windowBand/patioPatch/islLabel/isl/kitchen/inner，同样不进投影），`freshDoc()` 从 PLAN 播种、消费端走 `planOf(k)`（文档优先、回退 PLAN）；厨房硬编码块数据化（顺带清除了公开文件里的真实坐标）。**S12（2026-10-05）**：放置类实体只认两个来源——用户画 / 导入读到的几何，不写启发式猜测；`Run` 台面柜体带实体 + 工具、DXF/PDF `furn` 轮廓按形状分类落地为 run、钢框窗改成窗实体的 `steel` 标志（`steelBands()` 与历史 windowBand 重合时只画一次）。**E18（2026-10-05）**：两个入口一个事实来源（§0.3）。**S13（2026-10-06）**：布局跟着 app 走——户型 JSON 新增 `layout`（内置布局），`load()` 在「这台浏览器对这份户型从没存过档」时用它播种（§1.2）；公开入口 `layout:null`（build.mjs 硬断言），测试台一律剥掉 layout（保持确定性 + plan-independence），`#calib` 不播种（§1.1）。待办：无（`git filter-repo` 已执行，见下）。**E5（2026-10-06）**：GitHub Actions CI 上线（`.github/workflows/ci.yml`，generic 子集：tsc → vitest → build → bench ×6 → ui-gate 双截；见 §3）。**P1 收尾（2026-10-06）**：git filter-repo 历史清除 + force-push 已执行（§1.4）；E7 LICENSE/THIRD-PARTY、E8 README、E13 包体预算门禁同期落地。**E6（2026-10-07）**：ESLint 10 + Prettier 3.9 落地（格式化单独提交；TS 侧因 typescript-eslint 不支持 TS7 暂由 tsc strict + Prettier 覆盖，见 §2）。**E19（2026-10-07）**：多轮 bug 猎（九轮：schema / 导入管线 / 3D 消费端 / 校验层 / 交互层 / $INSUNITS 码表），10 个真 bug + 1 处防御性统一，方法论见 §5.1.1。**E9（2026-10-07）**：`docs/design/architecture.md`（人读版架构：数据流 / 模块边界 / 构建守卫 / 门禁矩阵 / 不变量红线）。**E14+E17（2026-10-07）**：快捷 SLO 套件（`scripts/slo.mjs`，七项实测数字）+ 它的 CI 门禁。**E10（2026-10-07）**：持久化从 localStorage 换成 IndexedDB 主存（存储门面，见 §1.2）。加目录条目照 §8.1 / skill 走。
+**当前位置**：R1–R10 研究全部完成；S 系列全部落地（S1–S7 + S9 Warm Dark 2a–2d）。**S10（隐私 + plan 外部化，2026-09）**：个人数据全部移入 `private/`（§1.4）；户型几何外置为 `#miniden-plan` JSON（committed=generic / 本地构建注入 mine）；bench 分层（入库 plan-independent / private plan-specific）；ui-gate 截 dist。**S11（2026-10-05）**：户型文档导出/导入（「工具 ⌄」→「导出户型 / 导入户型」+ `#docModal` 一次性确认，走 `applyImportedDoc` 同一条路；`ProjectDoc.floorOutline?` 纯增量可选字段保地板轮廓逐坐标保真）。**S11b（2026-10-05）**：导出必须无限制 → `ProjectDoc.plan?`（户型专属快照：roomSummary/refPhoto/calib/windowBand/patioPatch/islLabel/isl/kitchen/inner，同样不进投影），`freshDoc()` 从 PLAN 播种、消费端走 `planOf(k)`（文档优先、回退 PLAN）；厨房硬编码块数据化（顺带清除了公开文件里的真实坐标）。**S12（2026-10-05）**：放置类实体只认两个来源——用户画 / 导入读到的几何，不写启发式猜测；`Run` 台面柜体带实体 + 工具、DXF/PDF `furn` 轮廓按形状分类落地为 run、钢框窗改成窗实体的 `steel` 标志（`steelBands()` 与历史 windowBand 重合时只画一次）。**E18（2026-10-05）**：两个入口一个事实来源（§0.3）。**S13（2026-10-06）**：布局跟着 app 走——户型 JSON 新增 `layout`（内置布局），`load()` 在「这台浏览器对这份户型从没存过档」时用它播种（§1.2）；公开入口 `layout:null`（build.mjs 硬断言），测试台一律剥掉 layout（保持确定性 + plan-independence），`#calib` 不播种（§1.1）。待办：无（`git filter-repo` 已执行，见下）。**E5（2026-10-06）**：GitHub Actions CI 上线（`.github/workflows/ci.yml`，generic 子集：tsc → vitest → build → bench ×6 → ui-gate 双截；见 §3）。**P1 收尾（2026-10-06）**：git filter-repo 历史清除 + force-push 已执行（§1.4）；E7 LICENSE/THIRD-PARTY、E8 README、E13 包体预算门禁同期落地。**E6（2026-10-07）**：ESLint 10 + Prettier 3.9 落地（格式化单独提交；TS 侧因 typescript-eslint 不支持 TS7 暂由 tsc strict + Prettier 覆盖，见 §2）。**E19（2026-10-07）**：多轮 bug 猎（十三轮：schema / 导入管线 / 3D 消费端 / 校验层 / 交互层 / $INSUNITS 码表 / 导入启发式的单位口径 / 存储后端成败判据 / DXF 圆弧），16 个真 bug + 1 处防御性统一，方法论见 §5.1.1。**E20（2026-10-07）**：可测性/覆盖率治理——覆盖率棘轮进 CI（`vitest.config.mjs` thresholds，只许涨不许跌）+ `scripts/storage-probe.mjs`（真实 IDB 落盘门禁，headful 真实时间，理由同 §5.5）。**E9（2026-10-07）**：`docs/design/architecture.md`（人读版架构：数据流 / 模块边界 / 构建守卫 / 门禁矩阵 / 不变量红线）。**E14+E17（2026-10-07）**：快捷 SLO 套件（`scripts/slo.mjs`，七项实测数字）+ 它的 CI 门禁。**E10（2026-10-07）**：持久化从 localStorage 换成 IndexedDB 主存（存储门面，见 §1.2）。加目录条目照 §8.1 / skill 走。
 
 ---
 
@@ -423,11 +423,17 @@ sips -z 高 宽 /tmp/x.png --out /tmp/x_big.png               # 放大
 | **headful 测量还带着 `--use-angle=swiftshader`** | 测的是软件光栅化而不是用户显卡：进 3D 首帧 11.1s vs 真显卡 1.07s、拖拽 14fps vs 120fps。用它下「启动超标 / 帧率不够」的结论完全是假的 | headless（CI、可复现）才加 swiftshader；headful 一律用真显卡。CI 口径因此是**回归门禁**（抓 5× 级劣化），用户侧绝对值只能本地 headful 验 |
 | **生成大 fixture 时在循环里 `arr.join('\n').length` 判体积** | 每轮重新 join 整个数组 = O(n²)，10MB 生成跑到超时（400s 没结束） | 增量字节计数（push 时累加长度）；生成脚本也要 `time` 一下看数量级 |
 | **墙段短于 `MIN_WALL_LEN`(0.3m) 不参与墙带配对**（管线阈值，不是 bug） | 描摹/打印导出类图纸把一段墙拆成几十个小段 → 全部被过滤 → 「未检出墙体」（有警告，不静默，但用户不知道为什么） | 已知局限，写进 SLO fixture 的注释；将来要做的是**共线相接段的预归并**（在 `detectBands` 之前），记在 roadmap 待办，别在 SLO 工作里顺手改 |
-### 5.1.1 bug 猎方法论（2026-10 六轮，11 个 bug 全走这条路）
+| **单位标称表手拄**（`UNIT_NOMINAL.pt` 写 68.03，实际 240mm = **680.3**pt） | 手拄表与主换算表（`UNIT_TO_M`）不同步，错的偏偏是「看起来最正常」那一格：点制图纸读不成 pt → 退回 mm 启发式 → **整套户型放大 10 倍**（240mm 墙变 680mm），而 calib/2D 截图看着都「像对的」 | 派生，不要手拄：`0.24 / UNIT_TO_M[u]`。任何「一张表描述另一张表的同一批量」的地方都是重复事实，迟早漂移（同 §1.2 两个版本号不能混用） |
+| **阈值写在错误的单位空间**（`if (maxOff < 0.1) return null;` 而 `maxOff` 是 ft） | 意图是 10cm，裸 `0.1` 在 ft 空间 = 3.05cm → 图纸里的细线/符号轮廓被认成台面柜体带（图上凭空多出柜体） | 阈值一律写成「意图单位 × 换算」（`0.1 * M_TO_FT`）并在注释写死意图；对照消费端的量纲（`polyBboxM` 返回米、`f2` 是英尺） |
+| **「每个带一个 id」的数组，而后写覆盖先写**（`bandWallId[bi] = id` 在 `for (const iv of intervals)` 里） | 一条墙带被门缝切成两段时只留下最后一个 id → 落在第一段上的门/窗被指到第二段墙：编辑器选窗高亮错墙、门垛联动错墙，且**两份户型都不报错** | 一个带多个区间就要 带×区间 的 id 矩阵；按「点落在哪个区间」取，都不含时取最近区间。写完自问「这个数组的下标语义是什么」 |
+| **用 `request.result` 判 IDB 请求成败**（`delete()` 的 result 本来就是 `undefined`） | 删除失败也返回 true → 门面以为删掉了（缓存/镜像/主存三处状态与真实主存不一致），降级标记也不立。写路径恰好能用 result（put 返回 key），所以**只有删路径暴露** | 判成败只看 `onsuccess` / `onerror` 哪个 fired（`reqDone()`），与 result 无关。别把「写路径能用的判据」顺手搬到读/删路径 |
+| **DXF 圆弧的 `e` 没写回修正后的扫角**（`sweep += 2π` 只用于判 full，`e` 留原始值） | 跨 0°/360° 接缝的弧（`endAngle < startAngle`）与负 bulge 弧，下游 `expand`/SVG `A` 算出**负扫角** → 画出补弧：用户看到「墙多出一大截」。修了 sweep 却不写回 e，等于白修 | 产弧的两条路径（ARC / bulge）都过同一个 `normArc`；扫角为负 = 同一段弧反向走 = 点集不变 → 交换 s/e 即保真。变换（y 翻转）还要 `(−e,−s)`（§5.1 框架归一化要整套翻） |
+| **改了 `src/**` 但没 commit，而 `app.html` 的内嵌块已经带上新代码** | HEAD 里内嵌 geo/schema/storage 块 ≠ 已提交源码的新鲜编译 → **干净检出跑 `npm run build` 直接红**（CI 红，本地全绿，因为本地工作区是完整的）。更糟：bug 猎的修复只在工作区，commit 里找不到 | 提交前 `git status` 核对 `src/**` 与 `app.html` 是否同批；验收口径加一条：`git archive HEAD \| tar -x` 到临时目录 + 软链 node_modules + 跑 `geo:build`/`schema:build`/`storage:build`/`build.mjs` + `vitest run`（这就是 CI 环境） |
+### 5.1.1 bug 猎方法论（2026-10 十三轮，16 个 bug 全走这条路）
 
 **先写失败测试，再改代码**。每个 bug 都是「按代码读出来的怀疑」→ 写一条应当红的
 vitest → 跑一次确认它按预期红（证明 bug 真存在、不是臆想）→ 修 → 转绿。
-六轮里 11 个 bug 中 10 个的失败测试在修前就红了，1 个（枚举校验）是
+九轮里 16 个 bug 中 15 个的失败测试在修前就红了，1 个（枚举校验）是
 「构造畸形输入 → 崩溃/隐形件」类，同样先红后修。**没有一条是凭感觉改的。**
 
 分轮口径（每轮一个高风险面，读完再动手）：① `src/schema`（纯函数层，最好测）
@@ -437,7 +443,12 @@ vitest → 跑一次确认它按预期红（证明 bug 真存在、不是臆想�
 ⑦ **3D 消费端**（2D 有而 3D 没有的东西 = 消费端判据问题，靠探针页 + 射线量出硬数字再修）
 ⑧ **校验层的覆盖边界**（闸门验到什么程度？「不响但看不见」的几何类 bug 全部从这里漏过去）
 ⑨ **交互层：门联动/滑动夹取**（读出来的不对称要先用探针量它能不能在真户型上复现）
-⑩ **外部规范对照**（`$INSUNITS` 这类「我们照抄的码表」逐条对回原始规范；顺带查 fixture/测试有没有把错误固化）。
+⑩ **外部规范对照**（`$INSUNITS` 这类「我们照抄的码表」逐条对回原始规范；顺带查 fixture/测试有没有把错误固化）
+⑪ **导入启发式的单位口径**（手拄表 / 裸阈值 / 数组下标语义——三类都是「代码读起来没问题、量纲错了」）
+⑫ **存储后端的成败判据**（IDB 请求的 result 语义：put 有 key、delete 没有）
+⑬ **DXF 实体细节**（圆弧扫角、bulge 符号、变换后的角度——产弧的每一条路径都要归一）。
+
+**修完必须确认 HEAD 自洽**：`src/**` 与 `app.html` 内嵌块同批提交，并用「干净检出 + 三个 build + vitest」复现 CI 口径（本轮就发现过两轮修复只在工作区、没进 commit）。
 **量不出差异的怀疑就如实标成防御性统一，不冒充 bug**（第 ⑨ 轮：门整体滑动的夹取只取了
 一端的下界 + 另一端的上界，逐门量两份户型的两种夹取 → 最大差异 0.000ft → 只统一写法，
 并在提交信息里写清「为什么现在不会暴露」）。

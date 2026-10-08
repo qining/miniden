@@ -214,14 +214,21 @@ dist(generic) 三份。新工具或新家具换个户型就坏 → 立刻红。
 |---|---|---|---|
 | `tsc --noEmit` | ✓ | ✓ | 纯层类型 |
 | ESLint + Prettier | ✓ | ✓ | JS 工具面 lint；全手写代码面格式 |
-| `vitest run` | 183 | 176（7 条 fixture 门控跳过） | schema/geo 语义 |
+| `vitest run` | 292 | 285（7 条 fixture 门控跳过） | schema/geo/storage 语义 |
+| `test:coverage`（E20） | ✓ | ✓ | **覆盖率棘轮**：`src/**` 纯逻辑层 lines 95 / funcs 96 / stmts 92 / branches 85，只许涨不许跌（实测 96.66 / 97.56 / 94.23 / 87.87） |
 | `npm run build` 守卫 | ✓ | ✓ | 嵌入块与 src 一致、plan 不漂移、公开入口隐私 |
 | `size:check`（E13） | ✓ | ✓ | 包体预算棘轮 |
-| `t_walledit` 253×2 | ✓ | ✗（含真实坐标断言） | 2D 交互、门联动、导入、对话框 |
+| `t_walledit` 259×2 | ✓ | ✗（含真实坐标断言） | 2D 交互、门联动、导入、对话框、存储门面 |
 | `t_3d` 120×3 | ✓ | ✓ | 3D 拾取/拖动、全目录建模+贴图体检、缩略图 |
 | `t_pt` 33×3 | ✓ | ✓ | 光追 BVH/着色器/降噪/萤火虫/白家具可辨识度 |
+| `storage-probe`（E20） | ✓ | ✓ | **真实 IndexedDB 落盘**（headful + 真实时间 + 独立 profile，8 项）——虚拟时间里真实 I/O 时序不可信，理由同 §5.5 的 headful 渲染验证 |
+| `slo:ci`（E17） | ✓ | ✓ | 快捷 SLO 回归门禁（软件 GL 口径，抓 5× 级劣化） |
 | `#calib` md5 | ✓ | ✗（需 private 底图） | **户型几何逐字节不变**（AGENTS §1.1） |
 | `ui:gate` 8 态 | ✓ vs mine golden | ✓ 自建 generic 基线双截 | 本地 = 视觉回归；CI = 渲染确定性 + 页面可渲 |
+
+**HEAD 自洽口径**（bug 猎里真踩过：修复只在工作区没进 commit，而 `app.html` 内嵌块已带新代码）：
+`git archive HEAD \| tar -x` 到临时目录 + 软链 `node_modules` + 跑 `geo:build` / `schema:build` /
+`storage:build` / `build.mjs` / `vitest run` —— 这就是 CI 环境（无 `private/`），本地全绿不代表它绿。
 
 **「--update 之后的 8/8 @ 0.0000% 什么都不证明」**：重拍基线会把回归焊进基线。
 重构类改动的验收必须对**改动前的版本**独立做一次像素对比（AGENTS §3）。
