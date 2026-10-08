@@ -266,6 +266,8 @@ CI 的 Linux 软件 GL 上更易触发）：bench 内置自愈（读到全黑 0/
 
 **E16 黄金截图**（`scripts/ui-gate.mjs`）：截 **dist**（本地 = mine 注入；CI 无 private/
 = generic）对 `private/golden/`（mine 基线，gitignore）或 CI 自建基线。
+**截图态里一切异步渲染的东西必须同步渲完**（`#ui:*` 下目录缩略图走同步路径，见 §5.1）——
+否则「双截一致」证明的是运气，不是确定性。
 **ui-gate 截 dist 不是 source**（source 里是 generic plan，对 mine 基线必然 18%+ 假红）。
 标题/样式有意改动后 `--update` 重拍（显式动作，提交信息里说明）。
 
@@ -430,6 +432,8 @@ sips -z 高 宽 /tmp/x.png --out /tmp/x_big.png               # 放大
 | **DXF 圆弧的 `e` 没写回修正后的扫角**（`sweep += 2π` 只用于判 full，`e` 留原始值） | 跨 0°/360° 接缝的弧（`endAngle < startAngle`）与负 bulge 弧，下游 `expand`/SVG `A` 算出**负扫角** → 画出补弧：用户看到「墙多出一大截」。修了 sweep 却不写回 e，等于白修 | 产弧的两条路径（ARC / bulge）都过同一个 `normArc`；扫角为负 = 同一段弧反向走 = 点集不变 → 交换 s/e 即保真。变换（y 翻转）还要 `(−e,−s)`（§5.1 框架归一化要整套翻） |
 | **实物是圆的，碰撞检测与 2D 图例却按方盒算**（`obbCorners` 的 round 名单漏了 `trampoline`） | 方盒角比内切圆外凸 `(√2−1)·r ≈ 41%` 半径：圆蹦床(⌀221.6cm) 与凳子斜 45° 摆，中心距 4.950ft > 半径和 4.373ft（物理不接触）却报 `obbOverlap=true` → 界面凭空描红「重叠」；同一处形状不一致还体现在平面图把 7 英尺圆蹦床画成方块 | **形状口径必须三处一致**：`obbCorners` 的 round 名单（碰撞）、`furnShape` 的图例分支（2D）、模型本身（3D）。加新 kind 时若 `w===d` 且实物是圆的，三处都要问一遍 | | **同品类两个 kind 的 2D 图例不一致**（`bedMetal` 落到通用矩形，`bed` 有床垫/枕头/被子四段） | 「加新 kind 要管三处」（furnMats / furnShape / vSpan）只保证**有**分支，不保证**与同类读法一致**；铁架床条目本身就是「架 + 床垫」，读起来却不是床 | 加 kind 时多问一句：目录里有没有语义同类的 kind？它的图例长什么样？（`catalog-legend-bedmetal` 就是拿图元数比出来的） | | **用静态正则数 `furnShape` 的 kind 分支** | 静态抽取假报：`furnShape` 是 `if(kind===…)` 长链 + 数组 `includes` + `isLight()` 分组，正则漏判 → 报告「34 个 kind 没有图例」，实际只有 3 个 | **目录不变量要运行时量**：`furnShape(item, spec).querySelectorAll('*').length` 与「通用回退基线」（同一 spec 换成不存在的 kind）比，差值 =0 就是回退（`bench/t_3d.js` 的目录不变量段） |
 | **目录数据模型里定义的字段没有任何消费端**（`caVar` 出现在 9 个条目里，`grep -n caVar app.html` 只有数据行） | §5.4.1 写明「caVar = 加拿大有标价，但那是同型号的另一个面料/配置，界面上给提示」——提示从来没实现：加元视图把 KIVIK 深灰的「另一配置价」CA$849 当成这件的实价显示，既无 ≈（它确实是货架实价）也无任何说明 | **写完数据字段必须 grep 一遍消费端**（`grep -n "字段名" app.html` 里除了数据行以外有没有读到它）；`priceOf` 现在返回 `{v, exact, variant}`，`*` 号在出现的地方就地解释（合计尾部 `N 件带 * = 加拿大在售的是另一配置`） |
+| **黄金截图态里「异步渲染的东西」没等它渲完**（目录缩略图走 IntersectionObserver 排队 + 每帧 16ms 分批） | CI 双截 `2d-sel` 差 10.691%（同一份代码下一个提交全绿 = 不是回归，是截图态不确定）。逐区像素定位是关键：左面板 45.16% / 画布 0.00% / 右面板 0.00% / 顶栏 0.00%，且位移搜索最佳解是 dx=dy=0 → 不是 viewBox 位移（那类是 18~53% 全图平移），而是「一边缩略图渲完了、一边还没渲」。IO 回调时机 + `--virtual-time-budget` 冻结 `performance.now()`（分批循环实际渲多少件随之不定） | `#ui:*` 截图态一律**同步渲**（`observeThumbs` 里按 `getBoundingClientRect()` 只渲有尺寸的卡片）；普通交互路径保持 IO + 分批。**门禁红了先做逐区差异 + 位移搜索定性，再决定是修代码还是修门禁** |
+| **黄金基线里藏着「没渲完的占位块」**（改同步渲后 2d/2d-sel/ft 差 9.846%，其余五态不变） | 原先 mine 基线的目录格子是纯色占位块 → 这条门禁从来没有覆盖过缩略图，而它正是最容易被光照/取景/缓存改坏的东西 | 重拍基线是显式动作（`ui:gate:update` + 提交信息说明变化）；**重拍后要问「新基线比旧的多覆盖了什么」**，并目检新基线里该出现的东西真的出现了 |
 | **覆盖率棘轮的阈值按本地数字定，而本地有 `private/fixtures/`** | 本地 96.68% 的 `migrate.ts`，CI 只有 77.48%：它的无损对照测试要真实 `eff*` 输出（private fixture）→ CI 里整段跳过。结果 CI 覆盖率红，而**红的是「用户存档会不会丢」那条路的覆盖只存在于有私人数据的机器上** | 定阈值前先跑 CI 口径（`git archive HEAD \| tar -x` + 无 `private/`）；**门控测试覆盖的分支必须有合成数据的非门控版本**（`tests/schema/migrate-synthetic.test.ts` 就是这么补的：通用形状合成存档把 墙/窗/门洞/通道/覆盖/隐藏/洁具/patio/损坏存档 跑全，77.48%→95.36%） |
 | **改了 `src/**` 但没 commit，而 `app.html` 的内嵌块已经带上新代码** | HEAD 里内嵌 geo/schema/storage 块 ≠ 已提交源码的新鲜编译 → **干净检出跑 `npm run build` 直接红**（CI 红，本地全绿，因为本地工作区是完整的）。更糟：bug 猎的修复只在工作区，commit 里找不到 | 提交前 `git status` 核对 `src/**` 与 `app.html` 是否同批；验收口径加一条：`git archive HEAD \| tar -x` 到临时目录 + 软链 node_modules + 跑 `geo:build`/`schema:build`/`storage:build`/`build.mjs` + `vitest run`（这就是 CI 环境） |
 ### 5.1.1 bug 猎方法论（2026-10 十五轮，19 个 bug 全走这条路）
