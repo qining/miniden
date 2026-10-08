@@ -2,7 +2,7 @@
 #
 # CI 里没有 private/（gitignore）→ 只有 generic 户型可跑：
 #   typecheck → vitest → build（含 schema/geo/plan 一致性守卫 + 公开入口隐私硬断言）
-#   → plan-independent bench（t_3d ×3 入口 + t_pt ×3 入口）
+#   → plan-independent bench（t_3d ×3 入口 + t_planbuild ×3 入口 + t_pt ×3 入口）
 #   → ui-gate 双截：先 --update 在 CI 里自建 generic 基线，再 gate 比对
 #     ⚠ 这验证的是「渲染确定性 + 页面可渲 + 构建管线不改变行为」，
 #       不是视觉回归门禁（基线=当次样子，AGENTS §3 的「--update 后 8/8 什么都不证明」）。
@@ -49,6 +49,9 @@ jobs:
 
       # plan-independent bench：source / dist / 公开入口 三份同一套脚本
       - run: node scripts/run-bench.mjs t_3d.html t_3d_dist.html t_3d_app.html
+
+      # E22 户型搭建 bench：2D 画/改墙·柱·门·洁具 + 导入后编辑 + 持久化往返
+      - run: node scripts/run-bench.mjs t_planbuild.html t_planbuild_dist.html t_planbuild_app.html
 
       - run: node scripts/run-bench.mjs t_pt.html t_pt_dist.html t_pt_app.html
 

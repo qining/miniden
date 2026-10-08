@@ -34,6 +34,10 @@ const SPEC = {
   't_3d.html': { pre: 't3d', budget: 170000, win: '1400,950' },
   't_3d_dist.html': { pre: 't3d', budget: 170000, win: '1400,950' },
   't_3d_app.html': { pre: 't3d', budget: 170000, win: '1400,950' },
+  // E22 户型构建（plan-independent）：画墙/柱/门联动/洁具/导入后编辑/编辑→3D
+  't_planbuild.html': { pre: 'pbtest', budget: 200000, win: '1700,1100' },
+  't_planbuild_dist.html': { pre: 'pbtest', budget: 220000, win: '1700,1100' },
+  't_planbuild_app.html': { pre: 'pbtest', budget: 220000, win: '1700,1100' },
   't_pt.html': { pre: 'tpt', budget: 600000, win: '1200,850' },
   't_pt_dist.html': { pre: 'tpt', budget: 600000, win: '1200,850' },
   't_pt_app.html': { pre: 'tpt', budget: 600000, win: '1200,850' },

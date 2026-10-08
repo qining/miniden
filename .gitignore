@@ -7,6 +7,8 @@ work/*.json
 work/*.dxf
 # headful SLO 的独立 Chrome profile
 work/slo-profile/
+work/bench-profile/
+work/diag-profile/
 work/e2e/
 work/e2e-profile/
 work/storage-profile/

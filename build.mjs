@@ -399,14 +399,17 @@ srcForBench = srcForBench
 for (const [script, outp] of [
   ['bench/t_3d.js', 'work/t_3d.html'],
   ['bench/t_pt.js', 'work/t_pt.html'],
+  ['bench/t_planbuild.js', 'work/t_planbuild.html'],
 ])
   makeBench(srcForBench, script, outp);
 makeBench(out, 'bench/t_3d.js', 'work/t_3d_dist.html');
 makeBench(out, 'bench/t_pt.js', 'work/t_pt_dist.html');
+makeBench(out, 'bench/t_planbuild.js', 'work/t_planbuild_dist.html');
 // E17 同步门禁：同一套 plan-independent bench 也跑公开入口 dist/app.html（generic 户型）。
 // 新工具/新家具若在 generic 上炸，这里就红 —— 「两边同步」由构建保证，不靠人记。
 makeBench(outApp, 'bench/t_3d.js', 'work/t_3d_app.html');
 makeBench(outApp, 'bench/t_pt.js', 'work/t_pt_app.html');
+makeBench(outApp, 'bench/t_planbuild.js', 'work/t_planbuild_app.html');
 if (existsSync(join(root, 'private/bench/t_walledit.js'))) {
   makeBench(srcForBench, 'private/bench/t_walledit.js', 'work/t_walledit.html');
   makeBench(out, 'private/bench/t_walledit.js', 'work/t_walledit_dist.html');
