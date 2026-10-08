@@ -214,7 +214,7 @@ dist(generic) 三份。新工具或新家具换个户型就坏 → 立刻红。
 |---|---|---|---|
 | `tsc --noEmit` | ✓ | ✓ | 纯层类型 |
 | ESLint + Prettier | ✓ | ✓ | JS 工具面 lint；全手写代码面格式 |
-| `vitest run` | 292 | 285（7 条 fixture 门控跳过） | schema/geo/storage 语义 |
+| `vitest run` | 304 | 297（7 条 fixture 门控跳过） | schema/geo/storage 语义 |
 | `test:coverage`（E20） | ✓ | ✓ | **覆盖率棘轮**：`src/**` 纯逻辑层 lines 95 / funcs 96 / stmts 92 / branches 85，只许涨不许跌（实测 96.66 / 97.56 / 94.23 / 87.87） |
 | `npm run build` 守卫 | ✓ | ✓ | 嵌入块与 src 一致、plan 不漂移、公开入口隐私 |
 | `size:check`（E13） | ✓ | ✓ | 包体预算棘轮 |
@@ -223,6 +223,7 @@ dist(generic) 三份。新工具或新家具换个户型就坏 → 立刻红。
 | `t_pt` 33×3 | ✓ | ✓ | 光追 BVH/着色器/降噪/萤火虫/白家具可辨识度 |
 | `storage-probe`（E20） | ✓ | ✓ | **真实 IndexedDB 落盘**（headful + 真实时间 + 独立 profile，8 项）——虚拟时间里真实 I/O 时序不可信，理由同 §5.5 的 headful 渲染验证 |
 | `slo:ci`（E17） | ✓ | ✓ | 快捷 SLO 回归门禁（软件 GL 口径，抓 5× 级劣化） |
+| `e2e:ci`（E21） | ✓ headful 可看着跑 | ✓ `--headless=new` | **真实输入的用户流程**：14 flows / 60 断言，真鼠标键盘（trusted event）+ 真 `confirm()` + 真选文件 + 真下载 + 真刷新。两个入口各 60/60。与 bench 的分工：bench = 合成事件 + 虚拟时间（证明逻辑对、可重复、能断内部状态），E2E = 真实输入（证明人点得动、弹窗/文件/下载/刷新这些 bench 根本不能碰的路径对） |
 | `#calib` md5 | ✓ | ✗（需 private 底图） | **户型几何逐字节不变**（AGENTS §1.1） |
 | `ui:gate` 8 态 | ✓ vs mine golden | ✓ 自建 generic 基线双截 | 本地 = 视觉回归；CI = 渲染确定性 + 页面可渲 |
 
@@ -232,6 +233,9 @@ dist(generic) 三份。新工具或新家具换个户型就坏 → 立刻红。
 
 **「--update 之后的 8/8 @ 0.0000% 什么都不证明」**：重拍基线会把回归焊进基线。
 重构类改动的验收必须对**改动前的版本**独立做一次像素对比（AGENTS §3）。
+基线 diff 不为 0 时先裁同一区域新旧各一张目检，确认变化正是意图再重拍——
+`#ui:ft` 的旧基线里目录卡片停在 cm（把「切英尺不重建目录」这个 bug 拍了进去），
+修好后差 0.188%（阈值内但不为 0），目检确认 `209 cm×211 cm` → `6' 10"×6' 11"` 才重拍（E21）。
 
 ---
 

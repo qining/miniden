@@ -77,7 +77,7 @@
 | `docs/research/01–10` | 需要「依据」时（各结论的调研过程/数据） |
 | `docs/design/` | 户型输入 → 3D 的设计总文档 |
 
-**当前位置**：R1–R10 研究全部完成；S 系列全部落地（S1–S7 + S9 Warm Dark 2a–2d）。**S10（隐私 + plan 外部化，2026-09）**：个人数据全部移入 `private/`（§1.4）；户型几何外置为 `#miniden-plan` JSON（committed=generic / 本地构建注入 mine）；bench 分层（入库 plan-independent / private plan-specific）；ui-gate 截 dist。**S11（2026-10-05）**：户型文档导出/导入（「工具 ⌄」→「导出户型 / 导入户型」+ `#docModal` 一次性确认，走 `applyImportedDoc` 同一条路；`ProjectDoc.floorOutline?` 纯增量可选字段保地板轮廓逐坐标保真）。**S11b（2026-10-05）**：导出必须无限制 → `ProjectDoc.plan?`（户型专属快照：roomSummary/refPhoto/calib/windowBand/patioPatch/islLabel/isl/kitchen/inner，同样不进投影），`freshDoc()` 从 PLAN 播种、消费端走 `planOf(k)`（文档优先、回退 PLAN）；厨房硬编码块数据化（顺带清除了公开文件里的真实坐标）。**S12（2026-10-05）**：放置类实体只认两个来源——用户画 / 导入读到的几何，不写启发式猜测；`Run` 台面柜体带实体 + 工具、DXF/PDF `furn` 轮廓按形状分类落地为 run、钢框窗改成窗实体的 `steel` 标志（`steelBands()` 与历史 windowBand 重合时只画一次）。**E18（2026-10-05）**：两个入口一个事实来源（§0.3）。**S13（2026-10-06）**：布局跟着 app 走——户型 JSON 新增 `layout`（内置布局），`load()` 在「这台浏览器对这份户型从没存过档」时用它播种（§1.2）；公开入口 `layout:null`（build.mjs 硬断言），测试台一律剥掉 layout（保持确定性 + plan-independence），`#calib` 不播种（§1.1）。待办：无（`git filter-repo` 已执行，见下）。**E5（2026-10-06）**：GitHub Actions CI 上线（`.github/workflows/ci.yml`，generic 子集：tsc → vitest → build → bench ×6 → ui-gate 双截；见 §3）。**P1 收尾（2026-10-06）**：git filter-repo 历史清除 + force-push 已执行（§1.4）；E7 LICENSE/THIRD-PARTY、E8 README、E13 包体预算门禁同期落地。**E6（2026-10-07）**：ESLint 10 + Prettier 3.9 落地（格式化单独提交；TS 侧因 typescript-eslint 不支持 TS7 暂由 tsc strict + Prettier 覆盖，见 §2）。**E19（2026-10-07~08）**：多轮 bug 猎（十五轮：schema / 导入管线 / 3D 消费端 / 校验层 / 交互层 / $INSUNITS 码表 / 导入启发式的单位口径 / 存储后端成败判据 / DXF 圆弧 / 目录数据不变量 / 目录字段的消费端），19 个真 bug + 1 处防御性统一，方法论见 §5.1.1。**E20（2026-10-07）**：可测性/覆盖率治理——覆盖率棘轮进 CI（`vitest.config.mjs` thresholds，只许涨不许跌）+ `scripts/storage-probe.mjs`（真实 IDB 落盘门禁，headful 真实时间，理由同 §5.5）。**E9（2026-10-07）**：`docs/design/architecture.md`（人读版架构：数据流 / 模块边界 / 构建守卫 / 门禁矩阵 / 不变量红线）。**E14+E17（2026-10-07）**：快捷 SLO 套件（`scripts/slo.mjs`，七项实测数字）+ 它的 CI 门禁。**E10（2026-10-07）**：持久化从 localStorage 换成 IndexedDB 主存（存储门面，见 §1.2）。加目录条目照 §8.1 / skill 走。
+**当前位置**：R1–R10 研究全部完成；S 系列全部落地（S1–S7 + S9 Warm Dark 2a–2d）。**S10（隐私 + plan 外部化，2026-09）**：个人数据全部移入 `private/`（§1.4）；户型几何外置为 `#miniden-plan` JSON（committed=generic / 本地构建注入 mine）；bench 分层（入库 plan-independent / private plan-specific）；ui-gate 截 dist。**S11（2026-10-05）**：户型文档导出/导入（「工具 ⌄」→「导出户型 / 导入户型」+ `#docModal` 一次性确认，走 `applyImportedDoc` 同一条路；`ProjectDoc.floorOutline?` 纯增量可选字段保地板轮廓逐坐标保真）。**S11b（2026-10-05）**：导出必须无限制 → `ProjectDoc.plan?`（户型专属快照：roomSummary/refPhoto/calib/windowBand/patioPatch/islLabel/isl/kitchen/inner，同样不进投影），`freshDoc()` 从 PLAN 播种、消费端走 `planOf(k)`（文档优先、回退 PLAN）；厨房硬编码块数据化（顺带清除了公开文件里的真实坐标）。**S12（2026-10-05）**：放置类实体只认两个来源——用户画 / 导入读到的几何，不写启发式猜测；`Run` 台面柜体带实体 + 工具、DXF/PDF `furn` 轮廓按形状分类落地为 run、钢框窗改成窗实体的 `steel` 标志（`steelBands()` 与历史 windowBand 重合时只画一次）。**E18（2026-10-05）**：两个入口一个事实来源（§0.3）。**S13（2026-10-06）**：布局跟着 app 走——户型 JSON 新增 `layout`（内置布局），`load()` 在「这台浏览器对这份户型从没存过档」时用它播种（§1.2）；公开入口 `layout:null`（build.mjs 硬断言），测试台一律剥掉 layout（保持确定性 + plan-independence），`#calib` 不播种（§1.1）。待办：无（`git filter-repo` 已执行，见下）。**E5（2026-10-06）**：GitHub Actions CI 上线（`.github/workflows/ci.yml`，generic 子集：tsc → vitest → build → bench ×6 → ui-gate 双截；见 §3）。**P1 收尾（2026-10-06）**：git filter-repo 历史清除 + force-push 已执行（§1.4）；E7 LICENSE/THIRD-PARTY、E8 README、E13 包体预算门禁同期落地。**E6（2026-10-07）**：ESLint 10 + Prettier 3.9 落地（格式化单独提交；TS 侧因 typescript-eslint 不支持 TS7 暂由 tsc strict + Prettier 覆盖，见 §2）。**E19（2026-10-07~08）**：多轮 bug 猎（十五轮：schema / 导入管线 / 3D 消费端 / 校验层 / 交互层 / $INSUNITS 码表 / 导入启发式的单位口径 / 存储后端成败判据 / DXF 圆弧 / 目录数据不变量 / 目录字段的消费端），19 个真 bug + 1 处防御性统一，方法论见 §5.1.1。**E20（2026-10-07）**：可测性/覆盖率治理——覆盖率棘轮进 CI（`vitest.config.mjs` thresholds，只许涨不许跌）+ `scripts/storage-probe.mjs`（真实 IDB 落盘门禁，headful 真实时间，理由同 §5.5）。**E9（2026-10-07）**：`docs/design/architecture.md`（人读版架构：数据流 / 模块边界 / 构建守卫 / 门禁矩阵 / 不变量红线）。**E14+E17（2026-10-07）**：快捷 SLO 套件（`scripts/slo.mjs`，七项实测数字）+ 它的 CI 门禁。**E10（2026-10-07）**：持久化从 localStorage 换成 IndexedDB 主存（存储门面，见 §1.2）。**E21（2026-10-08）**：真实输入 E2E（`scripts/e2e.mjs` + `scripts/e2e-flows.mjs`，14 条流程 / 60 断言，两个入口 + CI 口径各 60/60）——第四种证据：真实鼠标/键盘/confirm/文件选择/下载/刷新，见 §3；它抓到并修了 3 个真实交互缺口（§5.1）。加目录条目照 §8.1 / skill 走。
 
 ---
 
@@ -307,6 +307,35 @@ run t_pt_dist.html 600000 1200,850 tpt
 
 每个 bench 跑完之间 `pkill -f 'Google Chrome.app.*--headless'`（swiftshader 僵尸抢 CPU）。
 
+### E21：真实输入 E2E（第四种证据，2026-10-08）
+
+bench 的证据类型是「合成 PointerEvent + `--virtual-time-budget`」：它证明**逻辑对**，
+不证明**人点得动**。E21 补的是另一头 —— 真实输入喂给真实页面：
+
+```bash
+npm run e2e            # headful：能看着它点（每步 620ms；--speed=0 加速，--fast 即 0）
+npm run e2e:public     # 公开入口 dist/app.html（generic 户型）
+npm run e2e:ci         # CI 口径：--headless=new + swiftshader
+node scripts/e2e.mjs --flow=view-3d-fp --fast   # 只跑一条（调试）
+node scripts/e2e.mjs --keep-state               # 保留上一个 flow 的状态（调试用）
+```
+
+报告：`work/e2e/report.html`（每步截图 + 断言 + 弹窗记录）+ `work/e2e/log.json`（gitignore）。
+14 条流程 / 60 断言；**两个入口各 60/60，CI 口径 60/60，约 26s**。
+
+它比 bench 多出来的真实东西：`Input.dispatchMouseEvent/dispatchKeyEvent/insertText`
+（trusted event）、`Page.javascriptDialogOpening` + `handleJavaScriptDialog`
+（**真 confirm()** —— bench 里阻塞弹窗根本不能出现，§5.1）、`DOM.setFileInputFiles`
+（真选文件）、`Browser.setDownloadBehavior`（真下载落盘）、`Page.reload`（真刷新）。
+
+**口径（与 bench 同源的红线）**：
+- 断言全部 plan-independent：坐标从 `FLOORPTS` / 元素 rect 运行时派生，不写死户型数字。
+- **每个 flow 前清存档**（localStorage + IndexedDB 再重载）：不隔离时上一个 flow 写进存档的
+  户型/家具会漏进下一个（实测墙段数 72→66），跨次运行之间也不确定（profile 是复用的）。
+- 断言读「用户看得到的东西」：卡片文字、合计文案、悬停 `title`、SVG 里的红描边、
+  3D 场景里的光源强度、相机眼高、下载文件名、确认弹窗正文。DOM 存在不算证据（§8.4）。
+- 依赖只有 Node 内置 `WebSocket` + `fetch`（不装 playwright/puppeteer）。
+
 ### 写测试的关键手法
 
 ```js
@@ -436,6 +465,11 @@ sips -z 高 宽 /tmp/x.png --out /tmp/x_big.png               # 放大
 | **黄金基线里藏着「没渲完的占位块」**（改同步渲后 2d/2d-sel/ft 差 9.846%，其余五态不变） | 原先 mine 基线的目录格子是纯色占位块 → 这条门禁从来没有覆盖过缩略图，而它正是最容易被光照/取景/缓存改坏的东西 | 重拍基线是显式动作（`ui:gate:update` + 提交信息说明变化）；**重拍后要问「新基线比旧的多覆盖了什么」**，并目检新基线里该出现的东西真的出现了 |
 | **覆盖率棘轮的阈值按本地数字定，而本地有 `private/fixtures/`** | 本地 96.68% 的 `migrate.ts`，CI 只有 77.48%：它的无损对照测试要真实 `eff*` 输出（private fixture）→ CI 里整段跳过。结果 CI 覆盖率红，而**红的是「用户存档会不会丢」那条路的覆盖只存在于有私人数据的机器上** | 定阈值前先跑 CI 口径（`git archive HEAD \| tar -x` + 无 `private/`）；**门控测试覆盖的分支必须有合成数据的非门控版本**（`tests/schema/migrate-synthetic.test.ts` 就是这么补的：通用形状合成存档把 墙/窗/门洞/通道/覆盖/隐藏/洁具/patio/损坏存档 跑全，77.48%→95.36%） |
 | **改了 `src/**` 但没 commit，而 `app.html` 的内嵌块已经带上新代码** | HEAD 里内嵌 geo/schema/storage 块 ≠ 已提交源码的新鲜编译 → **干净检出跑 `npm run build` 直接红**（CI 红，本地全绿，因为本地工作区是完整的）。更糟：bug 猎的修复只在工作区，commit 里找不到 | 提交前 `git status` 核对 `src/**` 与 `app.html` 是否同批；验收口径加一条：`git archive HEAD \| tar -x` 到临时目录 + 软链 node_modules + 跑 `geo:build`/`schema:build`/`storage:build`/`build.mjs` + `vitest run`（这就是 CI 环境） |
+| **CDP `Runtime.evaluate` 的 `returnByValue` 对不可序列化对象返回 `undefined`**（等待条件写成 `three && three.scene`） | 探针里 `three.scene` 明明存在（210 个 mesh），`waitFor` 却永远等不到 → 报「3D 场景就绪超时」。`returnByValue` 只能带回可 JSON 化的值，THREE.Scene 带循环引用 → `result.value` 缺失 → 判成 false | 等待条件一律包一层 `Boolean(expr)`（`(()=>{try{return Boolean(expr)}catch(e){return false}})()`）。要读对象就在表达式里自己转成数字/布尔（`Object.keys(three).length`、`(()=>{let n=0;…;return n})()`） |
+| **E2E 流程之间不清存档**（同一个 profile 连着跑 14 条流程） | 上一个 flow 导入的户型 / 放的家具漏进下一个 flow：`dxf-restore-walls` 的「起点墙段数」读到 66 而不是 72，断言怎么改都红；跨次运行也不确定（profile 复用） | 每条流程开头 `localStorage.clear()` + `indexedDB.deleteDatabase('miniden-planner')` 再 `Page.reload`（`t.freshState()`）。**任何「与起点比较」的断言，起点必须是干净起点** |
+| **`state.view` 立刻变，3D 状态不是**（`setView` 把 `init3D/buildStatic3D/sync3D/setCamMode` 放在 `setTimeout(…, 40)` 里派发） | 断言 `state.view==='fp'` 通过后马上读 `three.cam.position.y`，读到的是娃娃屋的 42ft → 报「眼高不对」，其实页面还在切场景 | 断言 3D 状态要等**那个状态本身**（`three.camMode==='fp'`、场景 mesh 数 >20），不要等 `state.view`；读场景用带重试的 `evalRetry`（场景重建期间 `three` 会短暂为 null） |
+| **同一屏上两处文字用不同单位**（切英尺后房间标注是 `13' 2"`，目录卡片还是 `137 cm`） | 用户以为单位切换「只影响了一半界面」。根因：`build2D()` 重画了标注，目录卡片是 `buildCatalog()` 时按 `fmtLen(state.unit)` 生成的，不重建就停在旧单位 | 改「显示口径」时要枚举**所有渲染该口径的地方**（平面图、目录卡片、检视面板、工具条），逐个确认都重建；黄金态 `#ui:ft` 同步加 `buildCatalog()`，让黄金态与「用户真的点了按钮」同形 |
+| **黄金基线把一个 bug 拍了进去**（`#ui:ft` 旧基线里目录卡片是 cm） | 修好之后 ui-gate 差 0.188%（在阈值内，但**不是 0**）——如果只看「PASS」就会漏掉「基线本身是错的」这件事 | 基线 diff 不为 0 时先**裁同一区域新旧各一张目检**，确认变化正是意图（这次是 `209 cm×211 cm` → `6' 10"×6' 11"`），再显式 `ui:gate:update` 重拍并在提交信息里写清变化 |
 ### 5.1.1 bug 猎方法论（2026-10 十五轮，19 个 bug 全走这条路）
 
 **先写失败测试，再改代码**。每个 bug 都是「按代码读出来的怀疑」→ 写一条应当红的
