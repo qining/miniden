@@ -300,7 +300,10 @@ export function migrateLegacyToV1(geo: LegacyGeo, user: LegacyUserGeo = EMPTY_US
   );
 
   // —— 阳台 / 房间 / 洁具 / 环境 ——
-  if (geo.patio.length >= 3) doc.patio = { geom: { t: 'poly', pts: geo.patio.map((p) => [p[0], p[1]] as Pt) } };
+  // patio 可能是 null（通用户型 / 导入户型）：直接 .length 会把整个迁移弄挂
+  // （app.html 侧 buildRawGeo 一直靠传 `patio: PATIO || []` 绕开它，这里补上真正的守卫）
+  if (Array.isArray(geo.patio) && geo.patio.length >= 3)
+    doc.patio = { geom: { t: 'poly', pts: geo.patio.map((p) => [p[0], p[1]] as Pt) } };
   geo.labels.forEach((l, i) =>
     rooms.push({
       id: `r${i + 1}`,
