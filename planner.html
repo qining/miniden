@@ -3594,6 +3594,7 @@ function wallPolys(){
 const CALIB = location.hash==='#calib' || location.hash==='#calibimg';
 if(CALIB) document.body.classList.add('calib');   // 锁死旧版侧栏宽度，见 body.calib 那几条样式
 const IMGONLY = location.hash==='#calibimg';   // 只渲染底图（用于两层绝对位置对比）
+const UIHSHOT = /^#ui:/.test(location.hash);   // 黄金截图态：目录缩略图要同步渲完（见 observeThumbs）
 const CAL = () => planOf('calib') || {img:null, w:0, h:0}; // 干净图纸叠底（随文档走；generic 无 → 不画）
 function build2D(){
   svg.innerHTML='';
@@ -16333,6 +16334,19 @@ let _thumbIO = null;
 function observeThumbs(container){
   const all = [...CATALOG, ...state.customCat];
   const nodes = container.querySelectorAll('.ph[data-thumb]');
+  // 黄金截图态（#ui:*）：IO 回调时机取决于渲染帧，同一份代码连截两次可能
+  // 「一边缩略图渲完了、一边还没渲」——CI 实测 2d-sel 双截差 10.69%，逐区定位：
+  // 左面板 45.16% / 画布 0.00% / 右面板 0.00% / 顶栏 0.00%（不是位移，是目录格子里的图）。
+  // 截图态一律同步渲（只渲看得见的那些，折叠分组里的不渲），确定性由 srand 保证。
+  if(UIHSHOT){
+    for(const el of nodes){
+      const r = el.getBoundingClientRect();
+      if(r.width < 2 || r.height < 2) continue;
+      const sp = all.find(c=>c.id===el.dataset.thumb);
+      if(sp) _thumbApply(el, sp, furnThumb(sp));
+    }
+    return;
+  }
   if(!('IntersectionObserver' in window)){          // 没有 IO 就全排队
     nodes.forEach(el=>{ const sp = all.find(c=>c.id===el.dataset.thumb); if(sp) queueThumb(el, sp); });
     return;
