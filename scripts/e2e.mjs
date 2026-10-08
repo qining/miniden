@@ -208,8 +208,7 @@ async function runEntry(entry) {
 
   const shot = async (label) => {
     const r = await cdp('Page.captureScreenshot', { format: 'png' });
-    const name =
-      String(++shotNo).padStart(3, '0') + '-' + slug + '-' + label.replace(/[^A-Za-z0-9._-]/g, '_') + '.png';
+    const name = String(++shotNo).padStart(3, '0') + '-' + slug + '-' + label.replace(/[^A-Za-z0-9._-]/g, '_') + '.png';
     writeFileSync(join(SHOTS, name), Buffer.from(r.data, 'base64'));
     return name;
   };
@@ -490,10 +489,7 @@ async function main() {
   const passed = runs.reduce((a, r) => a + r.passed, 0);
   const total = runs.reduce((a, r) => a + r.total, 0);
   const failures = runs.reduce((a, r) => a + r.failures, 0);
-  writeFileSync(
-    join(OUT, 'log.json'),
-    JSON.stringify({ entries: have, ci: CI, speed: SPEED, results }, null, 1)
-  );
+  writeFileSync(join(OUT, 'log.json'), JSON.stringify({ entries: have, ci: CI, speed: SPEED, results }, null, 1));
 
   const byFlow = new Map();
   for (const r of results) {
