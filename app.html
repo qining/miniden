@@ -14381,7 +14381,7 @@ function buildCatalog(filter=''){
       card.innerHTML = `<div class="ph" data-thumb="${c.id}" style="background-color:${c.color}"></div>
         <div class="meta">
           <div class="nm2" title="${tip}">${c.name}</div>
-          <div class="sub"><span>${fmtLen(cm2ft(c.w))}×${fmtLen(cm2ft(c.d))}</span>${p?`<b class="${isBuiltIn(c)?'builtin':''}">${p}</b>`:''}</div>
+          <div class="sub"><span>${fmtLen(cm2ft(c.w))}×${fmtLen(cm2ft(c.d))}</span>${p?`<b class="${isBuiltIn(c)?'builtin':''}"${typeof c.caVar==='string'?` title="${c.caVar.replace(/"/g,'&quot;')}"`:''}>${p}</b>`:''}</div>
         </div>`;
       card.onclick=()=>addItem(c.id);
       items.appendChild(card);
@@ -14417,13 +14417,17 @@ function priceOf(spec, cur){
   cur = cur || curNow();
   const usd = (spec.price != null && spec.price > 0) ? spec.price : null;
   const cad = (spec.priceCA != null && spec.priceCA > 0) ? spec.priceCA : null;
+  // caVar（§5.4.1）：加拿大确有标价，但那是同型号的另一个面料/配置。
+  // 价照用（它就是加拿大货架上的实价），但必须把「它对应另一配置」传给消费端，
+  // 否则用户看到的是一件不存在于加拿大的商品的价。
+  const variant = !!spec.caVar;
   if(cur === 'cad'){
-    if(cad != null) return {v: cad, exact: true};
+    if(cad != null) return {v: cad, exact: true, variant};
     if(spec.caNA) return null;                       // 加拿大不售，折算出来也没意义
-    if(usd != null) return {v: usd * fxRate(), exact: false};
+    if(usd != null) return {v: usd * fxRate(), exact: false, variant: false};
   } else {
-    if(usd != null) return {v: usd, exact: true};
-    if(cad != null) return {v: cad / fxRate(), exact: false};
+    if(usd != null) return {v: usd, exact: true, variant: false};
+    if(cad != null) return {v: cad / fxRate(), exact: false, variant};
   }
   return null;
 }
@@ -14436,7 +14440,7 @@ function fmtPrice(spec, cur){
   if((cur || curNow()) === 'cad' && spec.caNA && spec.priceCA == null) return '加拿大无售';
   const p = priceOf(spec, cur);
   if(!p) return '';
-  return (p.exact ? '' : '≈') + fmtMoney(p.v, cur);
+  return (p.exact ? '' : '≈') + fmtMoney(p.v, cur) + (p.variant ? '*' : '');
 }
 function setCurrency(c){
   state.cur = (c === 'cad') ? 'cad' : 'usd';
@@ -14460,17 +14464,19 @@ function addItem(refId){
 }
 function updateTotals(){
   const cur = curNow();
-  let sum=0, buy=0, fixed=0, approx=0, unknown=0, na=0;
+  let sum=0, buy=0, fixed=0, approx=0, unknown=0, na=0, variant=0;
   for(const it of state.items){
     const s=itemSpec(it); if(!s) continue;
     if(isBuiltIn(s)){ fixed++; continue; }
     buy++;
     const p=priceOf(s, cur);
     if(!p){ if(cur==='cad' && s.caNA) na++; else unknown++; continue; }
-    sum += p.v; if(!p.exact) approx++;
+    sum += p.v; if(!p.exact) approx++; if(p.variant) variant++;
   }
   const tail = [];
   if(approx)  tail.push(`${approx} 件按汇率折算`);
+  // * 号必须在这里解释清楚：那个加拿大价对应的是同型号的另一配置（不是图上这件）
+  if(variant) tail.push(`${variant} 件带 * = 加拿大在售的是另一配置`);
   if(na)      tail.push(`${na} 件加拿大无售`);
   if(unknown) tail.push(`${unknown} 件无价`);
   if(fixed)   tail.push(`${fixed} 件固定灯具不计价`);
@@ -14518,7 +14524,8 @@ function updateProps(){
   const _pp = priceOf(s);
   $('#pPrice').textContent = isBuiltIn(s) ? '公寓自带（不计价）' : (fmtPrice(s) || '—');
   $('#pPrice').title = isBuiltIn(s) ? '固定在墙/天花上的灯具属于公寓自带，不计入采购清单'
-    : (_pp && !_pp.exact ? '当地没有实际标价，按汇率 1 USD = '+fxRate()+' CAD 折算，仅供参考' : '');
+    : (_pp && _pp.variant && typeof s.caVar === 'string' ? s.caVar
+      : (_pp && !_pp.exact ? '当地没有实际标价，按汇率 1 USD = '+fxRate()+' CAD 折算，仅供参考' : ''));
   const a=$('#pUrl'); if(s.url){a.href=s.url; a.textContent='打开产品页 ↗';} else {a.removeAttribute('href'); a.textContent='—';}
   // 离墙距离提示
   $('#pClear').textContent = `位置 (${it.x.toFixed(2)}, ${it.y.toFixed(2)}) ft`;

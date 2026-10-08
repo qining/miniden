@@ -1249,6 +1249,45 @@ async function run3DTest() {
       );
     }
 
+    /* 价格口径（AGENTS §5.4.1）：caVar = 加拿大有价，但那是同型号的另一个面料/配置。
+       目录里 9 条带 caVar，而代码里没有任何一处读它 → 界面把「另一个配置的价」
+       当成这件商品的加拿大实价显示（既无 ≈ 也无提示）。 */
+    {
+      const ciVar = CATALOG.filter((c) => c.caVar && c.priceCA != null && c.price != null);
+      const ciPlain = CATALOG.find((c) => !c.caVar && c.priceCA != null && c.price != null);
+      const ciFlagged = ciVar.filter((c) => priceOf(c, 'cad').variant === true).length;
+      const ciMarked = ciVar.filter((c) => /\*/.test(fmtPrice(c, 'cad'))).length;
+      const ciPlainOk = ciPlain && !priceOf(ciPlain, 'cad').variant && !/\*/.test(fmtPrice(ciPlain, 'cad'));
+      T(
+        'catalog-price-variant-flag',
+        ciVar.length > 0 && ciFlagged === ciVar.length && ciMarked === ciVar.length && ciPlainOk,
+        'caVar ' +
+          ciVar.length +
+          ' 条：标出配置差异 ' +
+          ciFlagged +
+          ' / 界面带标记 ' +
+          ciMarked +
+          '（对照普通条目 ' +
+          (ciPlain ? ciPlain.id : '-') +
+          ' 不该带标记 ' +
+          (ciPlainOk ? 'OK' : 'FAIL') +
+          '）'
+      );
+      // 采购清单里也要看得见（合计仍然算这个价，只是要说明它对应另一个配置）
+      const ciKeep = state.items.slice();
+      const ciSelKeep = selected;
+      const ciCurKeep = state.cur;
+      state.cur = 'cad'; // * 号只在加元视图出现（美元视图用的是美国实价）
+      state.items = [{ uid: 99001, ref: ciVar[0].id, x: 1, y: 1, rot: 0 }];
+      updateTotals();
+      const ciTxt = document.querySelector('#totals').textContent;
+      state.items = ciKeep;
+      selected = ciSelKeep;
+      state.cur = ciCurKeep;
+      updateTotals();
+      T('catalog-price-variant-totals', /另一配置/.test(ciTxt), '清单文案: ' + ciTxt.replace(/\s+/g, ' ').slice(0, 96));
+    }
+
     /* ===== 双击 = 进室内视角（2D 和俯瞰都要支持）
        S10：目标点从 floorPts() 中心派生（plan-independent：generic/mine 两个户型同一套脚本） ===== */
     setView('2d');
