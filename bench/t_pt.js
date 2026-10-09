@@ -191,7 +191,10 @@ async function runPT() {
         });
         mo.observe(el, { childList: true, characterData: true, subtree: true });
         ptRender(nspp || 8, {
-          maxPx: 96 * 74,
+          // 钉住出图尺寸：出图视野 = rw/rh（uAspect），原先跟着窗口布局走，
+          // CI 上量到 76x94、本地 73x97 —— 同一个门禁在两个平台看到的是不同范围的
+          // 场景，孤立亮点统计量不可比（萤火虫门禁因此假红）。界面不传 size，行为不变。
+          size: [73, 97],
           bounces: 3,
           denoise: dn,
           onDone: (cv, spp) => {
@@ -211,6 +214,12 @@ async function runPT() {
       'pt-render-finished',
       !!off && off.spp >= 8,
       off ? off.spp + ' spp · ' + off.cv.width + 'x' + off.cv.height : '超时'
+    );
+    // 门禁的统计量只在「同一个取景」下可比：先断言钉住的出图尺寸真的生效了
+    T(
+      'pt-bench-framing-pinned',
+      !!off && off.cv.width === 73 && off.cv.height === 97,
+      off ? '出图 ' + off.cv.width + 'x' + off.cv.height + '（要求 73x97，与窗口布局无关）' : '超时'
     );
     const shaderErr = window.__EPT.slice(errs0).filter((m) => /shader|GLSL|program|compil/i.test(m));
     T('pt-shader-compiles', shaderErr.length === 0, shaderErr.join(' ;; ').slice(0, 400));

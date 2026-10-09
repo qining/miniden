@@ -5721,7 +5721,14 @@ function ptRender(samples, ptOpts){
     const W = canvas.clientWidth||canvas.width, H = canvas.clientHeight||canvas.height;
     const MAXPX = ptOpts.maxPx || Q.maxPx;
     const sc = Math.min(1, Math.sqrt(MAXPX/(W*H)));
-    const rw = Math.max(64, Math.round(W*sc)), rh = Math.max(64, Math.round(H*sc));
+    /* 出图视野由 rw/rh 决定（uAspect = rw/rh），而 rw/rh 跟着窗口布局走：
+       同一个门禁在不同平台（字体度量不同 → 面板/顶栏宽度不同 → 3D 画布长宽比不同）
+       看到的是不同范围的场景，孤立亮点这类统计量随之漂移（实测 CI 76x94 vs 本地 73x97，
+       萤火虫门禁从 0.04% 变成 0.17%）。ptOpts.size 让调用方钉住出图尺寸，
+       与布局无关（界面不传，行为不变）。 */
+    const req = Array.isArray(ptOpts.size) ? ptOpts.size : null;
+    const rw = req ? Math.max(64, Math.round(req[0])) : Math.max(64, Math.round(W*sc));
+    const rh = req ? Math.max(64, Math.round(req[1])) : Math.max(64, Math.round(H*sc));
     const RT = (dep)=> new THREE.WebGLRenderTarget(rw, rh, {type:THREE.HalfFloatType,
       format:THREE.RGBAFormat, minFilter:THREE.NearestFilter, magFilter:THREE.NearestFilter, depthBuffer:!!dep});
     const accRT = RT(false), albRT = RT(false), nrmRT = RT(false), dnA = RT(false), dnB = RT(false);
