@@ -515,7 +515,7 @@ export const FLOWS = [
 
   {
     name: 'dxf-import',
-    title: '真实文件选择 → 一次性确认（单位/范围/识别）→ 整套替换 → 重置内置',
+    title: '真实文件选择 → 一次性确认（单位/范围/识别）→ 新建一份户型并切过去 → 切回内置',
     run: async (t) => {
       const before = await stateOf(t);
       await t.step('选择 DXF 文件');
@@ -616,6 +616,212 @@ export const FLOWS = [
       await t.waitFor(`docImported()===false`, 15000, '复位');
       t.assert('doc-restore', (await stateOf(t)).imported === false, '已复位');
       await t.click('#wDone');
+    },
+  },
+
+  {
+    name: 'first-run',
+    title: '首次打开的引导卡：出现 → 三条路 → 关一次就不再出现',
+    run: async (t) => {
+      // 这张卡只在「什么都没存过 + 干净 profile」时出现；驱动层默认会替流程把它关掉，
+      // 本流程自己接手。
+      t.keepFirstRun = true;
+      await t.freshState();
+      const vis = await t.firstRunVisible();
+      t.assert('firstrun-visible', vis, '清掉存档 + 刷新后引导卡出现');
+      const r = await t.rectOf('#firstRun').catch(() => null);
+      t.assert(
+        'firstrun-size',
+        !!r && r.w >= 240 && r.h >= 140,
+        r ? Math.round(r.w) + '×' + Math.round(r.h) + 'px' : '不在视口'
+      );
+      const top = await t.eval(
+        `(()=>{const e=document.querySelector('#firstRun');const r=e.getBoundingClientRect();
+          const hit=document.elementFromPoint(r.left+r.width/2, r.top+r.height/2);
+          return hit ? (hit.id||hit.className||hit.tagName)+'|inside='+(e.contains(hit)||hit===e) : 'null';})()`
+      );
+      t.assert('firstrun-topmost', /inside=true$/.test(String(top)), '画布中心最上层元素=' + top);
+      const paths = await t.eval(
+        `(()=>[...document.querySelectorAll('#firstRun .frRow')].map(p=>p.querySelector('b').textContent.trim()))()`
+      );
+      t.assert('firstrun-three-paths', Array.isArray(paths) && paths.length === 3, paths.join(' / '));
+      await t.shot('firstrun');
+
+      await t.step('走「从空白开始画」');
+      await t.click('#frBlank');
+      await t.waitFor(
+        `!document.querySelector('#firstRun') || getComputedStyle(document.querySelector('#firstRun')).display==='none'`,
+        6000,
+        '引导卡关闭'
+      );
+      t.assert(
+        'firstrun-blank-plan',
+        await t.eval(`PLAN_ID!==BUILTIN_PLAN_ID && effWalls().length===0`),
+        '切到一份空白户型'
+      );
+      t.assert('firstrun-edit-on', await t.eval(`wallEdit.on===true`), '直接进了「编辑墙体」');
+      const hint = await t.eval(
+        `(()=>{const h=document.querySelector('#wMsg'); if(!h) return '';
+          const cs=getComputedStyle(h); const r=h.getBoundingClientRect();
+          return (cs.display==='none'||r.width<8)?'':h.textContent.trim();})()`
+      );
+      t.assert('firstrun-edit-hint-visible', String(hint).length > 8, String(hint).slice(0, 70));
+      await t.shot('firstrun-blank');
+
+      await t.step('刷新后不再出现（一次性）');
+      await t.reload();
+      t.assert('firstrun-once', (await t.firstRunVisible()) === false, '已关过的引导卡不会反复弹');
+      // 复位：引导卡写下的 md_firstRun 与刚建的空白户型一起清掉，不影响后面的流程
+      await t.freshState();
+    },
+    // 本流程自己已经 freshState() 复位过了，驱动层不用再刷新一次（一次真实刷新 ≈ 十几秒）
+    noReload: true,
+  },
+
+  {
+    name: 'multi-plan',
+    title: '多户型：新建空白 → 切回内置（编辑还在）→ 重命名 → 两步删除',
+    run: async (t) => {
+      const before = await stateOf(t);
+      const c = await planCenter(t);
+      const ensurePro = async () => {
+        const open = await t.eval(`getComputedStyle(document.querySelector('#proTools')).display!=='none'`);
+        if (open) return;
+        await t.click('#btnMore'); // 「工具 ⌄」是个开关：只在关着的时候点，不然会把它关掉
+        await t.waitFor(
+          `getComputedStyle(document.querySelector('#proTools')).display!=='none'`,
+          5000,
+          'proTools 展开'
+        );
+      };
+      await t.step('打开「工具」第二层');
+      await ensurePro();
+      const selRect = await t.rectOf('#planSel').catch(() => null);
+      t.assert(
+        'plan-select-visible',
+        !!selRect && selRect.w >= 80 && selRect.h >= 18,
+        selRect ? Math.round(selRect.w) + '×' + Math.round(selRect.h) + 'px' : '不在视口'
+      );
+      const opts0 = await t.eval(`[...document.querySelectorAll('#planSel option')].map(o=>o.textContent.trim())`);
+      t.assert('plan-select-listed', Array.isArray(opts0) && opts0.length >= 1, opts0.join(' / '));
+      const fit = await t.eval(
+        `(()=>{const p=document.querySelector('#proTools'); return {sw:p.scrollWidth, cw:p.clientWidth};})()`
+      );
+      t.assert('plan-row-fits', fit.sw <= fit.cw + 1, 'proTools scrollWidth=' + fit.sw + ' clientWidth=' + fit.cw);
+      t.assert(
+        'plan-delete-locked-on-builtin',
+        await t.eval(`document.querySelector('#btnPlanDel').disabled===true`),
+        '内置户型时删除按钮不可点'
+      );
+
+      await t.step('在内置户型里画一段墙（切回来必须还在）');
+      await t.click('#btnWallEdit');
+      await t.waitFor(`wallEdit.on`, 5000, '进入编辑');
+      await t.click('#wtoolSeg button[data-t="wall"]');
+      await t.waitFor(`wallEdit.tool==='wall'`, 5000, 'tool=wall');
+      await t.click(await t.planPoint(c.x - 3, c.y + 5));
+      await t.click(await t.planPoint(c.x + 1, c.y + 5));
+      await t.key('Enter', 'Enter', 13);
+      await t.waitFor(`DOC.walls.length>${before.walls}`, 8000, '墙数 +1');
+      const builtinWalls = (await stateOf(t)).walls;
+      t.assert('builtin-wall-added', builtinWalls === before.walls + 1, `墙段 ${before.walls} → ${builtinWalls}`);
+
+      await t.step('新建一份空白户型');
+      await ensurePro();
+      await t.click('#btnPlanNew');
+      await t.waitFor(`PLAN_ID!==BUILTIN_PLAN_ID`, 8000, '切到空白户型');
+      const blank = await t.eval(
+        `({id:PLAN_ID, walls:effWalls().length, items:state.items.length, fp:floorPts().length, plans:PLAN_REG.plans.length})`
+      );
+      const pickPlan = (id) =>
+        t.eval(
+          `(()=>{const s=document.querySelector('#planSel'); s.value=${JSON.stringify(id)};` +
+            `s.dispatchEvent(new Event('change',{bubbles:true}));})()`
+        );
+      t.assert(
+        'blank-plan-empty',
+        blank.walls === 0 && blank.items === 0,
+        `walls=${blank.walls} items=${blank.items}（内置布局/家具不能带过去）`
+      );
+      t.assert('blank-plan-registry', blank.plans >= 2, '注册表 ' + blank.plans + ' 份户型');
+      await t.shot('blank-plan');
+
+      await t.step('切回内置户型：刚才那段墙还在');
+      const builtinId = await t.eval(`BUILTIN_PLAN_ID`); // 这是页面里的名字，Node 侧要先取回来
+      await pickPlan(builtinId);
+      await t.waitFor(`PLAN_ID===BUILTIN_PLAN_ID`, 8000, '切回内置');
+      const back = await stateOf(t);
+      t.assert(
+        'switch-keeps-builtin-edit',
+        back.walls === builtinWalls,
+        `内置户型墙段 ${back.walls}（期望 ${builtinWalls}；切户型把编辑弄丢就是 E26 要修的坑）`
+      );
+
+      // 重命名 / 删除都作用于「当前户型」，所以先切回那份空白户型。
+      // （在内置户型上试删除会被拒 —— 那是故意的，前面已单独断言。）
+      await t.step('切回那份空白户型，重命名它');
+      await pickPlan(blank.id);
+      await t.waitFor(`PLAN_ID===${JSON.stringify(blank.id)}`, 8000, '切回空白户型');
+      await ensurePro();
+      await t.type('#planName', '测试户型 E2E');
+      await t.click('#btnPlanRename');
+      const names = await t.eval(`[...document.querySelectorAll('#planSel option')].map(o=>o.textContent.trim())`);
+      t.assert(
+        'plan-renamed',
+        names.some((n) => /测试户型 E2E/.test(n)),
+        names.join(' / ')
+      );
+      t.assert(
+        'plan-rename-does-not-touch-builtin',
+        names.some((n) => /内置/.test(n) && !/测试户型 E2E/.test(n)),
+        '内置那份的名字没被改'
+      );
+
+      await t.step('两步删除：第一下只确认');
+      const delRect = await t.rectOf('#btnPlanDel').catch(() => null);
+      t.assert(
+        'plan-delete-enabled',
+        !!delRect && delRect.w >= 40,
+        delRect ? Math.round(delRect.w) + '×' + Math.round(delRect.h) + 'px' : '不可见'
+      );
+      await t.click('#btnPlanDel');
+      const armed = await t.eval(
+        `({arm:document.querySelector('#btnPlanDel').classList.contains('arm'), plans:PLAN_REG.plans.length, id:PLAN_ID})`
+      );
+      t.assert('plan-delete-armed', armed.arm === true && armed.plans >= 2, '第一下只亮确认态：plans=' + armed.plans);
+      await t.shot('plan-delete-armed');
+      await t.click('#btnPlanDel');
+      await t.waitFor(`PLAN_ID===BUILTIN_PLAN_ID`, 8000, '删完自动切回内置');
+      const gone = await t.eval(
+        `({plans:PLAN_REG.plans.length, has:PLAN_REG.plans.some(p=>p.name.indexOf('测试户型 E2E')>=0)})`
+      );
+      t.assert('plan-deleted', gone.has === false, '注册表 ' + gone.plans + ' 份，被删的那份已不在');
+      const after = await stateOf(t);
+      t.assert(
+        'delete-keeps-builtin-edit',
+        after.walls === builtinWalls && after.imported === false,
+        `删掉另一份户型不能动内置户型：walls=${after.walls} imported=${after.imported}`
+      );
+
+      await t.step('删掉内置户型里那段测试墙');
+      await t.click('#wtoolSeg button[data-t="select"]');
+      await t.waitFor(`wallEdit.tool==='select'`, 5000, 'tool=select');
+      const last = await t.eval(
+        `(()=>{const a=DOC.walls.filter(w=>w.src==='user'); if(!a.length) return null; const s=a[a.length-1];
+          return {id:s.id,x:(s.geom.x1+s.geom.x2)/2,y:(s.geom.y1+s.geom.y2)/2};})()`
+      );
+      if (last) {
+        const mid = await t.planPoint(last.x, last.y);
+        await t.click({ x: mid.x, y: mid.y });
+        await t.waitFor(`wallEdit.sel && wallEdit.sel.id===${JSON.stringify(last.id)}`, 6000, '选中测试墙');
+        await t.click('#wDelete');
+        await t.waitFor(`DOC.walls.length===${before.walls}`, 8000, '墙数复位');
+        t.assert('builtin-wall-cleaned', (await stateOf(t)).walls === before.walls, `回到 ${before.walls} 段`);
+      } else {
+        t.assert('builtin-wall-cleaned', false, '找不到那段测试墙');
+      }
+      await t.click('#wDone');
+      await t.waitFor(`!wallEdit.on`, 5000, '退出编辑');
     },
   },
 ];

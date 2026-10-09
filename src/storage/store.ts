@@ -260,7 +260,7 @@ export interface StoreStats {
 }
 
 export interface Store {
-  /** 预热：读主存 + 迁移旧键。可多次调用（累加键集合）。 */
+  /** 预热：读主存 + 迁移旧键。可多次调用（累加键集合，每轮只处理未同步过的键）。 */
   warm(keys?: string[]): Promise<StoreStats>;
   /** 最近一次 warm 的完成（没 warm 过则等第一次）。 */
   ready(): Promise<StoreStats>;
@@ -305,7 +305,17 @@ export function createStore(o: StoreOptions): Store {
   let idb: KVBackend | null = null;
   let opening: Promise<KVBackend | null> | null = null;
   let degraded = false;
-  let warmPromise: Promise<StoreStats> | null = null;
+  let warmChain: Promise<StoreStats> = Promise.resolve({
+    migrated: 0,
+    conflicts: 0,
+    idbWrites: 0,
+    idbFails: 0,
+    lsMirrors: 0,
+    lsFails: 0,
+    skippedMirror: 0,
+    hydrated: 0,
+  });
+  const warmed = new Set<string>(); // 已经同步过的键：后续 warm 只处理新加进来的
   let timer: unknown = null;
 
   const lsGetRaw = (k: string): string | null => {
@@ -363,67 +373,75 @@ export function createStore(o: StoreOptions): Store {
     return opening;
   }
 
+  /* E26：warm 可重入。原先「只跑一次」：切户型时新键（planner_doc_v1:p…）进不了 warm 集合，
+     页面同步读只能读 localStorage —— 若那份文档只存在主存（LS 被清过 / 太大没镜像进 LS），
+     切过去就读到空 → 变成新建一份空户型，把用户存好的那份关在主存里。
+     现在每次 warm 只处理尚未同步过的键，多次调用串成一条链（IDB 单写者，不并发）。 */
   function warm(keys?: string[]): Promise<StoreStats> {
     for (const k of keys ?? []) warmKeys.add(k);
-    if (!warmPromise) {
-      warmPromise = (async () => {
-        const remote = await backend();
-        const list = Array.from(warmKeys);
-        const store = remote ? await remote.read(list) : {};
-        const local: Record<string, string> = {};
-        for (const k of list) {
-          const v = lsGetRaw(k);
-          if (v !== null) local[k] = v;
-        }
-        degraded = lsGetRaw(flag) === '1';
-        let syncFailed = false;
-        for (const k of list) {
-          const r = store[k];
-          const l = local[k];
-          if (touched.has(k)) {
-            // 页面在 warm 完成前已经自己写过这个键：这个值比 warm 起点读到的 LS / 主存值都新。
-            // 这里必须让路：不拿主存值覆盖 cache，也不把主存值回写 LS（那会摸掉刚发生的写）。
-            // 主存的补齐交给 flush()：pendingW / pendingD 里已经有它。
-            continue;
-          }
-          if (r !== undefined && !degraded) {
-            cache.set(k, r);
-            if (l !== undefined && l !== r) {
-              st.conflicts++;
-              if (r.length <= mirrorLimit) lsSetRaw(k, r); // 收敛：主存为准（每次写都镜像过，这里只修外部改动）
-            }
-          } else if (l !== undefined) {
-            cache.set(k, l);
-            if (remote) {
-              if (r === undefined) st.migrated++;
-              else if (r !== l) st.conflicts++;
-              const ok = await remote.write(k, l);
-              if (!ok) {
-                markDegraded();
-                syncFailed = true;
-              }
-            }
-          } else if (r !== undefined) {
-            cache.set(k, r);
-          }
-          // 页面刚才同步读到的是 LS 的值（或什么都没有），而主存给的是另一个值 → 需要补载入
-          const cur = cache.get(k);
-          if (cur !== undefined && cur !== l) {
-            hydrated.add(k);
-            st.hydrated++;
-          }
-        }
-        /* 降级标记只由「一次成功的 LS→IDB 回灌」撤销：会话中途某次写成功不代表之前失败过的
-           键已经同步，提前撤标记等于让旧主存值在下一次载入时覆盖用户的新存档。 */
-        if (degraded) {
-          if (syncFailed) lsSetRaw(flag, '1');
-          else clearDegraded();
-        }
-        if (hydrated.size) for (const cb of hydrateCbs) cb(Array.from(hydrated));
-        return { ...st };
-      })();
+    warmChain = warmChain.then(() => warmPass());
+    return warmChain;
+  }
+
+  async function warmPass(): Promise<StoreStats> {
+    const list = Array.from(warmKeys).filter((k) => !warmed.has(k));
+    if (!list.length) return { ...st };
+    const remote = await backend();
+    const store = remote ? await remote.read(list) : {};
+    const local: Record<string, string> = {};
+    for (const k of list) {
+      const v = lsGetRaw(k);
+      if (v !== null) local[k] = v;
     }
-    return warmPromise;
+    degraded = lsGetRaw(flag) === '1';
+    let syncFailed = false;
+    const fresh: string[] = [];
+    for (const k of list) {
+      const r = store[k];
+      const l = local[k];
+      if (touched.has(k)) {
+        // 页面在 warm 完成前已经自己写过这个键：这个值比 warm 起点读到的 LS / 主存值都新。
+        // 这里必须让路：不拿主存值覆盖 cache，也不把主存值回写 LS（那会摸掉刚发生的写）。
+        // 主存的补齐交给 flush()：pendingW / pendingD 里已经有它。
+        continue;
+      }
+      if (r !== undefined && !degraded) {
+        cache.set(k, r);
+        if (l !== undefined && l !== r) {
+          st.conflicts++;
+          if (r.length <= mirrorLimit) lsSetRaw(k, r); // 收敛：主存为准（每次写都镜像过，这里只修外部改动）
+        }
+      } else if (l !== undefined) {
+        cache.set(k, l);
+        if (remote) {
+          if (r === undefined) st.migrated++;
+          else if (r !== l) st.conflicts++;
+          const ok = await remote.write(k, l);
+          if (!ok) {
+            markDegraded();
+            syncFailed = true;
+          }
+        }
+      } else if (r !== undefined) {
+        cache.set(k, r);
+      }
+      // 页面刚才同步读到的是 LS 的值（或什么都没有），而主存给的是另一个值 → 需要补载入
+      const cur = cache.get(k);
+      if (cur !== undefined && cur !== l) {
+        hydrated.add(k);
+        fresh.push(k);
+        st.hydrated++;
+      }
+    }
+    for (const k of list) warmed.add(k);
+    /* 降级标记只由「一次成功的 LS→IDB 回灌」撤销：会话中途某次写成功不代表之前失败过的
+       键已经同步，提前撤标记等于让旧主存值在下一次载入时覆盖用户的新存档。 */
+    if (degraded) {
+      if (syncFailed) lsSetRaw(flag, '1');
+      else clearDegraded();
+    }
+    if (fresh.length) for (const cb of hydrateCbs) cb(fresh);
+    return { ...st };
   }
 
   async function flush(): Promise<StoreStats> {

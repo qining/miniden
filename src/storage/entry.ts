@@ -14,6 +14,7 @@
    ===================================================================== */
 
 import { createStore, openIdb, type StorageLike } from './store';
+import * as plans from './plans';
 
 const g = globalThis as Record<string, unknown>;
 const lsRaw =
@@ -24,6 +25,9 @@ const lsRaw =
 const store = createStore({ idb: openIdb(), ls: lsRaw });
 
 (g as { MINIDEN_STORE?: unknown }).MINIDEN_STORE = store;
+/* E26：多户型注册表的纯函数层（解析/增删改/键名口径）跟着存储块一起走。
+   它不碰存储实例 —— 注册表那份 JSON 的读写由主脚本用 STORE.get/set 做。 */
+(g as { MINIDEN_PLANS?: unknown }).MINIDEN_PLANS = plans;
 
 /* 排队写入有个 200ms 防抖；页面隐藏/关闭前必须落盘，否则最后一次编辑会丢。 */
 if (typeof g.addEventListener === 'function') {

@@ -75,7 +75,9 @@ jobs:
       # 这就是 E18「一个事实来源」的同步门禁：只修源不重捆、或只重捆不修源，这里就红。
       # 流程断言全部 plan-independent：坐标从运行时派生，每个 flow 前清存档（localStorage + IndexedDB）。
       - name: E21 E2E flows (real input · real dialogs · real files · 2 entries)
-        timeout-minutes: 12
+        # E26 加了「首次引导」与「多户型」两条流程（14 → 16）。每条流程都要清存档 + 真实刷新，
+        # 页面还要等目录缩略图渲完。12 分钟是 14 条时的余量，16 条按同口径抬到 20。
+        timeout-minutes: 20
         run: npm run e2e:ci
 
       - uses: actions/upload-artifact@v4

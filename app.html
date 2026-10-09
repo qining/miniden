@@ -97,6 +97,24 @@
   #proTools .pLabel{font-size:11px; color:var(--muted); margin-left:6px;}
   #proTools .pLabel:first-child{margin-left:0;}
   #proTools .pDiv{width:1px; height:20px; background:var(--line);}
+  /* E26 户型管理（工具 ⌄ 第二层：多户型不是日常主路径，但必须找得到） */
+  #proTools #planSel{max-width:300px; background:var(--field-bg); color:var(--fg); border:1px solid var(--field-line); border-radius:6px; padding:4px 6px; font-size:12px;}
+  #proTools #planName{width:150px; background:var(--field-bg); color:var(--fg); border:1px solid var(--field-line); border-radius:6px; padding:4px 6px; font-size:12px;}
+  #btnPlanDel:disabled{opacity:.38; cursor:default;}
+  #btnPlanDel.arm{background:var(--danger); border-color:var(--danger); color:#fff;}
+  /* E26 首次引导卡：一次性，告诉新用户三条路。#calib / #ui: / bench 一律不出现（像素基线不动）。 */
+  #firstRun{position:fixed; left:50%; top:50%; transform:translate(-50%,-50%); width:560px; max-width:92vw; z-index:70;
+    background:var(--dlg-bg); border:1px solid var(--dlg-line); border-radius:12px; padding:18px 22px;
+    box-shadow:0 18px 70px rgba(0,0,0,.6); font-size:13px; color:var(--dlg-text);}
+  #firstRun h3{margin:0 0 3px; font-size:16px; color:var(--dlg-title);}
+  #firstRun .frSub{margin:0 0 14px; color:var(--muted); font-size:12px;}
+  #firstRun .frRow{display:flex; gap:10px; align-items:flex-start; padding:9px 11px; margin-bottom:8px;
+    border:1px solid var(--dlg-line); border-radius:8px; background:var(--stage-bg);}
+  #firstRun .frRow b{display:block; margin-bottom:2px;}
+  #firstRun .frRow span{color:var(--muted); font-size:12px; line-height:1.55;}
+  #firstRun .frNum{flex:0 0 22px; height:22px; border-radius:50%; background:var(--accent); color:var(--on-fg);
+    font-size:12px; display:flex; align-items:center; justify-content:center;}
+  #firstRun .frBtns{display:flex; gap:8px; justify-content:flex-end; margin-top:12px; flex-wrap:wrap;}
   #btnMore.open{border-color:var(--accent); color:var(--accent);}
   body.calib #proTools{display:none !important;}
   body.calib #btnMore{display:none !important;}
@@ -319,6 +337,13 @@
   <button class="btn" id="btnMore" aria-expanded="false" title="更多工具：导入/导出、底图对照与特征线（日常操作用上方：视图/单位/量尺寸/编辑墙体）">工具 ⌄</button>
 </div>
 <div id="proTools" style="display:none">
+  <span class="pLabel">户型</span>
+  <select id="planSel" title="切换户型（每份户型有自己的存档与家具布局）"></select>
+  <input id="planName" maxlength="60" title="这份户型的名字（导出文件名也用它的名字）">
+  <button class="btn" id="btnPlanRename" title="把左边输入框里的名字应用到当前户型">重命名</button>
+  <button class="btn" id="btnPlanNew" title="新建一份空白户型（没有任何墙）：切过去后用「编辑墙体 → 画墙」从零开始">新建空白户型</button>
+  <button class="btn" id="btnPlanDel" title="删除当前户型（两步确认，连它的存档与家具布局一起删）；内置户型不可删">删除本户型</button>
+  <span class="pDiv"></span>
   <span class="pLabel">底图</span>
   <button class="btn" id="btnUnderlay" title="把官方 layout 图垫在矢量图下，便于对照/描图">底图对照</button>
   <button class="btn" id="btnRefPhoto">原户型图</button>
@@ -327,18 +352,33 @@
   <span class="pDiv"></span>
   <span class="pLabel">导入 / 导出</span>
   <button class="btn" id="btnExportDoc" title="导出户型文档（ProjectDoc JSON：墙/窗/门/柱/洁具/房间 + 地板轮廓 + 底图）——换机器或换浏览器时带走你的编辑">导出户型</button>
-  <button class="btn" id="btnImportDoc" title="导入户型文档（本应用「导出户型」生成的 JSON）：一次性确认后整套替换当前户型">导入户型</button>
+  <button class="btn" id="btnImportDoc" title="导入户型文档（本应用「导出户型」生成的 JSON）：新建一份户型并切过去，当前户型保留在「工具 ⌄ → 户型」里">导入户型</button>
   <input type="file" id="fileDoc" accept=".json" style="display:none">
   <button class="btn" id="btnExport">导出图片</button>
   <button class="btn" id="btnSaveJson">导出布局</button>
   <button class="btn" id="btnLoadJson">导入布局</button>
   <input type="file" id="fileJson" accept=".json" style="display:none">
-  <button class="btn" id="btnImportDxf" title="导入 DXF 户型图：图层自动映射，单位自动检测（一次性确认后整套替换当前户型）">导入 DXF</button>
+  <button class="btn" id="btnImportDxf" title="导入 DXF 户型图：图层自动映射，单位自动检测（新建一份户型并切过去，当前户型保留）">导入 DXF</button>
   <input type="file" id="fileDxf" accept=".dxf,.Dxf,.DXF" style="display:none">
-  <button class="btn" id="btnImportPdf" title="导入 PDF 户型图（矢量）：颜色映射语义（蓝=窗/红=门），比例从门弧+图幅推断（一次性确认后整套替换当前户型）">导入 PDF</button>
+  <button class="btn" id="btnImportPdf" title="导入 PDF 户型图（矢量）：颜色映射语义（蓝=窗/红=门），比例从门弧+图幅推断（新建一份户型并切过去，当前户型保留）">导入 PDF</button>
   <input type="file" id="filePdf" accept=".pdf,.PDF" style="display:none">
-  <button class="btn" id="btnImportImg" title="导入底图（户型照片/扫描件/扫描PDF页）：两点标定比例 + 墙体特征提取，磁性吸附描墙（一次性确认后整套替换当前户型）">导入底图</button>
+  <button class="btn" id="btnImportImg" title="导入底图（户型照片/扫描件/扫描PDF页）：两点标定比例 + 墙体特征提取，磁性吸附描墙（新建一份户型并切过去，当前户型保留）">导入底图</button>
   <input type="file" id="fileImg" accept="image/*" style="display:none">
+</div>
+<div id="firstRun" style="display:none">
+  <h3>MiniDen 迷你窝 · 三条路</h3>
+  <p class="frSub">从空白平面到能走进去的 3D，以分钟计。选一条开始，这个提示只会出一次。</p>
+  <div class="frRow"><span class="frNum">1</span><div><b>用这套内置户型直接试</b>
+    <span>已经有墙、窗、门与房间标注：从右侧目录拖家具进去，点「编辑墙体」改墙，切 3D / 室内看效果。</span></div></div>
+  <div class="frRow"><span class="frNum">2</span><div><b>导入你自己的图纸</b>
+    <span>DXF / 矢量 PDF / 户型照片或扫描件（描图）。导入会新建一份户型并切过去，内置那份保留在「工具 ⌄ → 户型」里。</span></div></div>
+  <div class="frRow"><span class="frNum">3</span><div><b>从空白开始画</b>
+    <span>新建一份空白户型，用「编辑墙体 → 画墙」把外墙描出来，再开窗、开门、放洁具。</span></div></div>
+  <div class="frBtns">
+    <button class="btn" id="frImport">导入我的图纸</button>
+    <button class="btn" id="frBlank">新建空白户型</button>
+    <button class="btn primary" id="frStart">用内置户型开始</button>
+  </div>
 </div>
 <div id="wallbar" style="display:none">
   <div class="seg" id="wtoolSeg">
@@ -447,7 +487,7 @@
     </select>
     <label style="margin-left:14px; color:var(--label)"><input type="checkbox" id="imgTraceChk" checked> 提取墙体特征线（画墙磁性吸附）</label>
   </div>
-  <div class="dxfNote">导入将<b>替换当前整套户型</b>并清空已摆家具；图片成为底图，之后可用「移动底图」摆位。未标定时按 1px = 1cm 处理（不推荐，请用图上已知距离标定）。「重置内置」可随时回到内置户型。</div>
+  <div class="dxfNote">导入将<b>新建一份户型并切过去</b>（当前户型与它的改动保留在「工具 ⌄ → 户型」里，随时切得回），新户型里已摆家具为空；图片成为底图，之后可用「移动底图」摆位。未标定时按 1px = 1cm 处理（不推荐，请用图上已知距离标定）。</div>
   <div class="dxfBtns">
     <button class="btn" id="imgCancel">取消</button>
     <button class="btn" id="imgOk">导入并替换户型</button>
@@ -567,7 +607,7 @@
 /* VENDORED —— 由 scripts/build-storage.mjs 从 src/storage/ 编译生成，勿手改。
    src/ 是唯一事实来源（单测 + tsc strict）；改 src/storage/ 后跑 `npm run storage:build`。
    build.mjs 校验本块与最新编译输出逐字节一致。 */
-"use strict";(()=>{var W="miniden-planner",V="miniden_kv",N="planner_store_degraded";function z(i){if(!i||typeof i.getItem!="function")return null;try{i.setItem("__miniden_probe","1"),i.removeItem("__miniden_probe")}catch{return null}return{name:"localStorage",read:async r=>{let n={};for(let l of r)try{let t=i.getItem(l);typeof t=="string"&&(n[l]=t)}catch{}return n},write:async(r,n)=>{try{return i.setItem(r,n),!0}catch{return!1}},remove:async r=>{try{return i.removeItem(r),!0}catch{return!1}}}}function H(i){return new Promise(r=>{let n=null;try{n=i()}catch{r(void 0);return}if(!n){r(void 0);return}n.onsuccess=()=>r(n.result),n.onerror=()=>r(void 0)})}function E(i){return new Promise(r=>{let n=null;try{n=i()}catch{r(!1);return}if(!n){r(!1);return}n.onsuccess=()=>r(!0),n.onerror=()=>r(!1)})}function C(i,r=V){let n=l=>{if(!i.transaction)return null;let t;try{t=i.transaction(r,l)}catch{return null}if(!t||typeof t.objectStore!="function")return null;try{return t.objectStore(r)}catch{return null}};return{name:"indexedDB",read:async l=>{let t={};for(let s of l){let d=n("readonly");if(!d)break;let a=await H(()=>d.get(s));typeof a=="string"&&(t[s]=a)}return t},write:async(l,t)=>{let s=n("readwrite");return s?E(()=>s.put(t,l)):!1},remove:async l=>{let t=n("readwrite");return t?E(()=>t.delete(l)):!1}}}function A(i=W,r=1,n=V){let t=globalThis.indexedDB;if(!t||typeof t.open!="function")return Promise.resolve(null);let s=t.open.bind(t);return new Promise(d=>{let a;try{a=s(i,r)}catch{d(null);return}if(!a){d(null);return}a.onupgradeneeded=()=>{let f=a.result;if(f&&typeof f.createObjectStore=="function")try{f.createObjectStore(n)}catch{}},a.onsuccess=()=>{let f=a.result;if(!f||typeof f.transaction!="function"){d(null);return}d(C(f,n))},a.onerror=()=>d(null),a.onblocked=()=>d(null)})}function O(i){let r=i.mirrorLimit??15e5,n=i.debounceMs??200,l=i.degradedFlag??N,t=i.ls??null,s=new Map,d=new Map,a=new Set,f=new Set,R=new Set(i.warmKeys??[]),T=[],h=new Set,u={migrated:0,conflicts:0,idbWrites:0,idbFails:0,lsMirrors:0,lsFails:0,skippedMirror:0,hydrated:0},w=null,P=null,b=!1,x=null,p=null,I=e=>{if(!t)return null;try{let o=t.getItem(e);return typeof o=="string"?o:null}catch{return null}},L=(e,o)=>{if(!t)return!1;try{return t.setItem(e,o),!0}catch{return!1}},D=()=>{b=!0,L(l,"1")},G=()=>{if(b){b=!1;try{t?.removeItem(l)}catch{}}};function q(){if(n<=0){_();return}if(p!==null)return;let e=globalThis;if(typeof e.setTimeout!="function"){_();return}p=e.setTimeout(()=>{p=null,_()},n)}async function M(){return w||(P||(P=Promise.resolve(i.idb??null).then(e=>w=e??null)),P)}function K(e){for(let o of e??[])R.add(o);return x||(x=(async()=>{let o=await M(),S=Array.from(R),m=o?await o.read(S):{},v={};for(let c of S){let g=I(c);g!==null&&(v[c]=g)}b=I(l)==="1";let B=!1;for(let c of S){let g=m[c],k=v[c];if(f.has(c))continue;g!==void 0&&!b?(s.set(c,g),k!==void 0&&k!==g&&(u.conflicts++,g.length<=r&&L(c,g))):k!==void 0?(s.set(c,k),o&&(g===void 0?u.migrated++:g!==k&&u.conflicts++,await o.write(c,k)||(D(),B=!0))):g!==void 0&&s.set(c,g);let F=s.get(c);F!==void 0&&F!==k&&(h.add(c),u.hydrated++)}if(b&&(B?L(l,"1"):G()),h.size)for(let c of T)c(Array.from(h));return{...u}})()),x}async function _(){if(p!==null){let m=globalThis;typeof m.clearTimeout=="function"&&m.clearTimeout(p),p=null}let e=await M(),o=Array.from(d.entries()),S=Array.from(a);if(d.clear(),a.clear(),!e)return{...u};for(let[m,v]of o)await e.write(m,v)?u.idbWrites++:(u.idbFails++,D());for(let m of S)await e.remove(m)?u.idbWrites++:(u.idbFails++,D());return{...u}}return{warm:K,ready:()=>K(),get(e){return s.has(e)?s.get(e)??null:I(e)},set(e,o){s.set(e,o),f.add(e),d.set(e,o),a.delete(e),o.length<=r?L(e,o)?u.lsMirrors++:u.lsFails++:u.skippedMirror++,q()},remove(e){s.set(e,null),f.add(e),d.delete(e),a.add(e);try{t?.removeItem(e)}catch{}q()},has(e){return s.has(e)?s.get(e)!==null:I(e)!==null},lsGet:I,lsRemove(e){try{t?.removeItem(e)}catch{}},flush:_,onHydrate(e){T.push(e),h.size&&e(Array.from(h))},stats:()=>({...u}),degraded:()=>b,backend:()=>w?w.name:z(t)?"localStorage":"none"}}var y=globalThis,J=y.localStorage&&typeof y.localStorage.getItem=="function"?y.localStorage:null,j=O({idb:A(),ls:J});y.MINIDEN_STORE=j;if(typeof y.addEventListener=="function"){let i=y.addEventListener,r=()=>{try{j.flush()}catch{}};i("pagehide",r),i("visibilitychange",()=>{let n=y.document;n&&n.visibilityState==="hidden"&&r()})}})();
+"use strict";(()=>{var U=Object.defineProperty;var Z=(n,e)=>{for(var t in e)U(n,t,{get:e[t],enumerable:!0})};var $="miniden-planner",G="miniden_kv",nn="planner_store_degraded";function en(n){if(!n||typeof n.getItem!="function")return null;try{n.setItem("__miniden_probe","1"),n.removeItem("__miniden_probe")}catch{return null}return{name:"localStorage",read:async e=>{let t={};for(let i of e)try{let r=n.getItem(i);typeof r=="string"&&(t[i]=r)}catch{}return t},write:async(e,t)=>{try{return n.setItem(e,t),!0}catch{return!1}},remove:async e=>{try{return n.removeItem(e),!0}catch{return!1}}}}function tn(n){return new Promise(e=>{let t=null;try{t=n()}catch{e(void 0);return}if(!t){e(void 0);return}t.onsuccess=()=>e(t.result),t.onerror=()=>e(void 0)})}function W(n){return new Promise(e=>{let t=null;try{t=n()}catch{e(!1);return}if(!t){e(!1);return}t.onsuccess=()=>e(!0),t.onerror=()=>e(!1)})}function rn(n,e=G){let t=i=>{if(!n.transaction)return null;let r;try{r=n.transaction(e,i)}catch{return null}if(!r||typeof r.objectStore!="function")return null;try{return r.objectStore(e)}catch{return null}};return{name:"indexedDB",read:async i=>{let r={};for(let o of i){let d=t("readonly");if(!d)break;let a=await tn(()=>d.get(o));typeof a=="string"&&(r[o]=a)}return r},write:async(i,r)=>{let o=t("readwrite");return o?W(()=>o.put(r,i)):!1},remove:async i=>{let r=t("readwrite");return r?W(()=>r.delete(i)):!1}}}function H(n=$,e=1,t=G){let r=globalThis.indexedDB;if(!r||typeof r.open!="function")return Promise.resolve(null);let o=r.open.bind(r);return new Promise(d=>{let a;try{a=o(n,e)}catch{d(null);return}if(!a){d(null);return}a.onupgradeneeded=()=>{let l=a.result;if(l&&typeof l.createObjectStore=="function")try{l.createObjectStore(t)}catch{}},a.onsuccess=()=>{let l=a.result;if(!l||typeof l.transaction!="function"){d(null);return}d(rn(l,t))},a.onerror=()=>d(null),a.onblocked=()=>d(null)})}function z(n){let e=n.mirrorLimit??15e5,t=n.debounceMs??200,i=n.degradedFlag??nn,r=n.ls??null,o=new Map,d=new Map,a=new Set,l=new Set,P=new Set(n.warmKeys??[]),T=[],M=new Set,f={migrated:0,conflicts:0,idbWrites:0,idbFails:0,lsMirrors:0,lsFails:0,skippedMirror:0,hydrated:0},S=null,D=null,b=!1,N=Promise.resolve({migrated:0,conflicts:0,idbWrites:0,idbFails:0,lsMirrors:0,lsFails:0,skippedMirror:0,hydrated:0}),O=new Set,k=null,w=s=>{if(!r)return null;try{let u=r.getItem(s);return typeof u=="string"?u:null}catch{return null}},R=(s,u)=>{if(!r)return!1;try{return r.setItem(s,u),!0}catch{return!1}},B=()=>{b=!0,R(i,"1")},Y=()=>{if(b){b=!1;try{r?.removeItem(i)}catch{}}};function q(){if(t<=0){A();return}if(k!==null)return;let s=globalThis;if(typeof s.setTimeout!="function"){A();return}k=s.setTimeout(()=>{k=null,A()},t)}async function C(){return S||(D||(D=Promise.resolve(n.idb??null).then(s=>S=s??null)),D)}function j(s){for(let u of s??[])P.add(u);return N=N.then(()=>Q()),N}async function Q(){let s=Array.from(P).filter(c=>!O.has(c));if(!s.length)return{...f};let u=await C(),I=u?await u.read(s):{},p={};for(let c of s){let g=w(c);g!==null&&(p[c]=g)}b=w(i)==="1";let h=!1,_=[];for(let c of s){let g=I[c],y=p[c];if(l.has(c))continue;g!==void 0&&!b?(o.set(c,g),y!==void 0&&y!==g&&(f.conflicts++,g.length<=e&&R(c,g))):y!==void 0?(o.set(c,y),u&&(g===void 0?f.migrated++:g!==y&&f.conflicts++,await u.write(c,y)||(B(),h=!0))):g!==void 0&&o.set(c,g);let V=o.get(c);V!==void 0&&V!==y&&(M.add(c),_.push(c),f.hydrated++)}for(let c of s)O.add(c);if(b&&(h?R(i,"1"):Y()),_.length)for(let c of T)c(_);return{...f}}async function A(){if(k!==null){let p=globalThis;typeof p.clearTimeout=="function"&&p.clearTimeout(k),k=null}let s=await C(),u=Array.from(d.entries()),I=Array.from(a);if(d.clear(),a.clear(),!s)return{...f};for(let[p,h]of u)await s.write(p,h)?f.idbWrites++:(f.idbFails++,B());for(let p of I)await s.remove(p)?f.idbWrites++:(f.idbFails++,B());return{...f}}return{warm:j,ready:()=>j(),get(s){return o.has(s)?o.get(s)??null:w(s)},set(s,u){o.set(s,u),l.add(s),d.set(s,u),a.delete(s),u.length<=e?R(s,u)?f.lsMirrors++:f.lsFails++:f.skippedMirror++,q()},remove(s){o.set(s,null),l.add(s),d.delete(s),a.add(s);try{r?.removeItem(s)}catch{}q()},has(s){return o.has(s)?o.get(s)!==null:w(s)!==null},lsGet:w,lsRemove(s){try{r?.removeItem(s)}catch{}},flush:A,onHydrate(s){T.push(s),M.size&&s(Array.from(M))},stats:()=>({...f}),degraded:()=>b,backend:()=>S?S.name:en(r)?"localStorage":"none"}}var K={};Z(K,{MAX_PLANS:()=>an,PLANS_KEY:()=>sn,PLANS_SCHEMA:()=>on,docKeyFor:()=>ln,hasPlan:()=>E,itemsKeyFor:()=>un,newPlanId:()=>wn,normalizeRegistry:()=>pn,planById:()=>L,removePlan:()=>Pn,renamePlan:()=>Sn,serializeRegistry:()=>mn,setActive:()=>kn,sortedPlans:()=>hn,touchPlan:()=>yn,trimRegistry:()=>F,upsertPlan:()=>bn});var sn="planner_plans_v1",on=1,an=24,ln=n=>"planner_doc_v1:"+n,un=n=>"planner_v1:"+n,v=n=>typeof n=="string"&&n.length>0&&n.length<=64,x=n=>typeof n=="string"&&n.length>0&&n.length<=120,cn=n=>n==="builtin"||n==="imported"||n==="blank",X=n=>typeof n=="number"&&Number.isFinite(n);function dn(n){if(!n||typeof n!="object"||Array.isArray(n))return;let e=n,t=i=>typeof i=="number"&&Number.isFinite(i)&&i>=0?Math.floor(i):0;return{walls:t(e.walls),doors:t(e.doors),fixtures:t(e.fixtures),items:t(e.items)}}function fn(n){if(!n||typeof n!="object"||Array.isArray(n))return null;let e=n;if(!v(e.id)||!x(e.name)||!cn(e.origin))return null;let t=X(e.createdAt)?e.createdAt:0,i={id:e.id,name:e.name,origin:e.origin,createdAt:t,updatedAt:X(e.updatedAt)?e.updatedAt:t},r=dn(e.counts);return r&&(i.counts=r),i}function gn(n,e,t){return!v(e)||n.plans.some(i=>i.id===e)?n:{...n,plans:[{id:e,name:t,origin:"builtin",createdAt:0,updatedAt:0},...n.plans]}}function pn(n,e,t="\u5185\u7F6E\u6237\u578B"){let i=[],r="";if(n&&typeof n=="object"&&!Array.isArray(n)){let l=n;Array.isArray(l.plans)&&(i=l.plans.map(fn).filter(P=>P!==null)),v(l.active)&&(r=l.active)}let o=new Map;for(let l of i)o.set(l.id,l);i=Array.from(o.values());let a=gn({v:1,active:r,plans:i},e,t);return a.plans.some(l=>l.id===a.active)||(a.active=v(e)?e:a.plans[0]?.id??""),F(a)}function F(n){if(n.plans.length<=24)return n;let e=new Set([n.active]);for(let r of n.plans)r.origin==="builtin"&&e.add(r.id);let t=n.plans.filter(r=>!e.has(r.id)).sort((r,o)=>r.updatedAt-o.updatedAt),i=new Set(t.slice(0,n.plans.length-24).map(r=>r.id));return{...n,plans:n.plans.filter(r=>!i.has(r.id))}}function mn(n){return JSON.stringify({v:1,active:n.active,plans:n.plans})}function L(n,e){return n.plans.find(t=>t.id===e)??null}function E(n,e){return n.plans.some(t=>t.id===e)}function bn(n,e){if(!v(e.id)||!x(e.name))return n;let t=L(n,e.id),i={id:e.id,name:e.name,origin:t?t.origin:e.origin,createdAt:t?t.createdAt:e.now,updatedAt:e.now};e.counts&&(i.counts=e.counts);let r=t?n.plans.map(o=>o.id===e.id?i:o):[...n.plans,i];return F({...n,active:e.id,plans:r})}function yn(n,e,t){let i=L(n,e);if(!i)return n;let r={...i};return t.now!==void 0&&(r.updatedAt=t.now),t.counts&&(r.counts=t.counts),t.name!==void 0&&x(t.name)&&(r.name=t.name),{...n,plans:n.plans.map(o=>o.id===e?r:o)}}function kn(n,e){return E(n,e)?{...n,active:e}:n}function Pn(n,e){let t=L(n,e);if(!t||t.origin==="builtin"||n.plans.length<=1)return null;let i=n.plans.filter(o=>o.id!==e),r=n.active;if(r===e){let o=i.find(d=>d.origin==="builtin")||i[0];r=o?o.id:""}return{...n,active:r,plans:i}}function Sn(n,e,t){return!E(n,e)||!x(t)?null:{...n,plans:n.plans.map(i=>i.id===e?{...i,name:t}:i)}}function wn(n,e){let t=Math.floor(e()*1e9).toString(36);return"p"+n.toString(36)+t}function hn(n){return[...n.plans].sort((e,t)=>e.origin==="builtin"&&t.origin!=="builtin"?-1:t.origin==="builtin"&&e.origin!=="builtin"?1:t.updatedAt-e.updatedAt)}var m=globalThis,vn=m.localStorage&&typeof m.localStorage.getItem=="function"?m.localStorage:null,J=z({idb:H(),ls:vn});m.MINIDEN_STORE=J;m.MINIDEN_PLANS=K;if(typeof m.addEventListener=="function"){let n=m.addEventListener,e=()=>{try{J.flush()}catch{}};n("pagehide",e),n("visibilitychange",()=>{let t=m.document;t&&t.visibilityState==="hidden"&&e()})}})();
 
 </script><!-- /miniden-storage -->
 <script id="miniden-schema">
@@ -1051,8 +1091,6 @@ const PLAN_FP = (()=>{
   let h=5381; for(let i=0;i<s.length;i++) h=(((h*33)^s.charCodeAt(i))>>>0);
   return h.toString(36);
 })();
-const DOC_KEY = 'planner_doc_v1:'+PLAN_FP, DOC_KEY_OLD = 'planner_doc_v1';
-const ITEMS_KEY = 'planner_v1:'+PLAN_FP,  ITEMS_KEY_OLD = 'planner_v1';
 const PANEL_KEY = 'planner_panels_v1';   // 侧栏宽度/折叠（非户型专属）——E10 前定义在这里，下面 warm 要用
 const PRO_TOOLS_KEY = 'md_proTools';     // 「工具 ⌄」开合（S9 渐进披露）
 /* E10（ADR-0006 的工程侧）：持久化从 localStorage 换成 IndexedDB 主存 + localStorage 镜像/回退。
@@ -1066,7 +1104,34 @@ const PRO_TOOLS_KEY = 'md_proTools';     // 「工具 ⌄」开合（S9 渐进�
      · IDB 写失败会在 LS 里留降级标记，下次载入以 LS 为准并回灌，避免「主存存的是旧值」
        反过来覆盖用户的新存档。 */
 const STORE = window.MINIDEN_STORE;
-STORE.warm([DOC_KEY, ITEMS_KEY, PANEL_KEY, PRO_TOOLS_KEY]);   // 异步预热 + 旧键迁移（不 await：读路径本来就是同步的）
+/* ---------- E26：多户型注册表（事实来源 = src/storage/plans.ts，单测守着） ----------
+   原先一份浏览器里只有一份户型存档：导入把导入的文档写进**同一个键**，于是
+   「导入你自己的图纸」会覆盖你对内置户型的编辑（只能「重置内置」回到出厂几何，
+   用户改动找不回来）。同时想做「这套内置户型」+「我自己那套」也做不到。
+   注册表 = 一份小 JSON（永远镜像进 localStorage，所以 warm 完成前也能同步读到）：
+     { v:1, active:"<planId>", plans:[{id,name,origin,createdAt,updatedAt,counts}] }
+   planId 口径（关键红线）：内置户型的 id 就是原来的户型指纹 ⇒
+   现有用户的存档键一个都不变，不需要迁移，也不会因为换键而「家具凭空消失」。
+   自包含户型（新建空白 / 导入）用创建时生成的稳定 id。 */
+const PLANS = window.MINIDEN_PLANS;
+const PLANS_KEY = PLANS.PLANS_KEY;
+const BUILTIN_PLAN_ID = PLAN_FP;
+const BUILTIN_PLAN_NAME = PLAN.roomSummary || PLAN.name || '内置户型';
+function readRegistry(){
+  let raw=null; try{ raw = JSON.parse(STORE.get(PLANS_KEY) || 'null'); }catch(e){ raw=null; }
+  return PLANS.normalizeRegistry(raw, BUILTIN_PLAN_ID, BUILTIN_PLAN_NAME);
+}
+let PLAN_REG = readRegistry();
+function saveRegistry(){ try{ STORE.set(PLANS_KEY, PLANS.serializeRegistry(PLAN_REG)); }catch(e){} }
+/* ?plan=<id> 只认注册表里真存在的 id（手打一个不存在的 id 不会把界面带进无户型状态） */
+function planIdFromUrl(){
+  const m = /[?&]plan=([A-Za-z0-9._-]{1,64})/.exec(location.search);
+  return m && PLANS.hasPlan(PLAN_REG, m[1]) ? m[1] : null;
+}
+let PLAN_ID = planIdFromUrl() || (PLANS.hasPlan(PLAN_REG, PLAN_REG.active) ? PLAN_REG.active : BUILTIN_PLAN_ID);
+let DOC_KEY = PLANS.docKeyFor(PLAN_ID), DOC_KEY_OLD = 'planner_doc_v1';
+let ITEMS_KEY = PLANS.itemsKeyFor(PLAN_ID), ITEMS_KEY_OLD = 'planner_v1';
+STORE.warm([DOC_KEY, ITEMS_KEY, PANEL_KEY, PRO_TOOLS_KEY, PLANS_KEY]);   // 异步预热 + 旧键迁移（不 await：读路径本来就是同步的）
 let legacyOwned = true;   // 旧单桶存档是否属于当前户型（loadDoc 里判定）
 function save(){
   try{ STORE.set(ITEMS_KEY, JSON.stringify({geo:GEO_VERSION, items:state.items, customCat:state.customCat, unit:state.unit})); }catch(e){}
@@ -1094,8 +1159,10 @@ function load(){
   let archived=false;   // 这台浏览器对这份户型存过档吗（存过就以它为准，不播种）
   try{ const raw=STORE.get(ITEMS_KEY); if(raw!==null) archived=true; if(takeArchive(JSON.parse(raw))) return true; }catch(e){}
   // 旧单桶家具存档：只有在旧文档也属于当前户型时才认（否则是别的户型的布局，坐标对不上）
-  if(legacyOwned){ try{ const raw=STORE.lsGet(ITEMS_KEY_OLD); if(raw!==null) archived=true; if(takeArchive(JSON.parse(raw))) return true; }catch(e){} }
-  if(!CALIB && !archived && seedLayout()) return true;   // S13：内置布局播种（文件即存档）
+  // E26：它属于**内置户型**，切到自包含户型时不能拿它当本户型的布局
+  if(legacyOwned && PLAN_ID===BUILTIN_PLAN_ID){ try{ const raw=STORE.lsGet(ITEMS_KEY_OLD); if(raw!==null) archived=true; if(takeArchive(JSON.parse(raw))) return true; }catch(e){} }
+  // E26：内置布局只属于内置户型 —— 否则切到一个空白户型会被播种上别人家的 32 件家具
+  if(!CALIB && !archived && PLAN_ID===BUILTIN_PLAN_ID && seedLayout()) return true;   // S13：内置布局播种（文件即存档）
   // CALIB 不播种：#calib 是几何校准视图，基线 md5 是在干净浏览器（无存档）下拍的，
   // 播种会把家具画进去 → md5 变（§1.1 硬红线）。真实用户自己的存档照旧可见。
   return false;
@@ -1171,8 +1238,136 @@ let DOC = loadDoc();
 applyPlanChrome();                  // S11b：标题/照片/层高在文档就绪后才能应用
 function currentDoc(){ return DOC; }
 function resetDoc(){ DOC = freshDoc(); }   // 丢弃全部几何改动（含用户新增），回到内置户型
+/* ---------- E26：户型管理（切换 / 新建空白 / 重命名 / 删除） ----------
+   口径：内置户型不可删（出厂入口）；当前户型不可删（删自己 = 界面上没有户型可用）；
+   删除用两步确认（headless 里 confirm() 会永久挂住 bench，AGENTS §5.1）。 */
+function planCounts(){
+  let walls=0, doors=0, fixtures=0;
+  try{ walls=effWalls().length; doors=effDoors().length; fixtures=(typeof effFixtures==='function')?effFixtures().length:0; }catch(e){}
+  return { walls, doors, fixtures, items: state.items.length };
+}
+/* 每次存文档顺手更新注册表里的计数/时间（列表上能读出「哪份最近用过、里面有多少件」）。
+   注册表是 KB 级 JSON，写一次比写文档便宜得多；不靠计时器（bench 里时间不可靠）。 */
+function planTouch(){
+  if(CALIB || IMGONLY) return;
+  PLAN_REG = PLANS.touchPlan(PLAN_REG, PLAN_ID, { now: Date.now(), counts: planCounts() });
+  saveRegistry();
+}
+function escTxt(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function planLabel(p){
+  const tag = p.origin==='builtin' ? '内置' : p.origin==='imported' ? '导入' : '空白';
+  const c = p.counts;
+  return p.name+'（'+tag+(c? ' · 墙'+c.walls+' · 门'+c.doors+' · 家具'+c.items : '')+'）';
+}
+let planDelArmed = false;
+function disarmPlanDel(){
+  planDelArmed = false;
+  const b=$('#btnPlanDel'); if(!b) return;
+  b.classList.remove('arm'); b.textContent='删除本户型';
+}
+function planSelectUI(){
+  const sel=$('#planSel'); if(!sel) return;
+  sel.innerHTML = PLANS.sortedPlans(PLAN_REG).map(p=>`<option value="${escTxt(p.id)}">${escTxt(planLabel(p))}</option>`).join('');
+  sel.value = PLAN_ID;
+  const cur = PLANS.planById(PLAN_REG, PLAN_ID);
+  const inp=$('#planName'); if(inp) inp.value = cur? cur.name : '';
+  const del=$('#btnPlanDel');
+  if(del){ del.disabled = !cur || cur.origin==='builtin';
+    del.title = del.disabled ? '内置户型不可删除（它是出厂户型的入口）' : '删除当前户型（连它的存档与家具布局一起删）；第一步只是确认，再点一次才真删';
+    disarmPlanDel(); }
+  const ren=$('#btnPlanRename'); if(ren) ren.disabled = !cur;
+}
+/* 切户型不是「一次编辑」：两个环都清空，不然 Ctrl+Z 会把上一份户型的文档写进这一份的键。 */
+function resetUndoRings(){ undoRing.length=0; redoRing.length=0; lastGesture=null; updateUndoUI(); }
+function switchPlan(id, quiet){
+  if(CALIB || IMGONLY) return false;
+  if(id===PLAN_ID) return false;
+  const meta = PLANS.planById(PLAN_REG, id); if(!meta) return false;
+  try{ STORE.flush(); }catch(e){}                 // 先把当前户型的改动落盘，再换键
+  PLAN_ID = id; DOC_KEY = PLANS.docKeyFor(id); ITEMS_KEY = PLANS.itemsKeyFor(id);
+  PLAN_REG = PLANS.setActive(PLAN_REG, id);
+  STORE.warm([DOC_KEY, ITEMS_KEY]);               // 这份户型的存档可能只存在主存里
+  DOC = loadDoc();
+  load();                                          // 这份户型的家具
+  resetUndoRings();
+  selected = null; uidSeq = Math.max(0, ...state.items.map(i=>i.uid||0), 0) + 1;
+  wallEdit.sel=null; wallEdit.drawPts=[]; wallEdit.hover=null; wallEdit.dEndSel=null; drag=null;
+  lastImportInfo = null;
+  if(imgMove) setImgMove(false);
+  showUnderlay=false; $('#btnUnderlay').classList.remove('on');
+  showTrace=false; _traceCache=null; $('#btnTrace').classList.remove('on');
+  if(meas && meas.on) measEnd();
+  applyPlanChrome();
+  if(wallEdit.on) updateWallBarFromSel();          // 编辑模式跟着户型走（sel 已作废，不强制退出）
+  save(); saveGeo(); saveRegistry();
+  geoDirty3D = true;
+  build2D(); fit2DToContent();
+  if(wallEdit.on) drawWallEdit();
+  buildCatalog(); refresh();
+  if(state.view!=='2d') setView(state.view);
+  planSelectUI();
+  if(!quiet) toast('已切换户型：'+meta.name, 3500);
+  return true;
+}
+function createBlankPlan(){
+  if(CALIB || IMGONLY) return null;
+  pushUndo();
+  const id = PLANS.newPlanId(Date.now(), Math.random);
+  const n = PLAN_REG.plans.filter(p=>p.origin==='blank').length + 1;
+  const d = SCHEMA.Project.blankDoc('空白户型 '+n);
+  d.imported = true; d.dataV = DOC_DATA_VERSION; d.plan = {}; d.runs = [];   // 自包含：不用内置专属构件
+  DOC = d;
+  PLAN_ID = id; DOC_KEY = PLANS.docKeyFor(id); ITEMS_KEY = PLANS.itemsKeyFor(id);
+  STORE.warm([DOC_KEY, ITEMS_KEY]);
+  PLAN_REG = PLANS.upsertPlan(PLAN_REG, { id, name: d.name, origin:'blank', now: Date.now(), counts: planCounts() });
+  state.items=[]; selected=null; uidSeq=1; lastImportInfo=null;
+  applyPlanChrome();
+  if(wallEdit.on) updateWallBarFromSel();
+  save(); saveGeo(); saveRegistry();
+  geoDirty3D = true;
+  build2D(); fit2DToContent();
+  buildCatalog(); refresh();
+  if(state.view!=='2d') setView(state.view);
+  planSelectUI();
+  toast('已新建空白户型：先点「编辑墙体」→「画墙」把外墙描出来', 5200);
+  return id;
+}
+function applyPlanRename(){
+  const inp=$('#planName'); if(!inp) return false;
+  const name = String(inp.value||'').trim().slice(0,120);
+  if(!name){ wMsg('户型名字不能为空', true); return false; }
+  const next = PLANS.renamePlan(PLAN_REG, PLAN_ID, name);
+  if(!next){ wMsg('这个户型不存在', true); return false; }
+  PLAN_REG = next;
+  if(DOC) DOC.name = name;      // 导出文件名/确认框读 DOC.name，两边要一致
+  saveGeo(); saveRegistry(); planSelectUI();
+  toast('已重命名为「'+name+'」', 3000);
+  return true;
+}
+function deleteCurrentPlan(){
+  if(CALIB || IMGONLY) return false;
+  const cur = PLANS.planById(PLAN_REG, PLAN_ID);
+  if(!cur || cur.origin==='builtin'){ wMsg('内置户型不可删除；想回到出厂户型用「编辑墙体」里的重置内置', true); return false; }
+  if(!planDelArmed){
+    planDelArmed = true;
+    const b=$('#btnPlanDel'); if(b){ b.classList.add('arm'); b.textContent='确认删除？再点一次'; }
+    wMsg('删除「'+cur.name+'」会连同它的存档一起删掉（已摆家具也在里面）。再点一次确认，或切到别的户型。', true);
+    return false;
+  }
+  const next = PLANS.removePlan(PLAN_REG, PLAN_ID);
+  if(!next){ disarmPlanDel(); wMsg('这份户型删不掉：内置户型不可删，或它是最后一份', true); return false; }
+  try{ STORE.remove(PLANS.docKeyFor(PLAN_ID)); STORE.remove(PLANS.itemsKeyFor(PLAN_ID)); }catch(e){}
+  disarmPlanDel();
+  const target = next.active;   // removePlan 已经把 active 落到内置（没内置则剩下的任意一份）
+  PLAN_REG = next;
+  saveRegistry();
+  switchPlan(target, true);
+  toast('已删除户型「'+cur.name+'」', 3500);
+  return true;
+}
 function saveGeoImpl(){
   try{ STORE.set(DOC_KEY, JSON.stringify(DOC)); }catch(e){}
+  planTouch();
 }
 let saveGeo = saveGeoImpl;   // let：testgeo 测试种子会把它重赋值为 no-op（ESM 兼容）
 function geoChanged(){ geoDirty3D=true; saveGeo(); build2D(); if(typeof requestShadowUpdate==='function') requestShadowUpdate(); }
@@ -1186,7 +1381,9 @@ function geoChanged(){ geoDirty3D=true; saveGeo(); build2D(); if(typeof requestS
 const UNDO_CAP = 50;
 let undoRing = [], redoRing = [], lastGesture = null;
 function snapState(){
-  try{ return JSON.stringify({d:DOC, i:state.items, c:state.customCat, u:uidSeq, su:showUnderlay, st:showTrace}); }catch(e){ return null; }
+  /* E26：快照带上「哪份户型」+ 注册表。不带的话，导入/新建后 Ctrl+Z 会把上一份户型的
+     文档写进新户型的键（串户型），而且刚创建的那份户型会在列表里残留。 */
+  try{ return JSON.stringify({d:DOC, i:state.items, c:state.customCat, u:uidSeq, su:showUnderlay, st:showTrace, p:PLAN_ID, r:PLAN_REG}); }catch(e){ return null; }
 }
 function pushUndo(gestureKey){
   if(CALIB || IMGONLY) return;                        // 校准/底图视图不编辑，也不进环
@@ -1207,6 +1404,14 @@ function restoreState(s){
   if(!o || !o.d) return false;
   const spanBefore = floorSpan(), wasImported = docImported();
   const ccBefore = JSON.stringify(state.customCat);
+  /* E26：快照里的户型/注册表也一并回去（导入可退、新建可退），并且存档键跟着切回去。
+     键没变时不重新 loadDoc：DOC 就是快照里那份，重读会拿主存的旧值覆盖它。 */
+  if(typeof o.p === 'string' && o.p !== PLAN_ID){
+    try{ STORE.flush(); }catch(e){}
+    PLAN_ID = o.p; DOC_KEY = PLANS.docKeyFor(PLAN_ID); ITEMS_KEY = PLANS.itemsKeyFor(PLAN_ID);
+    STORE.warm([DOC_KEY, ITEMS_KEY]);
+  }
+  if(o.r) PLAN_REG = PLANS.normalizeRegistry(o.r, BUILTIN_PLAN_ID, BUILTIN_PLAN_NAME);
   DOC = o.d; state.items = Array.isArray(o.i)? o.i : []; state.customCat = Array.isArray(o.c)? o.c : [];
   if(typeof o.su === 'boolean'){ showUnderlay = o.su; $('#btnUnderlay').classList.toggle('on', showUnderlay); }
   if(typeof o.st === 'boolean' && _traceCache){ showTrace = o.st; $('#btnTrace').classList.toggle('on', showTrace); }
@@ -1216,11 +1421,12 @@ function restoreState(s){
   wallEdit.sel = null; wallEdit.drawPts = []; wallEdit.hover = null; wallEdit.dEndSel = null;
   drag = null; if(imgMove) setImgMove(false);
   applyPlanChrome();
-  save(); saveGeo(); geoDirty3D = true;
+  save(); saveGeo(); saveRegistry(); geoDirty3D = true;
   build2D(); if(wallEdit.on) drawWallEdit();
   if(wasImported !== docImported()) fit2DToContent();     // 导入↔内置 切换：重新取景
   else { const a=floorSpan(); if(a>0 && spanBefore>0 && Math.abs(a-spanBefore)/spanBefore > 0.25) fit2DToContent(); }
   refresh();
+  planSelectUI();
   if(JSON.stringify(state.customCat) !== ccBefore) buildCatalog();   // 自定义目录变了才重建（275 件重建不便宜）
   if(state.view !== '2d') setView(state.view);            // 3D 在场 → 让 geoDirty3D 生效
   updateUndoUI(); return true;
@@ -1296,7 +1502,10 @@ function floorPts(){
       return [[DOC.baseImage.ox,DOC.baseImage.oy],[DOC.baseImage.ox+bw,DOC.baseImage.oy],
               [DOC.baseImage.ox+bw,DOC.baseImage.oy+bh],[DOC.baseImage.ox,DOC.baseImage.oy+bh]]; }
   }
-  return FLOORPTS;
+  // E26：自包含户型还没有任何几何（刚新建的空白户型）→ 给一块默认画布。
+  //      原先它会退回内置户型的地板轮廓：空白户型里出现别人家的墙线轮廓，
+  //      用户还没画墙就看见一个不属于自己的房子。画了墙之后上面 importedFloorPts() 会接管。
+  return [[0,0],[20,0],[20,14],[0,14]];
 }
 /* 导入后把 2D 视野对准新户型（保持画布纵横比） */
 function fit2DToContent(){
@@ -1321,7 +1530,19 @@ function applyImportedDoc(doc, info){
   doc.imported=true; doc.dataV=DOC_DATA_VERSION;
   doc.plan = doc.plan || {};        // S11b：导入文档的 plan 快照（空 = 没有那些专属构件）
   if(!doc.runs) doc.runs = [];      // S12：纯增量字段，旧文档可能没有 → 归一为空数组
+  /* E26：导入 = 新建一份自包含户型并切过去，而不是把当前户型的存档覆盖掉。
+     原先导入写进同一个键（planner_doc_v1:<内置指纹>）：导入你自己的图纸会摸掉你对
+     内置户型的编辑，只能「重置内置」回到出厂几何。现在内置那份原样留着，
+     在「工具 ⌄ → 户型」里随时切得回去；Ctrl+Z 也能直接退回去（快照带户型+注册表）。 */
+  const pid = PLANS.newPlanId(Date.now(), Math.random);
+  try{ STORE.flush(); }catch(e){}
+  PLAN_ID = pid; DOC_KEY = PLANS.docKeyFor(pid); ITEMS_KEY = PLANS.itemsKeyFor(pid);
+  STORE.warm([DOC_KEY, ITEMS_KEY]);
   DOC=doc; lastImportInfo=info||null;
+  PLAN_REG = PLANS.upsertPlan(PLAN_REG, { id: pid,
+    name: (typeof doc.name==='string' && doc.name.trim()) ? doc.name.trim().slice(0,120) : '导入的户型',
+    origin:'imported', now: Date.now(), counts: { walls:(doc.walls||[]).length, doors:(doc.doors||[]).length,
+      fixtures:(doc.fixtures||[]).length, items: 0 } });
   state.items=[]; selected=null; uidSeq=1;
   showUnderlay=false; $('#btnUnderlay').classList.remove('on');
   // S7：旧底图/特征线状态不属于新文档
@@ -1332,11 +1553,12 @@ function applyImportedDoc(doc, info){
   if(meas && meas.on) measEnd();
   applyPlanChrome();     // S11b：标题/原户型照片/层高跟着新文档
   if(wallEdit.on) $('#btnWallEdit').click();      // 旧 doc 的 sel 已悬空 → 先退出编辑模式
-  save(); saveGeo();
+  save(); saveGeo(); saveRegistry();
   geoDirty3D=true;
   build2D(); fit2DToContent();
   if(wallEdit.on) drawWallEdit();
   buildCatalog(); refresh();
+  planSelectUI();
   if(state.view!=='2d') setView(state.view);     // 3D 在场 → 触发 buildStatic3D 重建
 }
 
@@ -2384,6 +2606,43 @@ function setProTools(open){
 }
 $('#btnMore').onclick=()=>{ $('#btnMore').blur(); setProTools(!proToolsOpen); };
 setProTools(!CALIB && (function(){ try{ return STORE.get(PRO_TOOLS_KEY)==='1'; }catch(e){ return false; } })());
+/* ---------- E26：户型管理 UI ---------- */
+$('#planSel').onchange=(ev)=>{ const id=ev.target.value;
+  if(id!==PLAN_ID && !switchPlan(id)) planSelectUI();     // 切失败（不存在的 id）→ 下拉回到当前户型
+};
+$('#btnPlanNew').onclick=()=>{ $('#btnPlanNew').blur(); createBlankPlan(); };
+$('#btnPlanRename').onclick=()=>{ $('#btnPlanRename').blur(); applyPlanRename(); };
+$('#btnPlanDel').onclick=()=>{ $('#btnPlanDel').blur(); deleteCurrentPlan(); };
+$('#planName').onkeydown=(ev)=>{ if(ev.key==='Enter'){ ev.preventDefault(); applyPlanRename(); } };
+$('#planName').oninput=()=>{ disarmPlanDel(); };   // 改名了就不是「刚准备删它」
+planSelectUI();
+/* ---------- E26：首次引导卡（一次性） ----------
+   出现条件：这台浏览器对当前户型什么都没存过 + 注册表里只有内置户型 + 没看过这个卡。
+   校准 / 只显底图 / #ui: 黄金态 / bench / testgeo / 指定了 ?plan= 一律不出现：
+   那些视图的定义是「内置户型 + 空布局」，一张卡片会把像素基线和 bench 点击全改掉（§1.1 硬红线）。 */
+const FIRST_KEY = 'md_firstRun';
+function firstRunEligible(){
+  if(CALIB || IMGONLY || window.__MINIDEN_BENCH__) return false;
+  const q = location.search;
+  if(q.indexOf('testgeo')>=0 || q.indexOf('plan=')>=0) return false;
+  if(/^#ui:/.test(location.hash)) return false;
+  try{ if(STORE.get(FIRST_KEY)==='1') return false; }catch(e){}
+  try{ if(STORE.get(DOC_KEY)!==null || STORE.get(ITEMS_KEY)!==null) return false; }catch(e){}
+  return PLAN_REG.plans.length<=1;
+}
+function closeFirstRun(){
+  const c=$('#firstRun'); if(c) c.style.display='none';
+  try{ STORE.set(FIRST_KEY, '1'); }catch(e){}
+}
+if(firstRunEligible()){
+  $('#firstRun').style.display='block';
+  $('#frStart').onclick=()=>{ $('#frStart').blur(); closeFirstRun(); };
+  $('#frBlank').onclick=()=>{ $('#frBlank').blur(); closeFirstRun(); createBlankPlan();
+    /* 路 3 的下文：空白户型建好就直接把用户放进「编辑墙体」，不用他自己找入口 */
+    if(!wallEdit.on) $('#btnWallEdit').click(); };
+  $('#frImport').onclick=()=>{ $('#frImport').blur(); closeFirstRun(); setProTools(true); $('#btnMore').focus();
+    toast('在下面选一种导入方式：DXF / 矢量 PDF / 户型照片或扫描件', 7000); };
+}
 window.addEventListener('keydown', ev=>{
   const tag=ev.target.tagName;
   /* E23：撤销/重做快捷键。输入框里打字不能抢（在「实测长度」框里 Ctrl+Z 该撤销文本） */
@@ -2395,6 +2654,8 @@ window.addEventListener('keydown', ev=>{
   }
   if(meas.on && ev.key==='Escape' && !['INPUT','SELECT','TEXTAREA'].includes(tag)){ measEnd(); return; }
   if(proToolsOpen && ev.key==='Escape' && !['INPUT','SELECT','TEXTAREA'].includes(tag)){ setProTools(false); $('#btnMore').focus(); return; }
+  const frEl=$('#firstRun');
+  if(frEl && frEl.style.display!=='none' && ev.key==='Escape'){ closeFirstRun(); return; }
   if(wallEdit.on){
     if(['INPUT','SELECT','TEXTAREA'].includes(tag)) return; // 输入框正常输入；按钮焦点不挡编辑快捷键
     ev.stopPropagation();
@@ -15209,14 +15470,26 @@ $('#wWinFrame').onclick=()=>{ $('#wWinFrame').blur(); const e=winSelEnt(); if(!e
   geoChanged(); updateWallBarFromSel(); };
 $('#wDelete').onclick=()=>{ $('#wDelete').blur(); deleteSel(); };
 $('#wRestore').onclick=()=>{
-  if(docImported()){   // 导入户型下「重置内置」= 整套回到内置户型
-    if(confirm('回到内置户型？（导入的户型与其中改动——包括放置的洁具——将丢弃，已摆家具也会清空）')){
+  if(PLAN_ID !== BUILTIN_PLAN_ID){
+    /* E26：当前不是内置户型 → 「重置内置」= 切回内置户型。
+       原先它把内置几何直接写进当前键，等于把这份户型（导入的 / 空白的）连改动一起抹掉。
+       现在两份都在，切回去就行。 */
+    const cur = PLANS.planById(PLAN_REG, PLAN_ID);
+    if(confirm('切回内置户型？当前这份「'+((cur&&cur.name)||'未命名')+'」与它的改动会留在「工具 ⌄ → 户型」列表里，随时切得回来。')){
+      pushUndo();
+      switchPlan(BUILTIN_PLAN_ID);
+    }
+    return;
+  }
+  if(docImported()){   // 旧存档（E26 之前导入写在内置键上）：整套回到内置户型
+    if(confirm('回到内置户型？（导入的户型与其中改动——包括放置的洁具——将丢弃，已摆家具也会清空；Ctrl+Z 可退回去）')){
       pushUndo();
       DOC=freshDoc(); state.items=[]; selected=null; uidSeq=1; lastImportInfo=null;
       showUnderlay=false; $('#btnUnderlay').classList.remove('on');
       showTrace=false; _traceCache=null; $('#btnTrace').classList.remove('on');
       save(); saveGeo(); geoDirty3D=true;
       build2D(); fit2DToContent(); buildCatalog(); refresh();
+      planSelectUI();
       if(wallEdit.on){ updateWallBarFromSel(); }
       if(state.view!=='2d') setView(state.view);
     } return;
@@ -15603,7 +15876,7 @@ $('#fileDxf').addEventListener('change', ev=>{
         h += `<div class="dxfRow">平面范围：${e.w.toFixed(2)} × ${e.h.toFixed(2)} m</div>`;
         h += `<div class="dxfRow">识别：墙 <b>${c.walls}</b> · 窗 <b>${c.windows}</b> · 门 <b>${c.doors}</b> · 柱/结构 <b>${c.solids}</b>${c.rooms ? ` · 房间 ${c.rooms}` : ''}</div>`;
         if (info.warnings.length) h += `<div class="dxfWarn">${escHtml(info.warnings.join('；'))}</div>`;
-        h += `<div class="dxfNote">导入将<b>替换当前整套户型</b>并清空已摆家具；之后用「重置内置」可随时回到内置户型。双线墙取双线间距为墙厚（单线墙默认 10cm）。</div>`;
+        h += `<div class="dxfNote">导入将<b>新建一份户型并切过去</b>（当前户型与它的改动保留在「工具 ⌄ → 户型」里），新户型里已摆家具为空。双线墙取双线间距为墙厚（单线墙默认 10cm）。</div>`;
         $('#dxfInfo').innerHTML = h;
         $('#dxfUnitSel').value = info.unit;
         $('#dxfModal').style.display = 'flex';
@@ -15693,7 +15966,7 @@ $('#filePdf').addEventListener('change', ev => {
       h += '<div class="dxfRow">平面范围：' + e.w.toFixed(2) + ' × ' + e.h.toFixed(2) + ' m</div>';
       h += '<div class="dxfRow">识别：墙 <b>' + c.walls + '</b> · 窗 <b>' + c.windows + '</b> · 门 <b>' + c.doors + '</b> · 柱/结构 <b>' + c.solids + '</b></div>';
       if(info.warnings.length) h += '<div class="dxfWarn">' + escHtml(info.warnings.join('；')) + '</div>';
-      h += '<div class="dxfNote">导入将<b>替换当前整套户型</b>并清空已摆家具；之后用「重置内置」可随时回到内置户型。颜色映射语义（蓝=窗 / 红=门）；比例由门弧 0.4–1.2m + 图幅判据推断，请核对或在下方改。</div>';
+      h += '<div class="dxfNote">导入将<b>新建一份户型并切过去</b>（当前户型与它的改动保留在「工具 ⌄ → 户型」里），新户型里已摆家具为空。颜色映射语义（蓝=窗 / 红=门）；比例由门弧 0.4–1.2m + 图幅判据推断，请核对或在下方改。</div>';
       $('#pdfInfo').innerHTML = h;
       $('#pdfScaleSel').value = String(info.scale);
       $('#pdfModal').style.display = 'flex';
@@ -15953,7 +16226,7 @@ function showDocConfirm(d, fname){
   h += `<div class="dxfRow">实体：墙 ${c.walls} · 窗 ${c.windows} · 门 ${c.doors} · 柱/块 ${c.solids} · 房间 ${c.rooms} · 洁具 ${c.fixtures} · 台面 ${c.runs}</div>`;
   h += `<div class="dxfRow">地板轮廓：${c.outline ? '文档自带（逐坐标保真）' : '无 → 用几何包围盒'}</div>`;
   if (c.img) h += `<div class="dxfRow">底图：含（${d.baseImage.w}×${d.baseImage.h}px）</div>`;
-  h += `<div class="dxfWarn">导入会整套替换当前户型；当前家具布局会被清空（家具用「导入布局」单独导入）</div>`;
+  h += `<div class="dxfWarn">导入会新建一份户型并切过去（当前户型保留在「工具 ⌄ → 户型」里）；新户型里家具为空（家具用「导入布局」单独导入）</div>`;
   $('#docInfo').innerHTML = h;
   $('#docModal').style.display = 'flex';
 }
@@ -16070,6 +16343,11 @@ if(UIH && !CALIB && !IMGONLY){
    补载入会改变像素基线（§1.1 硬红线）。 */
 STORE.onHydrate((keys)=>{
   if(CALIB || IMGONLY || UIH || location.search.indexOf('testgeo')>=0 || window.__MINIDEN_BENCH__) return;
+  /* E26：注册表可能只存在主存里（LS 被清过）→ 补读一次，户型列表不能空。 */
+  if(keys.indexOf(PLANS_KEY)>=0){
+    PLAN_REG = readRegistry();
+    planSelectUI();
+  }
   if(keys.indexOf(DOC_KEY)>=0){ DOC = loadDoc(); applyPlanChrome(); }
   if(keys.indexOf(ITEMS_KEY)>=0) load();
   build2D(); refresh();

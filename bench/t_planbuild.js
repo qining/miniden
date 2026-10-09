@@ -1091,18 +1091,29 @@ async function runPBTest() {
         );
         setView('2d');
         await tick();
-        // 回到内置
-        resetDoc();
-        saveGeo();
-        geoDirty3D = true;
-        build2D();
+        // E26：导入新建了一份户型并切过去 → 「回到内置」要走真实的切换路径。
+        // 原先这里用 resetDoc()+saveGeo()：那是把内置几何写进**导入户型的键**，
+        // 把刚导入的那份抹掉。现在两份都在，切回去就行。
+        const importedId = PLAN_ID;
+        T(
+          'pb-import-new-plan-entry',
+          PLANS.hasPlan(PLAN_REG, importedId) && importedId !== BUILTIN_PLAN_ID,
+          'plans=' + PLAN_REG.plans.length + ' active=' + (PLAN_ID === BUILTIN_PLAN_ID ? '内置' : '导入')
+        );
+        switchPlan(BUILTIN_PLAN_ID, true);
+        await tick();
         if (wallEdit.on) drawWallEdit();
-        refresh();
         await tick();
         T(
           'pb-import-restore-builtin',
           !DOC.imported && effWalls().length === nPristine && effFixtures().length === nFxBuilt,
           'walls=' + effWalls().length + '/' + nPristine + ' fx=' + effFixtures().length + '/' + nFxBuilt
+        );
+        T(
+          'pb-import-keys-separate',
+          PLANS.docKeyFor(importedId) !== PLANS.docKeyFor(BUILTIN_PLAN_ID) &&
+            DOC_KEY === PLANS.docKeyFor(BUILTIN_PLAN_ID),
+          'DOC_KEY 跟着当前户型走'
         );
       }
     }
@@ -1644,10 +1655,10 @@ async function runPBTest() {
               .map((v) => v.toFixed(2))
               .join(' ')
         );
-        resetDoc();
-        saveGeo();
-        geoDirty3D = true;
-        build2D();
+        // E26：重标定跑在导入的户型上（内置户型不允许重标定）。“回到内置”走真实切换路径；
+        // 原先的 resetDoc()+saveGeo() 会把内置几何写进**导入户型的键**，把刚标定的那份抹掉。
+        switchPlan(BUILTIN_PLAN_ID, true);
+        await tick();
         if (wallEdit.on) {
           drawWallEdit();
           updateWallBarFromSel(); // 真实 UI 路径（重置内置）就是这么刷工具条的
@@ -1656,6 +1667,293 @@ async function runPBTest() {
         await tick();
         T('pb-cal-back-to-builtin', !DOC.imported && Q('#calBtn').disabled === true, 'imported=' + DOC.imported);
       }
+    }
+
+    /* ===== 12. E26 多户型管理：新建空白 / 切换 / 重命名 / 删除 / 导入不覆盖当前户型 ===== */
+    {
+      const e26Z = () =>
+        window.dispatchEvent(
+          new KeyboardEvent('keydown', { key: 'z', ctrlKey: true, bubbles: true, cancelable: true })
+        );
+      const e26Pick = (id) => {
+        const sel = Q('#planSel');
+        sel.value = id;
+        sel.dispatchEvent(new Event('change', { bubbles: true }));
+      };
+      await enterEdit();
+      await pbReset();
+      /* 12.0 bench 必须从内置户型开始（干净 profile + 没有注册表）。上一轮残留的注册表
+         会把 bench 带进一个不存在的户型，断言就只是在测上一轮的垃圾。 */
+      T(
+        'pb-plan-starts-builtin',
+        PLAN_ID === BUILTIN_PLAN_ID && PLANS.planById(PLAN_REG, BUILTIN_PLAN_ID) !== null,
+        'active=' + (PLAN_ID === BUILTIN_PLAN_ID ? '内置' : PLAN_ID) + ' plans=' + PLAN_REG.plans.length
+      );
+      const e26Plans0 = PLAN_REG.plans.length; // 相对量：第 8 节已经导入过一次，那里留下一份户型
+      /* 12.1 列表里看得到当前户型，且内置不可删 */
+      const e26Sel = Q('#planSel');
+      T(
+        'pb-plan-select-listed',
+        !!e26Sel && e26Sel.options.length >= 1 && e26Sel.value === PLAN_ID && PLAN_ID === BUILTIN_PLAN_ID,
+        e26Sel ? e26Sel.options.length + ' 项 · value=' + e26Sel.value : '没有 #planSel'
+      );
+      const e26Pro = Q('#proTools');
+      setProTools(true); // 量之前得先把它展开：display:none 的元素 scrollWidth/clientWidth 都是 0，断言会绿得毫无意义
+      await tick();
+      T(
+        'pb-plan-row-fits',
+        e26Pro.scrollWidth <= e26Pro.clientWidth + 1,
+        'proTools scrollWidth=' +
+          e26Pro.scrollWidth +
+          ' clientWidth=' +
+          e26Pro.clientWidth +
+          '（多户型控件不能把这一行挤出去）'
+      );
+      setProTools(false);
+      await tick();
+      T(
+        'pb-plan-builtin-locked',
+        Q('#btnPlanDel').disabled === true,
+        '内置户型时删除按钮 disabled=' + Q('#btnPlanDel').disabled
+      );
+
+      /* 12.2 先在内置户型里画一段用户墙（切回来必须还在 —— 这就是被修掉的坑） */
+      const e26W0 = userCounts().w;
+      pushUserWall(pbFree[0] - 1.5, pbFree[1] + 1.5, pbFree[0] + 1.5, pbFree[1] + 1.5, 'w', 8);
+      geoChanged();
+      await tick();
+      const e26Wall = DOC.walls.filter((e) => e.src === 'user').slice(-1)[0];
+      T('pb-plan-edit-committed', userCounts().w === e26W0 + 1 && !!e26Wall, 'userWalls=' + userCounts().w);
+      const e26BuiltinWalls = effWalls().length;
+
+      /* 12.3 新建空白户型：切过去 + 真的是空的 + 不拿内置户型的地板/家具 */
+      Q('#btnPlanNew').click();
+      await tick();
+      const e26BlankId = PLAN_ID;
+      T(
+        'pb-plan-blank-created',
+        e26BlankId !== BUILTIN_PLAN_ID && DOC.imported === true && PLAN_REG.plans.length === e26Plans0 + 1,
+        'plans=' +
+          e26Plans0 +
+          '→' +
+          PLAN_REG.plans.length +
+          ' origin=' +
+          (PLANS.planById(PLAN_REG, e26BlankId) || {}).origin
+      );
+      T(
+        'pb-plan-blank-empty',
+        effWalls().length === 0 && DOC.walls.length === 0 && effFixtures().length === 0,
+        'walls=' + effWalls().length + ' fx=' + effFixtures().length
+      );
+      T(
+        'pb-plan-blank-no-seed',
+        state.items.length === 0,
+        'items=' + state.items.length + '（内置布局不能播种到空白户型）'
+      );
+      const e26Fp = floorPts();
+      T(
+        'pb-plan-blank-own-canvas',
+        e26Fp.length === 4 && JSON.stringify(e26Fp) !== JSON.stringify(FLOORPTS),
+        '地板轮廓=' + JSON.stringify(e26Fp) + '（不能是内置户型的轮廓）'
+      );
+      T(
+        'pb-plan-keys-separate',
+        PLANS.docKeyFor(e26BlankId) !== PLANS.docKeyFor(BUILTIN_PLAN_ID) && DOC_KEY === PLANS.docKeyFor(e26BlankId),
+        DOC_KEY
+      );
+
+      /* 12.4 空白户型里能画墙，地板轮廓跟着墙走 */
+      await setTool('wall');
+      Q('#wType').value = 'w';
+      await tap(6, 6);
+      await tap(12, 6);
+      const e26WallBtn = Q('#wtoolSeg button[data-t="wall"]');
+      e26WallBtn.focus();
+      key('Enter', e26WallBtn);
+      await tick();
+      T('pb-plan-blank-draw-wall', effWalls().length === 1, 'walls=' + effWalls().length);
+      const e26Fp2 = floorPts();
+      const e26FpBox = e26Fp2.reduce(
+        (a, p) => [Math.min(a[0], p[0]), Math.min(a[1], p[1]), Math.max(a[2], p[0]), Math.max(a[3], p[1])],
+        [1e9, 1e9, -1e9, -1e9]
+      );
+      T(
+        'pb-plan-blank-floor-follows',
+        e26FpBox[0] <= 6 && e26FpBox[2] >= 12,
+        '地板 x 向=' + e26FpBox[0].toFixed(1) + '…' + e26FpBox[2].toFixed(1) + 'ft（要包住画的墙）'
+      );
+
+      /* 12.5 切回内置户型：内置的编辑还在 */
+      e26Pick(BUILTIN_PLAN_ID);
+      await tick();
+      T(
+        'pb-plan-switch-back-builtin',
+        PLAN_ID === BUILTIN_PLAN_ID && !DOC.imported && DOC_KEY === PLANS.docKeyFor(BUILTIN_PLAN_ID),
+        'DOC_KEY=' + DOC_KEY
+      );
+      T(
+        'pb-plan-switch-keeps-builtin-edit',
+        !!e26Wall && DOC.walls.some((e) => e.id === e26Wall.id && e.src === 'user'),
+        '内置户型里那段用户墙还在=' + DOC.walls.filter((e) => e.src === 'user').length
+      );
+      T(
+        'pb-plan-switch-wall-count',
+        effWalls().length === e26BuiltinWalls,
+        'walls=' + effWalls().length + '/' + e26BuiltinWalls
+      );
+
+      /* 12.6 切回空白户型：它的墙也还在（两份互不干扰） */
+      e26Pick(e26BlankId);
+      await tick();
+      T(
+        'pb-plan-blank-preserved',
+        effWalls().length === 1 && state.items.length === 0,
+        'walls=' + effWalls().length + ' items=' + state.items.length
+      );
+
+      /* 12.7 重命名（输入框 + 按钮，没有阻塞弹窗） */
+      Q('#planName').value = '测试户型 B';
+      Q('#btnPlanRename').click();
+      await tick();
+      const e26Meta = PLANS.planById(PLAN_REG, PLAN_ID);
+      T(
+        'pb-plan-renamed',
+        !!e26Meta && e26Meta.name === '测试户型 B' && DOC.name === '测试户型 B',
+        'name=' + ((e26Meta || {}).name || '-') + ' DOC.name=' + DOC.name
+      );
+      T(
+        'pb-plan-rename-in-select',
+        Array.from(Q('#planSel').options).some((o) => /测试户型 B/.test(o.textContent)),
+        Q('#planSel').selectedOptions[0].textContent
+      );
+
+      /* 12.8 删除：两步确认；内置不可删；删完自动切回内置 */
+      Q('#btnPlanDel').click();
+      await tick();
+      T(
+        'pb-plan-delete-armed-first-click',
+        PLAN_REG.plans.length === e26Plans0 + 1 && Q('#btnPlanDel').classList.contains('arm'),
+        '第一下只确认不删：plans=' + PLAN_REG.plans.length + ' arm=' + Q('#btnPlanDel').classList.contains('arm')
+      );
+      e26Pick(BUILTIN_PLAN_ID);
+      await tick();
+      T(
+        'pb-plan-delete-refused-on-builtin',
+        Q('#btnPlanDel').disabled === true && PLAN_REG.plans.length === e26Plans0 + 1,
+        'disabled=' + Q('#btnPlanDel').disabled
+      );
+      e26Pick(e26BlankId);
+      await tick();
+      Q('#btnPlanDel').click();
+      await tick();
+      Q('#btnPlanDel').click();
+      await tick();
+      T(
+        'pb-plan-deleted',
+        !PLANS.hasPlan(PLAN_REG, e26BlankId) && PLAN_ID === BUILTIN_PLAN_ID && effWalls().length === e26BuiltinWalls,
+        'plans=' +
+          PLAN_REG.plans.length +
+          ' active=' +
+          (PLAN_ID === BUILTIN_PLAN_ID ? '内置' : '其它') +
+          ' walls=' +
+          effWalls().length
+      );
+      T(
+        'pb-plan-delete-keeps-builtin-edit',
+        !!e26Wall && DOC.walls.some((e) => e.id === e26Wall.id && e.src === 'user'),
+        '删掉另一份户型不能动内置户型的编辑'
+      );
+
+      /* 12.9 导入新建一份户型：内置户型的编辑不能被摸掉（E26 要修的就是这个） */
+      let e26Imp = null,
+        e26ImpErr = '';
+      try {
+        const txt = await (await fetch('../tests/fixtures/apartment-mm.dxf')).text();
+        e26Imp = window.MINIDEN_GEO.importDxf(new window.DxfParser().parseSync(txt), { name: 'planbuild-e26' });
+      } catch (e) {
+        e26ImpErr = e.message;
+      }
+      if (e26Imp) {
+        applyImportedDoc(e26Imp.doc, e26Imp.info);
+        await tick();
+        const e26ImpId = PLAN_ID;
+        T(
+          'pb-plan-import-makes-new-plan',
+          e26ImpId !== BUILTIN_PLAN_ID && PLANS.hasPlan(PLAN_REG, e26ImpId) && PLAN_REG.plans.length === e26Plans0 + 1,
+          'plans=' + PLAN_REG.plans.length
+        );
+        T(
+          'pb-plan-import-builtin-intact',
+          !!e26Wall &&
+            !!PLANS.planById(PLAN_REG, BUILTIN_PLAN_ID) &&
+            STORE.get(PLANS.docKeyFor(BUILTIN_PLAN_ID)) &&
+            JSON.parse(STORE.get(PLANS.docKeyFor(BUILTIN_PLAN_ID))).walls.some(
+              (e) => e.id === e26Wall.id && e.src === 'user'
+            ),
+          '内置户型的存档里那段用户墙还在'
+        );
+        e26Z();
+        await tick();
+        T(
+          'pb-plan-undo-restores-plan',
+          PLAN_ID === BUILTIN_PLAN_ID &&
+            !DOC.imported &&
+            !PLANS.hasPlan(PLAN_REG, e26ImpId) &&
+            DOC.walls.some((e) => e.id === e26Wall.id && e.src === 'user'),
+          'Ctrl+Z 把户型与列表一起退回去：active=' +
+            (PLAN_ID === BUILTIN_PLAN_ID ? '内置' : '导入') +
+            ' plans=' +
+            PLAN_REG.plans.length
+        );
+      } else {
+        T('pb-plan-import-makes-new-plan', false, e26ImpErr || 'fixture 读不到');
+      }
+
+      /* 12.10 内置布局播种的门禁：布局只属于内置户型。
+         bench 页面被 build.mjs 剥掉了 plan.layout（确定性 + plan-independence），
+         所以这里临时插一份假布局，直接验「切到空白户型时 load() 不能把内置户型的 32 件家具带过去」。 */
+      const e26Layout0 = PLAN.layout;
+      PLAN.layout = { items: [{ uid: 901, ref: 'lunix-0', x: 1, y: 1, rot: 0 }] };
+      Q('#btnPlanNew').click();
+      await tick();
+      const e26Blank2 = PLAN_ID;
+      load();
+      T(
+        'pb-plan-seed-gated',
+        state.items.length === 0,
+        '空白户型里 items=' + state.items.length + '（内置布局不能播种进来）'
+      );
+      PLAN.layout = e26Layout0;
+      e26Pick(BUILTIN_PLAN_ID);
+      await tick();
+      T(
+        'pb-plan-seed-gate-cleanup',
+        PLAN_ID === BUILTIN_PLAN_ID && !DOC.imported,
+        'active=' + (PLAN_ID === BUILTIN_PLAN_ID ? '内置' : PLAN_ID)
+      );
+
+      /* 12.11 首次引导卡在 bench / 校准 / #ui: 里必须不出现（像素基线与点击不能被动） */
+      const e26Fr = Q('#firstRun');
+      T(
+        'pb-plan-firstrun-hidden-in-bench',
+        !!e26Fr && getComputedStyle(e26Fr).display === 'none',
+        'firstRun 存在=' + !!e26Fr + ' display=' + (e26Fr ? getComputedStyle(e26Fr).display : '-')
+      );
+
+      await pbReset();
+      await enterEdit();
+      // 把 12.10 多建的那份空白户型删掉（两步），不让它留在注册表里影响后续
+      e26Pick(e26Blank2);
+      await tick();
+      Q('#btnPlanDel').click();
+      await tick();
+      Q('#btnPlanDel').click();
+      await tick();
+      T(
+        'pb-plan-cleanup',
+        !PLANS.hasPlan(PLAN_REG, e26Blank2) && PLAN_ID === BUILTIN_PLAN_ID,
+        'plans=' + PLAN_REG.plans.length
+      );
     }
 
     /* ===== 收尾：页面不得有未捕获异常 ===== */

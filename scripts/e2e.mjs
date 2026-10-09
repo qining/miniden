@@ -102,6 +102,7 @@ async function runEntry(entry) {
   proc.stdout.on('data', (d) => chromeLog.push(String(d)));
   proc.stderr.on('data', (d) => chromeLog.push(String(d)));
   let exited = null;
+  let firstRunSeen = false;
   proc.on('exit', (code, sig) => {
     exited = { code, sig };
   });
@@ -135,6 +136,35 @@ async function runEntry(entry) {
   let seq = 0;
   const pending = new Map();
   const events = [];
+  let keepFirstRun = false;
+  const dismissFirstRun = async () => {
+    try {
+      const seen = await Promise.race([
+        (async () => {
+          const r = await cdp('Runtime.evaluate', {
+            expression:
+              `(()=>{const e=document.querySelector('#firstRun'); if(!e) return false;` +
+              `const cs=getComputedStyle(e); if(cs.display==='none'||cs.visibility==='hidden'||Number(cs.opacity)===0) return false;` +
+              `const r=e.getBoundingClientRect(); return r.width>=8&&r.height>=8;})()`,
+            returnByValue: true,
+          });
+          return !!(r.result && r.result.value);
+        })(),
+        sleep(1500).then(() => false),
+      ]);
+      firstRunSeen = firstRunSeen || seen;
+      if (seen) {
+        await cdp('Runtime.evaluate', {
+          expression: `(()=>{const b=document.querySelector('#frStart'); if(b) b.click();})()`,
+          returnByValue: true,
+        });
+        await sleep(200);
+      }
+      return seen;
+    } catch {
+      return false;
+    }
+  };
   ws.onmessage = (ev) => {
     const m = JSON.parse(ev.data);
     if (m.id && pending.has(m.id)) {
@@ -294,6 +324,25 @@ async function runEntry(entry) {
       await t
         .waitFor(`document.querySelectorAll('.catCard .ph.has').length>=1`, 12000, '目录缩略图首张渲出')
         .catch(() => {});
+      // E26 首次引导卡：干净 profile 首次打开会出现，它会盖住画布中心。
+      // 默认替流程把它关掉（否则每条流程的点击都打在卡上）；
+      // 要验这张卡本身的流程先置 t.keepFirstRun = true，自己处理它。
+      if (!keepFirstRun) await dismissFirstRun();
+      else keepFirstRun = false;
+    },
+    /** E26：首次引导卡现在是否可见（不自动关时用它读） */
+    async firstRunVisible() {
+      return await ev(
+        `(()=>{const e=document.querySelector('#firstRun'); if(!e) return false;
+          const cs=getComputedStyle(e); if(cs.display==='none'||cs.visibility==='hidden'||Number(cs.opacity)===0) return false;
+          const r=e.getBoundingClientRect(); return r.width>=8 && r.height>=8;})()`
+      );
+    },
+    get keepFirstRun() {
+      return keepFirstRun;
+    },
+    set keepFirstRun(v) {
+      keepFirstRun = !!v;
     },
     async rectOf(sel) {
       const r = await ev(
