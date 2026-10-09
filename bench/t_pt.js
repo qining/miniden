@@ -347,6 +347,7 @@ async function runPT() {
           '%）'
       );
       window.__spike8 = spikes / (w4 * h4);
+      window.__PT_DIAG8 = window.__PT_DIAG;
     }
     /* NaN 与萤火虫的决定性区分：提高采样数后孤立亮点必须显著变少。
        萤火虫是未收敛的高方差样本，会随采样衰减；NaN 被加法混合永久累进，不会。 */
@@ -370,10 +371,32 @@ async function runPT() {
         }
       const f8 = window.__spike8,
         f32 = sp5 / (w5 * h5);
+      const dg = window.__PT_DIAG || {};
       T(
         'pt-spikes-are-fireflies-not-nan',
         f32 < f8 * 0.75,
-        '8spp ' + (f8 * 100).toFixed(2) + '% → 32spp ' + (f32 * 100).toFixed(2) + '%（NaN 不会随采样衰减）'
+        '8spp ' +
+          (f8 * 100).toFixed(2) +
+          '% → 32spp ' +
+          (f32 * 100).toFixed(2) +
+          '%（NaN 不会随采样衰减） · 32spp 实际完成 ' +
+          dg.spp +
+          '/' +
+          dg.want +
+          ' 采样 · 画面 ' +
+          dg.rw +
+          'x' +
+          dg.rh +
+          ' · 分块 ' +
+          dg.grid +
+          ' · fence ' +
+          dg.fence +
+          ' · 上下文丢失 ' +
+          dg.lost +
+          ' ‖ 8spp 完成 ' +
+          (window.__PT_DIAG8 || {}).spp +
+          ' · 分块 ' +
+          (window.__PT_DIAG8 || {}).grid
       );
     } else T('pt-spikes-are-fireflies-not-nan', false, '高采样对照渲染失败');
 

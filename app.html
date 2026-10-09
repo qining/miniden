@@ -5883,6 +5883,22 @@ function ptRender(samples, ptOpts){
       three.photo = null; bar.style.display = 'none';
       requestShadowUpdate(); requestRender();
       three.ptResult = out;
+      /* 光追自检信息（给 bench / 给排查用，不上界面）：单靠「孤立亮点占比」这一
+         个统计量无法区分「未收敛的萤火虫」与「NaN 永久累进」与「分块调度不同」——
+         后两者在软件 GL（CI）上与真显卡给出完全不同的噪声实现。没有这些量，
+         门禁红了就只能猜。 */
+      window.__PT_DIAG = {
+        spp,
+        want: samples,
+        px: rw * rh,
+        rw,
+        rh,
+        grid: gridNote,
+        weakGPU,
+        fence: useFence,
+        lost: ctxLost,
+        denoise: denoiseOn,
+      };
       if(ptOpts.onDone) ptOpts.onDone(out, spp);
       else if(out) showPhotoResult(out, {spp, want:samples, lost:ctxLost,
                                          secs:(performance.now()-t0)/1000});
