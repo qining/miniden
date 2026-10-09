@@ -52,7 +52,8 @@
   }
   .seg button.on{background:var(--accent); color:var(--on-fg);}
   /* E23：撤销/重做不可用时「看得见但灰着」（不是隐藏）——隐藏会让用户以为功能不存在 */
-  #undoSeg button:disabled{opacity:.38; cursor:default;}
+  #undoSeg button:disabled, #wallbar .btn:disabled{opacity:.38; cursor:default;}
+  #wallbar #wLen:disabled{opacity:.45;}
   select,input[type=text],input[type=number],input[type=url]{
     background:var(--panel2); color:var(--text); border:1px solid var(--line);
     border-radius:6px; padding:6px 8px; font-size:13px; outline:none;
@@ -60,7 +61,13 @@
   #wallbar{display:flex; align-items:center; gap:10px; padding:6px 14px; background:var(--bar-bg); border-bottom:1px solid var(--bar-line); flex-wrap:nowrap; overflow:hidden; height:34px;}
   #wallbar .wlbl{color:var(--muted); font-size:12px;}
   #wallbar #wThick{width:52px; background:var(--field-bg); color:var(--fg); border:1px solid var(--field-line); border-radius:6px; padding:2px 4px;}
-  #wallbar #wMsg{color:var(--muted); font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; flex:1; min-width:0;}
+  #wallbar #wLen{width:56px; background:var(--field-bg); color:var(--fg); border:1px solid var(--field-line); border-radius:6px; padding:2px 4px;}
+  /* 互斥的上下文控件组叠在同一个格子：宽度 = 最宽的那组，而不是四组之和。
+     原先四组并排各留位置（1700px 窗口下合计 927px），把工具按钮压到换行、把提示文字挤成 0 宽。
+     叠起来后各组位置仍然固定（工具条不跳动，§5.2）。 */
+  #ctxSlot{display:grid; align-items:center;}
+  #ctxSlot > span{grid-area:1 / 1; visibility:hidden; display:flex; align-items:center; gap:8px;}
+  #ctxSlot > span.on{visibility:visible;}
   #btnWallEdit.on{background:var(--edit-on); color:var(--on-fg);}
   #btnUnderlay.on{background:var(--tool-on); color:var(--on-fg);}
   #btnPT{background:var(--pt-on); color:var(--white);}
@@ -204,6 +211,17 @@
     position:absolute; left:12px; bottom:10px; font-size:12px; color:var(--muted);
     background:var(--hint-bg); padding:6px 10px; border-radius:6px; pointer-events:none; line-height:1.6;
   }
+  /* 编辑墙体的提示 / 错误：与 #hint 共用画布左下角那一个位（两者不会同时需要）。
+     以前它挤在工具条末尾 flex:1，1700px 窗口下被压成 9px 宽 —— 错误提示等于没有（R10：零反馈 = 缺陷）。 */
+  #wMsg{
+    position:absolute; left:12px; bottom:10px; z-index:7; display:none; max-width:min(720px,72%);
+    font-size:12px; line-height:1.55; color:var(--muted); background:var(--hint-bg);
+    padding:6px 10px; border-radius:6px; pointer-events:none;
+  }
+  #wMsg:not(:empty){display:block;}
+  #wMsg.err{color:#ff5566;}
+  /* 量尺寸自己的提示、以及离开 2D 时的 3D 提示，不该被编辑提示顶掉 */
+  body.wedit:not(.measuring) #hint{display:none;}
   #totals{
     position:absolute; right:12px; bottom:10px; font-size:12px; color:var(--text);
     background:var(--totals-bg); padding:8px 12px; border-radius:6px; border:1px solid var(--line);
@@ -331,7 +349,8 @@
     <button data-t="fx" title="放置洁具（点击放置；台柜/镜子贴墙；选中后可拖、旋转、删除）">洁具</button>
     <button data-t="run" title="画台面/柜体（沿墙点一条折线，再点末点结束；选中后可拖、改深度/台面高、放模块、删除）">台面</button>
   </div>
-  <span id="doorCtl" style="visibility:hidden">
+  <div id="ctxSlot">
+  <span id="doorCtl">
     <label class="wlbl">门宽 <input id="dWidth" type="number" min="10" max="400" step="1"> <span id="dwU">cm</span></label>
     <button class="btn" id="dEndBtn">端点：整体</button>
     <button class="btn" id="dKind">类型：平开</button>
@@ -339,12 +358,12 @@
     <button class="btn" id="dSide">换开向</button>
     <button class="btn" id="dWood">深木色</button>
   </span>
-  <span id="winCtl" style="visibility:hidden">
+  <span id="winCtl">
     <button class="btn" id="wWinStyle">类型：固定</button>
     <button class="btn" id="wWinFull">普通窗</button>
     <button class="btn" id="wWinFrame">黑钢框</button>
   </span>
-  <span id="fxCtl" style="visibility:hidden">
+  <span id="fxCtl">
     <select id="fxType" title="要放置的洁具（点击平面图放置；台柜/镜子自动贴墙）">
       <option value="counter">台柜</option><option value="basin">洗手盆</option>
       <option value="toilet">马桶</option><option value="tub">浴缸</option>
@@ -352,7 +371,7 @@
     </select>
     <label class="wlbl">旋转 <input id="fxRot" type="number" min="0" max="359" step="1" value="0"> °</label>
   </span>
-  <span id="runCtl" style="visibility:hidden">
+  <span id="runCtl">
     <label class="wlbl">深 <input id="runDepth" type="number" min="15" max="120" step="1" value="60"> cm</label>
     <label class="wlbl">台面高 <input id="runTopH" type="number" min="50" max="250" step="1" value="90"> cm</label>
     <select id="runModule" title="在选中的台面上放一个模块（点平面图上的位置）">
@@ -361,15 +380,18 @@
       <option value="dishwasher">洗碗机</option><option value="open">普通柜</option>
     </select>
   </span>
+  </div>
   <select id="wType" title="墙类型">
     <option value="w">实墙</option><option value="g">玻璃/窗</option>
     <option value="d">门洞</option><option value="o">开口</option>
   </select>
   <label class="wlbl">厚 <input id="wThick" type="number" min="2" max="60" step="1" value="9"> cm</label>
+  <label class="wlbl" title="选中这段墙/窗/门的当前长度；改成它的真实长度，再点「改这段」或「整图按此缩放」">长 <input id="wLen" type="number" min="1" max="100000" step="1"> <span id="wLenU">cm</span></label>
+  <button class="btn" id="wLenApply" title="只改选中这一段：墙 = 起点不动改终点；窗 = 中心不动两端对称；门 = 同「门宽」">改这段</button>
+  <button class="btn" id="calBtn" title="以选中这段的实测长度为准，按比例缩放整张图（只用于导入的户型；要点两次确认）">整图按此缩放</button>
   <button class="btn" id="wDelete">删除所选</button>
   <button class="btn" id="wRestore" title="恢复全部内置墙体到原始状态">重置内置</button>
   <button class="btn" id="wDone">完成</button>
-  <span id="wMsg"></span>
 </div>
 <div id="photoBar" style="display:none"><span id="photoTxt">照片级渲染中…</span>
   <div style="flex:1"></div><button class="btn" id="photoCancel">取消</button></div>
@@ -487,6 +509,7 @@
     <canvas id="c3d"></canvas>
     <img id="refPhoto" alt="原户型图" onerror="this.style.display='none'" >
     <div id="hint">拖动=移动 · 圆点手柄/R键=旋转（按住Shift自由角度）· D=复制 · Delete=删除 · 滚轮=缩放 · 拖空白=平移<br>红色描边 = 与其他家具重叠</div>
+    <div id="wMsg"></div>
     <div id="totals"></div>
     <div id="loading3d" style="display:none">
       <div class="spin"></div><span id="loadTxt">正在生成 3D 场景…</span>
@@ -2954,15 +2977,16 @@ function drawWallEdit(){
     pts.forEach(p=>el('circle',{cx:p[0]*S,cy:p[1]*S,r:3.5/k,fill:'#f5c542',stroke:'#0b0d10','stroke-width':1/k,'pointer-events':'none'},gEdit));
   }
 }
-function wMsg(t,isErr){ const e=$('#wMsg'); if(e){ e.textContent=t||''; e.style.color=isErr?'#ff5566':''; } }
+function wMsg(t,isErr){ const e=$('#wMsg'); if(e){ e.textContent=t||''; e.classList.toggle('err', !!isErr); } }
 const DK_NAMES={swing:'平开', double:'双开', slide:'推拉', bifold:'折叠'};
 function srcU(id){ const e=entById(id); return e && e.src==='user'; }
 function updateWallBarFromSel(){
   const s=wallEdit.sel;
-  // S6：洁具工具/选中洁具时才显示类型与旋转控件（visibility 保位，工具条不跳动）
-  $('#fxCtl').style.visibility = (wallEdit.tool==='fx' || (s&&s.kind==='fx')) ? 'visible':'hidden';
-  // S12：台面工具/选中 run 时才显示深度与台面高（visibility 保位，工具条不跳动）
-  $('#runCtl').style.visibility = (wallEdit.tool==='run' || (s&&s.kind==='run')) ? 'visible':'hidden';
+  fillLenCtl();
+  // S6：洁具工具/选中洁具时才显示类型与旋转控件（同格叠放 = 位置固定，工具条不跳动）
+  ctxOn('#fxCtl', wallEdit.tool==='fx' || (s&&s.kind==='fx'));
+  // S12：台面工具/选中 run 时才显示深度与台面高
+  ctxOn('#runCtl', wallEdit.tool==='run' || (s&&s.kind==='run'));
   if(s && s.kind==='run'){
     const r=selRun();
     if(r){
@@ -2982,7 +3006,7 @@ function updateWallBarFromSel(){
     }
     return;
   }
-  $('#doorCtl').style.visibility = (s&&s.kind==='door')?'visible':'hidden';
+  ctxOn('#doorCtl', s&&s.kind==='door');
   if(s && s.kind==='door'){
     const d=selDoor();
     if(d){ $('#dKind').textContent='类型：'+DK_NAMES[d.kind];
@@ -2993,7 +3017,7 @@ function updateWallBarFromSel(){
       wMsg((srcU(s.id)?'自定义门':'内置门')+' · '+DK_NAMES[d.kind]+' ｜ 门宽可直接输入 · 拖门身=滑动 · 拖端点/方向键=调宽（Shift 粗调） · Delete 删除'); }
     return;
   }
-  $('#winCtl').style.visibility = (s && s.kind==='w' && (()=>{const e=entById(s.id); return e&&e.id[0]==='n';})())?'visible':'hidden';
+  ctxOn('#winCtl', s && s.kind==='w' && (()=>{const e=entById(s.id); return e&&e.id[0]==='n';})());
   if(s && s.kind==='w'){
     const e=entById(s.id), isWin=!!(e&&e.id[0]==='n');
     const seg=selWallSeg();
@@ -3013,6 +3037,134 @@ function updateWallBarFromSel(){
     wMsg((srcU(s.id)?'自定义柱/异形墙':'内置结构（柱/厚墙块）')+' ｜ 拖圆点=移顶点 · 拖黄方块=插入顶点 · Alt+点顶点=删顶点 · Delete=删除');
   } else wMsg(wallEdit.tool==='wall'?'连续点击画墙（磁吸端点/墙线，放大后更精密，Shift=完全自由）；双击/回车/再点末点=结束；Backspace=撤销上一点':
               wallEdit.tool==='poly'?'连续点击放顶点；点回起点 / 双击 / 回车 = 闭合；Esc 取消':wallEdit.tool==='door'?'点击任意门洞放置门（已有门则选中）；选中后可换 平开/双开/推拉、铰链侧、开向':'悬停会亮出墙体；点击选中（含门扇），拖空白平移，滚轮缩放');
+}
+/* ── E24：数值改选中这段的长度 + 按已知长度重标定整图 ─────────────────
+   导入的户型（DXF/PDF/描图）尺度来自图纸本身：$INSUNITS 缺失、PDF 比例猜错、
+   描图两点标定填错，都会让整张图差一个倍数。以前只能重新导入。现在：
+   选中一段墙/窗/门 → 「长」里填它的真实长度 → 「改这段」（只改这一段）
+   或「整图按此缩放」（把整张图按这个比例校正）。内置户型不参与（§1.1）。 */
+function ctxOn(sel, on){ const e=$(sel); if(e) e.classList.toggle('on', !!on); }
+function selSegLen(){
+  const s=wallEdit.sel; if(!s) return null;
+  if(s.kind==='door'){ const d=selDoor(); return d? Math.hypot(d.x2-d.x1, d.y2-d.y1) : null; }
+  if(s.kind==='w'){ const g=selWallSeg(); return g? Math.hypot(g.x2-g.x1, g.y2-g.y1) : null; }
+  return null;
+}
+function fillLenCtl(){
+  const box=$('#wLen'), ap=$('#wLenApply'), cal=$('#calBtn'); if(!box) return;
+  const L=selSegLen();
+  $('#wLenU').textContent=doorLenUnit();
+  if(L==null){ box.value=''; box.disabled=true; if(ap) ap.disabled=true; if(cal) cal.disabled=true; return; }
+  box.value=doorLenToUI(L); box.disabled=false;
+  if(ap) ap.disabled=false;
+  if(cal) cal.disabled=!docImported();   // 内置户型的尺寸由校准流程保证
+}
+// 点是否落在线段上（含端点容差）；返回沿段参数 t，不在段上返回 -1
+function ptOnSeg(px,py,seg,tol){
+  const dx=seg.x2-seg.x1, dy=seg.y2-seg.y1, dd=dx*dx+dy*dy;
+  if(dd<1e-9) return -1;
+  const t=((px-seg.x1)*dx+(py-seg.y1)*dy)/dd;
+  if(t<-1e-6||t>1+1e-6) return -1;
+  if(Math.hypot(px-(seg.x1+t*dx), py-(seg.y1+t*dy))>tol) return -1;
+  return t;
+}
+function applyLenEdit(){
+  const s=wallEdit.sel;
+  if(!s){ wMsg('先选中一段墙、窗或门（悬停会亮出墙体，点击选中）', true); return; }
+  const v=+$('#wLen').value;
+  if(!(v>0)){ wMsg('「长」里要输入一个正数（单位 '+$('#wLenU').textContent+'）', true); return; }
+  const L2=doorLenFromUI(v);
+  if(s.kind==='door'){ setDoorWidth(L2); return; }
+  // 下限与「画墙」一致（applyDrawWallChain 跳过 <0.05ft 的段）：否则数值路径能造出 1cm 的碎片墙
+  if(L2 < 0.05){ wMsg('这段太短：最短 ' + fmtLen(0.05,{precise:true}) + '（画墙时这么短的段会被跳过）', true); return; }
+  const seg=selWallSeg(); if(!seg){ wMsg('这个构件没有可改的长度', true); return; }
+  const ent=entById(s.id), isWin=!!(ent && ent.id[0]==='n');
+  const dx=seg.x2-seg.x1, dy=seg.y2-seg.y1, L=Math.hypot(dx,dy)||1e-6, ux=dx/L, uy=dy/L;
+  if(Math.abs(L2-L)<0.005){ wMsg('长度没变（'+lenLabel(L)+'）'); return; }
+  if(isWin){
+    // 窗：中心不动，两端对称伸缩；不能超过承载墙
+    const par=ent.wallId? entById(ent.wallId): null;
+    const pw=(par&&par.geom&&par.geom.t==='seg')? segView(par): null;
+    const PL=pw? Math.hypot(pw.x2-pw.x1, pw.y2-pw.y1) : L2;
+    const maxL=Math.min(L2, Math.max(0.05, PL-0.02));
+    const half=maxL/2, cx=(seg.x1+seg.x2)/2, cy=(seg.y1+seg.y2)/2;
+    pushUndo('lenEdit:'+ent.id);
+    seg.x1=FT2(cx-ux*half); seg.y1=FT2(cy-uy*half);
+    seg.x2=FT2(cx+ux*half); seg.y2=FT2(cy+uy*half);
+    ent.width=maxL;
+    if(pw){ const qx=pw.x2-pw.x1, qy=pw.y2-pw.y1, qd=qx*qx+qy*qy;
+      if(qd>1e-9) ent.pos=Math.max(0, Math.min(1, ((cx-pw.x1)*qx+(cy-pw.y1)*qy)/qd)); }
+    geoChanged();
+    wMsg('窗宽改成 '+lenLabel(maxL)+(maxL<L2-1e-6? ' （承载墙只有 '+lenLabel(PL)+'，已夹到最长）':''));
+    return;
+  }
+  // 墙：起点不动，终点沿轴移动（等价于拖终点；相邻的垂直墙不会跟着动）
+  // 挂在这段上的门/窗必须留在段内，否则它们会跑到墙外
+  const tol=0.06; let need=0;
+  for(const d of effDoors()){ if(d._id===ent.id) continue;
+    const t1=ptOnSeg(d.x1,d.y1,seg,tol), t2=ptOnSeg(d.x2,d.y2,seg,tol);
+    if(t1<0&&t2<0) continue; need=Math.max(need, Math.max(t1,t2)*L); }
+  for(const w of (DOC.windows||[])){ if(w.id===ent.id||!w.geom||w.geom.t!=='seg') continue;
+    const t1=ptOnSeg(w.geom.x1,w.geom.y1,seg,tol), t2=ptOnSeg(w.geom.x2,w.geom.y2,seg,tol);
+    if(t1<0&&t2<0) continue; need=Math.max(need, Math.max(t1,t2)*L); }
+  if(L2<need-1e-6){ wMsg('这段墙上有门/窗：最短要 '+fmtLen(need,{precise:true})+'，再短它们就跑到墙外了', true); return; }
+  pushUndo('lenEdit:'+ent.id);
+  seg.x2=FT2(seg.x1+ux*L2); seg.y2=FT2(seg.y1+uy*L2);
+  geoChanged();
+  wMsg('这段长 '+lenLabel(L2)+'（起点不动、终点沿轴移动；相邻墙不跟着动，可用「撤销」回退）');
+}
+// 整图缩放：平面几何按 k 缩放（绕户型包围盒中心），真实世界的尺寸不缩放
+function rescaleDocPlan(k){
+  const fp=floorPts(); let x1=1e9,y1=1e9,x2=-1e9,y2=-1e9;
+  (fp||[]).forEach(p=>{ x1=Math.min(x1,p[0]); y1=Math.min(y1,p[1]); x2=Math.max(x2,p[0]); y2=Math.max(y2,p[1]); });
+  if(!(x2>x1)||!(y2>y1)){ x1=0; y1=0; x2=1; y2=1; }
+  const cx=(x1+x2)/2, cy=(y1+y2)/2;
+  const P=(x,y)=>[FT2(cx+(x-cx)*k), FT2(cy+(y-cy)*k)];
+  const segG=(g)=>{ if(!g||g.t!=='seg') return false;
+    const a=P(g.x1,g.y1), b=P(g.x2,g.y2);
+    g.x1=a[0]; g.y1=a[1]; g.x2=b[0]; g.y2=b[1]; return true; };
+  let n=0;
+  for(const w of (DOC.walls||[])){ if(segG(w.geom)){ if(w.thick!=null) w.thick=FT2(w.thick*k); if(w.wdPx!=null&&DOC.sc) w.wdPx=w.thick*DOC.sc; n++; } }
+  for(const w of (DOC.windows||[])){ if(segG(w.geom)){ if(w.width!=null) w.width=FT2(w.width*k); n++; } }
+  for(const d of (DOC.doors||[])){ if(segG(d.geom)){ segG(d.gapGeom); n++; } }
+  for(const s of (DOC.solids||[])){ const g=s.geom; if(!g) continue;
+    if(g.t==='poly'){ g.pts=(g.pts||[]).map(p=>P(p[0],p[1])); n++; }
+    else if(g.t==='arc'){ const c=P(g.cx,g.cy); g.cx=c[0]; g.cy=c[1]; g.r=FT2(g.r*k); n++; } }
+  if(DOC.patio&&DOC.patio.geom&&DOC.patio.geom.t==='poly') DOC.patio.geom.pts=(DOC.patio.geom.pts||[]).map(p=>P(p[0],p[1]));
+  if(Array.isArray(DOC.floorOutline)) DOC.floorOutline=DOC.floorOutline.map(p=>P(p[0],p[1]));
+  for(const r of (DOC.rooms||[])){ if(!r.pos) continue; const q=P(r.pos[0],r.pos[1]);
+    r.pos[0]=q[0]; r.pos[1]=q[1]; if(r.wd!=null) r.wd=FT2(r.wd*k); if(r.dp!=null) r.dp=FT2(r.dp*k); n++; }
+  // 洁具/台面：真实世界的尺寸不缩放，只把中心搬到缩放后对应的点（贴墙关系保持）
+  for(const f of (DOC.fixtures||[])){
+    const mx=(f.x1+f.x2)/2, my=(f.y1+f.y2)/2, q=P(mx,my), dx=q[0]-mx, dy=q[1]-my;
+    f.x1=FT2(f.x1+dx); f.x2=FT2(f.x2+dx); f.y1=FT2(f.y1+dy); f.y2=FT2(f.y2+dy); n++; }
+  for(const r of (DOC.runs||[])){ r.path=(r.path||[]).map(p=>P(p[0],p[1]));
+    if(r.modules) r.modules.forEach(m=>{ if(typeof m.at==='number') m.at=FT2(m.at*k); }); n++; }
+  let img=false;
+  if(DOC.baseImage){ const b=DOC.baseImage; const q=P(b.ox,b.oy); b.ox=q[0]; b.oy=q[1]; b.mPerPx=b.mPerPx*k; img=true; }
+  return {n, img};
+}
+let _calArm=null;
+function armRescale(){
+  if(!docImported()){ wMsg('内置户型的尺寸由校准流程保证，不做整图缩放', true); return; }
+  const s=wallEdit.sel;
+  if(!s || (s.kind!=='w' && s.kind!=='door')){ wMsg('先选中一段墙、窗或门，再在「长」里填它的真实长度', true); return; }
+  const v=+$('#wLen').value; if(!(v>0)){ wMsg('「长」里要输入一个正数', true); return; }
+  const cur=selSegLen(); if(cur==null||cur<0.05){ wMsg('选中这段太短，不能当标定基准', true); return; }
+  const want=doorLenFromUI(v), k=want/cur;
+  if(!(k>0.05&&k<20)){ wMsg('缩放比例 '+(+k).toFixed(3)+' 超出 0.05~20，请检查输入', true); return; }
+  if(Math.abs(k-1)<0.001){ wMsg('输入的长度和现在一样，不用缩放'); return; }
+  const p=DOC.plan||{};
+  const hard=['kitchen','isl','windowBand','patioPatch','inner','islLabel'].filter(x=>p[x]!=null);
+  if(hard.length){ wMsg('这份户型带内置专属构件（'+hard.join(' / ')+'），整图缩放会把它们和内置渲染拆开 —— 不做', true); return; }
+  if(_calArm===null||Math.abs(_calArm-k)>1e-9){ _calArm=k;
+    wMsg('整图将缩放 ×'+k.toFixed(4)+'（'+lenLabel(cur)+' → '+lenLabel(want)+'）；再点一次「整图按此缩放」确认', false); return; }
+  _calArm=null;
+  pushUndo('rescale:'+k.toFixed(6));
+  const info=rescaleDocPlan(k);
+  geoChanged(); fit2DToContent();
+  wMsg('整图已按 ×'+k.toFixed(4)+' 缩放：'+info.n+' 个构件'+(info.img?' · 底图比例同步':'')+
+       '；洁具与台面保持真实尺寸不缩放；点「撤销」可回到缩放前');
 }
 function applyDrawWallChain(){ pushUndo('drawChain');
   const pts=wallEdit.drawPts;
@@ -14741,6 +14893,7 @@ function measStart(){
   meas.on = true; meas.p0 = null; meas.hover = null;
   $('#btnMeas').classList.add('on');
   document.body.classList.add('measuring');
+  wMsg('');   // 让出画布左下角那一个提示位（编辑提示与量尺寸提示不同时占位）
   $('#hint').innerHTML = '<b>量尺寸</b>：点一下定起点，再点一下落定 · 按住 Shift 锁定水平/垂直 · Esc 退出 · 「清除」删除全部';
   drawMeasure();
 }
@@ -14792,6 +14945,8 @@ function setView(v){
   $('#btnPT').style.display = fp?'inline-block':'none';
   $('#measSeg').style.display = v==='2d'?'flex':'none';
   if(v!=='2d' && typeof measEnd==='function') measEnd();
+  // 画布左下角那一个提示位：2D 编辑时归编辑提示（wMsg），其余时候归 #hint
+  if(wallEdit.on){ if(v==='2d') updateWallBarFromSel(); else wMsg(''); }
   if(in3){
     show3DLoading(three?'正在更新 3D 场景…':'正在生成 3D 场景（首次需要几秒）…');
     // 用 setTimeout 而非 rAF 派发：无合成帧时 rAF 可能一直不触发，会把场景卡住不建
@@ -14907,6 +15062,7 @@ $('#btnWallEdit').onclick=()=>{
   document.body.classList.toggle('wall-editing', wallEdit.on);
   $('#btnWallEdit').classList.toggle('on', wallEdit.on);
   $('#wallbar').style.display = wallEdit.on?'flex':'none';
+  document.body.classList.toggle('wedit', wallEdit.on);   // 编辑模式下画布左下角让位给编辑提示
   wallEdit.sel=null; wallEdit.drawPts=[]; wallEdit.hover=null; wallEdit.tool='select';
   document.querySelectorAll('#wtoolSeg button').forEach(x=>x.classList.toggle('on',x.dataset.t==='select'));
   if(wallEdit.on && state.view!=='2d') setView('2d');
@@ -14997,6 +15153,11 @@ function doorMut(fn){ const s=wallEdit.sel; if(!s||s.kind!=='door') return;
   pushUndo('doorMut:'+s.id);
   fn(d); geoChanged(); updateWallBarFromSel(); }
 $('#dWidth').onchange=()=>{ const v=+$('#dWidth').value; if(v>0) setDoorWidth(doorLenFromUI(v)); };
+// E24：数值改这段长度 / 按已知长度重标定整图
+$('#wLenApply').onclick=()=>{ applyLenEdit(); };
+$('#wLen').onchange=()=>{ applyLenEdit(); };
+$('#wLen').onkeydown=(ev)=>{ if(ev.key==='Enter'){ ev.preventDefault(); applyLenEdit(); } };
+$('#calBtn').onclick=()=>{ armRescale(); $('#calBtn').blur(); };
 $('#dEndBtn').onclick=()=>{ $('#dEndBtn').blur();
   wallEdit.dEndSel = wallEdit.dEndSel===null ? 0 : wallEdit.dEndSel===0 ? 1 : null;
   drawWallEdit(); updateWallBarFromSel(); };

@@ -70,6 +70,11 @@ async function runPBTest() {
     await tick();
     return !!el;
   };
+  // 上下文控件组的可见性：读计算样式而不是 inline style（E24 后同格叠放 + .on 类）
+  const vis = (sel) => {
+    const el = Q(sel);
+    return el ? getComputedStyle(el).visibility : 'missing';
+  };
   // 屏幕像素 → ft（拖动阈值与位移都按屏幕像素算）
   const pxPerFtNow = () => pbSvg.getScreenCTM().a * S;
   const tap = async (fx, fy) => {
@@ -763,8 +768,8 @@ async function runPBTest() {
       await setTool('fx');
       T(
         'pb-fx-tool-on',
-        wallEdit.tool === 'fx' && Q('#fxCtl').style.visibility === 'visible',
-        'tool=' + wallEdit.tool + ' fxCtl=' + Q('#fxCtl').style.visibility
+        wallEdit.tool === 'fx' && vis('#fxCtl') === 'visible',
+        'tool=' + wallEdit.tool + ' fxCtl=' + vis('#fxCtl')
       );
       const fxN = () => DOC.fixtures.length;
       const uFx = () => DOC.fixtures.filter((f) => f.src === 'user').length;
@@ -1357,6 +1362,300 @@ async function runPBTest() {
       await pbReset();
       clearRing();
       T('pb-undo-clean-exit', DOC.walls.filter((e) => e.src === 'user').length === 0 && undoRing.length === 0);
+    }
+
+    /* ===== 11. E24 数值改这段长度 + 按已知长度重标定整图 ===== */
+    {
+      await pbReset();
+      await enterEdit();
+      await setTool('select');
+      fit2DToContent();
+      await tick();
+      const ctrlZ = () =>
+        window.dispatchEvent(
+          new KeyboardEvent('keydown', { key: 'z', ctrlKey: true, bubbles: true, cancelable: true })
+        );
+      const lenOf = (seg) => (seg ? Math.hypot(seg.x2 - seg.x1, seg.y2 - seg.y1) : -1);
+      // 挑一段「干净」的墙：够长、中点离其它几何最远（点击不会被别的构件抢走）
+      const pickWall = () => {
+        let best = null,
+          bs = -1;
+        for (const s of effWalls()) {
+          if (s.t !== 'w') continue;
+          const L = Math.hypot(s.x2 - s.x1, s.y2 - s.y1);
+          if (L < 2 || L > 14) continue;
+          const mx = (s.x1 + s.x2) / 2,
+            my = (s.y1 + s.y2) / 2;
+          let d = pbClearance(mx, my);
+          for (const dd of effDoors()) d = Math.min(d, distSeg(mx, my, dd));
+          if (d > bs) {
+            bs = d;
+            best = { id: s._id, L, mx, my };
+          }
+        }
+        return best;
+      };
+      const w0 = pickWall();
+      if (!w0) T('pb-len-prefill', false, '找不到可测的墙段');
+      else {
+        await tap(w0.mx, w0.my);
+        const sel = wallEdit.sel;
+        const L0 = lenOf(selWallSeg());
+        T('pb-len-select', !!(sel && sel.kind === 'w' && sel.id === w0.id), JSON.stringify(sel));
+        T(
+          'pb-len-prefill',
+          Q('#wLen').disabled === false && Math.abs(+Q('#wLen').value - Math.round(L0 * 30.48)) <= 1,
+          'input=' + Q('#wLen').value + 'cm 实际=' + L0.toFixed(2) + 'ft'
+        );
+        T(
+          'pb-cal-disabled-builtin',
+          Q('#calBtn').disabled === true,
+          '内置户型不该能整图缩放 disabled=' + Q('#calBtn').disabled
+        );
+        // 工具条不得溢出（溢出 = 末尾控件被 overflow:hidden 剪掉），且编辑提示必须在画布里看得见
+        {
+          const bar = Q('#wallbar');
+          const over = bar.scrollWidth - bar.clientWidth;
+          T('pb-bar-no-overflow', over <= 1, 'scrollWidth=' + bar.scrollWidth + ' clientWidth=' + bar.clientWidth);
+          const m = Q('#wMsg'),
+            mr = m.getBoundingClientRect();
+          const hint = Q('#hint');
+          T(
+            'pb-edit-hint-visible',
+            mr.width >= 120 &&
+              mr.height >= 14 &&
+              mr.left >= 0 &&
+              mr.right <= innerWidth &&
+              mr.bottom <= innerHeight &&
+              getComputedStyle(hint).display === 'none' &&
+              m.textContent.length > 10,
+            'wMsg=' + Math.round(mr.width) + 'x' + Math.round(mr.height) + ' hint=' + getComputedStyle(hint).display
+          );
+        }
+        // 改这段：+2ft，起点必须不动（等价于拖终点）
+        const live = selWallSeg();
+        const x1b = live.x1,
+          y1b = live.y1;
+        const target = L0 + 2;
+        Q('#wLen').value = String(Math.round(target * 30.48));
+        Q('#wLenApply').click();
+        await tick();
+        const a = selWallSeg();
+        const La = lenOf(a);
+        const sameStart = !!a && Math.abs(a.x1 - x1b) < 0.011 && Math.abs(a.y1 - y1b) < 0.011;
+        T(
+          'pb-len-apply-wall',
+          Math.abs(La - target) < 0.02 && sameStart,
+          'len=' + La.toFixed(3) + 'ft 目标=' + target.toFixed(3) + ' 起点不动=' + sameStart
+        );
+        ctrlZ();
+        await tick();
+        // 撤销会清空选中（快照里的实体可能已不存在）→ 重新选中同一段
+        await tap(w0.mx, w0.my);
+        T('pb-len-undo', Math.abs(lenOf(selWallSeg()) - L0) < 0.011, 'len=' + lenOf(selWallSeg()).toFixed(3));
+        // 下限：数值路径不能造出画墙时会被跳过的碎片段
+        {
+          const b = selWallSeg();
+          const bx1 = b.x1,
+            by1 = b.y1,
+            bx2 = b.x2,
+            by2 = b.y2;
+          Q('#wLen').value = '1';
+          Q('#wLenApply').click();
+          await tick();
+          const a2 = selWallSeg();
+          const kept =
+            !!a2 &&
+            Math.abs(a2.x1 - bx1) < 1e-6 &&
+            Math.abs(a2.y1 - by1) < 1e-6 &&
+            Math.abs(a2.x2 - bx2) < 1e-6 &&
+            Math.abs(a2.y2 - by2) < 1e-6;
+          const msg2 = (Q('#wMsg') || {}).textContent || '';
+          T(
+            'pb-len-guard-min',
+            kept && /\u592a\u77ed/.test(msg2),
+            '\u51e0\u4f55\u4e0d\u53d8=' + kept + ' \u63d0\u793a=' + JSON.stringify(msg2.slice(0, 40))
+          );
+        }
+      }
+      // 挂在段上的门/窗不许被甩出去：缩到 10cm 必须被拒并且几何不变
+      {
+        let done = false,
+          gi = '没有门完整落在任何墙段内部';
+        for (const d of effDoors()) {
+          if (done) break;
+          for (const s of effWalls()) {
+            if (s.t !== 'w') continue;
+            const seg = { x1: s.x1, y1: s.y1, x2: s.x2, y2: s.y2 };
+            const t1 = ptOnSeg(d.x1, d.y1, seg, 0.06),
+              t2 = ptOnSeg(d.x2, d.y2, seg, 0.06);
+            if (t1 < 0 || t2 < 0) continue;
+            const L = Math.hypot(seg.x2 - seg.x1, seg.y2 - seg.y1);
+            // 点墙上离门最远的位置，才选得中墙而不是门
+            let bt = 0.5,
+              bd = -1;
+            for (let t = 0.12; t <= 0.88; t += 0.08) {
+              const px = seg.x1 + (seg.x2 - seg.x1) * t,
+                py = seg.y1 + (seg.y2 - seg.y1) * t;
+              const dd = Math.min(Math.hypot(px - d.x1, py - d.y1), Math.hypot(px - d.x2, py - d.y2));
+              if (dd > bd) {
+                bd = dd;
+                bt = t;
+              }
+            }
+            await tap(seg.x1 + (seg.x2 - seg.x1) * bt, seg.y1 + (seg.y2 - seg.y1) * bt);
+            const sel = wallEdit.sel;
+            if (!sel || sel.kind !== 'w' || sel.id !== s._id) {
+              gi = '选不中这段墙（选中=' + JSON.stringify(sel) + '）';
+              break;
+            }
+            const before = selWallSeg();
+            const bx1 = before.x1,
+              by1 = before.y1,
+              bx2 = before.x2,
+              by2 = before.y2;
+            Q('#wLen').value = '10';
+            Q('#wLenApply').click();
+            await tick();
+            const after = selWallSeg();
+            const unchanged =
+              !!after &&
+              Math.abs(after.x1 - bx1) < 1e-6 &&
+              Math.abs(after.y1 - by1) < 1e-6 &&
+              Math.abs(after.x2 - bx2) < 1e-6 &&
+              Math.abs(after.y2 - by2) < 1e-6;
+            const msg = (Q('#wMsg') || {}).textContent || '';
+            T(
+              'pb-len-guard-attached',
+              unchanged && /门|窗/.test(msg),
+              '几何不变=' + unchanged + ' 提示=' + JSON.stringify(msg.slice(0, 46)) + ' 段长=' + L.toFixed(2)
+            );
+            done = true;
+            break;
+          }
+        }
+        if (!done) I('pb-len-guard-attached-skipped', gi);
+      }
+      // 导入户型：整图按此缩放（两步确认 + 可撤销）
+      let imp = null,
+        impErr = '';
+      try {
+        const txt = await (await fetch('../tests/fixtures/apartment-mm.dxf')).text();
+        imp = window.MINIDEN_GEO.importDxf(new window.DxfParser().parseSync(txt), { name: 'planbuild-cal' });
+      } catch (e) {
+        impErr = e.message;
+      }
+      if (!imp) T('pb-cal-import', false, impErr);
+      else {
+        applyImportedDoc(imp.doc, imp.info);
+        await tick();
+        fit2DToContent();
+        drawWallEdit();
+        await tick();
+        await enterEdit();
+        await setTool('select');
+        const byLen = (a, b) => Math.hypot(b.x2 - b.x1, b.y2 - b.y1) - Math.hypot(a.x2 - a.x1, a.y2 - a.y1);
+        const iw = effWalls()
+          .filter((s) => s.t === 'w')
+          .sort(byLen)[0];
+        await tap((iw.x1 + iw.x2) / 2, (iw.y1 + iw.y2) / 2);
+        const L0 = lenOf(selWallSeg());
+        T('pb-cal-select', L0 > 0.5, '选中导入墙段 len=' + L0.toFixed(2) + 'ft');
+        T('pb-cal-enabled-imported', Q('#calBtn').disabled === false, 'disabled=' + Q('#calBtn').disabled);
+        const nW = DOC.walls.length,
+          nD = DOC.doors.length,
+          nS = DOC.solids.length;
+        const spanOf = () => {
+          // 几何包络（不是地板轮廓：importedFloorPts 给地板加固定 0.8ft 边距，不随缩放变）
+          let a = 1e9,
+            b = -1e9;
+          for (const w of effWalls()) {
+            a = Math.min(a, w.x1, w.x2);
+            b = Math.max(b, w.x1, w.x2);
+          }
+          for (const d of effDoors()) {
+            a = Math.min(a, d.x1, d.x2);
+            b = Math.max(b, d.x1, d.x2);
+          }
+          return b - a;
+        };
+        const span0 = spanOf();
+        const doorW0 = effDoors().map((d) => Math.hypot(d.x2 - d.x1, d.y2 - d.y1));
+        Q('#wLen').value = String(Math.round(L0 * 2 * 30.48));
+        Q('#calBtn').click();
+        await tick();
+        const La = lenOf(selWallSeg());
+        T('pb-cal-two-step', Math.abs(La - L0) < 0.011, '第一次点击不该动手 len=' + La.toFixed(3));
+        Q('#calBtn').click();
+        await tick();
+        const L1 = lenOf(selWallSeg());
+        T(
+          'pb-cal-scales-selected',
+          Math.abs(L1 - L0 * 2) < 0.05,
+          'len=' + L1.toFixed(3) + ' 期望≈' + (L0 * 2).toFixed(3)
+        );
+        T(
+          'pb-cal-counts-kept',
+          DOC.walls.length === nW && DOC.doors.length === nD && DOC.solids.length === nS,
+          'walls=' +
+            DOC.walls.length +
+            '/' +
+            nW +
+            ' doors=' +
+            DOC.doors.length +
+            '/' +
+            nD +
+            ' solids=' +
+            DOC.solids.length +
+            '/' +
+            nS
+        );
+        // 门是图纸读出来的开口 → 跟着缩放；不缩放的是洁具/台面这类真实尺寸
+        const doorW1 = effDoors().map((d) => Math.hypot(d.x2 - d.x1, d.y2 - d.y1));
+        const doorScaled =
+          doorW0.length === doorW1.length && doorW0.every((v, i) => Math.abs(doorW1[i] - v * 2) < 0.05);
+        T(
+          'pb-cal-doors-scale',
+          doorW0.length > 0 && doorScaled,
+          doorW0
+            .slice(0, 3)
+            .map((v, i) => v.toFixed(2) + '→' + (doorW1[i] || 0).toFixed(2))
+            .join(' ')
+        );
+        // 户型包络也跟着走（auto-fit 视图与 3D 取景不能错位）
+        const span1 = spanOf();
+        T(
+          'pb-cal-plan-extent-scales',
+          Math.abs(span1 - span0 * 2) < 0.15,
+          'x 向包络=' + span0.toFixed(2) + ' → ' + span1.toFixed(2) + 'ft'
+        );
+        ctrlZ();
+        await tick();
+        await tap((iw.x1 + iw.x2) / 2, (iw.y1 + iw.y2) / 2);
+        const L2 = lenOf(selWallSeg());
+        T('pb-cal-undo', Math.abs(L2 - L0) < 0.05, 'len=' + L2.toFixed(3) + ' 原=' + L0.toFixed(3));
+        const doorW2 = effDoors().map((d) => Math.hypot(d.x2 - d.x1, d.y2 - d.y1));
+        T(
+          'pb-cal-undo-doors',
+          doorW0.every((v, i) => Math.abs(doorW2[i] - v) < 0.05),
+          '门宽回到缩放前=' +
+            doorW2
+              .slice(0, 3)
+              .map((v) => v.toFixed(2))
+              .join(' ')
+        );
+        resetDoc();
+        saveGeo();
+        geoDirty3D = true;
+        build2D();
+        if (wallEdit.on) {
+          drawWallEdit();
+          updateWallBarFromSel(); // 真实 UI 路径（重置内置）就是这么刷工具条的
+        }
+        refresh();
+        await tick();
+        T('pb-cal-back-to-builtin', !DOC.imported && Q('#calBtn').disabled === true, 'imported=' + DOC.imported);
+      }
     }
 
     /* ===== 收尾：页面不得有未捕获异常 ===== */
