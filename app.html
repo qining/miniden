@@ -2949,7 +2949,11 @@ function selFixture(){ // 当前选中的洁具实体（doc 域 ft）
   return DOC.fixtures.find(f=>f.id===s.id) || null;
 }
 function pushUserFixture(type, cx, cy, rot, extra){
-  const def=FX_DEFS[type] || FX_DEFS.counter;
+  const def=FX_DEFS[type];
+  // 类型不在 FX_DEFS 里就拒写（以前这里用 FX_DEFS.counter 兼容尺寸但把非法 t 原样写进文档）。
+  // 一个非法 t 会让 SCHEMA.Project.validate 失败，而 loadDoc 对 validate 失败的文档是
+  // 「STORE.remove(DOC_KEY) + 回退空文档」—— 整份房子会被静默删掉。
+  if(!def) return null;
   const ent={ id:SCHEMA.Project.nextId(DOC,'fixture'), t:type, src:'user',
     x1:FT2(cx-def.w/2), y1:FT2(cy-def.d/2), x2:FT2(cx+def.w/2), y2:FT2(cy+def.d/2) };
   if(rot) ent.rot=Math.round(((rot%360)+360)%360);
@@ -3566,11 +3570,13 @@ function wallEditDown(ev){
       wallEdit.sel={kind:'fx', id:fxg.dataset.fx};
       startFxDrag(ev, p0); return;
     }
-    pushUndo('fxPlace');
     const type=$('#fxType').value;
+    if(!FX_DEFS[type]){ wMsg('洁具类型无效（' + type + '），未放置', true); return; }
+    pushUndo('fxPlace');
     const snap=fixtureWallSnap(p0[0],p0[1],type);
     const ent= snap? pushUserFixture(type, snap.cx, snap.cy, snap.rot)
                    : pushUserFixture(type, p0[0], p0[1], 0);
+    if(!ent){ wMsg('洁具类型无效，未放置', true); return; } // 防御：上面已挡，这里不会走到
     wallEdit.sel={kind:'fx', id:ent.id};
     geoChanged(); updateWallBarFromSel();
     wMsg('已放 '+FX_DEFS[type].label+(snap?'（已贴墙，可拖动微调）':'')+' ｜ 拖=移动 · 输入旋转角 · Delete=删除');
