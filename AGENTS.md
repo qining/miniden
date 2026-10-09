@@ -77,7 +77,7 @@
 | `docs/research/01–10` | 需要「依据」时（各结论的调研过程/数据） |
 | `docs/design/` | 户型输入 → 3D 的设计总文档 |
 
-**当前位置**：R1–R10 研究全部完成；S 系列全部落地（S1–S7 + S9 Warm Dark 2a–2d）。**S10（隐私 + plan 外部化，2026-09）**：个人数据全部移入 `private/`（§1.4）；户型几何外置为 `#miniden-plan` JSON（committed=generic / 本地构建注入 mine）；bench 分层（入库 plan-independent / private plan-specific）；ui-gate 截 dist。**S11（2026-10-05）**：户型文档导出/导入（「工具 ⌄」→「导出户型 / 导入户型」+ `#docModal` 一次性确认，走 `applyImportedDoc` 同一条路；`ProjectDoc.floorOutline?` 纯增量可选字段保地板轮廓逐坐标保真）。**S11b（2026-10-05）**：导出必须无限制 → `ProjectDoc.plan?`（户型专属快照：roomSummary/refPhoto/calib/windowBand/patioPatch/islLabel/isl/kitchen/inner，同样不进投影），`freshDoc()` 从 PLAN 播种、消费端走 `planOf(k)`（文档优先、回退 PLAN）；厨房硬编码块数据化（顺带清除了公开文件里的真实坐标）。**S12（2026-10-05）**：放置类实体只认两个来源——用户画 / 导入读到的几何，不写启发式猜测；`Run` 台面柜体带实体 + 工具、DXF/PDF `furn` 轮廓按形状分类落地为 run、钢框窗改成窗实体的 `steel` 标志（`steelBands()` 与历史 windowBand 重合时只画一次）。**E18（2026-10-05）**：两个入口一个事实来源（§0.3）。**S13（2026-10-06）**：布局跟着 app 走——户型 JSON 新增 `layout`（内置布局），`load()` 在「这台浏览器对这份户型从没存过档」时用它播种（§1.2）；公开入口 `layout:null`（build.mjs 硬断言），测试台一律剥掉 layout（保持确定性 + plan-independence），`#calib` 不播种（§1.1）。待办：无（`git filter-repo` 已执行，见下）。**E5（2026-10-06）**：GitHub Actions CI 上线（`.github/workflows/ci.yml`，generic 子集：tsc → vitest → build → bench ×9 → ui-gate 双截；见 §3）。**P1 收尾（2026-10-06）**：git filter-repo 历史清除 + force-push 已执行（§1.4）；E7 LICENSE/THIRD-PARTY、E8 README、E13 包体预算门禁同期落地。**E6（2026-10-07）**：ESLint 10 + Prettier 3.9 落地（格式化单独提交；TS 侧因 typescript-eslint 不支持 TS7 暂由 tsc strict + Prettier 覆盖，见 §2）。**E19（2026-10-07~08）**：多轮 bug 猎（十五轮：schema / 导入管线 / 3D 消费端 / 校验层 / 交互层 / $INSUNITS 码表 / 导入启发式的单位口径 / 存储后端成败判据 / DXF 圆弧 / 目录数据不变量 / 目录字段的消费端），19 个真 bug + 1 处防御性统一，方法论见 §5.1.1。**E20（2026-10-07）**：可测性/覆盖率治理——覆盖率棘轮进 CI（`vitest.config.mjs` thresholds，只许涨不许跌）+ `scripts/storage-probe.mjs`（真实 IDB 落盘门禁，headful 真实时间，理由同 §5.5）。**E9（2026-10-07）**：`docs/design/architecture.md`（人读版架构：数据流 / 模块边界 / 构建守卫 / 门禁矩阵 / 不变量红线）。**E14+E17（2026-10-07）**：快捷 SLO 套件（`scripts/slo.mjs`，七项实测数字）+ 它的 CI 门禁。**E10（2026-10-07）**：持久化从 localStorage 换成 IndexedDB 主存（存储门面，见 §1.2）。**E21（2026-10-08）**：真实输入 E2E（`scripts/e2e.mjs` + `scripts/e2e-flows.mjs`，14 条流程 / 60 断言，两个入口 + CI 口径各 60/60）——第四种证据：真实鼠标/键盘/confirm/文件选择/下载/刷新，见 §3；它抓到并修了 3 个真实交互缺口（§5.1）。**E22（2026-10-08）**：`bench/t_planbuild.js`（plan-independent 户型构建 bench，120 断言×3 入口）——把「画墙 / 开门 / 放洁具 / 导入后编辑」这条 2D 主路径的断言从 private 那份里挑到入库侧，CI（generic）从此覆盖它（§3）。**E23（2026-10-09）**：撤销/重做（快照环 50 步 + 手势级合并，「撤销」按钮 + Ctrl/⌘+Z・Y，30+ 处变更点接入）。**E24（2026-10-09）**：导入后重标定 + 数值改长度——工具条重构（互斥控件组叠在同一格、编辑提示搬到画布左下角固定槽，原先提示文字被挤成 9px 宽 = 错误零反馈），「长 __ cm」一个输入框同时驱动「改这段」与「整图按此缩放」（后者两步确认、仅导入户型、可撤销）。加目录条目照 §8.1 / skill 走。
+**当前位置**：R1–R10 研究全部完成；S 系列全部落地（S1–S7 + S9 Warm Dark 2a–2d）。**S10（隐私 + plan 外部化，2026-09）**：个人数据全部移入 `private/`（§1.4）；户型几何外置为 `#miniden-plan` JSON（committed=generic / 本地构建注入 mine）；bench 分层（入库 plan-independent / private plan-specific）；ui-gate 截 dist。**S11（2026-10-05）**：户型文档导出/导入（「工具 ⌄」→「导出户型 / 导入户型」+ `#docModal` 一次性确认，走 `applyImportedDoc` 同一条路；`ProjectDoc.floorOutline?` 纯增量可选字段保地板轮廓逐坐标保真）。**S11b（2026-10-05）**：导出必须无限制 → `ProjectDoc.plan?`（户型专属快照：roomSummary/refPhoto/calib/windowBand/patioPatch/islLabel/isl/kitchen/inner，同样不进投影），`freshDoc()` 从 PLAN 播种、消费端走 `planOf(k)`（文档优先、回退 PLAN）；厨房硬编码块数据化（顺带清除了公开文件里的真实坐标）。**S12（2026-10-05）**：放置类实体只认两个来源——用户画 / 导入读到的几何，不写启发式猜测；`Run` 台面柜体带实体 + 工具、DXF/PDF `furn` 轮廓按形状分类落地为 run、钢框窗改成窗实体的 `steel` 标志（`steelBands()` 与历史 windowBand 重合时只画一次）。**E18（2026-10-05）**：两个入口一个事实来源（§0.3）。**S13（2026-10-06）**：布局跟着 app 走——户型 JSON 新增 `layout`（内置布局），`load()` 在「这台浏览器对这份户型从没存过档」时用它播种（§1.2）；公开入口 `layout:null`（build.mjs 硬断言），测试台一律剥掉 layout（保持确定性 + plan-independence），`#calib` 不播种（§1.1）。待办：无（`git filter-repo` 已执行，见下）。**E5（2026-10-06）**：GitHub Actions CI 上线（`.github/workflows/ci.yml`，generic 子集：tsc → vitest → build → bench ×9 → ui-gate 双截；见 §3）。**P1 收尾（2026-10-06）**：git filter-repo 历史清除 + force-push 已执行（§1.4）；E7 LICENSE/THIRD-PARTY、E8 README、E13 包体预算门禁同期落地。**E6（2026-10-07）**：ESLint 10 + Prettier 3.9 落地（格式化单独提交；TS 侧因 typescript-eslint 不支持 TS7 暂由 tsc strict + Prettier 覆盖，见 §2）。**E19（2026-10-07~08）**：多轮 bug 猎（十五轮：schema / 导入管线 / 3D 消费端 / 校验层 / 交互层 / $INSUNITS 码表 / 导入启发式的单位口径 / 存储后端成败判据 / DXF 圆弧 / 目录数据不变量 / 目录字段的消费端），19 个真 bug + 1 处防御性统一，方法论见 §5.1.1。**E20（2026-10-07）**：可测性/覆盖率治理——覆盖率棘轮进 CI（`vitest.config.mjs` thresholds，只许涨不许跌）+ `scripts/storage-probe.mjs`（真实 IDB 落盘门禁，headful 真实时间，理由同 §5.5）。**E9（2026-10-07）**：`docs/design/architecture.md`（人读版架构：数据流 / 模块边界 / 构建守卫 / 门禁矩阵 / 不变量红线）。**E14+E17（2026-10-07）**：快捷 SLO 套件（`scripts/slo.mjs`，七项实测数字）+ 它的 CI 门禁。**E10（2026-10-07）**：持久化从 localStorage 换成 IndexedDB 主存（存储门面，见 §1.2）。**E21（2026-10-08）**：真实输入 E2E（`scripts/e2e.mjs` + `scripts/e2e-flows.mjs`，14 条流程 / 60 断言，两个入口 + CI 口径各 60/60）——第四种证据：真实鼠标/键盘/confirm/文件选择/下载/刷新，见 §3；它抓到并修了 3 个真实交互缺口（§5.1）。**E22（2026-10-08）**：`bench/t_planbuild.js`（plan-independent 户型构建 bench，120 断言×3 入口）——把「画墙 / 开门 / 放洁具 / 导入后编辑」这条 2D 主路径的断言从 private 那份里挑到入库侧，CI（generic）从此覆盖它（§3）。**E23（2026-10-09）**：撤销/重做（快照环 50 步 + 手势级合并，「撤销」按钮 + Ctrl/⌘+Z・Y，30+ 处变更点接入）。**E24（2026-10-09）**：导入后重标定 + 数值改长度——工具条重构（互斥控件组叠在同一格、编辑提示搬到画布左下角固定槽，原先提示文字被挤成 9px 宽 = 错误零反馈），「长 __ cm」一个输入框同时驱动「改这段」与「整图按此缩放」（后者两步确认、仅导入户型、可撤销）。**E25（2026-10-09）**：光追门禁的取景钉住——出图视野 `uAspect = rw/rh` 以前跟着窗口布局走，CI（76x94）与本地（73x97）比的不是同一张取景的图 → 萤火虫门禁在 CI 假红；现在 `ptOpts.size` 钉住出图尺寸（界面不传、行为不变），见 §3 与 §5.5。加目录条目照 §8.1 / skill 走。
 
 ---
 
@@ -206,7 +206,7 @@ open('/tmp/planner_check.js','w').write(m.group(1))
 #     + 重新生成 12 个 bench HTML（4 脚本 × source/dist/公开入口，work/ 下 gitignore）
 #     改完 app.html / bench/*.js 之后必跑（dist 与根 planner.html 都是构建产物，不同步就是过期副本）
 
-# 3) 交互测试台（t_walledit 251 / t_3d 118 / t_pt 33 条断言，见 §3；dist 变体同断言，见 §5.7；
+# 3) 交互测试台（t_walledit 259 / t_3d 125 / t_planbuild 120 / t_pt 34 条断言，见 §3；dist 变体同断言，见 §5.7；
 #    推荐直接 node scripts/run-bench.mjs）
 # 4) 校准回归（§1.1）
 # 5) 视觉验证（截图 + 放大目检，见 §4）
@@ -228,7 +228,7 @@ open('/tmp/planner_check.js','w').write(m.group(1))
 | `t_walledit.js` | **`private/bench/`（gitignore）**——含真实户型几何坐标断言 | 2D：墙/柱/门/洁具编辑、门垛联动、S5/S6 导入、双币种、视图/单位/面板、S7 描图、对话框、E10 存储 | 259 | `wetest` | 1700x1100 / 100000（dist 120000） |
 | `t_planbuild.js` | `bench/`（入库，plan-independent） | **E22 户型构建**：进入编辑模式、选中/命中/抖动点击不脏内置、拖整段(Esc 回滚)/拖端点、画墙(右键不加点/Backspace/Enter/太短拒收)、画柱→2D 命中+3D 立到顶、门系统(款式/开向/滑动联动/调宽/方向键安全边界)、洁具(放置/贴墙契约/拖动/微调/删除权限)、编辑→3D 一致性、**导入后编辑**、持久化往返；**E24 数值改长 + 整图重标定**：工具条不溢出、编辑提示看得见、预填当前长度、改这段（起点不动）/下限拒收/挂在段上的门窗不许甲出去、内置户型禁用整图缩放、导入户型两步确认缩放（构件数不变、门跟着走、可撤销） | 120 | `pbtest` | 1700x1100 / 200000（dist 220000） |
 | `t_3d.js` | `bench/`（入库，plan-independent） | 3D：拾取/拖动/旋转、开关灯、**全目录建模+贴图体检**、缩略图、S5/S6 导入、双击进室内、座椅体检 | 125 | `t3d` | 1400x950 / 170000 |
-| `t_pt.js` | `bench/`（入库，plan-independent） | 光追：GL 能力探针、BVH、着色器、进度、降噪、萤火虫/NaN 判别、分块自适应、**白家具可辨识度**（满家具客厅） | 33 | `tpt` | 1200x850 / 600000 |
+| `t_pt.js` | `bench/`（入库，plan-independent） | 光追：GL 能力探针、BVH、着色器、进度、降噪、**取景钉住**、萤火虫/NaN 判别、分块自适应、**白家具可辨识度**（满家具客厅） | 34 | `tpt` | 1200x850 / 600000 |
 
 **Plan-independence 规则**（bench 脚本入库的前提）：
 - 所有坐标目标**从运行时派生**：`floorPts()`（`FLOORPTS` 常量的别名）的 bbox 中心，
@@ -236,6 +236,13 @@ open('/tmp/planner_check.js','w').write(m.group(1))
 - **例外（t_pt）**：t_pt 的家具布局与相机**锚定「客厅」标签中心**，不能用 floorPts bbox 中心
   ——bbox 中心 ≠ 房间中心，平移过去家具就移出租界，firefly 从 43 涨到 75 破限
   （2026-09 实测：HEAD 原版锚点恰是客厅标签位置，用标签派生后逐像素复现）。
+- **统计量门禁必须钉住取景与尺寸**（E25）：光追出图尺寸 `rw/rh` 来自画布 client 尺寸按
+  `maxPx` 缩放，而 `uAspect = rw/rh` 就是**出图视野**——窗口布局（字体度量→面板/顶栏宽度）
+  决定了光追看到多大范围的场景。CI 上量到 76x94、本地 73x97，同一个「萤火虫衰减比」
+  门禁在两个平台比的其实是两张不同取景的图（本地 0.21%→0.04%，CI 0.18%→0.17%，要求 <0.75 倍
+  → 假红，而且两侧都逐次完全一致，看起来像真回归）。现在 bench 传 `ptRender(...,{size:[73,97]})`
+  钉住出图，并有 `pt-bench-framing-pinned` 断言守着。**推论**：任何拿像素统计量做门禁的 bench，
+  都要先把产生这些像素的条件（取景、尺寸、采样数）固定下来，否则红/绿只反映跑它的那台机器。
 - t_walledit 含真实户型坐标断言（门/墙的具体位置），**只能放 private/**（§1.4）；
   CI 只跑 t_3d / **t_planbuild** / t_pt（generic plan 上同样全绿——这就是 plan-independence 的验收）。
   **E22 的动机就在这里**：t_planbuild 之前，「画墙 / 开门 / 放洁具」这条 2D 主路径的断言
@@ -841,6 +848,13 @@ WebGL2 更没有。所以这是「用 GPU 的通用计算单元跑软件光追�
   再用 CPU 射线打一条过去看命中链，最后直接取环境贴图在该方向的像素值对照。
   这次查下来光追其实是对的——窗外偏暗是因为全景图在那个方向本来就是
   rgb(72,85,117) 的深蓝，问题在别处（环境光填充）。
+- **出图视野跟着窗口布局走，而它决定噪声统计量**。`rw/rh` 由 `canvas.clientWidth/Height`
+  按 `maxPx` 缩放算出，着色器里 `dc = (ndc.x·uTanHalf·uAspect, ndc.y·uTanHalf, -1)`，
+  `uAspect = rw/rh` —— 画布长宽比一变，光追看到的场景范围就变，孤立亮点、均值/标准差
+  这类量全部跟着变。要可比较就用 `ptOpts.size` 钉住出图尺寸（界面不传，行为不变）。
+  排查这类问题先打 `window.__PT_DIAG`（实际完成采样 / 请求 / 画面尺寸 / 分块 / fence 是否退化
+  / 上下文是否丢失）：没有这些量，「占比不对」无法区分「未收敛的萤火虫」「NaN 累进」
+  「取景不同」三种解释（E25 实例：三者里只有取景不同）。
 - **萤火虫要在降噪之前压掉**。À-Trous 的颜色权重会把孤立超亮样本当成边缘保留，
   越滤越突出。在解调 pass 里做一道 3×3 抑制：超过「八邻域最大值」和「均值×3」
   中较宽松者就压回去（邻域也亮的地方不动，真实高光不受影响）。
