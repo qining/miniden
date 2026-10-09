@@ -100,24 +100,29 @@ drawWallEdit L2699    sync3D L14122         → ACES + sRGB
 **判据纪律**（ADR-0002 + AGENTS §8.2）：实体只能来自「用户画的」或「导入读到的几何」。
 形状分类允许（对读到的轮廓做几何判据），启发式猜测不允许；任何被丢弃的输入必须进 `info.warnings`。
 
-### 3.3 持久化支路（E10）
+### 3.3 持久化支路（E10 + E26）
 
 ```
-DOC ──saveGeo()──→ STORE.set('planner_doc_v1:' + PLAN_FP)
-state.items ────→ STORE.set('planner_v1:'     + PLAN_FP)
+DOC ──saveGeo()──→ STORE.set('planner_doc_v1:' + PLAN_ID)
+state.items ────→ STORE.set('planner_v1:'     + PLAN_ID)
+谁是当前户型 ───→ STORE.set('planner_plans_v1')      ← E26 注册表（KB 级，永远镜像进 LS）
 面板宽度/折叠 ───→ STORE.set('planner_panels_v1')
 「工具 ⌄」开合 ──→ STORE.set('md_proTools')
+首次引导已关 ───→ STORE.set('md_firstRun')
                         │
                         ▼  STORE = src/storage/store.ts 的门面（app.html 里的 <script id="miniden-storage">）
           主存 IndexedDB 'miniden-planner' / store 'miniden_kv'
           镜像 localStorage（≤1.5MB 的键才镜像）· 回退 localStorage
 
-PLAN_FP = fnv(name + sc + floorpts + walls + doors.length)   ← 按户型分桶，避免存档串户型
-旧单键（planner_doc_v1 / planner_v1 / planner_userGeo_v1）：只读兼容、不迁移、不删，
-  走 STORE.lsGet / lsRemove；采用前 docMatchesPlan() 逐坐标核对
+E26：PLAN_ID = 内置户型 ? PLAN_FP : 新生成的 'p…'
+  PLAN_FP = fnv(name + sc + floorpts + walls + doors.length)   ← 内置的 id 就是旧指纹 ⇒ 零迁移
+  注册表 = src/storage/plans.ts（纯函数，不碰浏览器 API）：plans[] + active + 上限 24
+  旧单键（planner_doc_v1 / planner_v1 / planner_userGeo_v1）：只读兼容、不迁移、不删，
+    走 STORE.lsGet / lsRemove；采用前 docMatchesPlan() 逐坐标核对，且只在内置户型下查
 ```
 
-**门面的四条红线**（`tests/storage/store.test.ts` 22 条守着）：
+**门面的五条红线**（`tests/storage/store.test.ts` 22 条 + `store-warm.test.ts` 6 条 +
+`plans.test.ts` 30+ 条守着）：
 
 1. **同步读**：`warm()` 未完成前 `get()` 直接读 localStorage —— 与旧行为逐字节一致，
    所以 `#calib` md5 与 8 张 `#ui:` 黄金图完全不受影响（初始化路径是同步的，改成 async 要重排整个单文件）。
@@ -126,6 +131,10 @@ PLAN_FP = fnv(name + sc + floorpts + walls + doors.length)   ← 按户型分桶
    标记只由「一次成功的回灌」撤销（会话中途某次写成功不代表之前失败过的键已同步）。
 4. **补载入要门控**：主存里有、页面同步没看见的值会触发补载入回调；校准 / 只显底图 / `#ui:` /
    `testgeo` / 测试台一律不补——那些视图的定义就是「内置户型 + 空布局」，补载入会改变像素基线（§1.1）。
+5. **`warm()` 必须可重入**（E26）：切户型要在会话中途 warm 新键。旧实现是 `if(!warmPromise)` 一次性，
+   新键永远读不到主存。现在是 `warmChain` 串 `warmPass()`，每轮只处理 `warmed` 集里还没有的键，
+   补载入回调只报**本轮新补到的**键（不报累计集）。注册表本身必须同步可读（开机就要靠它决定当前户型），
+   所以它永远进 LS 镜像。
 
 **目录是 app 数据，摆法才是用户数据**：280 条目录（商品/尺寸/价格/模型代码）在 `app.html` 里，
 与 localStorage 无关；localStorage 里只有「哪件商品摆在哪个坐标」。
@@ -219,12 +228,12 @@ dist(generic) 三份。新工具或新家具换个户型就坏 → 立刻红。
 | `npm run build` 守卫 | ✓ | ✓ | 嵌入块与 src 一致、plan 不漂移、公开入口隐私 |
 | `size:check`（E13） | ✓ | ✓ | 包体预算棘轮 |
 | `t_walledit` 259×2 | ✓ | ✗（含真实坐标断言） | 2D 交互、门联动、导入、对话框、存储门面 |
-| `t_planbuild` 120×3（E22→E23→E24） | ✓ | ✓ | **户型构建主路径**：进入编辑模式、选中/命中/抖动点击不脏内置、拖整段(Esc 回滚)·拖端点、画墙、画柱→2D 命中+3D 立到顶、门系统（款式/开向/联动/调宽/方向键安全边界）、洁具（放置/贴墙契约/拖动/微调/删除权限）、编辑→3D 一致性、导入后编辑、持久化往返、**撤销/重做**（E23）、**数值改长 + 整图重标定**（E24：工具条不溢出、编辑提示看得见、下限拒收、内置禁用缩放、导入两步确认、可撤销）。**存在的理由**：这些断言以前只在 private 那份里，公开入口那侧零覆盖 |
+| `t_planbuild` 151×3（E22→E23→E24→E26） | ✓ | ✓ | **户型构建主路径**：进入编辑模式、选中/命中/抖动点击不脏内置、拖整段(Esc 回滚)·拖端点、画墙、画柱→2D 命中+3D 立到顶、门系统（款式/开向/联动/调宽/方向键安全边界）、洁具（放置/贴墙契约/拖动/微调/删除权限）、编辑→3D 一致性、导入后编辑、持久化往返、**撤销/重做**（E23）、**数值改长 + 整图重标定**（E24：工具条不溢出、编辑提示看得见、下限拒收、内置禁用缩放、导入两步确认、可撤销）、**多户型**（E26：起点必须是内置户型、内置不可删、空白户型真的空且不播种内置布局、地板轮廓跟着画的墙走、**切回内置户型时用户编辑还在**、两份互不干扰、重命名不动内置、删除两步确认、导入新建一份且内置存档不被摸、Ctrl+Z 连户型与注册表一起退回、引导卡在 bench 里不弹）。**存在的理由**：这些断言以前只在 private 那份里，公开入口那侧零覆盖 |
 | `t_3d` 125×3 | ✓ | ✓ | 3D 拾取/拖动、全目录建模+贴图体检、缩略图 |
 | `t_pt` 34×3 | ✓ | ✓ | 光追 BVH/着色器/降噪/萤火虫/白家具可辨识度。**取景钉住**（E25）：出图尺寸由 `ptOpts.size` 固定而不是跟窗口布局走，否则两侧比的不是同一张取景的图（CI 76x94 vs 本地 73x97 → 萤火虫门禁假红） |
 | `storage-probe`（E20） | ✓ | ✓ | **真实 IndexedDB 落盘**（headful + 真实时间 + 独立 profile，8 项）——虚拟时间里真实 I/O 时序不可信，理由同 §5.5 的 headful 渲染验证 |
 | `slo:ci`（E17） | ✓ | ✓ | 快捷 SLO 回归门禁（软件 GL 口径，抓 5× 级劣化） |
-| `e2e:ci`（E21） | ✓ headful 可看着跑 | ✓ `--headless=new` | **真实输入的用户流程**：14 flows / 60 断言，真鼠标键盘（trusted event）+ 真 `confirm()` + 真选文件 + 真下载 + 真刷新。两个入口各 60/60。与 bench 的分工：bench = 合成事件 + 虚拟时间（证明逻辑对、可重复、能断内部状态），E2E = 真实输入（证明人点得动、弹窗/文件/下载/刷新这些 bench 根本不能碰的路径对） |
+| `e2e:ci`（E21） | ✓ headful 可看着跑 | ✓ `--headless=new` | **真实输入的用户流程**：16 flows / 83 断言，真鼠标键盘（trusted event）+ 真 `confirm()` + 真选文件 + 真下载 + 真刷新。两个入口各 83/83。与 bench 的分工：bench = 合成事件 + 虚拟时间（证明逻辑对、可重复、能断内部状态），E2E = 真实输入（证明人点得动、弹窗/文件/下载/刷新这些 bench 根本不能碰的路径对）。E26 加的两条：首次引导卡（出现 → 三条路 → 关一次就不再出现，含几何/遮挡/截图三层可见性探针）与多户型（新建空白 → 切回内置→编辑还在 → 重命名 → 两步删除） |
 | `#calib` md5 | ✓ | ✗（需 private 底图） | **户型几何逐字节不变**（AGENTS §1.1） |
 | `ui:gate` 8 态 | ✓ vs mine golden | ✓ 自建 generic 基线双截 | 本地 = 视觉回归；CI = 渲染确定性 + 页面可渲 |
 
@@ -250,6 +259,8 @@ dist(generic) 三份。新工具或新家具换个户型就坏 → 立刻红。
 6. **双击即开 / 离线 / 零网络** —— 依赖只有 `lib/`，无构建步骤也能跑源形式
 7. **隐私分区** —— 新的个人数据默认进 `private/`；公开侧由构建硬断言守
 8. **包体预算是棘轮** —— 上调是显式动作，必须写进提交信息
+9. **存档键跟着当前户型走（E26）** —— 内置户型的 id 永远是 `PLAN_FP`（改它就是改所有老用户的存档键）；
+   导入不覆盖当前户型而是新建一份；内置布局只播种给内置户型；切户型不是编辑（清撤销环）
 
 ---
 
@@ -262,7 +273,8 @@ dist(generic) 三份。新工具或新家具换个户型就坏 → 立刻红。
 | **内置实体 vs 用户实体** | 内置 = 从 plan JSON 播种（可编辑、可隐藏，不可「删干净」）；用户 = 画出来或导入读到的（`src:'user'`，可删） |
 | **carrier** | 承载门洞的那段 `'d'/'o'` 墙段；门拖动时它跟着走，门垛按增量平移 |
 | **CALIB** | `#calib` 校准视图：锁死旧版面板布局、只画几何、`effDoors()` 返回 `[]` |
-| **PLAN_FP** | 户型指纹（name+sc+floorpts+walls+doors.length 的 hash），用于把存档按户型分桶 |
+| **PLAN_FP** | 户型指纹（name+sc+floorpts+walls+doors.length 的 hash）。E26 后它就是**内置户型在注册表里的 id**，所以多户型落地不需要任何存档迁移 |
+| **PLAN_ID / PLAN_REG** | 当前户型的 id 与户型注册表（`planner_plans_v1`：plans[] + active，上限 24）。存档键 = `planner_doc_v1:<PLAN_ID>` / `planner_v1:<PLAN_ID>` |
 | **plan-independent** | 换户型照样全绿的性质；入库 bench 的准入条件 |
 | **黄金截图 / golden** | `#ui:<state>` 规范态截图基线（8 态），本地 mine、CI 自建 generic |
 
@@ -278,7 +290,7 @@ dist(generic) 三份。新工具或新家具换个户型就坏 → 立刻红。
 | `src/models/`、`src/textures/` | ❌ 仍在 `app.html`（MODELS 146 个 / 贴图 26 个） |
 | `src/render2d|render3d|pt|ui|main` | ❌ 未拆（classic→ESM 语义坑，AGENTS §5.7） |
 | `src/import/`（dxf/pdf/cv，跑 worker） | ⚠️ dxf/pdf/描摹已抽出且纯函数化，**但仍在主线程跑**，cv/OpenCV 未做 |
-| `src/storage/`（IndexedDB 门面） | ✅ E10 已落地（`store.ts` + `entry.ts` + 22 单测；LS 作镜像与回退） |
+| `src/storage/`（IndexedDB 门面 + 户型注册表） | ✅ E10 已落地（`store.ts` + `entry.ts` + 28 单测；LS 作镜像与回退）；✅ E26 已落地（`plans.ts` 纯函数注册表 + 30+ 单测；内置 id = 旧指纹 ⇒ 零迁移） |
 | lib/ 走 npm → esbuild 内联 | ⚠️ 已内联进 dist，但源仍是 `lib/` vendored 文件（不是 npm 依赖） |
 | worker 线程模型 | ❌ 未做 |
 | 迁移不变量清单 | ✅ 全部在守（本文 §7） |

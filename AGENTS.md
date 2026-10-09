@@ -77,7 +77,7 @@
 | `docs/research/01–10` | 需要「依据」时（各结论的调研过程/数据） |
 | `docs/design/` | 户型输入 → 3D 的设计总文档 |
 
-**当前位置**：R1–R10 研究全部完成；S 系列全部落地（S1–S7 + S9 Warm Dark 2a–2d）。**S10（隐私 + plan 外部化，2026-09）**：个人数据全部移入 `private/`（§1.4）；户型几何外置为 `#miniden-plan` JSON（committed=generic / 本地构建注入 mine）；bench 分层（入库 plan-independent / private plan-specific）；ui-gate 截 dist。**S11（2026-10-05）**：户型文档导出/导入（「工具 ⌄」→「导出户型 / 导入户型」+ `#docModal` 一次性确认，走 `applyImportedDoc` 同一条路；`ProjectDoc.floorOutline?` 纯增量可选字段保地板轮廓逐坐标保真）。**S11b（2026-10-05）**：导出必须无限制 → `ProjectDoc.plan?`（户型专属快照：roomSummary/refPhoto/calib/windowBand/patioPatch/islLabel/isl/kitchen/inner，同样不进投影），`freshDoc()` 从 PLAN 播种、消费端走 `planOf(k)`（文档优先、回退 PLAN）；厨房硬编码块数据化（顺带清除了公开文件里的真实坐标）。**S12（2026-10-05）**：放置类实体只认两个来源——用户画 / 导入读到的几何，不写启发式猜测；`Run` 台面柜体带实体 + 工具、DXF/PDF `furn` 轮廓按形状分类落地为 run、钢框窗改成窗实体的 `steel` 标志（`steelBands()` 与历史 windowBand 重合时只画一次）。**E18（2026-10-05）**：两个入口一个事实来源（§0.3）。**S13（2026-10-06）**：布局跟着 app 走——户型 JSON 新增 `layout`（内置布局），`load()` 在「这台浏览器对这份户型从没存过档」时用它播种（§1.2）；公开入口 `layout:null`（build.mjs 硬断言），测试台一律剥掉 layout（保持确定性 + plan-independence），`#calib` 不播种（§1.1）。待办：无（`git filter-repo` 已执行，见下）。**E5（2026-10-06）**：GitHub Actions CI 上线（`.github/workflows/ci.yml`，generic 子集：tsc → vitest → build → bench ×9 → ui-gate 双截；见 §3）。**P1 收尾（2026-10-06）**：git filter-repo 历史清除 + force-push 已执行（§1.4）；E7 LICENSE/THIRD-PARTY、E8 README、E13 包体预算门禁同期落地。**E6（2026-10-07）**：ESLint 10 + Prettier 3.9 落地（格式化单独提交；TS 侧因 typescript-eslint 不支持 TS7 暂由 tsc strict + Prettier 覆盖，见 §2）。**E19（2026-10-07~08）**：多轮 bug 猎（十五轮：schema / 导入管线 / 3D 消费端 / 校验层 / 交互层 / $INSUNITS 码表 / 导入启发式的单位口径 / 存储后端成败判据 / DXF 圆弧 / 目录数据不变量 / 目录字段的消费端），19 个真 bug + 1 处防御性统一，方法论见 §5.1.1。**E20（2026-10-07）**：可测性/覆盖率治理——覆盖率棘轮进 CI（`vitest.config.mjs` thresholds，只许涨不许跌）+ `scripts/storage-probe.mjs`（真实 IDB 落盘门禁，headful 真实时间，理由同 §5.5）。**E9（2026-10-07）**：`docs/design/architecture.md`（人读版架构：数据流 / 模块边界 / 构建守卫 / 门禁矩阵 / 不变量红线）。**E14+E17（2026-10-07）**：快捷 SLO 套件（`scripts/slo.mjs`，七项实测数字）+ 它的 CI 门禁。**E10（2026-10-07）**：持久化从 localStorage 换成 IndexedDB 主存（存储门面，见 §1.2）。**E21（2026-10-08）**：真实输入 E2E（`scripts/e2e.mjs` + `scripts/e2e-flows.mjs`，14 条流程 / 60 断言，两个入口 + CI 口径各 60/60）——第四种证据：真实鼠标/键盘/confirm/文件选择/下载/刷新，见 §3；它抓到并修了 3 个真实交互缺口（§5.1）。**E22（2026-10-08）**：`bench/t_planbuild.js`（plan-independent 户型构建 bench，120 断言×3 入口）——把「画墙 / 开门 / 放洁具 / 导入后编辑」这条 2D 主路径的断言从 private 那份里挑到入库侧，CI（generic）从此覆盖它（§3）。**E23（2026-10-09）**：撤销/重做（快照环 50 步 + 手势级合并，「撤销」按钮 + Ctrl/⌘+Z・Y，30+ 处变更点接入）。**E24（2026-10-09）**：导入后重标定 + 数值改长度——工具条重构（互斥控件组叠在同一格、编辑提示搬到画布左下角固定槽，原先提示文字被挤成 9px 宽 = 错误零反馈），「长 __ cm」一个输入框同时驱动「改这段」与「整图按此缩放」（后者两步确认、仅导入户型、可撤销）。**E25（2026-10-09）**：光追门禁的取景钉住——出图视野 `uAspect = rw/rh` 以前跟着窗口布局走，CI（76x94）与本地（73x97）比的不是同一张取景的图 → 萤火虫门禁在 CI 假红；现在 `ptOpts.size` 钉住出图尺寸（界面不传、行为不变），见 §3 与 §5.5。加目录条目照 §8.1 / skill 走。
+**当前位置**：R1–R10 研究全部完成；S 系列全部落地（S1–S7 + S9 Warm Dark 2a–2d）。**S10（隐私 + plan 外部化，2026-09）**：个人数据全部移入 `private/`（§1.4）；户型几何外置为 `#miniden-plan` JSON（committed=generic / 本地构建注入 mine）；bench 分层（入库 plan-independent / private plan-specific）；ui-gate 截 dist。**S11（2026-10-05）**：户型文档导出/导入（「工具 ⌄」→「导出户型 / 导入户型」+ `#docModal` 一次性确认，走 `applyImportedDoc` 同一条路；`ProjectDoc.floorOutline?` 纯增量可选字段保地板轮廓逐坐标保真）。**S11b（2026-10-05）**：导出必须无限制 → `ProjectDoc.plan?`（户型专属快照：roomSummary/refPhoto/calib/windowBand/patioPatch/islLabel/isl/kitchen/inner，同样不进投影），`freshDoc()` 从 PLAN 播种、消费端走 `planOf(k)`（文档优先、回退 PLAN）；厨房硬编码块数据化（顺带清除了公开文件里的真实坐标）。**S12（2026-10-05）**：放置类实体只认两个来源——用户画 / 导入读到的几何，不写启发式猜测；`Run` 台面柜体带实体 + 工具、DXF/PDF `furn` 轮廓按形状分类落地为 run、钢框窗改成窗实体的 `steel` 标志（`steelBands()` 与历史 windowBand 重合时只画一次）。**E18（2026-10-05）**：两个入口一个事实来源（§0.3）。**S13（2026-10-06）**：布局跟着 app 走——户型 JSON 新增 `layout`（内置布局），`load()` 在「这台浏览器对这份户型从没存过档」时用它播种（§1.2）；公开入口 `layout:null`（build.mjs 硬断言），测试台一律剥掉 layout（保持确定性 + plan-independence），`#calib` 不播种（§1.1）。待办：无（`git filter-repo` 已执行，见下）。**E5（2026-10-06）**：GitHub Actions CI 上线（`.github/workflows/ci.yml`，generic 子集：tsc → vitest → build → bench ×9 → ui-gate 双截；见 §3）。**P1 收尾（2026-10-06）**：git filter-repo 历史清除 + force-push 已执行（§1.4）；E7 LICENSE/THIRD-PARTY、E8 README、E13 包体预算门禁同期落地。**E6（2026-10-07）**：ESLint 10 + Prettier 3.9 落地（格式化单独提交；TS 侧因 typescript-eslint 不支持 TS7 暂由 tsc strict + Prettier 覆盖，见 §2）。**E19（2026-10-07~08）**：多轮 bug 猎（十五轮：schema / 导入管线 / 3D 消费端 / 校验层 / 交互层 / $INSUNITS 码表 / 导入启发式的单位口径 / 存储后端成败判据 / DXF 圆弧 / 目录数据不变量 / 目录字段的消费端），19 个真 bug + 1 处防御性统一，方法论见 §5.1.1。**E20（2026-10-07）**：可测性/覆盖率治理——覆盖率棘轮进 CI（`vitest.config.mjs` thresholds，只许涨不许跌）+ `scripts/storage-probe.mjs`（真实 IDB 落盘门禁，headful 真实时间，理由同 §5.5）。**E9（2026-10-07）**：`docs/design/architecture.md`（人读版架构：数据流 / 模块边界 / 构建守卫 / 门禁矩阵 / 不变量红线）。**E14+E17（2026-10-07）**：快捷 SLO 套件（`scripts/slo.mjs`，七项实测数字）+ 它的 CI 门禁。**E10（2026-10-07）**：持久化从 localStorage 换成 IndexedDB 主存（存储门面，见 §1.2）。**E21（2026-10-08）**：真实输入 E2E（`scripts/e2e.mjs` + `scripts/e2e-flows.mjs`，14 条流程 / 60 断言，两个入口 + CI 口径各 60/60）——第四种证据：真实鼠标/键盘/confirm/文件选择/下载/刷新，见 §3；它抓到并修了 3 个真实交互缺口（§5.1）。**E22（2026-10-08）**：`bench/t_planbuild.js`（plan-independent 户型构建 bench，120 断言×3 入口）——把「画墙 / 开门 / 放洁具 / 导入后编辑」这条 2D 主路径的断言从 private 那份里挑到入库侧，CI（generic）从此覆盖它（§3）。**E23（2026-10-09）**：撤销/重做（快照环 50 步 + 手势级合并，「撤销」按钮 + Ctrl/⌘+Z・Y，30+ 处变更点接入）。**E24（2026-10-09）**：导入后重标定 + 数值改长度——工具条重构（互斥控件组叠在同一格、编辑提示搬到画布左下角固定槽，原先提示文字被挤成 9px 宽 = 错误零反馈），「长 __ cm」一个输入框同时驱动「改这段」与「整图按此缩放」（后者两步确认、仅导入户型、可撤销）。**E25（2026-10-09）**：光追门禁的取景钉住——出图视野 `uAspect = rw/rh` 以前跟着窗口布局走，CI（76x94）与本地（73x97）比的不是同一张取景的图 → 萤火虫门禁在 CI 假红；现在 `ptOpts.size` 钉住出图尺寸（界面不传、行为不变），见 §3 与 §5.5。**E26（2026-10-09）**：多户型 + 首次引导——一份浏览器里可以存好几份户型（注册表 `planner_plans_v1`，内置户型的 id 就是旧指纹 `PLAN_FP`，所以**零迁移**；导入不再覆盖当前户型而是新建一份并切过去），「工具 ⌄ → 户型」里切换 / 重命名 / 新建空白 / 两步删除；首次打开弹一张三条路的引导卡（只一次，校准/bench/#ui: 一律不弹）。见 §1.2。加目录条目照 §8.1 / skill 走。
 
 ---
 
@@ -130,7 +130,26 @@ localStorage 是镜像与回退。**同步读 / 异步写**：`warm()` 未完成
 改持久化代码前先读 `docs/design/architecture.md` §3.3 的四条红线（迁移只复制 / 降级标记只由成功回灌撤销 /
 补载入要门控 / LS 镜像必须同步写）。
 
-**家具目录是 app 数据，摆法才是用户数据（S13）**：275 条目录（商品/尺寸/价格/模型代码）在 `app.html` 里，永远跟着文件走，与 localStorage 无关；localStorage 里只有「哪件商品摆在哪个坐标」。而 localStorage 不是可靠的长期存放（清浏览器数据 / 换浏览器 / 无痕窗口 / 代码换代都会看不见），所以户型 JSON 带 `layout`（这份户型的内置布局，随文件走）。`load()` 优先级：本户型指纹存档 → 旧单桶存档（只读兼容）→ `PLAN.layout` 播种；**播种只在指纹键完全不存在时发生**（存过档哪怕存的是空数组也不播种，否则删空家具一刷新就被复活）。个人入口 `planner.html`/`dist/planner.html` 带 layout，公开入口 `app.html`/`dist/app.html` 必须 `layout:null`（build.mjs 硬断言）；测试台页面一律被 build 剥掉 layout。
+**一份浏览器里可以存好几份户型（E26）**：上面那些键不再是全局单键，而是**当前户型的键**：
+`planner_doc_v1:<户型id>` / `planner_v1:<户型id>`，谁是当前户型记在注册表 `planner_plans_v1` 里。
+
+| 要点 | 事实 |
+|---|---|
+| 内置户型的 id | 就是旧的指纹 `PLAN_FP`（name+sc+floorpts+walls+门数）——**所以老用户的存档零迁移**，键名一个字节都没变 |
+| 自包含户型（空白 / 导入）的 id | 新生成：`'p' + Date.now().toString(36) + 随机` |
+| 注册表 | KB 级 JSON，**永远镜像进 LS**（开机时 `warm()` 还没完就得以它决定当前户型），上限 24 份（满员挤掉最旧的非内置非当前） |
+| 导入的语义 | **新建一份户型并切过去**，不再把导入的几何写进当前户型的键（以前就是这里把用户对内置户型的编辑抹掉的） |
+| 内置布局播种 | 只在 `PLAN_ID === BUILTIN_PLAN_ID` 且该户型从未存过档时发生（空白/导入户型不会被塞进 32 件公寓家具） |
+| 切户型 | 不刷新页面：换 `PLAN_ID/DOC_KEY/ITEMS_KEY` → `STORE.warm(新键)` → 重读 DOC+家具 → **清空撤销环**（切户型不是一次编辑，跨户型撤销会写错键） |
+| 撤销快照 | 带 `p:PLAN_ID, r:PLAN_REG`：导入后 Ctrl+Z 把「哪份户型 + 注册表」一起退回去，不会把上一份的文档写进新键 |
+| 删除 | 两步确认（第一下只亮确认态，无 `confirm()`）；内置不可删、最后一份不可删；删的是当前户型时 active 自动回到内置 |
+| 首次引导卡 | 只在「什么都没存过 + 注册表只有内置 + `md_firstRun` 未写」时弹；`CALIB / IMGONLY / #ui: / bench / testgeo / plan=` 一律不弹（像素基线与点击不能被动，§1.1） |
+
+注册表本身是纯函数模块 `src/storage/plans.ts`（不碰浏览器 API，vitest 直接测），
+经 `MINIDEN_PLANS` 挂到 globalThis。`STORE.warm()` 因此改成**可重入的链**（`warmChain` + `warmed` 集），
+否则切户型时新键永远读不到 IDB（旧实现是 `if(!warmPromise)` 一次性）。
+
+**家具目录是 app 数据，摆法才是用户数据（S13）**：275 条目录（商品/尺寸/价格/模型代码）在 `app.html` 里，永远跟着文件走，与 localStorage 无关；localStorage 里只有「哪件商品摆在哪个坐标」。而 localStorage 不是可靠的长期存放（清浏览器数据 / 换浏览器 / 无痕窗口 / 代码换代都会看不见），所以户型 JSON 带 `layout`（这份户型的内置布局，随文件走）。`load()` 优先级：本户型存档 → 旧单桶存档（只读兼容，且只在内置户型下查）→ `PLAN.layout` 播种；**播种只在指纹键完全不存在时发生**（存过档哪怕存的是空数组也不播种，否则删空家具一刷新就被复活）。个人入口 `planner.html`/`dist/planner.html` 带 layout，公开入口 `app.html`/`dist/app.html` 必须 `layout:null`（build.mjs 硬断言）；测试台页面一律被 build 剥掉 layout。
 
 ### 1.3 用户明确说过的偏好
 
@@ -206,7 +225,7 @@ open('/tmp/planner_check.js','w').write(m.group(1))
 #     + 重新生成 12 个 bench HTML（4 脚本 × source/dist/公开入口，work/ 下 gitignore）
 #     改完 app.html / bench/*.js 之后必跑（dist 与根 planner.html 都是构建产物，不同步就是过期副本）
 
-# 3) 交互测试台（t_walledit 259 / t_3d 125 / t_planbuild 120 / t_pt 34 条断言，见 §3；dist 变体同断言，见 §5.7；
+# 3) 交互测试台（t_walledit 259 / t_3d 125 / t_planbuild 151 / t_pt 34 条断言，见 §3；dist 变体同断言，见 §5.7；
 #    推荐直接 node scripts/run-bench.mjs）
 # 4) 校准回归（§1.1）
 # 5) 视觉验证（截图 + 放大目检，见 §4）
@@ -226,7 +245,7 @@ open('/tmp/planner_check.js','w').write(m.group(1))
 | 脚本（源） | 位置 | 覆盖 | 断言 | 输出 `<pre id>` | 窗口 / virtual-time |
 |---|---|---|---|---|---|
 | `t_walledit.js` | **`private/bench/`（gitignore）**——含真实户型几何坐标断言 | 2D：墙/柱/门/洁具编辑、门垛联动、S5/S6 导入、双币种、视图/单位/面板、S7 描图、对话框、E10 存储 | 259 | `wetest` | 1700x1100 / 100000（dist 120000） |
-| `t_planbuild.js` | `bench/`（入库，plan-independent） | **E22 户型构建**：进入编辑模式、选中/命中/抖动点击不脏内置、拖整段(Esc 回滚)/拖端点、画墙(右键不加点/Backspace/Enter/太短拒收)、画柱→2D 命中+3D 立到顶、门系统(款式/开向/滑动联动/调宽/方向键安全边界)、洁具(放置/贴墙契约/拖动/微调/删除权限)、编辑→3D 一致性、**导入后编辑**、持久化往返；**E24 数值改长 + 整图重标定**：工具条不溢出、编辑提示看得见、预填当前长度、改这段（起点不动）/下限拒收/挂在段上的门窗不许甲出去、内置户型禁用整图缩放、导入户型两步确认缩放（构件数不变、门跟着走、可撤销） | 120 | `pbtest` | 1700x1100 / 200000（dist 220000） |
+| `t_planbuild.js` | `bench/`（入库，plan-independent） | **E22 户型构建**：进入编辑模式、选中/命中/抖动点击不脏内置、拖整段(Esc 回滚)/拖端点、画墙(右键不加点/Backspace/Enter/太短拒收)、画柱→2D 命中+3D 立到顶、门系统(款式/开向/滑动联动/调宽/方向键安全边界)、洁具(放置/贴墙契约/拖动/微调/删除权限)、编辑→3D 一致性、**导入后编辑**、持久化往返；**E24 数值改长 + 整图重标定**：工具条不溢出、编辑提示看得见、预填当前长度、改这段（起点不动）/下限拒收/挂在段上的门窗不许甲出去、内置户型禁用整图缩放、导入户型两步确认缩放（构件数不变、门跟着走、可撤销）；**E26 多户型**：从内置户型开始、列表可见、内置不可删、新建空白户型（真的空 / 不拿内置户型的地板轮廓 / 不播种内置家具 / 键与内置分开）、空白户型里能画墙且地板轮廓跟着走、切回内置户型**用户编辑还在**、两份互不干扰、重命名不动内置、删除两步确认、导入新建一份且内置存档不被摸、Ctrl+Z 把户型与列表一起退回去、引导卡在 bench 里不弹、户型行不溢出 | 151 | `pbtest` | 1700x1100 / 200000（dist 220000） |
 | `t_3d.js` | `bench/`（入库，plan-independent） | 3D：拾取/拖动/旋转、开关灯、**全目录建模+贴图体检**、缩略图、S5/S6 导入、双击进室内、座椅体检 | 125 | `t3d` | 1400x950 / 170000 |
 | `t_pt.js` | `bench/`（入库，plan-independent） | 光追：GL 能力探针、BVH、着色器、进度、降噪、**取景钉住**、萤火虫/NaN 判别、分块自适应、**白家具可辨识度**（满家具客厅） | 34 | `tpt` | 1200x850 / 600000 |
 
@@ -342,7 +361,7 @@ node scripts/e2e.mjs --keep-state               # 保留上一个 flow 的状态
 入口文件不存在时跳过并打印（CI 里没有 `private/` → 没有 `dist/planner.html`）。
 
 报告：`work/e2e/report.html`（每步截图 + 断言 + 弹窗记录）+ `work/e2e/log.json`（gitignore）。
-14 条流程 / 60 断言；**默认两个入口各 60/60（120/120），四个入口全跑 240/240，CI 口径 120/120**。
+16 条流程 / 83 断言；**默认两个入口各 83/83（166/166），四个入口全跑 332/332，CI 口径 166/166**。
 
 它比 bench 多出来的真实东西：`Input.dispatchMouseEvent/dispatchKeyEvent/insertText`
 （trusted event）、`Page.javascriptDialogOpening` + `handleJavaScriptDialog`
@@ -500,6 +519,13 @@ sips -z 高 宽 /tmp/x.png --out /tmp/x_big.png               # 放大
 | **Raycaster 从封闭体内部往外打，只会打到背面 → 被 `material.side` 剔** | 验证「柱在 3D 里立到顶」：从柱内 (0,1,0) 向上打 → 先撞天花板底面（FrontSide 法线朝下 = 背面）→ 被剔后继续 → 又撞柱底面背面 → 报「无命中」，看着像柱没建 | 验竖直构件从**天花板上方**往下打（`CEIL_H + 1.5`, dir `(0,-1,0)`）：天花板底面是背面被剔 → 射线穿过 → 第一个命中就是柱/门洞过梁顶面（法线 +y） |
 | **基线顶点数在变异之后才取**（3D 重建是异步的） | `setView('3d')` 里 `buildStatic3D()` 已把新柱烘进去，再取 `vBefore` 就与 `vAfter` 相等 → 「顶点增量」断言永远红 | 基线必须在**变异之前**采（或先切 3D 采基线 → 切回 2D 变异 → 再切 3D 采对比）；存在性用射线命中作主断言，顶点数只作旁证（§5.1 bbox 覆盖不可靠） |
 | **把「合法夹取」当成 bug 断言**（内置门的 1cm 方向键微调常被 `STUB_MIN` 夹住） | 新门垛长 1cm < STUB_MIN=5.5cm → `range()` 把位移夹到 0，这是**设计行为**（不让用户用键盘压出比阈值更薄的门垛）。断言「一定能动 1cm」在两份户型上都红 | 先量「能不能动」（INFO 如实报），再断不变量：位移不得超过一步、门不得短于 `DOOR_MIN`、门垛不得为负。**要验逐厘米精度，就造一个无约束的对象**（用户开口 + 用户门），而不是在受约束的内置件上硬断 |
+| **存储 API 自己矛盾：守卫拒删「当前」，调用方删的正是「当前」**（`removePlan` 写了 `if(reg.active===id) return null`，`deleteCurrentPlan` 传的正是 `PLAN_ID`） | 删除功能永远删不掉，而且不报错（`null` 被当成「用户取消」），界面只弹一句误导的提示 | 写守卫前先问「谁会、以什么状态调它」；「当前 X」这类语义要拆开：内置不可删 / 最后一份不可删 / 删当前时 active 自动转移到内置 —— 三条是不同的规则，不能合成一条「不能删自己」 |
+| **多户型下还用 `resetDoc()+saveGeo()` 当「回到内置」** | 它把内置几何写进**当前（导入的）户型的键**，把刚导入 / 刚重标定的那份抹掉；而且 `PLAN_ID` 还停在导入户型上，后面每一节断言都跑在那份户型上（症状：注册表莫名多出户型、断言的基线墙数对不上） | 回到内置走 `switchPlan(BUILTIN_PLAN_ID)`（真实 UI 路径）；bench 里凡是「换了户型」的节，结尾都要显式切回去 |
+| **bench 用临时 `run()` 助手而不是 `scripts/run-bench.mjs`** | 临时助手不带 `--user-data-dir` → 用默认 profile → 上一轮的 localStorage / IndexedDB 带进来。E26 实例：注册表里攒着上一轮建的空白户型，bench 从一份「上一轮留下的户型」开始跑，断言只是在测上一轮的垃圾（症状：`plans=3`、`active=p…`），看起来像新功能坏了 | 跑 bench 一律 `node scripts/run-bench.mjs`（每个 bench 一个临时 profile，跑前删跑后删）；多状态功能要在 bench 开头加一条「起点态」断言（`pb-plan-starts-builtin`），起点不对就先红给你看 |
+| **量一个 `display:none` 容器的 `scrollWidth/clientWidth`** | 两者都是 0 → `0 <= 0+1` 永远绿，断言绿得毫无意义（工具条溢出门禁等于没有） | 断言溢出前先把它展开（`setProTools(true)` / 真实点开），再量 |
+| **E2E 流程（Node 侧）直接写页面里的名字**（`pickPlan(BUILTIN_PLAN_ID)`） | `BUILTIN_PLAN_ID` 是页面里的名字，Node 侧 ReferenceError → 整条流程异常中止（症状：前面半条流程全绿，突然 FAIL flow） | 页面常量先 `await t.eval('BUILTIN_PLAN_ID')` 取回本地变量再用；写进 `t.eval`/`t.waitFor` 的字符串里才可以直接引用 |
+| **E2E 无条件点「工具 ⌄」** | `#btnMore` 是个开关：上一轮流程留着展开时，这一点的动作是「关掉它」，后面点 `#planSel` 就点不到（跨流程粘滞，单跑一条时又总是好的） | 展开第二层写成 `ensurePro()`：先读 `getComputedStyle(...).display`，只在关着的时候点 |
+| **编辑模式下读 `#hint`** | E24 起 `body.wedit #hint{display:none}`（画布左下角那个固定槽让位给编辑提示 `#wMsg`）→ 断言读到空串，看着像「提示没出来」 | 读提示前先确认当前模式该读哪个元素：自由态 `#hint`、编辑态 `#wMsg`；bench 里那条断言已经同时读两个（`display` 一个 none 一个有尺寸） |
 ### 5.1.1 bug 猎方法论（2026-10 十五轮，19 个 bug 全走这条路）
 
 **先写失败测试，再改代码**。每个 bug 都是「按代码读出来的怀疑」→ 写一条应当红的
