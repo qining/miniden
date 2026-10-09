@@ -1125,6 +1125,240 @@ async function runPBTest() {
       );
     }
 
+    /* ===== 10. E23 撤销 / 重做（快照环） ===== */
+    {
+      const ckey = (sh) =>
+        window.dispatchEvent(
+          new KeyboardEvent('keydown', {
+            key: 'z',
+            ctrlKey: true,
+            shiftKey: !!sh,
+            bubbles: true,
+            cancelable: true,
+          })
+        );
+      const clearRing = () => {
+        undoRing.length = 0;
+        redoRing.length = 0;
+        lastGesture = null;
+        updateUndoUI();
+      };
+      await pbReset();
+      clearRing();
+      T(
+        'pb-undo-empty-disabled',
+        Q('#btnUndo').disabled === true && Q('#btnRedo').disabled === true,
+        'undo.disabled=' + Q('#btnUndo').disabled + ' redo.disabled=' + Q('#btnRedo').disabled
+      );
+
+      // 画墙 → 撤销 → 重做
+      await setTool('wall');
+      const nW0 = DOC.walls.length;
+      await tap(pbFree[0], pbFree[1]);
+      await tap(pbFree[0] + 3, pbFree[1]);
+      await tap(pbFree[0] + 3, pbFree[1]);
+      T('pb-undo-wall-added', DOC.walls.length === nW0 + 1, 'walls ' + nW0 + ' → ' + DOC.walls.length);
+      T('pb-undo-btn-enabled', Q('#btnUndo').disabled === false, 'disabled=' + Q('#btnUndo').disabled);
+      ckey(false);
+      await tick();
+      T('pb-undo-wall-removed', DOC.walls.length === nW0, 'walls=' + DOC.walls.length);
+      T('pb-undo-redo-enabled', Q('#btnRedo').disabled === false, 'disabled=' + Q('#btnRedo').disabled);
+      ckey(true);
+      await tick();
+      T('pb-redo-wall-back', DOC.walls.length === nW0 + 1, 'walls=' + DOC.walls.length);
+      ckey(false);
+      await tick();
+      T(
+        'pb-undo-storage-matches-doc',
+        STORE.get(DOC_KEY) === JSON.stringify(DOC),
+        '主存 len=' + (STORE.get(DOC_KEY) || '').length
+      );
+
+      // 放洁具 → 撤销
+      await setTool('fx');
+      Q('#fxType').value = 'toilet';
+      const nFx0 = DOC.fixtures.length;
+      await tap(pbFree[0], pbFree[1]);
+      T('pb-undo-fx-added', DOC.fixtures.length === nFx0 + 1, 'fx ' + nFx0 + ' → ' + DOC.fixtures.length);
+      ckey(false);
+      await tick();
+      T('pb-undo-fx-removed', DOC.fixtures.length === nFx0, 'fx=' + DOC.fixtures.length);
+
+      // 删用户墙 → 撤销（实体要能回来，id 不变）
+      await setTool('select');
+      const uw = pushUserWall(pbFree[0] - 1.5, pbFree[1] + 1.5, pbFree[0] + 1.5, pbFree[1] + 1.5, 'w', 8);
+      geoChanged();
+      await tick();
+      const nW1 = DOC.walls.length;
+      wallEdit.sel = { kind: 'w', id: uw.id };
+      updateWallBarFromSel();
+      key('Delete');
+      await tick();
+      T('pb-undo-del-wall', DOC.walls.length === nW1 - 1, 'walls ' + nW1 + ' → ' + DOC.walls.length);
+      ckey(false);
+      await tick();
+      T(
+        'pb-undo-restore-deleted-wall',
+        DOC.walls.length === nW1 && !!entById(uw.id),
+        'walls=' + DOC.walls.length + ' ent=' + !!entById(uw.id)
+      );
+
+      // 拖端点 → 撤销（位置逐位回到拖之前）
+      {
+        fit2DToContent(); // 前面几段可能把视图放大/平移过：手柄可能在视口外 → elementFromPoint 打空
+        await tick();
+        const e0 = { ...entById(uw.id).geom };
+        wallEdit.sel = { kind: 'w', id: uw.id };
+        updateWallBarFromSel();
+        drawWallEdit(); // 手柄是 drawWallEdit 画的：只设 sel 不会有 .wEnd
+        await tick();
+        const ends = document.querySelectorAll('.wEnd');
+        if (ends.length) {
+          const r4 = ends[0].getBoundingClientRect();
+          await dragBy(r4.x + r4.width / 2, r4.y + r4.height / 2, 30, 0);
+          const e1 = { ...entById(uw.id).geom };
+          const moved = Math.hypot(e1.x1 - e0.x1, e1.y1 - e0.y1);
+          T('pb-undo-drag-moved', moved > 0.2, 'moved=' + moved.toFixed(2) + 'ft');
+          ckey(false);
+          await tick();
+          const e2 = { ...entById(uw.id).geom };
+          T(
+            'pb-undo-drag-restored',
+            Math.hypot(e2.x1 - e0.x1, e2.y1 - e0.y1) < 0.02 && Math.hypot(e2.x2 - e0.x2, e2.y2 - e0.y2) < 0.02,
+            '回位偏差 ' + Math.hypot(e2.x1 - e0.x1, e2.y1 - e0.y1).toFixed(4) + 'ft'
+          );
+        } else T('pb-undo-drag-moved', false, '选中后没有 .wEnd 手柄');
+      }
+
+      // 连续方向键微调 = 一步撤销（节流契约：手势键相同不重复压环）
+      {
+        const e0 = { ...entById(uw.id).geom };
+        wallEdit.sel = { kind: 'w', id: uw.id };
+        updateWallBarFromSel();
+        await tick();
+        const ringBefore = undoRing.length;
+        key('ArrowRight');
+        await tick();
+        key('ArrowRight');
+        await tick();
+        key('ArrowRight');
+        await tick();
+        const e1 = { ...entById(uw.id).geom };
+        const moved = Math.hypot(e1.x1 - e0.x1, e1.y1 - e0.y1);
+        T('pb-undo-nudge-moved', moved > 0.05 && moved < 0.15, '3×1cm 位移=' + moved.toFixed(3) + 'ft');
+        T(
+          'pb-undo-nudge-coalesces',
+          undoRing.length === ringBefore + 1,
+          '3 次微调只压 1 步：ring ' + ringBefore + ' → ' + undoRing.length
+        );
+        ckey(false);
+        await tick();
+        const e2 = { ...entById(uw.id).geom };
+        T(
+          'pb-undo-nudge-one-step',
+          Math.hypot(e2.x1 - e0.x1, e2.y1 - e0.y1) < 0.01 && undoRing.length === ringBefore,
+          '一步回到微调前；ring ' + undoRing.length
+        );
+      }
+
+      // 家具也进环
+      {
+        const nIt = state.items.length;
+        addItem(CATALOG[0].id);
+        await tick();
+        T('pb-undo-item-added', state.items.length === nIt + 1, 'items ' + nIt + ' → ' + state.items.length);
+        ckey(false);
+        await tick();
+        T('pb-undo-item-removed', state.items.length === nIt, 'items=' + state.items.length);
+      }
+
+      // 导入整份替换也能退回去（用户最怕的一步）
+      {
+        const itemsBefore = state.items.length;
+        const nBefore = DOC.walls.length;
+        const wasImported = DOC.imported;
+        const txt = await (await fetch('../tests/fixtures/apartment-mm.dxf')).text();
+        const imp = window.MINIDEN_GEO.importDxf(new window.DxfParser().parseSync(txt), { name: 'pb-undo' });
+        applyImportedDoc(imp.doc, imp.info);
+        await tick();
+        T(
+          'pb-undo-import-applied',
+          DOC.imported === true && DOC.walls.length !== nBefore,
+          'imported=' + DOC.imported + ' walls=' + DOC.walls.length
+        );
+        ckey(false);
+        await tick();
+        T(
+          'pb-undo-import-reverted',
+          DOC.imported === wasImported && DOC.walls.length === nBefore && state.items.length === itemsBefore,
+          'imported=' +
+            DOC.imported +
+            ' walls=' +
+            DOC.walls.length +
+            '/' +
+            nBefore +
+            ' items=' +
+            state.items.length +
+            '/' +
+            itemsBefore
+        );
+      }
+
+      // 改门宽（联动门垓 = 最难写逆操作的一步）→ 撤销：门与周围墙都要逐位回去
+      {
+        const dsel = pbDoor0;
+        if (dsel) {
+          fit2DToContent();
+          await tick();
+          wallEdit.sel = { kind: 'door', id: dsel._id };
+          wallEdit.dEndSel = null;
+          updateWallBarFromSel();
+          drawWallEdit();
+          await tick();
+          const snapDoors = () => effDoors().map((d) => [d._id, d.x1, d.y1, d.x2, d.y2]);
+          const snapWalls = () => effWalls().map((s) => [s._id, s.x1, s.y1, s.x2, s.y2]);
+          const dBefore = snapDoors(),
+            wBefore = snapWalls();
+          Q('#dWidth').value = doorLenToUI(pbDoorLen + 0.5);
+          Q('#dWidth').dispatchEvent(new Event('change'));
+          await tick();
+          const dNow = effDoors().find((d) => d._id === dsel._id);
+          const Lnow = dNow ? Math.hypot(dNow.x2 - dNow.x1, dNow.y2 - dNow.y1) : 0;
+          T(
+            'pb-undo-door-width-changed',
+            Math.abs(Lnow - pbDoorLen) > 0.1,
+            '门宽 ' + pbDoorLen.toFixed(2) + ' → ' + Lnow.toFixed(2) + 'ft'
+          );
+          ckey(false);
+          await tick();
+          const dAfter = snapDoors(),
+            wAfter = snapWalls();
+          const same =
+            JSON.stringify(dAfter) === JSON.stringify(dBefore) && JSON.stringify(wAfter) === JSON.stringify(wBefore);
+          T(
+            'pb-undo-door-width-restored',
+            same,
+            '门 ' + dAfter.length + ' 扇 + 墙 ' + wAfter.length + ' 段逐位回到改前'
+          );
+        } else T('pb-undo-door-width-changed', false, '没有可选门');
+      }
+
+      // 容量上限（不会无限长）
+      {
+        clearRing();
+        for (let i = 0; i < 60; i++) {
+          pushUndo(); // 模拟 60 次独立用户操作（pushUserWall 本身不进环，环在操作入口压）
+          pushUserWall(pbFree[0], pbFree[1] + 2 + i * 0.02, pbFree[0] + 0.5, pbFree[1] + 2 + i * 0.02, 'w', 8);
+          geoChanged();
+        }
+        T('pb-undo-cap', undoRing.length === UNDO_CAP, 'ring=' + undoRing.length + ' cap=' + UNDO_CAP);
+      }
+
+      await pbReset();
+      clearRing();
+      T('pb-undo-clean-exit', DOC.walls.filter((e) => e.src === 'user').length === 0 && undoRing.length === 0);
+    }
+
     /* ===== 收尾：页面不得有未捕获异常 ===== */
     T('pb-no-page-errors', window.__ERRS.length === 0, window.__ERRS.slice(0, 3).join(' || '));
   } catch (e) {

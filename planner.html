@@ -51,6 +51,8 @@
     background:none; border:none; color:var(--muted); padding:6px 14px; cursor:pointer; font-size:13px;
   }
   .seg button.on{background:var(--accent); color:var(--on-fg);}
+  /* E23：撤销/重做不可用时「看得见但灰着」（不是隐藏）——隐藏会让用户以为功能不存在 */
+  #undoSeg button:disabled{opacity:.38; cursor:default;}
   select,input[type=text],input[type=number],input[type=url]{
     background:var(--panel2); color:var(--text); border:1px solid var(--line);
     border-radius:6px; padding:6px 8px; font-size:13px; outline:none;
@@ -285,6 +287,10 @@
     <button id="envSea">海景</button>
   </div>
   <button class="btn" id="btnWallEdit">编辑墙体</button>
+  <div class="seg" id="undoSeg">
+    <button id="btnUndo" title="撤销（⌘/Ctrl+Z）：描错的墙、误删的构件、误操作的导入都能退回去">撤销</button>
+    <button id="btnRedo" title="重做（⌘/Ctrl+Shift+Z 或 ⌘/Ctrl+Y）">重做</button>
+  </div>
   <div class="seg" id="measSeg"><button id="btnMeas">量尺寸</button><button id="btnMeasClr">清除</button></div>
   <div class="seg" id="unitSeg">
     <button data-u="cm" class="on">cm</button>
@@ -3141,6 +3147,74 @@ function saveGeoImpl(){
 }
 let saveGeo = saveGeoImpl;   // let：testgeo 测试种子会把它重赋值为 no-op（ESM 兼容）
 function geoChanged(){ geoDirty3D=true; saveGeo(); build2D(); if(typeof requestShadowUpdate==='function') requestShadowUpdate(); }
+/* ---------- E23 undo/redo（R5 §3 设计：快照环，不做命令模式） ----------
+   为什么快照环：Project 文档就是一个 KB 级 JSON。命令模式要为每种编辑写逆操作
+   （门垛联动的逆操作尤其难写对），快照环只需要「改动前存一份」。容量 50 步。
+   节流：连续拖动 / 连续方向键微调只算**一步**——pushUndo(gestureKey) 对同一个手势键
+   只压一次。不用计时器合并：--virtual-time-budget 会冻结 performance.now()，
+   基于时间的合并在 bench 里不可靠（同 §5.5：兜底判据要用次数而不是时间）。
+   覆盖：户型文档（墙/窗/门/柱/洁具/台面/底图）+ 已摆家具 + 导入替换。 */
+const UNDO_CAP = 50;
+let undoRing = [], redoRing = [], lastGesture = null;
+function snapState(){
+  try{ return JSON.stringify({d:DOC, i:state.items, c:state.customCat, u:uidSeq, su:showUnderlay, st:showTrace}); }catch(e){ return null; }
+}
+function pushUndo(gestureKey){
+  if(CALIB || IMGONLY) return;                        // 校准/底图视图不编辑，也不进环
+  const s = snapState(); if(!s) return;
+  if(gestureKey && lastGesture === gestureKey) return;    // 同一手势（拖动中、连续微调）不重复压
+  lastGesture = gestureKey || null;
+  if(undoRing.length && undoRing[undoRing.length-1] === s) return;   // 无实际变化
+  undoRing.push(s); if(undoRing.length > UNDO_CAP) undoRing.shift();
+  redoRing.length = 0; updateUndoUI();
+}
+function floorSpan(){
+  const b = floorPts(); let x0=Infinity,y0=Infinity,x1=-Infinity,y1=-Infinity;
+  for(const p of b||[]){ if(p[0]<x0)x0=p[0]; if(p[1]<y0)y0=p[1]; if(p[0]>x1)x1=p[0]; if(p[1]>y1)y1=p[1]; }
+  return Number.isFinite(x0)? Math.hypot(x1-x0, y1-y0) : 0;
+}
+function restoreState(s){
+  let o; try{ o = JSON.parse(s); }catch(e){ return false; }
+  if(!o || !o.d) return false;
+  const spanBefore = floorSpan(), wasImported = docImported();
+  const ccBefore = JSON.stringify(state.customCat);
+  DOC = o.d; state.items = Array.isArray(o.i)? o.i : []; state.customCat = Array.isArray(o.c)? o.c : [];
+  if(typeof o.su === 'boolean'){ showUnderlay = o.su; $('#btnUnderlay').classList.toggle('on', showUnderlay); }
+  if(typeof o.st === 'boolean' && _traceCache){ showTrace = o.st; $('#btnTrace').classList.toggle('on', showTrace); }
+  uidSeq = Math.max(0, ...state.items.map(i=>i.uid||0), 0) + 1;
+  if(selected !== null && !state.items.some(i=>i.uid===selected)) selected = null;
+  // 快照里的实体可能已不存在 → 编辑层选中/进行中的拖动一律作废
+  wallEdit.sel = null; wallEdit.drawPts = []; wallEdit.hover = null; wallEdit.dEndSel = null;
+  drag = null; if(imgMove) setImgMove(false);
+  applyPlanChrome();
+  save(); saveGeo(); geoDirty3D = true;
+  build2D(); if(wallEdit.on) drawWallEdit();
+  if(wasImported !== docImported()) fit2DToContent();     // 导入↔内置 切换：重新取景
+  else { const a=floorSpan(); if(a>0 && spanBefore>0 && Math.abs(a-spanBefore)/spanBefore > 0.25) fit2DToContent(); }
+  refresh();
+  if(JSON.stringify(state.customCat) !== ccBefore) buildCatalog();   // 自定义目录变了才重建（275 件重建不便宜）
+  if(state.view !== '2d') setView(state.view);            // 3D 在场 → 让 geoDirty3D 生效
+  updateUndoUI(); return true;
+}
+function undoStep(){
+  if(CALIB || IMGONLY) return;
+  if(!undoRing.length){ toast('没有可撤销的改动'); return; }
+  lastGesture = null;
+  const prev = undoRing.pop(); redoRing.push(snapState());
+  restoreState(prev); toast('已撤销');
+}
+function redoStep(){
+  if(CALIB || IMGONLY) return;
+  if(!redoRing.length){ toast('没有可重做的改动'); return; }
+  lastGesture = null;
+  const nxt = redoRing.pop(); undoRing.push(snapState());
+  restoreState(nxt); toast('已重做');
+}
+function updateUndoUI(){
+  const u=$('#btnUndo'), r=$('#btnRedo');
+  if(u) u.disabled = !undoRing.length;
+  if(r) r.disabled = !redoRing.length;
+}
 /* 有效几何（S1 Phase 2b）：唯一几何源 = DOC（id 寻址文档）→ docToLegacy 投影。
    CALIB 校准模式永远用纯净内置常量（不走文档，md5 基线逐字节不变）。 */
 function effWalls(){
@@ -3214,6 +3288,7 @@ let lastImportInfo = null;
 function applyImportedDoc(doc, info){
   const errs=SCHEMA.Project.validate(doc).concat(SCHEMA.Project.checkGeoms(doc));
   if(errs.length) throw new Error('导入文档未通过 schema 校验：'+errs[0].path+' '+errs[0].message);
+  pushUndo();          // 导入会整份替换文档 + 清空家具 → 必须可退回去
   doc.imported=true; doc.dataV=DOC_DATA_VERSION;
   doc.plan = doc.plan || {};        // S11b：导入文档的 plan 快照（空 = 没有那些专属构件）
   if(!doc.runs) doc.runs = [];      // S12：纯增量字段，旧文档可能没有 → 归一为空数组
@@ -4208,11 +4283,13 @@ svg.addEventListener('pointerdown', ev=>{
   const p = svgPoint(ev);
   if(rh){
     const uid=+rh.dataset.uid; const it=state.items.find(i=>i.uid===uid);
+    pushUndo('drag:rot:'+uid);
     drag={mode:'rotate', uid, cx:it.x, cy:it.y};
     svg.setPointerCapture(ev.pointerId);
   } else if(fg){
     const uid=+fg.dataset.uid; const it=state.items.find(i=>i.uid===uid);
     selected=uid;
+    pushUndo('drag:move:'+uid);
     drag={mode:'move', uid, dx:it.x-p[0], dy:it.y-p[1]};
     fg.classList.add('dragging');
     svg.setPointerCapture(ev.pointerId);
@@ -4280,6 +4357,13 @@ $('#btnMore').onclick=()=>{ $('#btnMore').blur(); setProTools(!proToolsOpen); };
 setProTools(!CALIB && (function(){ try{ return STORE.get(PRO_TOOLS_KEY)==='1'; }catch(e){ return false; } })());
 window.addEventListener('keydown', ev=>{
   const tag=ev.target.tagName;
+  /* E23：撤销/重做快捷键。输入框里打字不能抢（在「实测长度」框里 Ctrl+Z 该撤销文本） */
+  if(!['INPUT','SELECT','TEXTAREA'].includes(tag) && (ev.metaKey||ev.ctrlKey) && ev.key.toLowerCase()==='z'){
+    ev.preventDefault(); if(ev.shiftKey) redoStep(); else undoStep(); return;
+  }
+  if(!['INPUT','SELECT','TEXTAREA'].includes(tag) && (ev.metaKey||ev.ctrlKey) && ev.key.toLowerCase()==='y'){
+    ev.preventDefault(); redoStep(); return;
+  }
   if(meas.on && ev.key==='Escape' && !['INPUT','SELECT','TEXTAREA'].includes(tag)){ measEnd(); return; }
   if(proToolsOpen && ev.key==='Escape' && !['INPUT','SELECT','TEXTAREA'].includes(tag)){ setProTools(false); $('#btnMore').focus(); return; }
   if(wallEdit.on){
@@ -4303,12 +4387,12 @@ window.addEventListener('keydown', ev=>{
         if(nudgeDoor(sign, stepFt)){ ev.preventDefault(); return; }
       } else if(wallEdit.sel.kind==='w'){
         const seg = selWallSeg();
-        if(seg){ const dx=(ev.key==='ArrowLeft'?-1:ev.key==='ArrowRight'?1:0)*stepFt;
+        if(seg){ pushUndo('nudge:'+wallEdit.sel.id); const dx=(ev.key==='ArrowLeft'?-1:ev.key==='ArrowRight'?1:0)*stepFt;
           const dy=(ev.key==='ArrowUp'?-1:ev.key==='ArrowDown'?1:0)*stepFt;
           seg.x1+=dx; seg.x2+=dx; seg.y1+=dy; seg.y2+=dy; geoChanged(); ev.preventDefault(); return; }
       } else if(wallEdit.sel.kind==='fx'){
         const f=selFixture();
-        if(f){ const dx=(ev.key==='ArrowLeft'?-1:ev.key==='ArrowRight'?1:0)*stepFt;
+        if(f){ pushUndo('nudge:'+wallEdit.sel.id); const dx=(ev.key==='ArrowLeft'?-1:ev.key==='ArrowRight'?1:0)*stepFt;
           const dy=(ev.key==='ArrowUp'?-1:ev.key==='ArrowDown'?1:0)*stepFt;
           f.x1+=dx; f.x2+=dx; f.y1+=dy; f.y2+=dy; geoChanged(); ev.preventDefault(); return; }
       }
@@ -4331,9 +4415,10 @@ window.addEventListener('keydown', ev=>{
       .some((id)=>{ const m = document.getElementById(id); return m && m.style.display && m.style.display!=='none'; })) return;
   if(selected==null) return;
   const it = state.items.find(i=>i.uid===selected); if(!it) return;
-  if(ev.key==='Delete'||ev.key==='Backspace'){ state.items=state.items.filter(i=>i.uid!==selected); selected=null; drawFurniture(); save(); }
-  else if(ev.key==='r'||ev.key==='R'){ it.rot=(it.rot+ (ev.shiftKey?-15:15))%360; drawFurniture(); save(); }
+  if(ev.key==='Delete'||ev.key==='Backspace'){ pushUndo('key:del:'+selected); state.items=state.items.filter(i=>i.uid!==selected); selected=null; drawFurniture(); save(); }
+  else if(ev.key==='r'||ev.key==='R'){ pushUndo('key:rot:'+selected); it.rot=(it.rot+ (ev.shiftKey?-15:15))%360; drawFurniture(); save(); }
   else if(ev.key==='['||ev.key===']'){ const st=ev.shiftKey?0.1:0.5;
+    pushUndo('key:rot:'+selected);
     it.rot=Math.round(((it.rot+(ev.key===']'?st:-st))%360)*10)/10; drawFurniture(); save(); }
   else if(ev.key==='d'||ev.key==='D'){ const n={...it, uid:uidSeq++, x:it.x+1.5, y:it.y+1.5}; state.items.push(n); selected=n.uid; drawFurniture(); save(); }
   else if(ev.key.startsWith('Arrow')){
@@ -4506,6 +4591,7 @@ function selPolyPts(){ const s=wallEdit.sel; if(!s||s.kind!=='p') return null;
 function setSegType(ent, t){ // 墙族类型互转（wType 面板）；'g' = 窗（独立实体数组）
   const cur = ent.kind? (KIND2T[ent.kind]||'w') : 'g';
   if(t===cur) return;
+  pushUndo('segType:'+ent.id);
   if(t==='g'){ winFromWall(ent); return; }
   if(cur==='g'){ winToWall(ent, t); return; }
   ent.kind = T2KIND[t] || 'wall';
@@ -4638,7 +4724,7 @@ function pushUserRun(pts, depth, topH){
   DOC.runs.push(ent);
   return ent;
 }
-function closeDrawRun(){
+function closeDrawRun(){ pushUndo('runClose');
   let pts=wallEdit.drawPts;
   wallEdit.drawPts=[]; wallEdit.hover=null;
   pts=pts.filter((p,i)=> i===0 || Math.hypot(p[0]-pts[i-1][0], p[1]-pts[i-1][1])>0.05);
@@ -4652,6 +4738,7 @@ function closeDrawRun(){
 }
 function startRunDrag(ev, p0){
   const r=selRun(); if(!r) return;
+  pushUndo('drag:run:'+r.id);
   drag={mode:'runMove', px:p0[0], py:p0[1], cX:ev.clientX, cY:ev.clientY,
         orig:r.path.map(p=>[p[0],p[1]]), moved:false};
   svg.setPointerCapture(ev.pointerId);
@@ -4686,12 +4773,14 @@ function fixtureWallSnap(cx, cy, type){
 }
 function startFxDrag(ev, p0){
   const f=selFixture(); if(!f) return;
+  pushUndo('drag:fx:'+f.id);
   drag={mode:'fxMove', px:p0[0], py:p0[1], cX:ev.clientX, cY:ev.clientY,
         o:{x1:f.x1,y1:f.y1,x2:f.x2,y2:f.y2}, moved:false};
   svg.setPointerCapture(ev.pointerId);
   drawWallEdit(); updateWallBarFromSel();
 }
 function restoreBuiltins(){ // 「重置内置」：内置实体回到常量，用户新增保留
+  pushUndo();
   const fresh=freshDoc();
   DOC.walls = DOC.walls.filter(e=>e.src==='user').concat(fresh.walls);
   DOC.windows = DOC.windows.filter(e=>e.src==='user').concat(fresh.windows);
@@ -4919,7 +5008,7 @@ function updateWallBarFromSel(){
   } else wMsg(wallEdit.tool==='wall'?'连续点击画墙（磁吸端点/墙线，放大后更精密，Shift=完全自由）；双击/回车/再点末点=结束；Backspace=撤销上一点':
               wallEdit.tool==='poly'?'连续点击放顶点；点回起点 / 双击 / 回车 = 闭合；Esc 取消':wallEdit.tool==='door'?'点击任意门洞放置门（已有门则选中）；选中后可换 平开/双开/推拉、铰链侧、开向':'悬停会亮出墙体；点击选中（含门扇），拖空白平移，滚轮缩放');
 }
-function applyDrawWallChain(){
+function applyDrawWallChain(){ pushUndo('drawChain');
   const pts=wallEdit.drawPts;
   let added=0;
   const t=$('#wType').value, wd=cmToWd(+($('#wThick').value)||9);
@@ -4932,7 +5021,7 @@ function applyDrawWallChain(){
   wallEdit.drawPts=[]; wallEdit.hover=null;
   if(added){ geoChanged(); wMsg('已添加 '+added+' 段墙'); } else drawWallEdit();
 }
-function closeDrawPoly(){
+function closeDrawPoly(){ pushUndo('polyClose');
   let pts=wallEdit.drawPts;
   wallEdit.drawPts=[]; wallEdit.hover=null;
   pts=pts.filter((p,i)=> i===0 || Math.hypot(p[0]-pts[i-1][0],p[1]-pts[i-1][1])>0.05);
@@ -4964,6 +5053,7 @@ function deleteSel(){
     }
     wallEdit.sel=null; updateWallBarFromSel(); wMsg('只有用户画的台面可删除', true); return;
   }
+  pushUndo('del:'+s.id);   // 上面两个分支是拒删（无变化），不进环
   if(s.kind==='door'){
     if(e && e.src==='user') DOC.doors=DOC.doors.filter(x=>x.id!==s.id);
     else if(e && !DOC.hidden.doors.includes(s.id)) DOC.hidden.doors.push(s.id);
@@ -4997,6 +5087,7 @@ function wallEditDown(ev){
   if(t.classList && t.classList.contains('dEnd') && wallEdit.sel && wallEdit.sel.kind==='door'){
     const dd=selDoor();
     wallEdit.dEndSel=+t.dataset.end;
+    pushUndo('drag:dEnd:'+wallEdit.sel.id);
     const link=doorLinkage(dd, wallEdit.sel);
     drag={mode:'dEnd', end:+t.dataset.end, link,
       u:(()=>{const dx=dd.x2-dd.x1,dy=dd.y2-dd.y1,L=Math.hypot(dx,dy)||1e-6;return [dx/L,dy/L];})(),
@@ -5005,14 +5096,16 @@ function wallEditDown(ev){
   }
   if(t.classList && t.classList.contains('wEnd') && wallEdit.sel && wallEdit.sel.kind==='w'){
     const seg = selWallSeg();
+    pushUndo('drag:wEnd:'+wallEdit.sel.id);
     drag={mode:'wEnd', end:+t.dataset.end, seg, o:{x1:seg.x1,y1:seg.y1,x2:seg.x2,y2:seg.y2}};
     svg.setPointerCapture(ev.pointerId); return;
   }
   if(t.classList && t.classList.contains('pVert') && wallEdit.sel && wallEdit.sel.kind==='p'){
     const vi=+t.dataset.vi;
     const pts = selPolyPts();
-    if(pts && ev.altKey){ if(pts.length>3){ pts.splice(vi,1); geoChanged(); updateWallBarFromSel(); } return; }
+    if(pts && ev.altKey){ if(pts.length>3){ pushUndo('polyVertDel:'+wallEdit.sel.id); pts.splice(vi,1); geoChanged(); updateWallBarFromSel(); } return; }
     if(!pts) return;
+    pushUndo('drag:pVert:'+wallEdit.sel.id+':'+vi);
     drag={mode:'pVert', vi, pts, o:[pts[vi][0],pts[vi][1]], inserted:false};
     svg.setPointerCapture(ev.pointerId); return;
   }
@@ -5021,6 +5114,7 @@ function wallEditDown(ev){
     const pts = selPolyPts();
     if(!pts) return;
     const q=pts[(vi+1)%pts.length];
+    pushUndo('polyVertIns:'+wallEdit.sel.id+':'+vi);
     pts.splice(vi+1,0,[(pts[vi][0]+q[0])/2,(pts[vi][1]+q[1])/2]);
     drag={mode:'pVert', vi:vi+1, pts, o:[pts[vi+1][0],pts[vi+1][1]], inserted:true};
     svg.setPointerCapture(ev.pointerId); drawWallEdit(); return;
@@ -5040,6 +5134,7 @@ function wallEditDown(ev){
     const mid=[(best.x1+best.x2)/2,(best.y1+best.y2)/2];
     const found=effDoors().find(d=>Math.hypot((d.x1+d.x2)/2-mid[0],(d.y1+d.y2)/2-mid[1])<0.5);
     if(found){ wallEdit.dEndSel=null; wallEdit.sel={kind:'door', id:found._id}; drawWallEdit(); updateWallBarFromSel(); return; }
+    pushUndo('doorPlace');
     const ent=pushUserDoor(best.x1,best.y1,best.x2,best.y2);
     wallEdit.dEndSel=null;
     wallEdit.sel={kind:'door', id:ent.id};
@@ -5052,6 +5147,7 @@ function wallEditDown(ev){
       wallEdit.sel={kind:'fx', id:fxg.dataset.fx};
       startFxDrag(ev, p0); return;
     }
+    pushUndo('fxPlace');
     const type=$('#fxType').value;
     const snap=fixtureWallSnap(p0[0],p0[1],type);
     const ent= snap? pushUserFixture(type, snap.cx, snap.cy, snap.rot)
@@ -5064,6 +5160,7 @@ function wallEditDown(ev){
   if(wallEdit.tool==='run'){
     const mod=$('#runModule').value, sel=selRun();
     if(mod && sel){   // 选中台面 + 选了模块 → 在点击处沿 path 放一个模块
+      pushUndo('runMod:'+sel.id);
       const at=runDistAlong(sel, p0[0], p0[1]);
       sel.modules = sel.modules || [];
       sel.modules.push({ at:FT2(at), type:mod, w:RUN_MOD_W[mod]||1.8 });
@@ -5111,6 +5208,7 @@ function wallEditDown(ev){
     }
     if(!(wallEdit.sel&&wallEdit.sel.kind==='door'&&wallEdit.sel.id===t.dataset.id)) wallEdit.dEndSel=null;
     wallEdit.sel={kind:'door', id:t.dataset.id};
+    pushUndo('drag:dMove:'+t.dataset.id);
     const dd=selDoor();
     const link=doorLinkage(dd, wallEdit.sel);
     drag={mode:'dMove', px:p0[0], py:p0[1], cX:ev.clientX, cY:ev.clientY, link, moved:false,
@@ -5122,6 +5220,7 @@ function wallEditDown(ev){
   if(t.classList && t.classList.contains('wHit')){
     wallEdit.sel={kind:'w', id:t.dataset.id};
     const selRef={id:wallEdit.sel.id};
+    pushUndo('drag:wMove:'+t.dataset.id);
     drag={mode:'wMove', px:p0[0], py:p0[1], cX:ev.clientX, cY:ev.clientY, selRef, seg:null,
           ox1:0,oy1:0,ox2:0,oy2:0, moved:false};
     const cur=selWallSeg(); drag.ox1=cur.x1; drag.oy1=cur.y1; drag.ox2=cur.x2; drag.oy2=cur.y2;
@@ -5131,6 +5230,7 @@ function wallEditDown(ev){
   if(t.classList && t.classList.contains('pHit')){
     wallEdit.sel={kind:'p', id:t.dataset.id};
     const selRef={id:wallEdit.sel.id};
+    pushUndo('drag:pMove:'+t.dataset.id);
     const pts=selPolyPts();
     drag={mode:'pMove', px:p0[0], py:p0[1], cX:ev.clientX, cY:ev.clientY, selRef, pts:null,
           orig:pts.map(q=>[q[0],q[1]]), moved:false};
@@ -16476,6 +16576,7 @@ function addItem(refId){
   // 放到当前视图中心附近
   const cx = (vb.x+vb.w/2)/S, cy=(vb.y+vb.h/2)/S;
   const it = {uid:uidSeq++, ref:refId, x:Math.round(cx*4)/4, y:Math.round(cy*4)/4, rot:0};
+  pushUndo('addItem:'+refId);
   state.items.push(it); selected=it.uid;
   drawFurniture(); save();
 }
@@ -16513,7 +16614,7 @@ function updatePlacedList(){
     const p = showPrice ? fmtPrice(s) : '';
     row.innerHTML=`<div class="dot" style="background:${itemColor(it)}"></div><span>${s.name}</span>`+
       (p?`<span class="plPrice">${p}</span>`:'')+`<span class="x" title="删除">✕</span>`;
-    row.onclick=(e)=>{ if(e.target.classList.contains('x')){ state.items=state.items.filter(i=>i.uid!==it.uid); if(selected===it.uid)selected=null; drawFurniture(); save(); }
+    row.onclick=(e)=>{ if(e.target.classList.contains('x')){ pushUndo('listDel:'+it.uid); state.items=state.items.filter(i=>i.uid!==it.uid); if(selected===it.uid)selected=null; drawFurniture(); save(); }
       else { selected=it.uid; drawFurniture(); } };
     el2.appendChild(row);
   };
@@ -16547,10 +16648,10 @@ function updateProps(){
   // 离墙距离提示
   $('#pClear').textContent = `位置 (${it.x.toFixed(2)}, ${it.y.toFixed(2)}) ft`;
 }
-$('#pRot').addEventListener('input', e=>{ const it=state.items.find(i=>i.uid===selected); if(it){ it.rot=Math.round((+e.target.value||0)*10)/10; drawFurniture(); save(); }});
+$('#pRot').addEventListener('input', e=>{ const it=state.items.find(i=>i.uid===selected); if(it){ pushUndo('rot:'+selected); it.rot=Math.round((+e.target.value||0)*10)/10; drawFurniture(); save(); }});
 $('#pRotSlider').addEventListener('input', e=>{ const it=state.items.find(i=>i.uid===selected);
-  if(it){ it.rot=+e.target.value; if(document.activeElement!==$('#pRot')) $('#pRot').value=it.rot; drawFurniture(); save(); }});
-$('#pRot90').onclick=()=>{ const it=state.items.find(i=>i.uid===selected); if(it){ it.rot=(it.rot+90)%360; drawFurniture(); save(); }};
+  if(it){ pushUndo('rot:'+selected); it.rot=+e.target.value; if(document.activeElement!==$('#pRot')) $('#pRot').value=it.rot; drawFurniture(); save(); }});
+$('#pRot90').onclick=()=>{ const it=state.items.find(i=>i.uid===selected); if(it){ pushUndo('rot90:'+selected); it.rot=(it.rot+90)%360; drawFurniture(); save(); }};
 function syncLightUI(it){
   const spec=itemSpec(it);
   const on = hasLightCtl(spec);
@@ -16569,8 +16670,8 @@ $('#pCCT').addEventListener('input', e=>{ const it=state.items.find(i=>i.uid===s
 $('#pDim').addEventListener('input', e=>{ const it=state.items.find(i=>i.uid===selected);
   if(it){ it.dim=(+e.target.value)/100; syncLightUI(it); if(three&&is3D()) sync3D(); save(); }});
 $('#pColor').addEventListener('input', e=>{ const it=state.items.find(i=>i.uid===selected); if(it){ it.color=e.target.value; drawFurniture(); sync3D(); save(); }});
-$('#pDup').onclick=()=>{ const it=state.items.find(i=>i.uid===selected); if(it){ const n={...it,uid:uidSeq++,x:it.x+1.5,y:it.y+1.5}; state.items.push(n); selected=n.uid; drawFurniture(); save(); }};
-$('#pDel').onclick=()=>{ state.items=state.items.filter(i=>i.uid!==selected); selected=null; drawFurniture(); save(); };
+$('#pDup').onclick=()=>{ const it=state.items.find(i=>i.uid===selected); if(it){ pushUndo('dup:'+selected); const n={...it,uid:uidSeq++,x:it.x+1.5,y:it.y+1.5}; state.items.push(n); selected=n.uid; drawFurniture(); save(); }};
+$('#pDel').onclick=()=>{ pushUndo('del:'+selected); state.items=state.items.filter(i=>i.uid!==selected); selected=null; drawFurniture(); save(); };
 
 $('#cfAdd').onclick=()=>{
   const name=$('#cfName').value.trim()||'自定义家具';
@@ -16788,6 +16889,10 @@ window.addEventListener('resize', fitCanvasSoon);
 /* 量尺寸 */
 $('#btnMeas').onclick=()=>{ $('#btnMeas').blur(); meas.on ? measEnd() : measStart(); };
 $('#btnMeasClr').onclick=()=>{ $('#btnMeasClr').blur(); measClear(); };
+/* E23 撤销/重做按钮 */
+$('#btnUndo').onclick=()=>{ $('#btnUndo').blur(); undoStep(); };
+$('#btnRedo').onclick=()=>{ $('#btnRedo').blur(); redoStep(); };
+updateUndoUI();
 /* 墙体编辑 */
 $('#btnWallEdit').onclick=()=>{
   $('#btnWallEdit').blur();
@@ -16816,20 +16921,21 @@ $('#fxRot').onchange=()=>{
   const f=selFixture(); if(!f) return;
   let v=Math.round((+($('#fxRot').value)||0));
   v=((v%360)+360)%360;
+  pushUndo('fxRot:'+f.id);
   if(v===0){ if(f.rot) delete f.rot; } else f.rot=v;
   geoChanged(); updateWallBarFromSel(); wMsg('旋转 '+v+'°');
 };
 // S12：选中 run 时改深度 / 台面高
 $('#runDepth').onchange=()=>{ const r=selRun(); if(!r) return;
-  const v=(+$('#runDepth').value||60)/30.48; r.depth=FT2(v);
+  const v=(+$('#runDepth').value||60)/30.48; pushUndo('runDepth:'+r.id); r.depth=FT2(v);
   geoChanged(); updateWallBarFromSel(); wMsg('台面深度 '+Math.round(v*30.48)+'cm'); };
 $('#runTopH').onchange=()=>{ const r=selRun(); if(!r) return;
-  const v=(+$('#runTopH').value||90)/30.48; r.topH=FT2(v);
+  const v=(+$('#runTopH').value||90)/30.48; pushUndo('runTopH:'+r.id); r.topH=FT2(v);
   geoChanged(); updateWallBarFromSel(); wMsg('台面高 '+Math.round(v*30.48)+'cm'); };
 $('#wType').onchange=()=>{ const s=wallEdit.sel; if(s&&s.kind==='w'){
   const seg=selWallSeg(); if(seg){ seg.t=$('#wType').value; geoChanged(); } } };
 $('#wThick').onchange=()=>{ const s=wallEdit.sel; if(s&&s.kind==='w'){
-  const seg=selWallSeg(); if(seg){ seg.wd=cmToWd(+$('#wThick').value||9); geoChanged(); } } };
+  const seg=selWallSeg(); if(seg){ pushUndo('thick:'+s.id); seg.wd=cmToWd(+$('#wThick').value||9); geoChanged(); } } };
 function doorLenUnit(){ return state.unit==='ft' ? 'in' : 'cm'; }
 function doorLenToUI(ftLen){ return state.unit==='ft' ? Math.round(ftLen*12*10)/10 : Math.round(ftLen*30.48); }
 function doorLenFromUI(v){ return state.unit==='ft' ? v/12 : v/30.48; }
@@ -16844,6 +16950,7 @@ function setDoorWidth(newLenFt){
   if(moveEnd===1){ L2=Math.min(L2, L+rg[1]); L2=Math.max(L2, Math.max(DOOR_MIN, L+rg[0])); }
   else           { L2=Math.min(L2, L-rg[0]); L2=Math.max(L2, Math.max(DOOR_MIN, L-rg[1])); }
   if(Math.abs(L2-L)<1e-9){ wMsg('已到墙垛允许的极限', true); return; }
+  pushUndo('doorWidth:'+d.id);
   if(moveEnd===1) link.apply(d.x1,d.y1, d.x1+u[0]*L2, d.y1+u[1]*L2);
   else            link.apply(d.x2-u[0]*L2, d.y2-u[1]*L2, d.x2, d.y2);
   geoChanged(); updateWallBarFromSel();
@@ -16857,10 +16964,11 @@ function nudgeDoor(signAlong, stepFt){ // 激活端点则改宽，否则整体�
   const link=doorLinkage(d, s);
   /* 整体滑动 = 两端同时位移 dd，所以 dd 必须同时落在两个端的允许范围里（交集）。
      以前只取 range(0) 的下界 + range(1) 的上界：在「一根垛同时贴到门两端」的几何下
-     会越过另一端的限制把墙垓压到 STUB_MIN 以下（鼠标滑动取的是交集，键盘不取 → 两条路径不一致）。
+     会越过另一端的限制把门垛压到 STUB_MIN 以下（鼠标滑动取的是交集，键盘不取 → 两条路径不一致）。
      探针实测：内置 4 门 + 导入 fixture 上两种夹取逐字节等价（最大差异 0.000ft）——
      所以这是防御性统一，不是已复现的 bug（AGENTS §5.1.1 第⑨轮：量不出差异的怀疑不冒充 bug）。 */
   const cl=(k,v)=>{ const r=link.range(k); return Math.max(r[0], Math.min(r[1], v)); };
+  pushUndo('nudge:'+s.id);   // 连续方向键只算一步（同一手势键）
   if(wallEdit.dEndSel===0){
     dd=cl(0,dd); if(L-dd<DOOR_MIN) dd=L-DOOR_MIN;
     if(Math.abs(dd)<1e-9) return true;
@@ -16879,7 +16987,9 @@ function nudgeDoor(signAlong, stepFt){ // 激活端点则改宽，否则整体�
 }
 function doorMut(fn){ const s=wallEdit.sel; if(!s||s.kind!=='door') return;
   const d = selDoor();
-  if(!d) return; fn(d); geoChanged(); updateWallBarFromSel(); }
+  if(!d) return;
+  pushUndo('doorMut:'+s.id);
+  fn(d); geoChanged(); updateWallBarFromSel(); }
 $('#dWidth').onchange=()=>{ const v=+$('#dWidth').value; if(v>0) setDoorWidth(doorLenFromUI(v)); };
 $('#dEndBtn').onclick=()=>{ $('#dEndBtn').blur();
   wallEdit.dEndSel = wallEdit.dEndSel===null ? 0 : wallEdit.dEndSel===0 ? 1 : null;
@@ -16894,13 +17004,16 @@ const isDarkFrame=(c)=>!c || DARK_FRAMES.includes(c);
 function winSelEnt(){ const s=wallEdit.sel; if(!s||s.kind!=='w') return null;
   const e=entById(s.id); return (e&&e.id[0]==='n')?e:null; }
 $('#wWinStyle').onclick=()=>{ $('#wWinStyle').blur(); const e=winSelEnt(); if(!e) return;
-  const order=['fixed','slide','casement','awning']; e.style=order[(order.indexOf(e.style)+1)%4];
+  const order=['fixed','slide','casement','awning']; pushUndo('winStyle:'+e.id);
+  e.style=order[(order.indexOf(e.style)+1)%4];
   geoChanged(); updateWallBarFromSel(); };
 $('#wWinFull').onclick=()=>{ $('#wWinFull').blur(); const e=winSelEnt(); if(!e) return;
+  pushUndo('winFull:'+e.id);
   e.fullHeight=!e.fullHeight;
   if(e.fullHeight){ e.sill=0; e.head=DOC.ceilingH; } else { e.sill=2.2; e.head=7.4; }
   geoChanged(); updateWallBarFromSel(); };
 $('#wWinFrame').onclick=()=>{ $('#wWinFrame').blur(); const e=winSelEnt(); if(!e) return;
+  pushUndo('winFrame:'+e.id);
   const was=isDarkFrame(e.frame);
   e.frame=was?'#f2f1ec':'#17181b'; e.steel=was?false:true;
   geoChanged(); updateWallBarFromSel(); };
@@ -16908,6 +17021,7 @@ $('#wDelete').onclick=()=>{ $('#wDelete').blur(); deleteSel(); };
 $('#wRestore').onclick=()=>{
   if(docImported()){   // 导入户型下「重置内置」= 整套回到内置户型
     if(confirm('回到内置户型？（导入的户型与其中改动——包括放置的洁具——将丢弃，已摆家具也会清空）')){
+      pushUndo();
       DOC=freshDoc(); state.items=[]; selected=null; uidSeq=1; lastImportInfo=null;
       showUnderlay=false; $('#btnUnderlay').classList.remove('on');
       showTrace=false; _traceCache=null; $('#btnTrace').classList.remove('on');
@@ -17063,6 +17177,7 @@ function groundAt(ev){
     const it=state.items.find(i=>i.uid===hit.uid); if(!it) return;
     const g0=groundAt(ev); if(!g0) return;
     selected=hit.uid; drawFurniture(); updateProps();
+    pushUndo('drag3d:'+hit.uid);
     d3={uid:hit.uid, dx:it.x-g0.x, dy:it.y-g0.z, rot0:it.rot||0,
         sx:ev.clientX, moved:false, wasCtl:three.controls.enabled};
     three.controls.enabled=false;                 // 拖家具时不要转相机
@@ -17553,6 +17668,7 @@ function setImgMove(on){
 $('#btnImgMove').onclick=()=>{ $('#btnImgMove').blur(); setImgMove(!imgMove); };
 function imgMoveDown(ev){
   const bi=DOC.baseImage; if(!bi || !imgMove) return;
+  pushUndo('imgMove');
   imgMove.last=svgPoint(ev); imgMove.sx=bi.ox; imgMove.sy=bi.oy;
   try{ svg.setPointerCapture(ev.pointerId); }catch(e){}
 }
@@ -17609,7 +17725,7 @@ $('#btnSaveJson').onclick=()=>{
 $('#btnLoadJson').onclick=()=>$('#fileJson').click();
 $('#fileJson').addEventListener('change', ev=>{
   const f=ev.target.files[0]; if(!f) return;
-  f.text().then(t=>{ try{ const s=JSON.parse(t); state.items=s.items||[]; state.customCat=s.customCat||[];
+  f.text().then(t=>{ try{ const s=JSON.parse(t); pushUndo('loadLayout'); state.items=s.items||[]; state.customCat=s.customCat||[];
     uidSeq=Math.max(0,...state.items.map(i=>i.uid),0)+1; selected=null; buildCatalog(); refresh(); save(); }
     catch(e){ toast('文件格式错误'); } });
   ev.target.value='';
