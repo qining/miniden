@@ -16,6 +16,22 @@ async function planCenter(t) {
   return { x: p[0], y: p[1] };
 }
 
+/* 两个流程都要用的第二层工具条 / 户型切换（#btnMore 是开关：只在关着的时候点） */
+async function ensureProTools(t) {
+  // 判展开必须读真正被 display:none 的那个容器：子元素的计算 display 不继承父级的 none
+  const open = await t.eval(`getComputedStyle(document.querySelector('#proTools')).display!=='none'`);
+  if (open) return;
+  await t.click('#btnMore');
+  await t.waitFor(`getComputedStyle(document.querySelector('#proTools')).display!=='none'`, 5000, '「工具」第二层展开');
+}
+async function pickPlan(t, id) {
+  // BUILTIN_PLAN_ID / 生成的 id 都是页面里的名字，Node 侧要先取回来再传进去
+  return t.eval(
+    `(()=>{const s=document.querySelector('#planSel'); s.value=${JSON.stringify(id)};` +
+      `s.dispatchEvent(new Event('change',{bubbles:true}));})()`
+  );
+}
+
 const stateOf = (t) =>
   t.eval(
     `({items: state.items.length, view: state.view, unit: state.unit, cur: curNow(),
@@ -59,6 +75,362 @@ export const FLOWS = [
       t.assert('startup-no-overlap', c.red === 0, `初始红描边 ${c.red} 个`);
       t.info('startup-title', c.title + ' · ' + c.sub);
       await t.shot('startup');
+    },
+  },
+
+  {
+    name: 'first-run',
+    title: '首次打开的引导卡：出现 → 三条路 → 关一次就不再出现',
+    run: async (t) => {
+      // 这张卡只在「什么都没存过 + 干净 profile」时出现；驱动层默认会替流程把它关掉，
+      // 本流程自己接手。
+      t.keepFirstRun = true;
+      await t.freshState();
+      const vis = await t.firstRunVisible();
+      t.assert('firstrun-visible', vis, '清掉存档 + 刷新后引导卡出现');
+      const r = await t.rectOf('#firstRun').catch(() => null);
+      t.assert(
+        'firstrun-size',
+        !!r && r.w >= 240 && r.h >= 140,
+        r ? Math.round(r.w) + '×' + Math.round(r.h) + 'px' : '不在视口'
+      );
+      const top = await t.eval(
+        `(()=>{const e=document.querySelector('#firstRun');const r=e.getBoundingClientRect();
+          const hit=document.elementFromPoint(r.left+r.width/2, r.top+r.height/2);
+          return hit ? (hit.id||hit.className||hit.tagName)+'|inside='+(e.contains(hit)||hit===e) : 'null';})()`
+      );
+      t.assert('firstrun-topmost', /inside=true$/.test(String(top)), '画布中心最上层元素=' + top);
+      const paths = await t.eval(
+        `(()=>[...document.querySelectorAll('#firstRun .frRow')].map(p=>p.querySelector('b').textContent.trim()))()`
+      );
+      t.assert('firstrun-three-paths', Array.isArray(paths) && paths.length === 3, paths.join(' / '));
+      await t.shot('firstrun');
+
+      await t.step('走「从空白开始画」');
+      await t.click('#frBlank');
+      await t.waitFor(
+        `!document.querySelector('#firstRun') || getComputedStyle(document.querySelector('#firstRun')).display==='none'`,
+        6000,
+        '引导卡关闭'
+      );
+      t.assert(
+        'firstrun-blank-plan',
+        await t.eval(`PLAN_ID!==BUILTIN_PLAN_ID && effWalls().length===0`),
+        '切到一份空白户型'
+      );
+      t.assert('firstrun-edit-on', await t.eval(`wallEdit.on===true`), '直接进了「编辑墙体」');
+      const hint = await t.eval(
+        `(()=>{const h=document.querySelector('#wMsg'); if(!h) return '';
+          const cs=getComputedStyle(h); const r=h.getBoundingClientRect();
+          return (cs.display==='none'||r.width<8)?'':h.textContent.trim();})()`
+      );
+      t.assert('firstrun-edit-hint-visible', String(hint).length > 8, String(hint).slice(0, 70));
+      await t.shot('firstrun-blank');
+
+      await t.step('刷新后不再出现（一次性）');
+      await t.reload();
+      t.assert('firstrun-once', (await t.firstRunVisible()) === false, '已关过的引导卡不会反复弹');
+      // 复位：引导卡写下的 md_firstRun 与刚建的空白户型一起清掉，不影响后面的流程
+      await t.freshState();
+    },
+    // 本流程自己已经 freshState() 复位过了，驱动层不用再刷新一次（一次真实刷新 ≈ 十几秒）
+    noReload: true,
+  },
+
+  {
+    name: 'from-scratch',
+    title: '彻底的从零开始：空白户型 → 画一圈墙（含窗与门洞）→ 放门 → 放洁具 → 放家具 → 3D → 真实刷新后还在',
+    run: async (t) => {
+      /* 这条流程断的是产品承诺本身：一个没有图纸、也没有内置户型的人，从一张空白画布开始，
+         在界面里把房子画出来、装上门 / 窗 / 洁具 / 家具，在 3D 里看见它，刷新后它还在。
+         以前每条流程都跑在内置户型上（打开就有一整套房 + 门 + 洁具），所以这条路径
+         从来没有被真实输入测过。坐标全部从空白画布派生 ⇒ plan-independent。 */
+      await t.step('新建空白户型（工具 ⌄ → 新建空白户型）');
+      await ensureProTools(t);
+      await t.click('#btnPlanNew');
+      await t.waitFor(`PLAN_ID!==BUILTIN_PLAN_ID`, 8000, '切到空白户型');
+      const z0 = await t.eval(
+        `({id:PLAN_ID, walls:DOC.walls.length, win:DOC.windows.length, doors:DOC.doors.length,` +
+          `fx:DOC.fixtures.length, items:state.items.length})`
+      );
+      t.assert(
+        'zero-blank-start',
+        z0.walls === 0 && z0.win === 0 && z0.doors === 0 && z0.fx === 0 && z0.items === 0,
+        `墙${z0.walls} 窗${z0.win} 门${z0.doors} 洁具${z0.fx} 家具${z0.items}（真空起点）`
+      );
+      const cv = await t.eval(
+        `(()=>{const P=floorPts();let x1=1e9,y1=1e9,x2=-1e9,y2=-1e9;` +
+          `for(const q of P){x1=Math.min(x1,q[0]);y1=Math.min(y1,q[1]);x2=Math.max(x2,q[0]);y2=Math.max(y2,q[1]);}` +
+          `return {x1,y1,x2,y2};})()`
+      );
+      const W = cv.x2 - cv.x1,
+        H = cv.y2 - cv.y1;
+      const A = [cv.x1 + W * 0.2, cv.y1 + H * 0.2],
+        B = [cv.x2 - W * 0.2, cv.y1 + H * 0.2],
+        C = [cv.x2 - W * 0.2, cv.y2 - H * 0.2],
+        D = [cv.x1 + W * 0.2, cv.y2 - H * 0.2];
+      const RW = B[0] - A[0],
+        RH = C[1] - A[1];
+
+      await t.step('画一圈外墙：底边中间一段是窗，顶边中间一段是门洞');
+      await t.click('#btnWallEdit');
+      await t.waitFor(`wallEdit.on`, 5000, '进入编辑');
+      await t.click('#wtoolSeg button[data-t="wall"]');
+      await t.waitFor(`wallEdit.tool==='wall'`, 5000, 'tool=wall');
+      const piece = async (type, p, q) => {
+        await t.eval(`document.querySelector('#wType').value=${JSON.stringify(type)}`);
+        await t.click(await t.planPoint(p[0], p[1]));
+        await t.click(await t.planPoint(q[0], q[1]));
+        await t.key('Enter', 'Enter', 13);
+        await t.waitFor(`wallEdit.drawPts.length===0`, 6000, '这段墙提交');
+      };
+      await piece('w', A, [A[0] + RW * 0.25, A[1]]);
+      await piece('g', [A[0] + RW * 0.25, A[1]], [B[0] - RW * 0.25, A[1]]);
+      await piece('w', [B[0] - RW * 0.25, A[1]], B);
+      await piece('w', B, C);
+      const O1 = [A[0] + RW * 0.625, C[1]],
+        O2 = [A[0] + RW * 0.375, D[1]]; // 门洞占顶边 25% ⇒ 约 90cm 开口
+      await piece('w', C, O1);
+      await piece('d', O1, O2);
+      await piece('w', O2, D);
+      await piece('w', D, A);
+      const room = await t.eval(
+        `(()=>{const w=DOC.walls.filter(e=>e.src==='user');` +
+          `return {n:w.length, opening:w.filter(e=>e.kind==='opening').length,` +
+          `win:DOC.windows.filter(e=>e.src==='user').length, fp:floorPts().length};})()`
+      );
+      t.assert(
+        'zero-room-drawn',
+        room.n === 7 && room.opening === 1 && room.win === 1,
+        `墙 ${room.n} 段（含 ${room.opening} 段门洞）· 窗 ${room.win} 段`
+      );
+      t.assert('zero-floor-follows-drawing', room.fp >= 4, `地板轮廓 ${room.fp} 个点（跟着画的墙走）`);
+      await t.shot('zero-room');
+
+      await t.step('放门：门工具点门洞');
+      await t.click('#wtoolSeg button[data-t="door"]');
+      await t.waitFor(`wallEdit.tool==='door'`, 5000, 'tool=door');
+      const mid = await t.eval(
+        `(()=>{const o=DOC.walls.filter(e=>e.src==='user'&&e.kind==='opening')[0];` +
+          `return o?[(o.geom.x1+o.geom.x2)/2,(o.geom.y1+o.geom.y2)/2]:null;})()`
+      );
+      if (mid) await t.click(await t.planPoint(mid[0], mid[1]));
+      await t.waitFor(`DOC.doors.length===1`, 8000, '门放上');
+      const door = await t.eval(`(()=>{const d=DOC.doors[0];return d?{w:d.width,kind:d.kind}:null;})()`);
+      t.assert(
+        'zero-door-on-opening',
+        !!door && door.kind === 'swing' && door.w > 1,
+        door ? `门宽 ${door.w.toFixed(2)}ft · kind=${door.kind}` : '门没放上'
+      );
+      await t.shot('zero-door');
+
+      await t.step('放洁具：马桶 + 洗手盆 + 镜子（镜子自动贴墙）');
+      await t.click('#wtoolSeg button[data-t="fx"]');
+      await t.waitFor(`wallEdit.tool==='fx'`, 5000, 'tool=fx');
+      const fxAt = async (type, fx, fy) => {
+        await t.eval(`document.querySelector('#fxType').value=${JSON.stringify(type)}`);
+        await t.click(await t.planPoint(fx, fy));
+        await t.waitFor(`DOC.fixtures.length>=${fxAt.n}`, 6000, '洁具放上');
+      };
+      fxAt.n = 1;
+      await fxAt('toilet', A[0] + RW * 0.12, A[1] + RH * 0.18);
+      fxAt.n = 2;
+      await fxAt('basin', A[0] + RW * 0.4, A[1] + RH * 0.1);
+      fxAt.n = 3;
+      // 贴墙吸附半径 = min(1.0, 20/屏幕每英尺像素)：视野大 → 半径小，点击必须落在半径内
+      const snapIn = await t.eval(`Math.min(0.35, 10/(document.querySelector('#svg2d').getScreenCTM().a*S))`);
+      await fxAt('mirror', A[0] + snapIn, (A[1] + D[1]) / 2);
+      const fx = await t.eval(
+        `(()=>{const u=DOC.fixtures.filter(f=>f.src==='user');` +
+          `return {n:u.length, types:u.map(f=>f.t).join(','), mirRot:(u.find(f=>f.t==='mirror')||{}).rot};})()`
+      );
+      t.assert('zero-fixtures-placed', fx.n === 3 && fx.types === 'toilet,basin,mirror', fx.types);
+      t.assert('zero-mirror-snapped', fx.mirRot != null, '镜子 rot=' + fx.mirRot + '（贴到画的墙上）');
+      await t.shot('zero-fixtures');
+
+      await t.step('放家具：真实点目录卡片，再拖进房间');
+      await t.click('#wDone');
+      await t.waitFor(`!wallEdit.on`, 5000, '退出编辑');
+      const n0 = await t.eval(`state.items.length`);
+      await t.click('.catCard');
+      await t.waitFor(`state.items.length===${n0 + 1}`, 6000, '家具数 +1');
+      const it = await t.eval(
+        `(()=>{const i=state.items[state.items.length-1];return {uid:i.uid,ref:i.ref,x:i.x,y:i.y};})()`
+      );
+      await t.drag(await t.planPoint(it.x, it.y), await t.planPoint(A[0] + RW * 0.45, A[1] + RH * 0.55), { steps: 14 });
+      const at = await t.eval(`(()=>{const i=state.items.find(x=>x.uid===${it.uid});return [i.x,i.y];})()`);
+      t.assert(
+        'zero-furniture-inside-room',
+        at[0] > A[0] && at[0] < B[0] && at[1] > A[1] && at[1] < D[1],
+        `${it.ref} 落在 (${at[0].toFixed(1)}, ${at[1].toFixed(1)})，房间 x[${A[0].toFixed(1)}…${B[0].toFixed(1)}] y[${A[1].toFixed(1)}…${D[1].toFixed(1)}]`
+      );
+      await t.shot('zero-furniture');
+
+      await t.step('进 3D：画的墙立到顶，家具在场景里');
+      await t.click('#btnDoll');
+      await t.waitFor(`three && three.staticGroup && !geoDirty3D`, 25000, '3D 场景就绪');
+      const stand = await t.eval(
+        `(()=>{const x=${A[0]},y=${(A[1] + D[1]) / 2};` +
+          `three.staticGroup.updateMatrixWorld(true);` +
+          `const rc=new THREE.Raycaster();rc.set(new THREE.Vector3(x,CEIL_H+1.5,y),new THREE.Vector3(0,-1,0));` +
+          `const h=rc.intersectObjects(three.staticGroup.children,true);` +
+          `return h.length?{y:h[0].point.y,dx:Math.abs(h[0].point.x-x),dz:Math.abs(h[0].point.z-y)}:null;})()`
+      );
+      t.assert(
+        'zero-3d-wall-stands',
+        !!stand && stand.y > 1.0 && stand.dx < 1.2 && stand.dz < 1.2,
+        stand ? `左墙命中于 y=${stand.y.toFixed(2)}ft` : '3D 里没有这段墙'
+      );
+      const fmap = await t.eval(`three.furnMap ? three.furnMap.size : -1`);
+      t.assert('zero-3d-furniture', fmap === 1, 'furnMap=' + fmap);
+      await t.shot('zero-3d');
+      await t.click('#btn2d');
+      await t.waitFor(`state.view==='2d'`, 8000, '回到 2D');
+
+      await t.step('真实刷新：从零建的那份还在，而且仍是当前户型');
+      await t.reload();
+      await t.waitForReady();
+      const after = await t.eval(
+        `({id:PLAN_ID, walls:DOC.walls.filter(e=>e.src==='user').length, doors:DOC.doors.length,` +
+          `fx:DOC.fixtures.filter(f=>f.src==='user').length, items:state.items.length,` +
+          `plans:PLAN_REG.plans.length, active:PLAN_REG.active})`
+      );
+      t.assert(
+        'zero-survives-real-reload',
+        after.walls === 7 && after.doors === 1 && after.fx === 3 && after.items === 1 && after.id === z0.id,
+        `刷新后 墙${after.walls} 门${after.doors} 洁具${after.fx} 家具${after.items} · 当前户型=${after.id === z0.id ? '还是这份' : '被换了'}`
+      );
+      t.assert(
+        'zero-registry-remembers',
+        after.plans >= 2 && after.active === z0.id,
+        '注册表 ' + after.plans + ' 份 · active 正确'
+      );
+      await t.shot('zero-after-reload');
+
+      await t.step('切回内置户型：它没被这份房子碰到');
+      const builtinId = await t.eval(`BUILTIN_PLAN_ID`);
+      await pickPlan(t, builtinId);
+      await t.waitFor(`PLAN_ID===BUILTIN_PLAN_ID`, 8000, '切回内置');
+      const bi = await t.eval(
+        `({walls:effWalls().length, doors:effDoors().length, user:DOC.walls.filter(e=>e.src==='user').length, items:state.items.length})`
+      );
+      t.assert(
+        'zero-builtin-untouched',
+        bi.walls > 10 && bi.doors > 0 && bi.user === 0 && bi.items > 0,
+        `内置 墙${bi.walls} 门${bi.doors} 家具${bi.items} · 用户改动 ${bi.user} 处`
+      );
+
+      await t.step('清场：删掉这份从零建的户型（两步确认）');
+      await ensureProTools(t);
+      await pickPlan(t, z0.id);
+      await t.waitFor(`PLAN_ID===${JSON.stringify(z0.id)}`, 8000, '切回那份房子');
+      await t.click('#btnPlanDel');
+      await t.click('#btnPlanDel');
+      await t.waitFor(`!PLANS.hasPlan(PLAN_REG, ${JSON.stringify(z0.id)})`, 8000, '那份房子被删掉');
+      t.assert(
+        'zero-cleanup',
+        (await t.eval(`PLAN_ID`)) === builtinId && (await t.eval(`PLAN_REG.plans.length`)) === after.plans - 1,
+        '删完回到内置 · 注册表 ' + ((await t.eval(`PLAN_REG.plans.length`)) || '?') + ' 份'
+      );
+    },
+  },
+
+  {
+    name: 'wall-edit',
+    title: '编辑墙体：画一段墙 → 拖端点 → 删除',
+    run: async (t) => {
+      const before = await stateOf(t);
+      const c = await planCenter(t);
+      await t.step('进入「编辑墙体」');
+      await t.click('#btnWallEdit');
+      await t.waitFor(`wallEdit.on`, 5000, 'wallEdit.on');
+      t.assert(
+        'walledit-bar',
+        await t.eval(`getComputedStyle(document.querySelector('#wallbar')).display!=='none'`),
+        '工具条可见'
+      );
+      await t.click('#wtoolSeg button[data-t="wall"]');
+      await t.waitFor(`wallEdit.tool==='wall'`, 5000, 'tool=wall');
+
+      await t.step('连续两点画一段墙');
+      await t.click(await t.planPoint(c.x - 3, c.y + 4));
+      await t.click(await t.planPoint(c.x + 1, c.y + 4));
+      await t.key('Enter', 'Enter', 13); // 双击/回车结束
+      await t.waitFor(`DOC.walls.length>${before.walls}`, 8000, '墙数 +1');
+      const after = await stateOf(t);
+      t.assert('wall-added', after.walls === before.walls + 1, `墙段 ${before.walls} → ${after.walls}`);
+      await t.shot('wall-added');
+
+      await t.step('切回「选择/调整」再选中它');
+      // 画墙工具还开着时，点画布 = 继续画下一段，不是选中
+      await t.click('#wtoolSeg button[data-t="select"]');
+      await t.waitFor(`wallEdit.tool==='select'`, 5000, 'tool=select');
+      // 画墙带磁吸（端点/墙线吸附），落点可能不是我给的那个坐标 → 一律回读真实几何再点中点
+      const nw = await t.eval(
+        `(()=>{const a=DOC.walls;const s=a[a.length-1];return {id:s.id,x1:s.geom.x1,y1:s.geom.y1,x2:s.geom.x2,y2:s.geom.y2};})()`
+      );
+      t.info(
+        'wall-snapped',
+        `实际落点 (${nw.x1.toFixed(2)},${nw.y1.toFixed(2)}) → (${nw.x2.toFixed(2)},${nw.y2.toFixed(2)})`
+      );
+      const mid = await t.planPoint((nw.x1 + nw.x2) / 2, (nw.y1 + nw.y2) / 2);
+      await t.click({ x: mid.x, y: mid.y });
+      await t.waitFor(`wallEdit.sel && wallEdit.sel.kind==='w'`, 6000, '选中墙段');
+      const ends = await t.eval(
+        `(()=>{const s=effWalls().find(w=>w._id===wallEdit.sel.id);return {x1:s.x1,y1:s.y1,x2:s.x2,y2:s.y2};})()`
+      );
+      const h = await t.rectOf('.wEnd[data-end="1"]');
+      await t.drag({ x: h.x, y: h.y }, await t.planPoint(ends.x2, ends.y2 + 2), { steps: 14 });
+      const ends2 = await t.eval(
+        `(()=>{const s=effWalls().find(w=>w._id===wallEdit.sel.id);return {x1:s.x1,y1:s.y1,x2:s.x2,y2:s.y2};})()`
+      );
+      const dd = Math.hypot(ends2.x2 - ends.x2, ends2.y2 - ends.y2);
+      t.assert('wall-endpoint-drag', dd > 0.5, `端点移动 ${dd.toFixed(2)}ft`);
+
+      await t.step('删除这段墙');
+      await t.click('#wDelete');
+      await t.waitFor(`DOC.walls.length===${before.walls}`, 8000, '墙数复位');
+      t.assert('wall-deleted', (await stateOf(t)).walls === before.walls, `回到 ${before.walls} 段`);
+      await t.click('#wDone');
+      await t.waitFor(`!wallEdit.on`, 5000, '退出编辑');
+    },
+  },
+
+  {
+    name: 'fixture-tool',
+    title: '洁具工具：放置 → 选中 → 方向键 1cm → 删除',
+    run: async (t) => {
+      const before = await stateOf(t);
+      const c = await planCenter(t);
+      await t.step('进入编辑墙体 → 洁具');
+      await t.click('#btnWallEdit');
+      await t.waitFor(`wallEdit.on`, 5000, 'wallEdit.on');
+      await t.click('#wtoolSeg button[data-t="fx"]');
+      await t.waitFor(`wallEdit.tool==='fx'`, 5000, 'tool=fx');
+      await t.eval(`document.querySelector('#fxType').value='toilet'`);
+      await t.step('点击空地放一个马桶');
+      await t.click(await t.planPoint(c.x, c.y - 3));
+      await t.waitFor(`DOC.fixtures.length>${before.fixtures}`, 8000, '洁具数 +1');
+      const fx = await t.eval(
+        `(()=>{const f=DOC.fixtures[DOC.fixtures.length-1];return {id:f.id,t:f.t,x1:f.x1,y1:f.y1};})()`
+      );
+      t.assert('fixture-placed', fx.t === 'toilet', `放了 ${fx.t}（id=${fx.id}）`);
+      await t.shot('fixture');
+
+      await t.step('方向键微调 1cm');
+      const hit = await t.rectOf(`.fxHit[data-fx="${fx.id}"]`);
+      await t.click({ x: hit.x, y: hit.y });
+      await t.waitFor(`wallEdit.sel && wallEdit.sel.kind==='fx'`, 6000, '选中洁具');
+      await t.key('ArrowLeft', 'ArrowLeft', 37);
+      const fx2 = await t.eval(`(()=>{const f=DOC.fixtures.find(x=>x.id===${JSON.stringify(fx.id)});return f.x1;})()`);
+      const delta = Math.abs(fx2 - fx.x1);
+      t.assert('fixture-nudge', delta > 0.02 && delta < 0.06, `左移 ${(delta * 30.48).toFixed(2)}cm`);
+
+      await t.step('删除');
+      await t.key('Delete', 'Delete', 46);
+      await t.waitFor(`DOC.fixtures.length===${before.fixtures}`, 8000, '洁具数复位');
+      t.assert('fixture-deleted', (await stateOf(t)).fixtures === before.fixtures, `回到 ${before.fixtures} 件`);
+      await t.click('#wDone');
     },
   },
 
@@ -265,105 +637,6 @@ export const FLOWS = [
       await t.waitFor(`document.querySelectorAll('#meas *').length===0`, 6000, '标注清空');
       t.assert('measure-cleared', (await t.eval(`document.querySelectorAll('#meas *').length`)) === 0, '已清空');
       await t.key('Escape', 'Escape', 27);
-    },
-  },
-
-  {
-    name: 'wall-edit',
-    title: '编辑墙体：画一段墙 → 拖端点 → 删除',
-    run: async (t) => {
-      const before = await stateOf(t);
-      const c = await planCenter(t);
-      await t.step('进入「编辑墙体」');
-      await t.click('#btnWallEdit');
-      await t.waitFor(`wallEdit.on`, 5000, 'wallEdit.on');
-      t.assert(
-        'walledit-bar',
-        await t.eval(`getComputedStyle(document.querySelector('#wallbar')).display!=='none'`),
-        '工具条可见'
-      );
-      await t.click('#wtoolSeg button[data-t="wall"]');
-      await t.waitFor(`wallEdit.tool==='wall'`, 5000, 'tool=wall');
-
-      await t.step('连续两点画一段墙');
-      await t.click(await t.planPoint(c.x - 3, c.y + 4));
-      await t.click(await t.planPoint(c.x + 1, c.y + 4));
-      await t.key('Enter', 'Enter', 13); // 双击/回车结束
-      await t.waitFor(`DOC.walls.length>${before.walls}`, 8000, '墙数 +1');
-      const after = await stateOf(t);
-      t.assert('wall-added', after.walls === before.walls + 1, `墙段 ${before.walls} → ${after.walls}`);
-      await t.shot('wall-added');
-
-      await t.step('切回「选择/调整」再选中它');
-      // 画墙工具还开着时，点画布 = 继续画下一段，不是选中
-      await t.click('#wtoolSeg button[data-t="select"]');
-      await t.waitFor(`wallEdit.tool==='select'`, 5000, 'tool=select');
-      // 画墙带磁吸（端点/墙线吸附），落点可能不是我给的那个坐标 → 一律回读真实几何再点中点
-      const nw = await t.eval(
-        `(()=>{const a=DOC.walls;const s=a[a.length-1];return {id:s.id,x1:s.geom.x1,y1:s.geom.y1,x2:s.geom.x2,y2:s.geom.y2};})()`
-      );
-      t.info(
-        'wall-snapped',
-        `实际落点 (${nw.x1.toFixed(2)},${nw.y1.toFixed(2)}) → (${nw.x2.toFixed(2)},${nw.y2.toFixed(2)})`
-      );
-      const mid = await t.planPoint((nw.x1 + nw.x2) / 2, (nw.y1 + nw.y2) / 2);
-      await t.click({ x: mid.x, y: mid.y });
-      await t.waitFor(`wallEdit.sel && wallEdit.sel.kind==='w'`, 6000, '选中墙段');
-      const ends = await t.eval(
-        `(()=>{const s=effWalls().find(w=>w._id===wallEdit.sel.id);return {x1:s.x1,y1:s.y1,x2:s.x2,y2:s.y2};})()`
-      );
-      const h = await t.rectOf('.wEnd[data-end="1"]');
-      await t.drag({ x: h.x, y: h.y }, await t.planPoint(ends.x2, ends.y2 + 2), { steps: 14 });
-      const ends2 = await t.eval(
-        `(()=>{const s=effWalls().find(w=>w._id===wallEdit.sel.id);return {x1:s.x1,y1:s.y1,x2:s.x2,y2:s.y2};})()`
-      );
-      const dd = Math.hypot(ends2.x2 - ends.x2, ends2.y2 - ends.y2);
-      t.assert('wall-endpoint-drag', dd > 0.5, `端点移动 ${dd.toFixed(2)}ft`);
-
-      await t.step('删除这段墙');
-      await t.click('#wDelete');
-      await t.waitFor(`DOC.walls.length===${before.walls}`, 8000, '墙数复位');
-      t.assert('wall-deleted', (await stateOf(t)).walls === before.walls, `回到 ${before.walls} 段`);
-      await t.click('#wDone');
-      await t.waitFor(`!wallEdit.on`, 5000, '退出编辑');
-    },
-  },
-
-  {
-    name: 'fixture-tool',
-    title: '洁具工具：放置 → 选中 → 方向键 1cm → 删除',
-    run: async (t) => {
-      const before = await stateOf(t);
-      const c = await planCenter(t);
-      await t.step('进入编辑墙体 → 洁具');
-      await t.click('#btnWallEdit');
-      await t.waitFor(`wallEdit.on`, 5000, 'wallEdit.on');
-      await t.click('#wtoolSeg button[data-t="fx"]');
-      await t.waitFor(`wallEdit.tool==='fx'`, 5000, 'tool=fx');
-      await t.eval(`document.querySelector('#fxType').value='toilet'`);
-      await t.step('点击空地放一个马桶');
-      await t.click(await t.planPoint(c.x, c.y - 3));
-      await t.waitFor(`DOC.fixtures.length>${before.fixtures}`, 8000, '洁具数 +1');
-      const fx = await t.eval(
-        `(()=>{const f=DOC.fixtures[DOC.fixtures.length-1];return {id:f.id,t:f.t,x1:f.x1,y1:f.y1};})()`
-      );
-      t.assert('fixture-placed', fx.t === 'toilet', `放了 ${fx.t}（id=${fx.id}）`);
-      await t.shot('fixture');
-
-      await t.step('方向键微调 1cm');
-      const hit = await t.rectOf(`.fxHit[data-fx="${fx.id}"]`);
-      await t.click({ x: hit.x, y: hit.y });
-      await t.waitFor(`wallEdit.sel && wallEdit.sel.kind==='fx'`, 6000, '选中洁具');
-      await t.key('ArrowLeft', 'ArrowLeft', 37);
-      const fx2 = await t.eval(`(()=>{const f=DOC.fixtures.find(x=>x.id===${JSON.stringify(fx.id)});return f.x1;})()`);
-      const delta = Math.abs(fx2 - fx.x1);
-      t.assert('fixture-nudge', delta > 0.02 && delta < 0.06, `左移 ${(delta * 30.48).toFixed(2)}cm`);
-
-      await t.step('删除');
-      await t.key('Delete', 'Delete', 46);
-      await t.waitFor(`DOC.fixtures.length===${before.fixtures}`, 8000, '洁具数复位');
-      t.assert('fixture-deleted', (await stateOf(t)).fixtures === before.fixtures, `回到 ${before.fixtures} 件`);
-      await t.click('#wDone');
     },
   },
 
@@ -620,82 +893,13 @@ export const FLOWS = [
   },
 
   {
-    name: 'first-run',
-    title: '首次打开的引导卡：出现 → 三条路 → 关一次就不再出现',
-    run: async (t) => {
-      // 这张卡只在「什么都没存过 + 干净 profile」时出现；驱动层默认会替流程把它关掉，
-      // 本流程自己接手。
-      t.keepFirstRun = true;
-      await t.freshState();
-      const vis = await t.firstRunVisible();
-      t.assert('firstrun-visible', vis, '清掉存档 + 刷新后引导卡出现');
-      const r = await t.rectOf('#firstRun').catch(() => null);
-      t.assert(
-        'firstrun-size',
-        !!r && r.w >= 240 && r.h >= 140,
-        r ? Math.round(r.w) + '×' + Math.round(r.h) + 'px' : '不在视口'
-      );
-      const top = await t.eval(
-        `(()=>{const e=document.querySelector('#firstRun');const r=e.getBoundingClientRect();
-          const hit=document.elementFromPoint(r.left+r.width/2, r.top+r.height/2);
-          return hit ? (hit.id||hit.className||hit.tagName)+'|inside='+(e.contains(hit)||hit===e) : 'null';})()`
-      );
-      t.assert('firstrun-topmost', /inside=true$/.test(String(top)), '画布中心最上层元素=' + top);
-      const paths = await t.eval(
-        `(()=>[...document.querySelectorAll('#firstRun .frRow')].map(p=>p.querySelector('b').textContent.trim()))()`
-      );
-      t.assert('firstrun-three-paths', Array.isArray(paths) && paths.length === 3, paths.join(' / '));
-      await t.shot('firstrun');
-
-      await t.step('走「从空白开始画」');
-      await t.click('#frBlank');
-      await t.waitFor(
-        `!document.querySelector('#firstRun') || getComputedStyle(document.querySelector('#firstRun')).display==='none'`,
-        6000,
-        '引导卡关闭'
-      );
-      t.assert(
-        'firstrun-blank-plan',
-        await t.eval(`PLAN_ID!==BUILTIN_PLAN_ID && effWalls().length===0`),
-        '切到一份空白户型'
-      );
-      t.assert('firstrun-edit-on', await t.eval(`wallEdit.on===true`), '直接进了「编辑墙体」');
-      const hint = await t.eval(
-        `(()=>{const h=document.querySelector('#wMsg'); if(!h) return '';
-          const cs=getComputedStyle(h); const r=h.getBoundingClientRect();
-          return (cs.display==='none'||r.width<8)?'':h.textContent.trim();})()`
-      );
-      t.assert('firstrun-edit-hint-visible', String(hint).length > 8, String(hint).slice(0, 70));
-      await t.shot('firstrun-blank');
-
-      await t.step('刷新后不再出现（一次性）');
-      await t.reload();
-      t.assert('firstrun-once', (await t.firstRunVisible()) === false, '已关过的引导卡不会反复弹');
-      // 复位：引导卡写下的 md_firstRun 与刚建的空白户型一起清掉，不影响后面的流程
-      await t.freshState();
-    },
-    // 本流程自己已经 freshState() 复位过了，驱动层不用再刷新一次（一次真实刷新 ≈ 十几秒）
-    noReload: true,
-  },
-
-  {
     name: 'multi-plan',
     title: '多户型：新建空白 → 切回内置（编辑还在）→ 重命名 → 两步删除',
     run: async (t) => {
       const before = await stateOf(t);
       const c = await planCenter(t);
-      const ensurePro = async () => {
-        const open = await t.eval(`getComputedStyle(document.querySelector('#proTools')).display!=='none'`);
-        if (open) return;
-        await t.click('#btnMore'); // 「工具 ⌄」是个开关：只在关着的时候点，不然会把它关掉
-        await t.waitFor(
-          `getComputedStyle(document.querySelector('#proTools')).display!=='none'`,
-          5000,
-          'proTools 展开'
-        );
-      };
       await t.step('打开「工具」第二层');
-      await ensurePro();
+      await ensureProTools(t);
       const selRect = await t.rectOf('#planSel').catch(() => null);
       t.assert(
         'plan-select-visible',
@@ -727,17 +931,12 @@ export const FLOWS = [
       t.assert('builtin-wall-added', builtinWalls === before.walls + 1, `墙段 ${before.walls} → ${builtinWalls}`);
 
       await t.step('新建一份空白户型');
-      await ensurePro();
+      await ensureProTools(t);
       await t.click('#btnPlanNew');
       await t.waitFor(`PLAN_ID!==BUILTIN_PLAN_ID`, 8000, '切到空白户型');
       const blank = await t.eval(
         `({id:PLAN_ID, walls:effWalls().length, items:state.items.length, fp:floorPts().length, plans:PLAN_REG.plans.length})`
       );
-      const pickPlan = (id) =>
-        t.eval(
-          `(()=>{const s=document.querySelector('#planSel'); s.value=${JSON.stringify(id)};` +
-            `s.dispatchEvent(new Event('change',{bubbles:true}));})()`
-        );
       t.assert(
         'blank-plan-empty',
         blank.walls === 0 && blank.items === 0,
@@ -748,7 +947,7 @@ export const FLOWS = [
 
       await t.step('切回内置户型：刚才那段墙还在');
       const builtinId = await t.eval(`BUILTIN_PLAN_ID`); // 这是页面里的名字，Node 侧要先取回来
-      await pickPlan(builtinId);
+      await pickPlan(t, builtinId);
       await t.waitFor(`PLAN_ID===BUILTIN_PLAN_ID`, 8000, '切回内置');
       const back = await stateOf(t);
       t.assert(
@@ -760,9 +959,9 @@ export const FLOWS = [
       // 重命名 / 删除都作用于「当前户型」，所以先切回那份空白户型。
       // （在内置户型上试删除会被拒 —— 那是故意的，前面已单独断言。）
       await t.step('切回那份空白户型，重命名它');
-      await pickPlan(blank.id);
+      await pickPlan(t, blank.id);
       await t.waitFor(`PLAN_ID===${JSON.stringify(blank.id)}`, 8000, '切回空白户型');
-      await ensurePro();
+      await ensureProTools(t);
       await t.type('#planName', '测试户型 E2E');
       await t.click('#btnPlanRename');
       const names = await t.eval(`[...document.querySelectorAll('#planSel option')].map(o=>o.textContent.trim())`);

@@ -958,6 +958,22 @@ async function runPBTest() {
           );
         }
       }
+      /* 6.x 非法洁具类型必须被拒。界面上 #fxType 只有合法选项，这个状态 UI 到不了 ——
+         验的是爆炸半径而不是可达性：一个非法 t 进了文档，SCHEMA.Project.validate 就失败，
+         而 loadDoc 对 validate 失败的文档是「STORE.remove(DOC_KEY) + 回退空文档」，
+         整份房子会在下次打开时静默消失。 */
+      {
+        const nD = DOC.fixtures.length;
+        Q('#fxType').value = 'sink'; // FX_DEFS 里没有这个键（真实类型叫 basin）
+        await tap(pbFree[0] + 0.4, pbFree[1] + 0.4);
+        const bad = DOC.fixtures.filter((f) => !FX_DEFS[f.t]).length;
+        T(
+          'pb-fx-invalid-type-rejected',
+          DOC.fixtures.length === nD && bad === 0 && SCHEMA.Project.validate(DOC).length === 0,
+          'fixtures=' + DOC.fixtures.length + ' 非法类型=' + bad + '（未放置，文档仍然可载入）'
+        );
+        Q('#fxType').value = 'toilet';
+      }
       await pbReset();
       T(
         'pb-fx-cleanup',
@@ -1956,6 +1972,353 @@ async function runPBTest() {
       );
     }
 
+    /* ===== 13. 彻底的从零开始：空白户型 → 画一圈墙（含窗与门洞）→ 放门 → 放洁具 → 放家具 → 3D 里看见它 ===== */
+    {
+      /* 这一节断的是产品承诺本身：一个没有图纸、也没有内置户型的人，从一张空白画布开始，
+         在界面里把房子画出来、装上门 / 窗 / 洁具 / 家具，然后在 3D 里看见它。
+         以前每一节都跑在内置户型上（打开就有一整套房 + 洁具 + 门），所以「从零建房」这条
+         路径从来没有被完整测过。空白户型的画布是 app 自己的常量 ⇒ 本节 plan-independent。 */
+      await enterEdit();
+      await pbReset();
+      T(
+        'pb-zero-starts-builtin',
+        PLAN_ID === BUILTIN_PLAN_ID,
+        'active=' + (PLAN_ID === BUILTIN_PLAN_ID ? '内置' : PLAN_ID)
+      );
+
+      /* 13.1 空白起点：走真实 UI 路径（工具 ⌄ → 新建空白户型） */
+      Q('#btnPlanNew').click();
+      await tick();
+      const zId = PLAN_ID;
+      const zFp = floorPts();
+      const zXs = zFp.map((p) => p[0]),
+        zYs = zFp.map((p) => p[1]);
+      const ZX0 = Math.min.apply(null, zXs),
+        ZX1 = Math.max.apply(null, zXs),
+        ZY0 = Math.min.apply(null, zYs),
+        ZY1 = Math.max.apply(null, zYs);
+      const ZW = ZX1 - ZX0,
+        ZH = ZY1 - ZY0;
+      T(
+        'pb-zero-blank',
+        zId !== BUILTIN_PLAN_ID &&
+          DOC.walls.length === 0 &&
+          DOC.windows.length === 0 &&
+          DOC.doors.length === 0 &&
+          DOC.fixtures.length === 0 &&
+          state.items.length === 0,
+        'walls=' +
+          DOC.walls.length +
+          ' win=' +
+          DOC.windows.length +
+          ' doors=' +
+          DOC.doors.length +
+          ' fx=' +
+          DOC.fixtures.length +
+          ' items=' +
+          state.items.length
+      );
+      T('pb-zero-own-canvas', zFp.length === 4 && ZW >= 10 && ZH >= 8, '画布 ' + ZW + '×' + ZH + 'ft');
+
+      /* 13.2 画一圈墙：底边中间一段是窗（类型=玻璃/窗），顶边中间一段是门洞（类型=门洞） */
+      const AX = ZX0 + ZW * 0.2,
+        AY = ZY0 + ZH * 0.2,
+        BX = ZX1 - ZW * 0.2,
+        BY = ZY1 - ZH * 0.2;
+      const RW = BX - AX,
+        RH = BY - AY;
+      // 底边中间一段是窗（占 50%），顶边中间一段是门洞（占 25% ⇒ 约 90cm 开口）
+      const P1 = [AX + RW * 0.25, AY],
+        P2 = [BX - RW * 0.25, AY],
+        P3 = [AX + RW * 0.625, BY],
+        P4 = [AX + RW * 0.375, BY];
+      await setTool('wall');
+      const drawPiece = async (type, a, b) => {
+        Q('#wType').value = type;
+        await tap(a[0], a[1]);
+        await tap(b[0], b[1]);
+        const btn = Q('#wtoolSeg button[data-t="wall"]');
+        btn.focus();
+        key('Enter', btn);
+        await tick();
+      };
+      await drawPiece('w', [AX, AY], P1);
+      await drawPiece('g', P1, P2);
+      await drawPiece('w', P2, [BX, AY]);
+      await drawPiece('w', [BX, AY], [BX, BY]);
+      await drawPiece('w', [BX, BY], P3);
+      await drawPiece('d', P3, P4);
+      await drawPiece('w', P4, [AX, BY]);
+      await drawPiece('w', [AX, BY], [AX, AY]);
+      const zWalls = DOC.walls.filter((e) => e.src === 'user');
+      const zOpen = zWalls.filter((e) => e.kind === 'opening');
+      T(
+        'pb-zero-room-closed',
+        zWalls.length === 7 && DOC.windows.filter((e) => e.src === 'user').length === 1,
+        '墙 ' + zWalls.length + ' 段（应 6 实墙 + 1 门洞）· 窗 ' + DOC.windows.length
+      );
+      const zLegacy = effWalls();
+      T(
+        'pb-zero-window-and-opening-in-projection',
+        zLegacy.some((s) => s.t === 'g') && zLegacy.some((s) => s.t === 'd'),
+        '投影 t 集合=' +
+          zLegacy
+            .map((s) => s.t)
+            .sort()
+            .join('')
+      );
+      // 端点咬合：四个角各被两段墙共用（磁吸把重复点击并到同一点）
+      const zJoined = [
+        [AX, AY],
+        [BX, AY],
+        [BX, BY],
+        [AX, BY],
+      ].filter(([cx, cy]) => {
+        let n = 0;
+        for (const s of zWalls) {
+          const d1 = Math.hypot(s.geom.x1 - cx, s.geom.y1 - cy),
+            d2 = Math.hypot(s.geom.x2 - cx, s.geom.y2 - cy);
+          if (d1 < 0.35 || d2 < 0.35) n++;
+        }
+        return n >= 2;
+      }).length;
+      T('pb-zero-corners-joined', zJoined === 4, zJoined + '/4 个角有两段墙共用（磁吸咬合）');
+      const zFp2 = floorPts();
+      const z2Xs = zFp2.map((p) => p[0]),
+        z2Ys = zFp2.map((p) => p[1]);
+      T(
+        'pb-zero-floor-follows-drawing',
+        Math.min.apply(null, z2Xs) <= AX + 0.05 &&
+          Math.max.apply(null, z2Xs) >= BX - 0.05 &&
+          Math.min.apply(null, z2Ys) <= AY + 0.05 &&
+          Math.max.apply(null, z2Ys) >= BY - 0.05,
+        '地板轮廓 x[' +
+          Math.min.apply(null, z2Xs).toFixed(1) +
+          '…' +
+          Math.max.apply(null, z2Xs).toFixed(1) +
+          '] y[' +
+          Math.min.apply(null, z2Ys).toFixed(1) +
+          '…' +
+          Math.max.apply(null, z2Ys).toFixed(1) +
+          ']'
+      );
+
+      /* 13.3 放门：门工具点门洞（门只能放在开口上 —— 这是设计，不是 bug） */
+      await setTool('door');
+      if (zOpen.length) {
+        const o = zOpen[0].geom;
+        await tap((o.x1 + o.x2) / 2, (o.y1 + o.y2) / 2);
+      }
+      const zDoor = DOC.doors.filter((e) => e.src === 'user').slice(-1)[0];
+      const zOpenLen = zOpen.length
+        ? Math.hypot(zOpen[0].geom.x2 - zOpen[0].geom.x1, zOpen[0].geom.y2 - zOpen[0].geom.y1)
+        : 0;
+      T(
+        'pb-zero-door-on-opening',
+        !!zDoor && DOC.doors.length === 1 && Math.abs(zDoor.width - zOpenLen) < 0.15,
+        zDoor
+          ? '门宽=' + zDoor.width.toFixed(2) + 'ft 门洞=' + zOpenLen.toFixed(2) + 'ft kind=' + zDoor.kind
+          : '门没放上（门洞数=' + zOpen.length + '）'
+      );
+      T(
+        'pb-zero-door-in-projection',
+        effDoors().length === 1 && effDoors()[0]._id === zDoor.id,
+        'effDoors=' + effDoors().length
+      );
+
+      /* 13.4 洁具：马桶 + 台盆（自由放置）+ 镜子（贴墙契约） */
+      await setTool('fx');
+      const zFxN = () => DOC.fixtures.filter((f) => f.src === 'user').length;
+      Q('#fxType').value = 'toilet';
+      await tap(AX + RW * 0.12, AY + RH * 0.18);
+      const zToilet = DOC.fixtures[DOC.fixtures.length - 1];
+      Q('#fxType').value = 'basin';
+      await tap(AX + RW * 0.4, AY + RH * 0.1);
+      const zSink = DOC.fixtures[DOC.fixtures.length - 1];
+      T(
+        'pb-zero-fx-placed-inside',
+        zFxN() === 2 &&
+          zToilet.t === 'toilet' &&
+          zSink.t === 'basin' &&
+          [zToilet, zSink].every((f) => {
+            const cx = (f.x1 + f.x2) / 2,
+              cy = (f.y1 + f.y2) / 2;
+            return cx > AX && cx < BX && cy > AY && cy < BY;
+          }),
+        'userFx=' + zFxN() + '（都在画出来的房间里）'
+      );
+      Q('#fxType').value = 'mirror';
+      // 贴墙吸附半径 = min(1.0, 20/屏幕每英尺像素)：空白户型视野大 → 半径小，点击必须落在半径内
+      const zSnapIn = Math.min(0.35, 10 / pxPerFtNow());
+      await tap(AX + zSnapIn, (AY + BY) / 2); // 左墙内侧（吸附半径内）
+      const zMir = DOC.fixtures[DOC.fixtures.length - 1];
+      {
+        // 对着「实际吸附到的那面墙」量，不是对着我以为的那面墙
+        let wall = null,
+          bd = 1e9;
+        const cxm = (zMir.x1 + zMir.x2) / 2,
+          cym = (zMir.y1 + zMir.y2) / 2;
+        for (const s of effWalls()) {
+          if (s.t !== 'w' && s.t !== 'i') continue;
+          const d = distSeg(cxm, cym, s);
+          if (d < bd) {
+            bd = d;
+            wall = s;
+          }
+        }
+        let ok = false,
+          info = '没有可贴的墙';
+        if (wall) {
+          const L = Math.hypot(wall.x2 - wall.x1, wall.y2 - wall.y1);
+          const ux = (wall.x2 - wall.x1) / L,
+            uy = (wall.y2 - wall.y1) / L;
+          const docE = entById(wall._id);
+          const th = docE && docE.thick != null ? docE.thick : (wall.wd || 6.5) / SC;
+          const expect = (th + FX_DEFS.mirror.d) / 2;
+          let wa = (Math.atan2(uy, ux) * 180) / Math.PI;
+          wa = ((wa % 360) + 360) % 360;
+          if (wa >= 180) wa -= 180;
+          ok =
+            zMir.t === 'mirror' &&
+            zMir.rot != null &&
+            Math.abs((zMir.rot || 0) - Math.round(wa)) < 0.6 &&
+            Math.abs(bd - expect) < 0.05;
+          info =
+            '贴墙=' +
+            wall._id +
+            ' 墙角=' +
+            wa.toFixed(1) +
+            ' rot=' +
+            zMir.rot +
+            ' dWall=' +
+            bd.toFixed(3) +
+            ' expect=' +
+            expect.toFixed(3) +
+            ' 墙厚=' +
+            th.toFixed(3);
+        }
+        T('pb-zero-mirror-snaps-to-drawn-wall', ok, info);
+      }
+
+      /* 13.5 家具：目录卡片点击（addItem 就是卡片 onclick 调的函数）→ 落在房间里 */
+      Q('#btnWallEdit').click(); // 退出编辑模式（放家具是自由视角的动作）
+      await tick();
+      const zRefs = ['sofa', 'table', 'lamp'].map((kw) => {
+        const hit = CATALOG.find((c) => (c.cat || '').indexOf(kw) >= 0 || c.kind.indexOf(kw) >= 0);
+        return hit ? hit.id : null;
+      });
+      zRefs.forEach((id, i) => {
+        if (!id) return;
+        addItem(id);
+        const it = state.items[state.items.length - 1];
+        // 拖动等价：改占地坐标后重画（2D 拖动做的就是这个）
+        it.x = AX + RW * (0.3 + 0.2 * i);
+        it.y = AY + RH * (0.55 + 0.15 * i);
+        drawFurniture();
+        save();
+      });
+      T(
+        'pb-zero-furniture-inside',
+        state.items.length === 3 && state.items.every((it) => it.x > AX && it.x < BX && it.y > AY && it.y < BY),
+        'items=' + state.items.length + ' refs=' + zRefs.join(',')
+      );
+      updateTotals();
+      const zTot = Q('#totals') ? Q('#totals').textContent : '';
+      T('pb-zero-totals-counted', /采购\s*3\s*件/.test(zTot), '#totals = ' + JSON.stringify(zTot.slice(0, 40)));
+
+      /* 13.6 3D：画的墙立到顶、洁具与家具都在场景里 */
+      setView('3d');
+      await wait3D();
+      const zHit = rayDown(AX, (AY + BY) / 2);
+      T(
+        'pb-zero-3d-wall-stands',
+        !!zHit && zHit.point.y > 1.0 && Math.hypot(zHit.point.x - AX, zHit.point.z - (AY + BY) / 2) < 1.2,
+        zHit ? '左墙命中 y=' + zHit.point.y.toFixed(2) : '3D 里没有这段墙'
+      );
+      const zFxGroups =
+        three && three.staticGroup
+          ? (() => {
+              let n = 0;
+              three.staticGroup.traverse((o) => {
+                if (o.isMesh && o.geometry && o.geometry.attributes && o.geometry.attributes.position) {
+                  const bb = new THREE.Box3().setFromObject(o);
+                  if (bb.min.x > AX - 1 && bb.max.x < BX + 1 && bb.min.z > AY - 1 && bb.max.z < BY + 1) n++;
+                }
+              });
+              return n;
+            })()
+          : 0;
+      T('pb-zero-3d-has-content', zFxGroups > 0, '房间内静态网格 ' + zFxGroups + ' 个');
+      T(
+        'pb-zero-3d-furniture',
+        !!three && three.furnMap && three.furnMap.size === 3,
+        'furnMap=' + (three && three.furnMap ? three.furnMap.size : '-')
+      );
+      setView('2d');
+      await tick();
+
+      /* 13.7 这份从零建的房子写进了它自己的存档键，且没有污染内置户型 */
+      saveGeo();
+      await tick();
+      const zRaw = STORE.get(DOC_KEY);
+      const zBack = zRaw ? JSON.parse(zRaw) : null;
+      T(
+        'pb-zero-persisted-own-key',
+        !!zBack &&
+          zBack.imported === true &&
+          zBack.walls.filter((e) => e.src === 'user').length === 7 &&
+          zBack.doors.length === 1 &&
+          zBack.fixtures.filter((f) => f.src === 'user').length === 3,
+        zBack
+          ? 'doc=' + DOC_KEY + ' 墙' + zBack.walls.length + ' 门' + zBack.doors.length + ' 洁具' + zBack.fixtures.length
+          : '没写进主存'
+      );
+      const zBuiltinRaw = STORE.get(PLANS.docKeyFor(BUILTIN_PLAN_ID));
+      const zBuiltin = zBuiltinRaw ? JSON.parse(zBuiltinRaw) : null;
+      T(
+        'pb-zero-builtin-untouched',
+        !!zBuiltin && zBuiltin.walls.filter((e) => e.src === 'user').length === 0,
+        '内置户型 userWalls=' + (zBuiltin ? zBuiltin.walls.filter((e) => e.src === 'user').length : '-')
+      );
+
+      /* 13.7b 界面建出来的这份文档必须过 validate —— 过不了的话 loadDoc 会 STORE.remove(DOC_KEY)
+         然后回退成空文档：用户的整份房子被静默删掉。这是这条路径上最贵的一道闸。 */
+      {
+        const zV = SCHEMA.Project.validate(JSON.parse(STORE.get(DOC_KEY)));
+        T('pb-zero-doc-valid', zV.length === 0, zV.length ? 'validate: ' + zV.slice(0, 3).join(' | ') : '通过');
+      }
+
+      /* 13.8 切回内置户型：从零建的那份还在（注册表里数得出来），内置户型也还是完整的 */
+      const zSel = Q('#planSel');
+      zSel.value = BUILTIN_PLAN_ID;
+      zSel.dispatchEvent(new Event('change', { bubbles: true }));
+      await tick();
+      T(
+        'pb-zero-switch-back-intact',
+        PLAN_ID === BUILTIN_PLAN_ID && effWalls().length > 10 && effDoors().length > 0,
+        '内置 墙=' + effWalls().length + ' 门=' + effDoors().length
+      );
+      zSel.value = zId;
+      zSel.dispatchEvent(new Event('change', { bubbles: true }));
+      await tick();
+      T(
+        'pb-zero-from-scratch-survives',
+        PLAN_ID === zId && DOC.walls.filter((e) => e.src === 'user').length === 7 && state.items.length === 3,
+        '回到从零建的那份：墙=' + DOC.walls.filter((e) => e.src === 'user').length + ' 家具=' + state.items.length
+      );
+
+      /* 13.9 清场：删掉这份户型，不让它留在注册表里影响后续 */
+      await enterEdit();
+      Q('#btnPlanDel').click();
+      await tick();
+      Q('#btnPlanDel').click();
+      await tick();
+      T(
+        'pb-zero-cleanup',
+        !PLANS.hasPlan(PLAN_REG, zId) && PLAN_ID === BUILTIN_PLAN_ID,
+        'plans=' + PLAN_REG.plans.length + ' active=' + (PLAN_ID === BUILTIN_PLAN_ID ? '内置' : PLAN_ID)
+      );
+    }
     /* ===== 收尾：页面不得有未捕获异常 ===== */
     T('pb-no-page-errors', window.__ERRS.length === 0, window.__ERRS.slice(0, 3).join(' || '));
   } catch (e) {
