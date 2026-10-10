@@ -5385,8 +5385,12 @@ function rescaleDocPlan(k){
     g.x1=a[0]; g.y1=a[1]; g.x2=b[0]; g.y2=b[1]; return true; };
   let n=0;
   for(const w of (DOC.walls||[])){ if(segG(w.geom)){ if(w.thick!=null) w.thick=FT2(w.thick*k); if(w.wdPx!=null&&w.thick!=null) w.wdPx=w.thick*S; n++; } }
-  for(const w of (DOC.windows||[])){ if(segG(w.geom)){ if(w.width!=null) w.width=FT2(w.width*k); n++; } }
-  for(const d of (DOC.doors||[])){ if(segG(d.geom)){ segG(d.gapGeom); n++; } }
+  for(const w of (DOC.windows||[])){ if(segG(w.geom)){ if(w.width!=null) w.width=FT2(w.width*k);
+    // 窗厚与墙厚同一条规则：墙厚缩放了、窗厚不缩放的话，窗就比它所在的墙薄一大截（bug 猎 #24）
+    if(w.thick!=null) w.thick=FT2(w.thick*k); if(w.wdPx!=null&&w.thick!=null) w.wdPx=w.thick*S; n++; } }
+  for(const d of (DOC.doors||[])){ if(segG(d.geom)){ segG(d.gapGeom);
+    // width = gap/leaf 长度（ft）：几何缩放了它不缩放，导出/导入读它就读到一半（bug 猎 #23）
+    if(d.width!=null) d.width=FT2(d.width*k); n++; } }
   for(const s of (DOC.solids||[])){ const g=s.geom; if(!g) continue;
     if(g.t==='poly'){ g.pts=(g.pts||[]).map(p=>P(p[0],p[1])); n++; }
     else if(g.t==='arc'){ const c=P(g.cx,g.cy); g.cx=c[0]; g.cy=c[1]; g.r=FT2(g.r*k); n++; } }
@@ -5402,7 +5406,7 @@ function rescaleDocPlan(k){
     if(r.modules) r.modules.forEach(m=>{ if(typeof m.at==='number') m.at=FT2(m.at*k); }); n++; }
   let img=false;
   if(DOC.baseImage){ const b=DOC.baseImage; const q=P(b.ox,b.oy); b.ox=q[0]; b.oy=q[1]; b.mPerPx=b.mPerPx*k; img=true; }
-  return {n, img};
+  return {n, img, c:[cx,cy]};
 }
 let _calArm=null;
 function armRescale(){
@@ -5422,8 +5426,18 @@ function armRescale(){
   _calArm=null;
   pushUndo('rescale:'+k.toFixed(6));
   const info=rescaleDocPlan(k);
+  /* bug 猎 #22：家具不在 ProjectDoc 里（它走 planner_v1:<id> 另一条存档），rescaleDocPlan 只摸 DOC。
+     但它摆在墙边：整图缩放不把它一起搬走，它就留在旧坐标 —— ×2 后跑到墙外 / 房间错位。
+     与洁具同一条规则：位置按同一个中心缩放，真实尺寸（w/d）与 rot 不动。 */
+  let moved=0;
+  if(info.c) for(const it of state.items){
+    const nx=FT2(info.c[0]+(it.x-info.c[0])*k), ny=FT2(info.c[1]+(it.y-info.c[1])*k);
+    if(nx!==it.x||ny!==it.y){ it.x=nx; it.y=ny; moved++; }
+  }
+  if(moved) save();
   geoChanged(); fit2DToContent();
   wMsg('整图已按 ×'+k.toFixed(4)+' 缩放：'+info.n+' 个构件'+(info.img?' · 底图比例同步':'')+
+       (moved?' · '+moved+' 件家具跟着搬':'')+
        '；洁具与台面保持真实尺寸不缩放；点「撤销」可回到缩放前');
 }
 function applyDrawWallChain(){ pushUndo('drawChain');

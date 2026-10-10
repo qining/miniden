@@ -1625,6 +1625,36 @@ async function runPBTest() {
         drawWallEdit();
         await tick();
         await enterEdit();
+        /* 先画一段带已知厚度的窗（20cm）：整图缩放后它的**画出来的厚度**该跟着翻倍。
+           导入的窗没有 thick（见下面的 INFO），只有用户画的窗才带厚度 —— 用它来量。 */
+        await setTool('wall');
+        Q('#wThick').value = '20';
+        Q('#wType').value = 'g';
+        const iwPre = effWalls()
+          .filter((s) => s.t === 'w')
+          .sort((a, b) => Math.hypot(b.x2 - b.x1, b.y2 - b.y1) - Math.hypot(a.x2 - a.x1, a.y2 - a.y1))[0];
+        const iwL0 = Math.hypot(iwPre.x2 - iwPre.x1, iwPre.y2 - iwPre.y1) || 1;
+        const nX = -(iwPre.y2 - iwPre.y1) / iwL0,
+          nY = (iwPre.x2 - iwPre.x1) / iwL0;
+        const cW1 = [iwPre.x1 + nX * 4, iwPre.y1 + nY * 4];
+        const cW2 = [cW1[0] + 3, cW1[1]];
+        await tap(cW1[0], cW1[1]);
+        await tap(cW2[0], cW2[1]);
+        const cWBtn = Q('#wtoolSeg button[data-t="wall"]');
+        cWBtn.focus();
+        key('Enter', cWBtn);
+        await tick();
+        /* 窗不在 wallPolys() 里（它只收 t==='w'），所以窗厚从投影的 wd 量、墙厚从多边形量，
+           两条不同的路一起断：缩放必须让它们按同一个比例走。 */
+        const calWinEnt = () => DOC.windows.find((e) => e.src === 'user' && e.thick != null) || null;
+        const calWinWd = () => {
+          const e = calWinEnt();
+          if (!e) return NaN;
+          const s = effWalls().find((q) => q._id === e.id);
+          return s && s.wd != null ? s.wd / S : NaN;
+        };
+        const calWinT0 = calWinEnt() ? calWinEnt().thick : NaN;
+        const calWinWd0 = calWinWd();
         await setTool('select');
         const byLen = (a, b) => Math.hypot(b.x2 - b.x1, b.y2 - b.y1) - Math.hypot(a.x2 - a.x1, a.y2 - a.y1);
         const iw = effWalls()
@@ -1652,7 +1682,18 @@ async function runPBTest() {
           return b - a;
         };
         const span0 = spanOf();
+        const calWallTh0 = pbDrawnThick(iw); // 缩放前量：iw 的坐标在缩放后就是旧值了
         const doorW0 = effDoors().map((d) => Math.hypot(d.x2 - d.x1, d.y2 - d.y1));
+        /* 家具摆在墙边：整图缩放必须把它一起搬走。家具不在 ProjectDoc 里（它走
+           planner_v1:<id> 另一条存档），而 rescaleDocPlan 只摸 DOC。 */
+        addItem(CATALOG[0].id);
+        await tick();
+        const calIt0 = state.items[state.items.length - 1];
+        calIt0.x = iw.x1 + 1.2;
+        calIt0.y = iw.y1 + 1.2;
+        const calUid = calIt0.uid;
+        const calP0 = [calIt0.x, calIt0.y];
+        drawFurniture();
         Q('#wLen').value = String(Math.round(L0 * 2 * 30.48));
         Q('#calBtn').click();
         await tick();
@@ -1700,6 +1741,92 @@ async function runPBTest() {
           'pb-cal-plan-extent-scales',
           Math.abs(span1 - span0 * 2) < 0.15,
           'x 向包络=' + span0.toFixed(2) + ' → ' + span1.toFixed(2) + 'ft'
+        );
+        /* 家具跟着户型走（bug 猎 #22：以前它留在旧坐标，×2 之后跑到墙外 / 房间错位）。
+           缩放中心从 floorPts() 包络独立算，不照抄实现。 */
+        const calC = (() => {
+          const fp = floorPts();
+          let a = 1e9,
+            b = 1e9,
+            c = -1e9,
+            d = -1e9;
+          for (const p of fp) {
+            a = Math.min(a, p[0]);
+            b = Math.min(b, p[1]);
+            c = Math.max(c, p[0]);
+            d = Math.max(d, p[1]);
+          }
+          return [(a + c) / 2, (b + d) / 2];
+        })();
+        const calK = span1 / span0;
+        const calIt1 = state.items.find((it) => it.uid === calUid);
+        const expX = calC[0] + (calP0[0] - calC[0]) * calK;
+        const expY = calC[1] + (calP0[1] - calC[1]) * calK;
+        T(
+          'pb-cal-items-move-with-plan',
+          !!calIt1 && Math.abs(calIt1.x - expX) < 0.06 && Math.abs(calIt1.y - expY) < 0.06,
+          '家具 (' +
+            calP0[0].toFixed(2) +
+            ', ' +
+            calP0[1].toFixed(2) +
+            ') → (' +
+            (calIt1 ? calIt1.x.toFixed(2) : '?') +
+            ', ' +
+            (calIt1 ? calIt1.y.toFixed(2) : '?') +
+            ') 期望 (' +
+            expX.toFixed(2) +
+            ', ' +
+            expY.toFixed(2) +
+            ') · ×' +
+            calK.toFixed(3)
+        );
+        /* 门的 width 字段必须跟着几何走（bug 猎 #23：几何 ×2 而 width 没动 →
+           声明值只有实际开口的一半；导出/导入把它当门宽读就读到一半）。
+           窗的 width 已经缩放（同一节代码里），门是这套规则里唯一的漏项。 */
+        const calDoors = DOC.doors.map((d) => {
+          const g = d.geom;
+          return { id: d.id, w: d.width, L: Math.hypot(g.x2 - g.x1, g.y2 - g.y1) };
+        });
+        const calDoorOk = calDoors.every((d) => Math.abs(d.w - d.L) < 0.03);
+        T(
+          'pb-cal-door-width-field-scales',
+          calDoors.length > 0 && calDoorOk,
+          calDoors
+            .slice(0, 3)
+            .map((d) => d.id + ' width=' + d.w.toFixed(3) + ' 开口=' + d.L.toFixed(3))
+            .join(' ')
+        );
+        /* 窗厚：用户画的窗带 thick（20cm）。整图缩放把墙厚放大了，窗厚没跟着走的话
+           窗就比它所在的墙薄一大截。墙厚从 wallPolys 多边形量，窗厚从投影 wd 量。 */
+        const calWallTh1 = pbDrawnThick(effWalls().find((q) => q._id === iw._id) || iw);
+        const calWinT1 = calWinEnt() ? calWinEnt().thick : NaN;
+        const calWinWd1 = calWinWd();
+        T(
+          'pb-cal-window-thick-scales',
+          isFinite(calWinT0) &&
+            isFinite(calWinT1) &&
+            Math.abs(calWinT1 - calWinT0 * 2) < 0.03 &&
+            isFinite(calWinWd0) &&
+            isFinite(calWinWd1) &&
+            Math.abs(calWinWd1 - calWinWd0 * 2) < 0.03,
+          '窗 thick ' +
+            (isFinite(calWinT0) ? calWinT0.toFixed(3) : '?') +
+            '→' +
+            (isFinite(calWinT1) ? calWinT1.toFixed(3) : '?') +
+            ' · 投影 wd ' +
+            (isFinite(calWinWd0) ? calWinWd0.toFixed(3) : '?') +
+            '→' +
+            (isFinite(calWinWd1) ? calWinWd1.toFixed(3) : '?') +
+            'ft（期望 ×2）'
+        );
+        T(
+          'pb-cal-wall-thick-geometric',
+          isFinite(calWallTh0) && isFinite(calWallTh1) && Math.abs(calWallTh1 - calWallTh0 * 2) < 0.06,
+          '墙画出来的厚 ' +
+            (isFinite(calWallTh0) ? calWallTh0.toFixed(3) : '?') +
+            ' → ' +
+            (isFinite(calWallTh1) ? calWallTh1.toFixed(3) : '?') +
+            'ft（期望 ×2）'
         );
         ctrlZ();
         await tick();
