@@ -1499,6 +1499,153 @@ async function run3DTest() {
         !three.night &&
         JSON.parse(localStorage.getItem(DOC_KEY)).env.preset === 'seattle-city'
     );
+
+    // ===== S4b: 10 个环境预设（5 景观 × 昼夜）。§5.4.8 的三条规则全部可测化 =====
+    {
+      const PS4 = ['seattle-city', 'suburban', 'seaview', 'forest', 'courtyard'];
+      const key4 = (p, n) => p + (n ? 'n' : 'd');
+      const lum4 = (g, x, y) => {
+        const d = g.getImageData(x, y, 1, 1).data;
+        return 0.2126 * d[0] + 0.7152 * d[1] + 0.0722 * d[2];
+      };
+      const stat4 = (tex) => {
+        const cv = tex.image,
+          g = cv.getContext('2d'),
+          W = cv.width,
+          H = cv.height;
+        let s = 0,
+          mx = 0,
+          c = 0;
+        for (let y = Math.round(H * 0.35); y < Math.round(H * 0.6); y++)
+          for (let x = 0; x < W; x += 2) {
+            const l = lum4(g, x, y);
+            s += l;
+            c++;
+            if (l > mx) mx = l;
+          }
+        let dark = 0;
+        for (let x = 0; x < W; x += 8) {
+          let m = 0;
+          for (let y = Math.round(H * 0.42); y < Math.round(H * 0.62); y++) {
+            const l = lum4(g, x, y);
+            if (l > m) m = l;
+          }
+          if (m < 18) dark++;
+        }
+        return { mean: s / c, max: mx, dark };
+      };
+      const all4 = {};
+      let size4 = true;
+      for (const p of PS4)
+        for (const n of [false, true]) {
+          const t = panorama(p, n);
+          all4[key4(p, n)] = t;
+          if (t.image.width !== 2048 || t.image.height !== 1024) size4 = false;
+        }
+      T('s4b-presets-10', Object.keys(all4).length === 10 && size4, '5 景观 × 昼夜 = 10 张 2048×1024');
+      // 规则 1「地平线高度是物理量」：读生成器源码里的 HZ 系数，不是回声断言
+      const hz4 = PS4.map((p) => {
+        const m = PANORAMA_GEN[p].toString().match(/HZ\s*=\s*Math\.round\(H\s*\*\s*([\d.]+)\)/);
+        return m ? parseFloat(m[1]) : null;
+      });
+      T(
+        's4b-horizon-consistent',
+        hz4.every((v) => v === 0.54),
+        'HZ 系数 ' + hz4.join('/')
+      );
+      // 规则 2「任何窗向都要能看见」：FP 平视眼高 5.35ft → 窗口显示大约 y 35%–60%
+      const st4 = {};
+      for (const k in all4) st4[k] = stat4(all4[k]);
+      const weak4 = Object.keys(st4).filter((k) => st4[k].mean < 25 || st4[k].max < 150);
+      T(
+        's4b-window-band-readable',
+        weak4.length === 0,
+        'mean/max ' +
+          Object.keys(st4)
+            .map((k) => k + '=' + st4[k].mean.toFixed(0) + '/' + st4[k].max.toFixed(0))
+            .join(' ')
+      );
+      // 规则 3「夜景必须有全宽辉光带」：新增两个预设要求 0 暗列。
+      // 历史预设 seattle-city 夜有 5 个暗列——它的种子已钉死（改它=改基线），只报不 gate。
+      const newK4 = ['forestn', 'courtyardn'];
+      const oldK4 = ['seattle-cityn', 'suburbann', 'seaviewn'];
+      T(
+        's4b-night-glow-full-width',
+        newK4.every((k) => st4[k].dark === 0),
+        '新增暗列 ' +
+          newK4.map((k) => k + '=' + st4[k].dark).join(' ') +
+          ' · 历史 ' +
+          oldK4.map((k) => k + '=' + st4[k].dark).join(' ')
+      );
+      let dup4 = 0;
+      const kk4 = Object.keys(all4);
+      for (let i = 0; i < kk4.length; i++)
+        for (let j = i + 1; j < kk4.length; j++) if (all4[kk4[i]] === all4[kk4[j]]) dup4++;
+      T('s4b-pano-10-distinct', dup4 === 0, '重复对 ' + dup4);
+      const px4 = (tex, x, y) => {
+        const d = tex.image.getContext('2d').getImageData(x, y, 1, 1).data;
+        return [d[0], d[1], d[2]];
+      };
+      const probe4 = (tex) => JSON.stringify([px4(tex, 220, 120), px4(tex, 1024, 560), px4(tex, 1800, 940)]);
+      let det4 = true;
+      for (const [p, mode] of [
+        ['forest', false],
+        ['courtyard', true],
+      ]) {
+        const a = probe4(all4[key4(p, mode)]);
+        delete _skyCache[key4(p, mode)];
+        if (probe4(panorama(p, mode)) !== a) det4 = false;
+      }
+      T('s4b-pano-deterministic', det4, '清缓存重生成逐像素相同（forest 昼 / courtyard 夜）');
+      T(
+        's4b-env-tint-rows',
+        PS4.every((p) => ENV_TINT[p] && ENV_TINT[p].day && ENV_TINT[p].night),
+        PS4.map((p) => (ENV_TINT[p] ? '✓' : '✗')).join('')
+      );
+      document.querySelector('#envForest').click();
+      await wait(120);
+      T(
+        's4b-btn-forest',
+        three.preset === 'forest' &&
+          three.panorama === panorama('forest', false) &&
+          DOC.env.preset === 'forest' &&
+          document.querySelector('#envForest').classList.contains('on'),
+        three.preset
+      );
+      document.querySelector('#envPark').click();
+      await wait(120);
+      T(
+        's4b-btn-park-persist',
+        three.preset === 'courtyard' &&
+          JSON.parse(localStorage.getItem(DOC_KEY)).env.preset === 'courtyard' &&
+          document.querySelector('#envPark').classList.contains('on'),
+        three.preset
+      );
+      // 顶栏多了两个按钮：工具条必须仍是单行（AGENTS §5.2「工具条高度变化 → 画布跳动」）
+      {
+        const bar = document.querySelector('#topbar');
+        const seg = document.querySelector('#envSeg');
+        T(
+          's4b-topbar-single-row',
+          bar.scrollHeight <= bar.clientHeight + 1 && seg.scrollWidth <= seg.clientWidth + 1,
+          'topbar ' +
+            bar.scrollWidth +
+            '/' +
+            bar.clientWidth +
+            '×' +
+            bar.scrollHeight +
+            '/' +
+            bar.clientHeight +
+            ' · envSeg ' +
+            seg.scrollWidth +
+            '/' +
+            seg.clientWidth
+        );
+      }
+      setPreset('seattle-city');
+      setDayNight(false);
+      await wait(100);
+    }
     // ===== S6：3D 洁具（每件一个 Group；rot 绕占地中心）=====
     {
       const f0 = DOC.fixtures[0];

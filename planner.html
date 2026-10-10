@@ -41,12 +41,14 @@
     background:var(--bg); color:var(--text); display:flex; flex-direction:column;
   }
   /* ---------- top bar ---------- */
-  #topbar{display:flex; align-items:center; gap:10px; padding:8px 14px;
+  #topbar{display:flex; align-items:center; gap:10px; padding:8px 14px; flex-wrap:wrap;
     background:var(--panel); border-bottom:1px solid var(--line); z-index:20;
   }
-  #topbar .title{font-weight:700; font-size:16px; margin-right:6px;}
+  #topbar .title{font-weight:700; font-size:16px; margin-right:6px; white-space:nowrap;}
   #topbar .title small{color:var(--muted); font-weight:400; margin-left:6px;}
   .seg{display:flex; background:var(--panel2); border:1px solid var(--line); border-radius:6px; overflow:hidden;}
+  /* 窗外环境 5 个预设（S4b）：窗口窄时顶栏会挤这组 → 内边距收紧，1180px 以上保持单行 */
+  #envSeg button{padding:6px 10px;}
   .seg button{
     background:none; border:none; color:var(--muted); padding:6px 14px; cursor:pointer; font-size:13px;
   }
@@ -321,6 +323,8 @@
     <button id="envCity" class="on">城市</button>
     <button id="envSub">郊野</button>
     <button id="envSea">海景</button>
+    <button id="envForest">山林</button>
+    <button id="envPark">庭院</button>
   </div>
   <button class="btn" id="btnWallEdit">编辑墙体</button>
   <div class="seg" id="undoSeg">
@@ -6282,7 +6286,7 @@ function wallMesh(s, h, thick, mat, ext){
    day=白天蓝天+远山+高楼群；night=夜景，楼体亮窗+城市辉光 */
 let _skyCache={};
 /* 环境预设：每个生成器自带固定种子（确定性可回归），输出 2048×1024 等距柱状全景。
-   seattle-city=现有种子 1007/8926（逐字节不变）；suburban=2101/10020；seaview=2102/10021 */
+   seattle-city=现有种子 1007/8926（逐字节不变）；suburban=2101/10020；seaview=2102/10021；forest=2103/10022；courtyard=2104/10023 */
 function panoTex(c, key){
   const t=new THREE.CanvasTexture(c);
   t.mapping=THREE.EquirectangularReflectionMapping; t.encoding=THREE.sRGBEncoding;
@@ -6520,6 +6524,167 @@ const PANORAMA_GEN={
         g.fillStyle=`rgba(120,150,200,${rnd(0.03,0.09)})`;
         g.fillRect(x,y,w,1.1);
       }
+    }
+    return panoTex(c, key);
+  },
+  /* 山林：层叠山脊 + 薄雾 + 针叶树线（§5.4.8：地平线 HZ 与其余预设一致；夜的全宽辉光带画在山体/地面之后） */
+  'forest': (night, key)=>{
+    srand(2103 + (night?7919:0));
+    const W=2048,H=1024, HZ=Math.round(H*0.54);
+    const c=document.createElement('canvas'); c.width=W;c.height=H;
+    const g=c.getContext('2d');
+    const rnd=(a,b)=>a+rnd01()*(b-a);
+    // —— 天空（山区的通透蓝，靠地平线转成雾白）——
+    const sky=g.createLinearGradient(0,0,0,HZ);
+    if(night){ sky.addColorStop(0,'#040711'); sky.addColorStop(0.6,'#0d1626'); sky.addColorStop(1,'#22304a'); }
+    else { sky.addColorStop(0,'#3f7cbe'); sky.addColorStop(0.5,'#8fb8dc'); sky.addColorStop(1,'#dfe9ef'); }
+    g.fillStyle=sky; g.fillRect(0,0,W,HZ);
+    if(!night){ g.fillStyle='rgba(255,251,238,.86)';
+      g.beginPath(); g.ellipse(760,120,48,30,0,0,Math.PI*2); g.fill();
+      for(let i=0;i<14;i++){ g.fillStyle=`rgba(255,255,255,${rnd(0.05,0.16)})`;
+        const x=rnd(0,W), y=rnd(30,HZ-140), w=rnd(150,460), h=rnd(8,22);
+        g.beginPath(); g.ellipse(x,y,w/2,h/2,0,0,Math.PI*2); g.fill(); }
+    } else {
+      for(let i=0;i<260;i++){ g.fillStyle=`rgba(255,255,255,${rnd(0.12,0.8)})`;   // 山区星空（无光害 → 星多）
+        g.fillRect(rnd(0,W), rnd(0,HZ-150), 1.3, 1.3); }
+      g.fillStyle='rgba(238,244,255,.95)';                                        // 月亮
+      g.beginPath(); g.arc(1180,110,18,0,Math.PI*2); g.fill();
+      const mg=g.createRadialGradient(1180,110,8,1180,110,110);
+      mg.addColorStop(0,'rgba(215,230,255,.34)'); mg.addColorStop(1,'rgba(215,230,255,0)');
+      g.fillStyle=mg; g.beginPath(); g.arc(1180,110,110,0,Math.PI*2); g.fill();
+    }
+    // —— 层叠山脊（远=浅而偏蓝，近=深而偏绿：大气透视）——
+    const RIDGE=[
+      {amp:96, base:118, col:night?'rgba(46,58,84,.72)':'rgba(150,172,196,.55)'},
+      {amp:78, base:96,  col:night?'rgba(32,42,62,.82)':'rgba(122,146,168,.68)'},
+      {amp:62, base:74,  col:night?'rgba(21,29,44,.9)':'rgba(92,116,128,.8)'},
+      {amp:44, base:52,  col:night?'rgba(13,19,29,.96)':'rgba(58,80,74,.92)'},
+    ];
+    RIDGE.forEach((r,li)=>{
+      const ph1=rnd(0.001,0.004), ph2=rnd(0.006,0.014), off=rnd(0,600);
+      g.fillStyle=r.col; g.beginPath(); g.moveTo(0,HZ+6);
+      for(let x=0;x<=W;x+=24){
+        const y=HZ-r.base-Math.sin(x*ph1+off)*r.amp*0.55-Math.sin(x*ph2+off*0.4)*r.amp*0.3-rnd(0,6);
+        g.lineTo(x,y);
+      }
+      g.lineTo(W,HZ+6); g.closePath(); g.fill();
+      if(li===RIDGE.length-1){                                      // 最近一道山脊上加针叶树线剪影
+        g.fillStyle = night? 'rgba(8,12,19,.95)' : 'rgba(38,58,52,.9)';
+        for(let x=-12;x<W+12;){
+          const th=rnd(16,46), tw=rnd(9,22);
+          g.beginPath(); g.moveTo(x,HZ+4); g.lineTo(x+tw/2,HZ-th); g.lineTo(x+tw,HZ+4); g.closePath(); g.fill();
+          x+=tw*rnd(0.5,0.9);
+        }
+      }
+    });
+    // —— 薄雾（山间的水平雾带，画在山脊之后、地面之前）——
+    const mist=g.createLinearGradient(0,HZ-96,0,HZ+34);
+    if(night){ mist.addColorStop(0,'rgba(150,175,215,0)'); mist.addColorStop(0.55,'rgba(160,185,225,.20)'); mist.addColorStop(1,'rgba(150,175,215,0)'); }
+    else { mist.addColorStop(0,'rgba(228,238,246,0)'); mist.addColorStop(0.55,'rgba(230,240,248,.44)'); mist.addColorStop(1,'rgba(228,238,246,0)'); }
+    g.fillStyle=mist; g.fillRect(0,HZ-96,W,130);
+    // —— 地面（林冠面：俯视看到的是树冠，不是街区）——
+    const grd=g.createLinearGradient(0,HZ,0,H);
+    if(night){ grd.addColorStop(0,'#0a1210'); grd.addColorStop(1,'#040705'); }
+    else { grd.addColorStop(0,'#41693f'); grd.addColorStop(1,'#22392a'); }
+    g.fillStyle=grd; g.fillRect(0,HZ-4,W,H-HZ+4);
+    // 林冠：密集成片（重叠成一块冠面，缝隙读成深阴影）。稀疏圆斑在俯瞰里读成「草坪上撒豆子」
+    for(let i=0;i<430;i++){                                         // 树冠（近处大、远处小）
+      const t=rnd(0,1), x=rnd(0,W), y=rnd(HZ+2,H), r=rnd(10,24)+t*rnd(10,34);
+      const sh = night? rnd(8,22) : rnd(40,86);
+      g.fillStyle = night? `rgba(${sh*0.7|0},${sh+10|0},${sh*0.8|0},.92)`
+                         : `rgba(${sh*0.62|0},${sh+30|0},${sh*0.7|0},.9)`;
+      g.beginPath(); g.arc(x,y,r,0,Math.PI*2); g.fill();
+      g.fillStyle = night? `rgba(${sh*1.2|0},${sh+24|0},${sh*1.4|0},.45)`
+                         : `rgba(${sh*0.8|0},${sh+56|0},${sh*0.9|0},.5)`;
+      g.beginPath(); g.arc(x-r*0.24,y-r*0.26,r*0.58,0,Math.PI*2); g.fill();
+    }
+    if(night){
+      // 全宽辉光带（月照雾 + 远处零星营火/山屋灯）：画在所有遮挡物之后，任何窗向都读得出
+      const hg=g.createLinearGradient(0,HZ-70,0,HZ+30);
+      hg.addColorStop(0,'rgba(170,195,235,0)'); hg.addColorStop(0.5,'rgba(178,200,238,.26)'); hg.addColorStop(1,'rgba(170,195,235,0)');
+      g.fillStyle=hg; g.fillRect(0,HZ-70,W,100);
+      for(let i=0;i<70;i++){ g.fillStyle=`rgba(255,${rnd(190,225)|0},${rnd(120,160)|0},${rnd(0.3,0.8)})`;
+        g.fillRect(rnd(0,W), rnd(HZ-14,HZ+12), 2, 2); }
+    }
+    return panoTex(c, key);
+  },
+  /* 公园庭院：近景树冠 + 草坪 + 园路（近景尺度：树冠比郊野大得多，读得出「窗外就是院子」） */
+  'courtyard': (night, key)=>{
+    srand(2104 + (night?7919:0));
+    const W=2048,H=1024, HZ=Math.round(H*0.54);
+    const c=document.createElement('canvas'); c.width=W;c.height=H;
+    const g=c.getContext('2d');
+    const rnd=(a,b)=>a+rnd01()*(b-a);
+    const sky=g.createLinearGradient(0,0,0,HZ);
+    if(night){ sky.addColorStop(0,'#070b16'); sky.addColorStop(0.62,'#141d31'); sky.addColorStop(1,'#2b3550'); }
+    else { sky.addColorStop(0,'#4d8ac9'); sky.addColorStop(0.55,'#a2c7e6'); sky.addColorStop(1,'#e6eef2'); }
+    g.fillStyle=sky; g.fillRect(0,0,W,HZ);
+    if(!night){ g.fillStyle='rgba(255,252,240,.88)';
+      g.beginPath(); g.ellipse(1720,150,54,32,0,0,Math.PI*2); g.fill();
+      for(let i=0;i<18;i++){ g.fillStyle=`rgba(255,255,255,${rnd(0.07,0.2)})`;
+        const x=rnd(0,W), y=rnd(24,HZ-110), w=rnd(120,380), h=rnd(12,34);
+        g.beginPath(); g.ellipse(x,y,w/2,h/2,0,0,Math.PI*2); g.fill(); }
+    } else {
+      for(let i=0;i<150;i++){ g.fillStyle=`rgba(255,255,255,${rnd(0.14,0.66)})`;
+        g.fillRect(rnd(0,W), rnd(0,HZ-130), 1.3, 1.3); }
+      g.fillStyle='rgba(236,242,255,.95)';
+      g.beginPath(); g.arc(300,140,19,0,Math.PI*2); g.fill();
+      const mg=g.createRadialGradient(300,140,9,300,140,96);
+      mg.addColorStop(0,'rgba(214,228,255,.32)'); mg.addColorStop(1,'rgba(214,228,255,0)');
+      g.fillStyle=mg; g.beginPath(); g.arc(300,140,96,0,Math.PI*2); g.fill();
+    }
+    // —— 远处绿篱 + 一排树（贴地平线的一条深色带）——
+    g.fillStyle = night? 'rgba(14,20,26,.95)' : 'rgba(52,78,58,.9)';
+    g.beginPath(); g.moveTo(0,HZ+8);
+    for(let x=0;x<=W;x+=20) g.lineTo(x, HZ-14-Math.sin(x*0.006)*10-Math.sin(x*0.021)*6-rnd(0,4));
+    g.lineTo(W,HZ+8); g.closePath(); g.fill();
+    for(let i=0;i<46;i++){                                          // 绿篱后的一排树（中景）
+      const x=rnd(0,W), r=rnd(14,34), sh=night? rnd(10,22) : rnd(46,80);
+      g.fillStyle = night? `rgba(${sh*0.8|0},${sh+9|0},${sh*0.9|0},.9)` : `rgba(${sh*0.6|0},${sh+26|0},${sh*0.66|0},.9)`;
+      g.beginPath(); g.arc(x, HZ-rnd(2,20), r, 0, Math.PI*2); g.fill();
+    }
+    // —— 草坪（修剪条纹 + 园路）——
+    const grd=g.createLinearGradient(0,HZ,0,H);
+    if(night){ grd.addColorStop(0,'#16281f'); grd.addColorStop(1,'#070d0a'); }
+    else { grd.addColorStop(0,'#79a95c'); grd.addColorStop(1,'#41693d'); }
+    g.fillStyle=grd; g.fillRect(0,HZ-2,W,H-HZ+2);
+    for(let y=HZ+6;y<H;y+=rnd(14,30)){                             // 修剪条纹（深浅相间）
+      g.fillStyle = night? `rgba(20,34,26,${rnd(0.25,0.5)})` : `rgba(${rnd(96,128)|0},${rnd(150,180)|0},${rnd(74,104)|0},${rnd(0.2,0.42)})`;
+      g.fillRect(0,y,W,rnd(6,14));
+    }
+    const path=g.createLinearGradient(0,HZ+40,0,H);                // 园路（近处变宽）
+    if(night){ path.addColorStop(0,'rgba(60,64,72,.55)'); path.addColorStop(1,'rgba(44,48,56,.7)'); }
+    else { path.addColorStop(0,'rgba(206,198,180,.6)'); path.addColorStop(1,'rgba(184,176,158,.75)'); }
+    g.fillStyle=path; g.beginPath(); g.moveTo(W*0.34,HZ+6); g.lineTo(W*0.44,HZ+6);
+    g.lineTo(W*0.78,H); g.lineTo(W*0.12,H); g.closePath(); g.fill();
+    if(night){
+      // 全宽辉光带（公园路灯沿园路 + 远处街灯）：画在草坪/园路之后
+      const hg=g.createLinearGradient(0,HZ-40,0,HZ+46);
+      hg.addColorStop(0,'rgba(255,182,110,0)'); hg.addColorStop(0.5,'rgba(255,186,116,.30)'); hg.addColorStop(1,'rgba(255,182,110,0)');
+      g.fillStyle=hg; g.fillRect(0,HZ-40,W,86);
+      for(let i=0;i<26;i++){                                        // 路灯（竖向暖光柱 + 地面光斑）
+        const x=rnd(0,W), y=HZ+rnd(6,60), hgt=rnd(26,54);
+        g.fillStyle='rgba(255,214,150,.75)'; g.fillRect(x,y-hgt,2.2,hgt);
+        const lg=g.createRadialGradient(x,y-hgt,2,x,y-hgt,34);
+        lg.addColorStop(0,'rgba(255,206,140,.5)'); lg.addColorStop(1,'rgba(255,206,140,0)');
+        g.fillStyle=lg; g.beginPath(); g.arc(x,y-hgt,34,0,Math.PI*2); g.fill();
+        g.fillStyle='rgba(255,200,130,.22)'; g.beginPath(); g.ellipse(x,y+6,26,9,0,0,Math.PI*2); g.fill();
+      }
+      for(let i=0;i<90;i++){ g.fillStyle=`rgba(255,${rnd(180,220)|0},${rnd(110,150)|0},${rnd(0.3,0.8)})`;
+        g.fillRect(rnd(0,W), rnd(HZ-16,HZ+10), 1.8, 1.8); }
+    }
+    const pathL=(t)=>W*(0.34+(0.12-0.34)*t), pathR=(t)=>W*(0.44+(0.78-0.44)*t);
+    for(let i=0,tries=0;i<90;i++){                                  // 近景树冠（大，从地平线下方一直压到画面下缘）
+      const x=rnd(0,W), r=rnd(22,58), y=rnd(HZ+50, H+14);
+      const pt=(y-(HZ+6))/(H-HZ-6);                                 // 灌木不许长在园路里（园路是个梯形）
+      if(pt>=0 && x>pathL(pt)-r*0.5 && x<pathR(pt)+r*0.5 && ++tries<8){ i--; continue; }
+      const sh = night? rnd(9,20) : rnd(44,84);
+      g.fillStyle = night? `rgba(${sh*0.75|0},${sh+8|0},${sh*0.85|0},.94)`
+                         : `rgba(${sh*0.58|0},${sh+28|0},${sh*0.62|0},.92)`;
+      g.beginPath(); g.arc(x,y,r,0,Math.PI*2); g.fill();
+      g.fillStyle = night? `rgba(${sh*1.25|0},${sh+22|0},${sh*1.5|0},.4)`
+                         : `rgba(${sh*0.78|0},${sh+52|0},${sh*0.86|0},.45)`;
+      g.beginPath(); g.arc(x+r*0.26,y-r*0.3,r*0.55,0,Math.PI*2); g.fill();
     }
     return panoTex(c, key);
   },
@@ -17833,8 +17998,10 @@ const ENV_TINT={
   'seattle-city':{ day:[0xf2f4f8,0xbfd4ff], night:[0x2c3550,0x3a4d78] },
   'suburban':    { day:[0xf2f1e8,0xc8d8b0], night:[0x2a3148,0x364468] },
   'seaview':     { day:[0xeaf2f8,0xaecdec], night:[0x243050,0x33487c] },
+  'forest':      { day:[0xe9f0ee,0xb4ccae], night:[0x202b3e,0x2e4160] },
+  'courtyard':   { day:[0xf3f1e4,0xc4d79e], night:[0x2c3346,0x3a4868] },
 };
-const ENV_BTNS=[['#envCity','seattle-city'],['#envSub','suburban'],['#envSea','seaview']];
+const ENV_BTNS=[['#envCity','seattle-city'],['#envSub','suburban'],['#envSea','seaview'],['#envForest','forest'],['#envPark','courtyard']];
 $('#dnDay').onclick=()=>{ $('#dnDay').blur(); setDayNight(false); };
 $('#dnNight').onclick=()=>{ $('#dnNight').blur(); setDayNight(true); };
 ENV_BTNS.forEach(([id,p])=>{ $(id).onclick=()=>{ $(id).blur(); setPreset(p); }; });
