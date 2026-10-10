@@ -3205,6 +3205,25 @@ function docMatchesPlan(d){
   }
   return n===PLAN.walls.length;
 }
+/* 环境预设色温（fp 分支叠加到环境光/半球光；city=原值，画面零变化）。
+   这张表同时是「合法预设名」的唯一清单：文档读入时按它洗 DOC.env.preset——
+   validate 只要求 preset「是字符串」（导入一份手改过的导出 JSON、或将来重命名预设后的旧存档，
+   都会带进陌生名字），而 applyLightMode 的室内分支要拿它查表，查不到就是 undefined。
+   放在 loadDoc 之前：文档进入应用的那一刻就洗，不指望每个消费端各自兜底。 */
+const ENV_TINT={
+  'seattle-city':{ day:[0xf2f4f8,0xbfd4ff], night:[0x2c3550,0x3a4d78] },
+  'suburban':    { day:[0xf2f1e8,0xc8d8b0], night:[0x2a3148,0x364468] },
+  'seaview':     { day:[0xeaf2f8,0xaecdec], night:[0x243050,0x33487c] },
+  'forest':      { day:[0xe9f0ee,0xb4ccae], night:[0x202b3e,0x2e4160] },
+  'courtyard':   { day:[0xf3f1e4,0xc4d79e], night:[0x2c3346,0x3a4868] },
+};
+function envPresetKey(p){ return ENV_TINT[p] ? p : 'seattle-city'; }
+function cleanDocEnv(d){
+  if(!d.env || typeof d.env!=='object' || Array.isArray(d.env)) d.env={preset:'seattle-city', mode:'day'};
+  d.env.preset = envPresetKey(d.env.preset);
+  if(d.env.mode!=='night') d.env.mode='day';
+  return d;
+}
 function loadDoc(){
   const A=v=>Array.isArray(v)?v:[], O=v=>(v&&typeof v==='object'&&!Array.isArray(v))?v:{};
   const usable=(d)=>!SCHEMA.Project.validate(d).length && (d.imported || d.dataV===DOC_DATA_VERSION);
@@ -3212,13 +3231,13 @@ function loadDoc(){
   try{ const ds=STORE.get(DOC_KEY);
     if(ds){ const d=JSON.parse(ds);
       // imported 文档（S5 DXF 导入）不含内置实体，dataV 对它无意义 → 不跟内置版本闸
-      if(usable(d)) return d;
+      if(usable(d)) return cleanDocEnv(d);
       STORE.remove(DOC_KEY); } }catch(e){}
   // 1b) 旧单桶文档（P1 之前的存档）：几何对得上当前户型才采用；对不上就原样留着
   //     （它属于另一份户型——别删，等那份户型打开时还要用）
   try{ const ds=STORE.lsGet(DOC_KEY_OLD);
     if(ds){ const d=JSON.parse(ds);
-      if(usable(d) && docMatchesPlan(d)) return d;
+      if(usable(d) && docMatchesPlan(d)) return cleanDocEnv(d);
       legacyOwned = false; } }catch(e){ legacyOwned = false; }
   // 2) 旧格式一次性迁移（planner_userGeo_v1）
   try{ const s=JSON.parse(STORE.lsGet('planner_userGeo_v1'));
@@ -3228,7 +3247,7 @@ function loadDoc(){
       const d=SCHEMA.Migrate.migrateLegacyToV1(buildRawGeo(), U);
       d.dataV=DOC_DATA_VERSION;
       try{ STORE.lsRemove('planner_userGeo_v1'); }catch(_){}
-      return d;
+      return cleanDocEnv(d);
     } }catch(e){}
   return freshDoc();
 }
@@ -3526,6 +3545,7 @@ function applyImportedDoc(doc, info){
   if(errs.length) throw new Error('导入文档未通过 schema 校验：'+errs[0].path+' '+errs[0].message);
   pushUndo();          // 导入会整份替换文档 + 清空家具 → 必须可退回去
   doc.imported=true; doc.dataV=DOC_DATA_VERSION;
+  cleanDocEnv(doc);               // 导入文档的 env.preset 只保证「是字符串」→ 查表洗成合法预设
   doc.plan = doc.plan || {};        // S11b：导入文档的 plan 快照（空 = 没有那些专属构件）
   if(!doc.runs) doc.runs = [];      // S12：纯增量字段，旧文档可能没有 → 归一为空数组
   /* E26：导入 = 新建一份自包含户型并切过去，而不是把当前户型的存档覆盖掉。
@@ -5947,7 +5967,7 @@ function init3D(){
   scene.add(sun);
   three = {renderer, scene, cam, controls, canvas, furnGroup:new THREE.Group(), needsRender:true, dpr:Math.min(devicePixelRatio||1,2),
            sun, amb, hemi, sunHome:sun.position.clone(), photo:null,
-           preset:(DOC.env&&DOC.env.preset)||'seattle-city', night:!!(DOC.env&&DOC.env.mode==='night')};
+           preset:envPresetKey(DOC.env&&DOC.env.preset), night:!!(DOC.env&&DOC.env.mode==='night')};
   $('#dnDay').classList.toggle('on', !three.night);
   $('#dnNight').classList.toggle('on', !!three.night);
   ENV_BTNS.forEach(([id,p])=>$(id).classList.toggle('on', p===three.preset));
@@ -6724,6 +6744,11 @@ function installMirrorProbes(){
 
 /* 按需渲染：只有场景/相机真正变化时才画一帧（原先每帧无条件渲染，白占 GPU 与电量） */
 function requestRender(){ if(three) three.needsRender=true; }
+/* 光追/照片级渲染跑的是样本累积：跑到一半换环境 = 出图里混两种光照，谁都不是。
+   顶栏这些按钮在光追期间照样能点，所以入口直接拒收并说清怎么办（不用 confirm()，headless 会挂）。 */
+function photoBusy(what){
+  toast('光追渲染进行中：先点「取消」再换' + what + '（跑到一半换会把两种光照混进同一张图）', 6000);
+}
 function requestShadowUpdate(){ if(three){ three.renderer.shadowMap.needsUpdate=true; three.needsRender=true; } }
 function buildEnvironment(){
   const night = three.night;
@@ -6741,6 +6766,9 @@ function applyLightMode(){
   if(!three) return;
   const fp = three.camMode==='fp', night = !!three.night;
   const {sun, amb, hemi, renderer} = three;
+  /* 预设名必须查表拿：文档里可能残留一个陌生名字（旧存档 / 手改过的导入 JSON）。
+     panorama() 早就有这道兜底，这里原先没有 → 切「室内视角」当场 TypeError。 */
+  const tint = ENV_TINT[three.preset] || ENV_TINT['seattle-city'];
   if(!fp){                                   // 娃娃屋：柔和均匀，弱方向光只用来交代体块
     sun.color.set(0xfff4e6); sun.intensity=0.55; sun.position.copy(three.sunHome);
     amb.color.set(0xffffff); amb.intensity=0.95;
@@ -6748,13 +6776,13 @@ function applyLightMode(){
     renderer.toneMappingExposure=0.98;
   } else if(night){
     sun.color.set(0x93a9d4); sun.intensity=0.16; sun.position.set(30,26,-34);
-    amb.color.set(ENV_TINT[three.preset||'seattle-city'].night[0]); amb.intensity=0.10;
-    hemi.color.set(ENV_TINT[three.preset||'seattle-city'].night[1]); hemi.groundColor.set(0x14161c); hemi.intensity=0.16;
+    amb.color.set(tint.night[0]); amb.intensity=0.10;
+    hemi.color.set(tint.night[1]); hemi.groundColor.set(0x14161c); hemi.intensity=0.16;
     renderer.toneMappingExposure=1.25;
   } else {
     sun.color.set(0xffeeda); sun.intensity=1.85; sun.position.copy(three.sunHome);
-    amb.color.set(ENV_TINT[three.preset||'seattle-city'].day[0]); amb.intensity=0.28;
-    hemi.color.set(ENV_TINT[three.preset||'seattle-city'].day[1]); hemi.groundColor.set(0x3a3226); hemi.intensity=0.55;
+    amb.color.set(tint.day[0]); amb.intensity=0.28;
+    hemi.color.set(tint.day[1]); hemi.groundColor.set(0x3a3226); hemi.intensity=0.55;
     renderer.toneMappingExposure=0.92;
   }
   const on = three.lightsOn!==false;
@@ -6768,6 +6796,7 @@ function applyLightMode(){
 }
 function setLights(on){
   if(!three) return;
+  if(three.photo){ photoBusy('开关灯'); return; }
   three.lightsOn = !!on;
   $('#lampOn').classList.toggle('on', !!on);
   $('#lampOff').classList.toggle('on', !on);
@@ -6790,6 +6819,7 @@ function applyBackdrop(){
 /* 白天 / 夜晚（持久化到 DOC.env.mode） */
 function setDayNight(night){
   if(!three) return;
+  if(three.photo){ photoBusy('昼夜'); return; }
   three.night=night;
   DOC.env = DOC.env || {preset:'seattle-city', mode:'day'};
   DOC.env.mode = night?'night':'day';
@@ -6799,10 +6829,12 @@ function setDayNight(night){
   $('#dnDay').classList.toggle('on', !night);
   $('#dnNight').classList.toggle('on', night);
 }
-/* 环境预设（持久化到 DOC.env.preset）：全景 + 环境色温 + 雾色一起换 */
+/* 环境预设（持久化到 DOC.env.preset）：全景 + 环境色温一起换（雾色不随预设：
+   雾的近/远界是 130/430ft，室内几何根本进不了雾区，背景全景也不受雾影响） */
 function setPreset(p){
   if(!three) return;
-  if(!ENV_TINT[p]) p='seattle-city';
+  if(three.photo){ photoBusy('窗外景'); return; }
+  p = envPresetKey(p);
   DOC.env = DOC.env || {preset:'seattle-city', mode:'day'};
   if(DOC.env.preset===p && three.preset===p) return;
   DOC.env.preset = p; three.preset = p;
@@ -17993,14 +18025,7 @@ function fpStep(){
 }
 $('#lampOn').onclick=()=>{ $('#lampOn').blur(); setLights(true); };
 $('#lampOff').onclick=()=>{ $('#lampOff').blur(); setLights(false); };
-/* 环境预设色温（fp 分支叠加到环境光/半球光；city=原值，画面零变化） */
-const ENV_TINT={
-  'seattle-city':{ day:[0xf2f4f8,0xbfd4ff], night:[0x2c3550,0x3a4d78] },
-  'suburban':    { day:[0xf2f1e8,0xc8d8b0], night:[0x2a3148,0x364468] },
-  'seaview':     { day:[0xeaf2f8,0xaecdec], night:[0x243050,0x33487c] },
-  'forest':      { day:[0xe9f0ee,0xb4ccae], night:[0x202b3e,0x2e4160] },
-  'courtyard':   { day:[0xf3f1e4,0xc4d79e], night:[0x2c3346,0x3a4868] },
-};
+/* 环境预设色温表与合法预设名单（envPresetKey）就在 loadDoc 之前（那里是文档读入口） */
 const ENV_BTNS=[['#envCity','seattle-city'],['#envSub','suburban'],['#envSea','seaview'],['#envForest','forest'],['#envPark','courtyard']];
 $('#dnDay').onclick=()=>{ $('#dnDay').blur(); setDayNight(false); };
 $('#dnNight').onclick=()=>{ $('#dnNight').blur(); setDayNight(true); };

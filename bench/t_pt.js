@@ -530,6 +530,70 @@ async function runPT() {
       '慢→加倍 / 快→减半 / 区间内不动 / 到顶到底都夹住'
     );
 
+    /* ===== S4c：光追进行中换窗外景 / 昼夜 / 开关灯 =====
+       光追累积的是样本均值：跑到一半把环境换了，出图就是两种光照的混合体（谁都不是）。
+       顶栏「城市/郊野/山林…」与「白天/夜晚」在光追期间照样能点（探针实测：没挡住）。 */
+    {
+      setLights(true); // 先把灯打开，否则 three.lightsOn 还是 undefined，「没被动过」读不出东西
+      const preset0 = three.preset,
+        night0 = three.night,
+        lights0 = three.lightsOn;
+      let doneSpp = null;
+      ptRender(400, {
+        size: [73, 97],
+        bounces: 2,
+        denoise: false,
+        onDone: (cv, spp) => {
+          doneSpp = spp;
+        },
+      });
+      await wait(1500);
+      const running = !!three.photo;
+      const panoBefore = three.panorama;
+      setPreset('forest');
+      const swapped = three.panorama !== panoBefore || three.preset !== preset0 || DOC.env.preset !== preset0;
+      T(
+        's4c-pt-blocks-env-switch',
+        running && !swapped,
+        running
+          ? swapped
+            ? '累积中途被换掉：preset=' + three.preset + ' panorama 换了=' + (three.panorama !== panoBefore)
+            : '挡住了（preset / panorama / DOC.env 均未动）'
+          : '光追没在跑，测不到'
+      );
+      const toastTxt = (document.getElementById('toast') || {}).textContent || '';
+      T('s4c-pt-switch-tells-user', swapped || /取消/.test(toastTxt), 'toast=' + JSON.stringify(toastTxt.slice(0, 46)));
+      if (three.photo && three.photo.cancel) three.photo.cancel();
+      await wait(600);
+      // 「先点取消」这条路必须真的停下来（不是跑完全部采样），否则上面那句提示就是空头支票。
+      // 量取 E25 的 __PT_DIAG：停在多少 spp / 要求多少 spp。
+      const diag = window.__PT_DIAG || {};
+      T(
+        's4c-photo-cancel-actually-stops',
+        three.photo === null && (diag.spp || 0) < (diag.want || 0),
+        '停在 ' +
+          diag.spp +
+          '/' +
+          diag.want +
+          ' spp · onDone spp=' +
+          doneSpp +
+          ' · three.photo=' +
+          (three.photo === null ? 'null' : '还在')
+      );
+      if (three.preset !== preset0) setPreset(preset0);
+      /* 同一个守卫要盖住昼夜与开关灯（它们同样重算照明）。用假 photo 对象测，
+         不真跑夜晚：FP + 夜晚在 swiftshader 下会把 headless 挂住（AGENTS §5.4.8）。 */
+      three.photo = { cancel() {} };
+      setDayNight(!night0);
+      setLights(!lights0);
+      T(
+        's4c-photo-blocks-daynight-and-lights',
+        three.night === night0 && three.lightsOn === lights0,
+        'night=' + three.night + '(期望 ' + night0 + ') lights=' + three.lightsOn + '(期望 ' + lights0 + ')'
+      );
+      three.photo = null;
+    }
+
     T('pt-cleanup', PT === null, PT === null ? '已释放' : '仍占用');
     T(
       'pt-quality-presets',

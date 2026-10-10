@@ -1078,6 +1078,9 @@ async function runPBTest() {
         impErr || (imp ? JSON.stringify(imp.info.counts) : 'null')
       );
       if (imp) {
+        // 导入文档的 env.preset 只被 validate 要求「是字符串」（手改过的导出 JSON / 第三方文档）：
+        // 它必须在地带进入应用时被洗掉，否则后面进 3D 室内视角会当场抛异常
+        imp.doc.env = { preset: 'kitchen-view-不存在', mode: 'day' };
         applyImportedDoc(imp.doc, imp.info);
         await tick();
         fit2DToContent();
@@ -1094,6 +1097,11 @@ async function runPBTest() {
             effDoors().length +
             ' fx=' +
             effFixtures().length
+        );
+        T(
+          'pb-import-sanitizes-env-preset',
+          !!(DOC.env && DOC.env.preset === 'seattle-city'),
+          'DOC.env.preset=' + JSON.stringify(DOC.env && DOC.env.preset)
         );
         T('pb-import-clears-furniture', state.items.length === 0, 'items=' + state.items.length);
         T(

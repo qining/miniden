@@ -1927,6 +1927,59 @@ async function run3DTest() {
         '移除后增量 ' + dw2 + ' · 射线 ' + d2.toFixed(2) + '（加柱前 ' + d0.toFixed(2) + '）'
       );
     }
+
+    /* ===== 14. S4c：DOC.env 存档面（窗外环境 / 昼夜） ===== */
+    {
+      const cam0 = three.camMode,
+        night0 = three.night,
+        preset0 = three.preset,
+        env0 = JSON.parse(JSON.stringify(DOC.env || {}));
+      /* 存档里的预设只被 validate 要求「是字符串」，不查表（导入一份手改过的户型 JSON 就能带进来，
+         将来重命名预设也会让旧存档带上陌生名字）。panorama() 有兜底，
+         applyLightMode 的室内分支没有 → 切「室内视角」当场抛异常，顶栏后续按钮全失灵。 */
+      three.camMode = 'fp';
+      three.night = false;
+      three.preset = 'kitchen-view-不存在';
+      let threw = null;
+      try {
+        applyLightMode();
+      } catch (e) {
+        threw = e.message;
+      }
+      const ambHex = three.amb.color.getHex();
+      const wantAmb = ENV_TINT['seattle-city'].day[0];
+      T(
+        's4c-lightmode-guards-unknown-preset',
+        !threw && ambHex === wantAmb,
+        threw ? 'applyLightMode 抛错: ' + threw : 'amb=0x' + ambHex.toString(16) + ' 期望兜底 0x' + wantAmb.toString(16)
+      );
+      /* 存档侧：脏名字必须在文档进入应用时被洗掉（不靠每个消费端各自兜底）。
+         写一份脏存档→走真正的 loadDoc() 读回来→必须落回默认预设。 */
+      const dirty = JSON.parse(JSON.stringify(DOC));
+      dirty.env = { preset: 'kitchen-view-不存在', mode: 'day' };
+      try {
+        STORE.set(DOC_KEY, JSON.stringify(dirty));
+      } catch (e) {}
+      const back = loadDoc();
+      T(
+        's4c-loadDoc-sanitizes-preset',
+        back && back.env && back.env.preset === 'seattle-city' && ENV_TINT[back.env.preset] != null,
+        '读回来 = ' + JSON.stringify(back && back.env && back.env.preset)
+      );
+      saveGeo(); // 把干净的 DOC 写回去，后面段落读到的还是原样
+      three.camMode = cam0;
+      three.night = night0;
+      three.preset = preset0;
+      DOC.env = env0;
+      applyLightMode();
+      buildEnvironment();
+      applyBackdrop();
+      T(
+        's4c-env-restored-after-probe',
+        three.preset === preset0 && DOC.env.preset === preset0 && three.amb.color.getHex() !== undefined,
+        'preset=' + three.preset
+      );
+    }
     T('t3d-bench-done', true, __E3.length + ' tests', 'done');
   } catch (e) {
     log.push('EXC ' + e.message + ' | ' + (e.stack || '').split('\n')[1]);
