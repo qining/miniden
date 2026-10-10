@@ -1023,4 +1023,522 @@ export const FLOWS = [
       await t.waitFor(`!wallEdit.on`, 5000, '退出编辑');
     },
   },
+  {
+    name: 'demo-full',
+    ciSkip: true,
+    title:
+      '完整演示：完全的零 → 画出两室一厅一卫 → 门 / 洁具 / 固定灯具 → 逐件摆家具 → 撤销 → 3D / 室内 / 光追 → 导出 → 真实刷新后还在',
+    run: async (t) => {
+      /* 演示流程（不是断言流程）。它不新增断言密度 —— 这条路径的每个环节已经分别被
+         bench 第 13 节（174 条）和 E2E from-scratch 守着。它的价值是：整条产品路径
+         一次性跑给人看，每个阶段留一张截图，并且每一步都有断言兜底（跑歪了当场红）。
+         户型 = 演示用的两室一厅一卫（18×12 ft ≈ 5.5×3.7 m）：客厅 / 卧室 / 卫生间 / 门厅。
+         坐标写死在流程里，但跑在自建空白户型上，与内置户型无关 ⇒ 两个入口都能跑。
+         ciSkip：含真 GPU 光追一步，CI 的软件 GL 上只会拖慢，不会多抓东西。 */
+
+      const WALLS = [
+        ['w', 1, 1, 4, 1],
+        ['g', 4, 1, 9, 1], // 客厅大窗带
+        ['w', 9, 1, 11, 1],
+        ['w', 11, 1, 15, 1],
+        ['g', 15, 1, 18, 1], // 卧室窗
+        ['w', 18, 1, 19, 1],
+        ['w', 19, 1, 19, 5],
+        ['g', 19, 5, 19, 9], // 卧室侧窗
+        ['w', 19, 9, 19, 13],
+        ['w', 19, 13, 10.4, 13],
+        ['d', 10.4, 13, 8.0, 13], // 入户门洞 73cm
+        ['w', 8.0, 13, 1, 13],
+        ['w', 1, 13, 1, 1],
+        ['w', 1, 9, 3.6, 9],
+        ['d', 3.6, 9, 5.8, 9], // 卫生间门洞 67cm
+        ['w', 5.8, 9, 8, 9],
+        ['d', 8, 9, 10.4, 9], // 门厅↔客厅门洞 73cm
+        ['w', 10.4, 9, 11, 9],
+        ['w', 11, 1, 11, 6],
+        ['d', 11, 6, 11, 8.4], // 卧室门洞 73cm
+        ['w', 11, 8.4, 11, 13],
+        ['w', 8, 9, 8, 13], // 卫生间 / 门厅隔墙
+      ];
+      const DOOR_MID = [
+        [9.2, 13, '入户'],
+        [4.7, 9, '卫生间'],
+        [9.2, 9, '门厅↔客厅'],
+        [11, 7.2, '卧室'],
+      ];
+      // 台柜 / 镜子点在内侧 0.35ft 处：贴墙吸附要求「点到墙心线距离 >0 且在半径内」，
+      // 正点在墙心线上（d=0）反而不吸附。
+      // 两者必须贴不同的墙：洁具工具「点到已有洁具 = 选中它」，
+      // 同一个位置放第二件不会新增，而是把第一件选中（实测踩过）。
+      const FX = [
+        { type: 'counter', at: [7.0, 9.35] }, // 贴卫生间上墙（门洞右侧）
+        { type: 'mirror', at: [7.65, 11.0] }, // 贴卫生间右墙（浴缸右侧的空墙）
+        { type: 'toilet', at: [2.3, 9.7] },
+        { type: 'tub', at: [4.5, 11.7] },
+      ];
+      const LIGHTS = [
+        { ref: 'dl-6', kw: '筒灯', at: [3.5, 5.0] },
+        { ref: 'dl-6', kw: '筒灯', at: [7.5, 5.0] },
+        { ref: 'dl-6', kw: '筒灯', at: [5.5, 2.5] },
+        { ref: 'dl-4', kw: '筒灯', at: [9.5, 11.5] },
+        { ref: 'cl-flush-l', kw: '吸顶灯', at: [16.0, 10.8] },
+        { ref: 'vanity-3', kw: '镜前灯', at: [7.0, 9.35] },
+      ];
+      const FURN = [
+        { ref: 'morum', kw: 'morum', at: [5.5, 5.0] }, // 客厅地毯
+        { ref: 'kivik3', kw: 'kivik', at: [5.0, 7.4] }, // 三人沙发
+        { ref: 'listerby_ct', kw: 'listerby', at: [4.9, 4.7] }, // 茶几
+        { ref: 'besta180', kw: 'besta', at: [10.3, 4.8], rot90: true }, // 电视柜（贴卧室隔墙）
+        { ref: 'pinntorp', kw: 'pinntorp', at: [3.2, 2.3] }, // 餐桌
+        { ref: 'vihals-chair-0', kw: 'vihals', at: [2.0, 2.3] },
+        { ref: 'vihals-chair-1', kw: 'vihals', at: [4.4, 2.3] },
+        { ref: 'malm_q', kw: 'malm', at: [16.0, 5.0] }, // 床
+        { ref: 'nordli_ns', kw: 'nordli', at: [12.3, 2.2] }, // 床头柜
+        { ref: 'hauga6', kw: 'hauga', at: [16.0, 12.2] }, // 六屉柜
+        { ref: 'micke', kw: 'micke', at: [12.2, 9.8], rot90: true }, // 书桌
+        { ref: 'markus', kw: 'markus', at: [14.3, 9.8] }, // 办公椅
+        { ref: 'stall', kw: 'stall', at: [8.28, 11.4], rot90: true }, // 鞋柜（门厅）
+        { ref: 'raskog-3', kw: 'raskog', at: [10.4, 10.0] }, // 手推车
+      ];
+      const ROOMS = [
+        ['客厅', 1, 1, 11, 9],
+        ['卧室', 11, 1, 19, 13],
+        ['卫生间', 1, 9, 8, 13],
+        ['门厅', 8, 9, 11, 13],
+      ];
+      const cardOf = (ref) => `.catCard:has(.ph[data-thumb="${ref}"])`;
+      const counts = () =>
+        t.eval(
+          `({walls:DOC.walls.filter(e=>e.src==='user').length, win:DOC.windows.filter(e=>e.src==='user').length,` +
+            `doors:DOC.doors.filter(e=>e.src==='user').length, fx:DOC.fixtures.filter(e=>e.src==='user').length,` +
+            `items:state.items.length})`
+        );
+      const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+      /* ===== ① 完全的零：什么都没存过，界面里也什么都没有 ===== */
+      await t.step('完全的零：清存档 + 刷新 → 首次引导卡 → 点「新建空白户型」');
+      t.keepFirstRun = true;
+      await t.freshState();
+      t.assert('demo-zero-card', await t.firstRunVisible(), '干净 profile 首次打开出现引导卡');
+      await t.shot('zero-card');
+      const rows = await t.eval(
+        `(()=>[...document.querySelectorAll('#firstRun .frRow')].map(p=>p.querySelector('b').textContent.trim()))()`
+      );
+      t.assert(
+        'demo-zero-paths',
+        Array.isArray(rows) && rows.length >= 3,
+        `引导卡给出 ${rows.length} 条路：${rows.join(' / ')}`
+      );
+      await t.click('#frBlank');
+      await t.waitFor(`PLAN_ID!==BUILTIN_PLAN_ID && wallEdit.on`, 10000, '空白户型 + 自动进入画墙模式');
+      const z = await counts();
+      t.assert(
+        'demo-zero-state',
+        z.walls === 0 && z.win === 0 && z.doors === 0 && z.fx === 0 && z.items === 0,
+        `墙${z.walls} 窗${z.win} 门${z.doors} 洁具${z.fx} 家具${z.items}`
+      );
+      const hint = await t.rectOf('#wMsg').catch(() => null);
+      t.assert(
+        'demo-zero-hint',
+        !!hint && hint.w >= 120 && hint.h >= 12,
+        hint ? `编辑提示可见 ${Math.round(hint.w)}×${Math.round(hint.h)}px` : '编辑提示不在视口'
+      );
+
+      /* ===== ② 画出房子：22 段（15 实墙 + 3 窗带 + 4 门洞） ===== */
+      await t.step('画墙工具：逐段画 22 段（15 实墙 + 3 窗带 + 4 门洞）');
+      await t.click('#wtoolSeg button[data-t="wall"]');
+      await t.waitFor(`wallEdit.tool==='wall'`, 6000, 'tool=wall');
+      const piece = async (type, p, q) => {
+        await t.eval(`document.querySelector('#wType').value=${JSON.stringify(type)}`);
+        await t.click(await t.planPoint(p[0], p[1]));
+        await t.click(await t.planPoint(q[0], q[1]));
+        await t.key('Enter', 'Enter', 13);
+        await t.waitFor(`wallEdit.drawPts.length===0`, 8000, '这段墙提交');
+      };
+      for (const [type, x1, y1, x2, y2] of WALLS) await piece(type, [x1, y1], [x2, y2]);
+      const g1 = await counts();
+      t.assert(
+        'demo-walls-count',
+        g1.walls === 19 && g1.win === 3,
+        `墙实体 ${g1.walls}（期望 15 实墙 + 4 门洞）· 窗带 ${g1.win}（期望 3）`
+      );
+      const open = await t.eval(`DOC.walls.filter(e=>e.src==='user'&&e.kind==='opening').length`);
+      t.assert('demo-openings', open === 4, `门洞 ${open} 段（期望 4）`);
+      const shell = await t.eval(
+        `(()=>{const P=floorPts();let x1=1e9,y1=1e9,x2=-1e9,y2=-1e9;` +
+          `for(const q of P){x1=Math.min(x1,q[0]);y1=Math.min(y1,q[1]);x2=Math.max(x2,q[0]);y2=Math.max(y2,q[1]);}` +
+          `return {n:P.length,x1,y1,x2,y2};})()`
+      );
+      t.assert(
+        'demo-shell-outline',
+        shell.n >= 4 && shell.x1 <= 1.01 && shell.x2 >= 18.99 && shell.y1 <= 1.01 && shell.y2 >= 12.99,
+        `地板轮廓 ${shell.n} 个点，覆盖 ${shell.x1.toFixed(2)}..${shell.x2.toFixed(2)} × ${shell.y1.toFixed(2)}..${shell.y2.toFixed(2)}（画出来的墙成为地板轮廓）`
+      );
+      await t.shot('walls');
+
+      /* ===== ③ 门：放 4 扇，换一次款式，拖一次门宽 ===== */
+      await t.step('门工具：在 4 个门洞上各放一扇门');
+      await t.click('#wtoolSeg button[data-t="door"]');
+      await t.waitFor(`wallEdit.tool==='door'`, 6000, 'tool=door');
+      for (let i = 0; i < DOOR_MID.length; i++) {
+        const [mx, my, label] = DOOR_MID[i];
+        await t.click(await t.planPoint(mx, my));
+        await t.waitFor(`DOC.doors.filter(e=>e.src==='user').length===${i + 1}`, 8000, label + ' 的门放下');
+      }
+      t.assert('demo-doors-count', (await counts()).doors === 4, '门 4 扇（入户 / 卫生间 / 门厅↔客厅 / 卧室）');
+      await t.shot('doors');
+      await t.step('换款式：门厅↔客厅那扇改成另一种开法');
+      await t.click(await t.planPoint(9.2, 9));
+      await t.waitFor(`wallEdit.sel && wallEdit.sel.kind==='door'`, 6000, '选中那扇门');
+      const kindBefore = await t.eval(`entById(wallEdit.sel.id).kind`);
+      await t.click('#dKind');
+      const kindAfter = await t.eval(`entById(wallEdit.sel.id).kind`);
+      t.assert('demo-door-kind', kindAfter !== kindBefore, `款式 ${kindBefore} → ${kindAfter}`);
+      await t.step('拖门端点改门宽（直接操纵，不是填数字）');
+      const dGeom = await t.eval(
+        `(()=>{const e=entById(wallEdit.sel.id);return {x1:e.geom.x1,y1:e.geom.y1,x2:e.geom.x2,y2:e.geom.y2};})()`
+      );
+      const wBefore = Math.hypot(dGeom.x2 - dGeom.x1, dGeom.y2 - dGeom.y1);
+      await t.drag(await t.planPoint(dGeom.x2, dGeom.y2), await t.planPoint(dGeom.x2 - 0.8, dGeom.y2), { steps: 10 });
+      const wAfter = await t.eval(
+        `(()=>{const e=entById(wallEdit.sel.id);return Math.hypot(e.geom.x2-e.geom.x1,e.geom.y2-e.geom.y1);})()`
+      );
+      t.assert(
+        'demo-door-width-drag',
+        wAfter < wBefore - 0.4,
+        `门宽 ${wBefore.toFixed(2)}ft → ${wAfter.toFixed(2)}ft（拖终点手柄，联动把门洞两侧门垛补回去）`
+      );
+      await t.shot('door-narrower');
+
+      /* ===== ④ 固定的物品（上）：洁具 4 件，台柜 / 镜子自动贴墙 ===== */
+      await t.step('洁具工具：放台柜 / 镜子 / 马桶 / 浴缸');
+      await t.click('#wtoolSeg button[data-t="fx"]');
+      await t.waitFor(`wallEdit.tool==='fx'`, 6000, 'tool=fx');
+      for (let i = 0; i < FX.length; i++) {
+        await t.eval(`document.querySelector('#fxType').value=${JSON.stringify(FX[i].type)}`);
+        await t.click(await t.planPoint(FX[i].at[0], FX[i].at[1]));
+        await t.waitFor(`DOC.fixtures.filter(e=>e.src==='user').length===${i + 1}`, 8000, FX[i].type + ' 放下');
+      }
+      const fxAll = await t.eval(
+        `(()=>DOC.fixtures.filter(e=>e.src==='user').map(f=>({t:f.t,x:(f.x1+f.x2)/2,y:(f.y1+f.y2)/2,rot:f.rot||0})))()`
+      );
+      t.assert('demo-fx-count', fxAll.length === 4, fxAll.map((f) => f.t).join(' / '));
+      const inRoom = (f) => {
+        const def = { counter: [2.0, 1.2], mirror: [2.0, 0.3], toilet: [2.3, 1.3], tub: [5.6, 2.5] }[f.t];
+        const rot = (f.rot || 0) % 180 !== 0;
+        const w = rot ? def[1] : def[0],
+          d = rot ? def[0] : def[1];
+        return ROOMS.some(
+          (r) =>
+            f.x - w / 2 >= r[1] - 0.15 &&
+            f.x + w / 2 <= r[3] + 0.15 &&
+            f.y - d / 2 >= r[2] - 0.15 &&
+            f.y + d / 2 <= r[4] + 0.15
+        );
+      };
+      t.assert(
+        'demo-fx-inside',
+        fxAll.every(inRoom),
+        fxAll.map((f) => `${f.t}@(${f.x.toFixed(2)},${f.y.toFixed(2)})`).join(' ')
+      );
+      const snap = await t.eval(
+        `(()=>{const out=[];for(const f of DOC.fixtures.filter(e=>e.src==='user')){` +
+          `if(f.t!=='counter'&&f.t!=='mirror')continue;const cx=(f.x1+f.x2)/2,cy=(f.y1+f.y2)/2;` +
+          `let best=null,bd=1e9;for(const w of effWalls()){if(w.t!=='w'&&w.t!=='i')continue;` +
+          `const dx=w.x2-w.x1,dy=w.y2-w.y1,L2=dx*dx+dy*dy;if(L2<1e-9)continue;` +
+          `const ll=Math.sqrt(L2),ux=dx/ll,uy=dy/ll;` +
+          `let tt=((cx-w.x1)*dx+(cy-w.y1)*dy)/L2;tt=Math.max(0,Math.min(1,tt));` +
+          `const dd=Math.hypot(cx-(w.x1+dx*tt),cy-(w.y1+dy*tt));` +
+          `if(dd<bd){bd=dd;let poly=null,pd=1e9;` +
+          `for(const q of wallPolys()){const ex=q[1][0]-q[0][0],ey=q[1][1]-q[0][1],el=Math.hypot(ex,ey);` +
+          `if(el<0.1||Math.abs((ex*ux+ey*uy)/el)<0.9)continue;` +
+          `const qx=(q[0][0]+q[1][0]+q[2][0]+q[3][0])/4,qy=(q[0][1]+q[1][1]+q[2][1]+q[3][1])/4;` +
+          `let tq=(qx-w.x1)*ux+(qy-w.y1)*uy;tq=Math.max(0,Math.min(ll,tq));` +
+          `const d2=Math.hypot(qx-(w.x1+ux*tq),qy-(w.y1+uy*tq));if(d2<pd){pd=d2;poly=q;}}` +
+          `let th=NaN;if(poly&&pd<0.2){const nx=-uy,ny=ux;let lo=1e9,hi=-1e9;` +
+          `for(const p of poly){const v=p[0]*nx+p[1]*ny;if(v<lo)lo=v;if(v>hi)hi=v;}th=hi-lo;}` +
+          `best={th,wd:w.wd,ang:Math.round(Math.atan2(dy,dx)*180/Math.PI)};}}` +
+          `out.push({t:f.t,d:bd,th:best.th,rot:f.rot||0,ang:best.ang});}return out;})()`
+      );
+      t.assert(
+        'demo-fx-wall-snap',
+        snap.length === 2 &&
+          snap.every(
+            (s) =>
+              Number.isFinite(s.th) &&
+              Math.abs(s.d - (s.th + (s.t === 'mirror' ? 0.3 : 1.2)) / 2) < 0.05 &&
+              Math.abs(s.rot - (((s.ang % 180) + 180) % 180)) < 0.6
+          ),
+        snap
+          .map((s) => {
+            const depth = s.t === 'mirror' ? 0.3 : 1.2;
+            const expect = (s.th + depth) / 2;
+            return (
+              `${s.t} 中心距墙轴 ${s.d.toFixed(3)}ft · 画出的墙厚 ${s.th.toFixed(3)}ft · 件深 ${depth} → 期望 ${expect.toFixed(3)}ft` +
+              ` · rot=${s.rot}（墙角 ${s.ang}°）`
+            );
+          })
+          .join(' · ')
+      );
+      t.info(
+        'demo-wall-angles',
+        await t.eval(
+          `(()=>DOC.walls.filter(e=>e.src==='user').map(e=>{const a=Math.round(Math.atan2(e.geom.y2-e.geom.y1,e.geom.x2-e.geom.x1)*180/Math.PI);` +
+            `return e.kind+'@'+a+'°('+e.geom.x1.toFixed(2)+','+e.geom.y1.toFixed(2)+')→('+e.geom.x2.toFixed(2)+','+e.geom.y2.toFixed(2)+')';}).join(' '))()`
+        )
+      );
+      await t.shot('fixtures');
+      await t.click('#wDone');
+      await t.waitFor(`!wallEdit.on`, 6000, '退出编辑模式');
+
+      /* ===== ⑤ 固定的物品（下）：公寓自带灯具，界面明说它们不计价 ===== */
+      await t.step('目录 → 固定灯具：筒灯 ×4、吸顶灯 ×1、镜前灯 ×1');
+      let placedCount = 0;
+      const place = async (ref, kw, at, rot90) => {
+        placedCount++;
+        await t.type('#catSearch', kw);
+        await t.waitFor(`!!document.querySelector(${JSON.stringify(cardOf(ref))})`, 8000, '目录里出现 ' + ref);
+        await t.click(cardOf(ref));
+        await t.waitFor(`state.items.length===${placedCount}`, 8000, ref + ' 加入目录清单');
+        const it = await t.eval(
+          `(()=>{const i=state.items[state.items.length-1];return {uid:i.uid,ref:i.ref,x:i.x,y:i.y};})()`
+        );
+        if (rot90) {
+          await t.click('#pRot90');
+          await t.waitFor(`state.items.find(i=>i.uid===${it.uid}).rot===90`, 6000, ref + ' 转 90°');
+        }
+        await t.drag(await t.planPoint(it.x, it.y), await t.planPoint(at[0], at[1]), { steps: 14 });
+        return await t.eval(
+          `(()=>{const i=state.items.find(x=>x.uid===${it.uid});return i?{ref:i.ref,x:i.x,y:i.y,rot:i.rot}:null;})()`
+        );
+      };
+      const placed = [];
+      for (const L of LIGHTS) placed.push(await place(L.ref, L.kw, L.at, false));
+      const lights = await t.eval(
+        `(()=>state.items.filter(i=>{const s=itemSpec(i);return s&&isBuiltIn(s);}).map(i=>i.ref))()`
+      );
+      t.assert('demo-lights-count', lights.length === 6, `固定灯具 ${lights.length} 件：${lights.join(' / ')}`);
+      const totals1 = await t.eval(`document.querySelector('#totals').textContent.replace(/\\s+/g,' ')`);
+      t.assert('demo-totals-builtin', /固定灯具不计价/.test(totals1), '#totals = ' + totals1);
+      await t.shot('lights');
+
+      /* ===== ⑥ 摆家具：逐件搜索 → 点卡片 → 拖到位 ===== */
+      await t.step('目录 → 逐件摆家具（14 件）：搜索 → 点卡片 → 拖到位');
+      for (const F of FURN) placed.push(await place(F.ref, F.kw, F.at, F.rot90));
+      await t.eval(
+        `(()=>{const s=document.querySelector('#catSearch');s.value='';s.dispatchEvent(new Event('input'));})()`
+      );
+      const off = [];
+      for (const F of FURN) {
+        const p = placed.find((x) => x && x.ref === F.ref);
+        if (!p) {
+          off.push(`${F.ref} 没找到`);
+          continue;
+        }
+        const dd = Math.hypot(p.x - F.at[0], p.y - F.at[1]);
+        if (dd > 0.8) off.push(`${F.ref} 偏 ${(dd * 30.48).toFixed(0)}cm`);
+      }
+      t.assert(
+        'demo-items-placed',
+        off.length === 0,
+        off.length ? off.join(' · ') : '14 件家具都落在目标位置（容差 0.8ft ≈ 24cm）'
+      );
+      t.assert('demo-items-count', (await counts()).items === 20, '家具 + 固定灯具共 20 件');
+      const red = await t.eval(`document.querySelectorAll('#furn [stroke="#e05656"]').length`);
+      t.assert('demo-no-overlap', red === 0, `红色描边（与其他家具重叠）件数 = ${red}`);
+      t.info('demo-totals-all', await t.eval(`document.querySelector('#totals').textContent.replace(/\\s+/g,' ')`));
+      await t.shot('furnished');
+
+      /* ===== ⑦ 摆错了：红描边报警 → Ctrl+Z 撤销 ===== */
+      await t.step('摆错一件（书柜直接压进沙发）→ 红描边报警 → Ctrl+Z 两步退回去');
+      const bad = await place('billy', 'billy', [5.0, 7.4], false);
+      await t.waitFor(`document.querySelectorAll('#furn [stroke="#e05656"]').length>=1`, 8000, '红描边报警出现');
+      const redBad = await t.eval(`document.querySelectorAll('#furn [stroke="#e05656"]').length`);
+      const nBad = (await counts()).items;
+      const posBad = await t.eval(`(()=>{const i=state.items.find(x=>x.ref==='billy');return i?[i.x,i.y]:null;})()`);
+      /* Ctrl+Z 的输入框守卫：焦点在 <input> 里时快捷键让位给输入框原生撤销。
+         上一步 t.type('#catSearch') 把焦点留在搜索框里 → 先真实地离开输入框。 */
+      await t.eval(`(()=>{const a=document.activeElement;if(a&&a.blur)a.blur();})()`);
+      await t.key('z', 'KeyZ', 90, 2); // Ctrl+Z
+      await sleep(900);
+      t.info(
+        'demo-undo-diag',
+        await t.eval(
+          `JSON.stringify({act:document.activeElement?document.activeElement.tagName:'?',undo:undoRing.length,redo:redoRing.length,items:state.items.length,lastG:lastGesture})`
+        )
+      );
+      /* 一步撤销 = 一个手势。摆这件书柜是两个手势：点卡片加入（addItem）+ 拖到位（drag）。
+         所以第一次 Ctrl+Z 只退拖动，件还在原位；退到「没这件东西」需要第二步。
+         演示把这两步都跑出来，而不是假装一步就能撤销整件。 */
+      await t.waitFor(`state.items.length===${nBad}`, 8000, '撤销拖动后件还在');
+      const posBack = await t.eval(`(()=>{const i=state.items.find(x=>x.ref==='billy');return i?[i.x,i.y]:null;})()`);
+      const redMid = await t.eval(`document.querySelectorAll('#furn [stroke="#e05656"]').length`);
+      t.assert(
+        'demo-undo-drag',
+        posBack != null &&
+          (await counts()).items === nBad &&
+          Math.hypot(posBack[0] - posBad[0], posBack[1] - posBad[1]) > 1.0,
+        `Ctrl+Z ①（只退拖动）：${posBad.map((v) => v.toFixed(2)).join(',')} → ${posBack ? posBack.map((v) => v.toFixed(2)).join(',') : '?'}，件数仍 ${nBad}，红描边 ${redMid}（回到默认放置点也可能压到别的件，红描边如实报）`
+      );
+      await t.eval(`(()=>{const a=document.activeElement;if(a&&a.blur)a.blur();})()`);
+      await t.key('z', 'KeyZ', 90, 2); // Ctrl+Z ②
+      await sleep(900);
+      await t.waitFor(`state.items.length===${nBad - 1}`, 8000, '再撤销一次：这件书柜整个撤掉');
+      const redAfter = await t.eval(`document.querySelectorAll('#furn [stroke="#e05656"]').length`);
+      t.assert(
+        'demo-undo-overlap',
+        redBad >= 1 && redAfter === 0 && (await counts()).items === nBad - 1,
+        `压进沙发的 ${bad ? bad.ref : '书柜'} 触发 ${redBad} 件红描边 → 两步 Ctrl+Z 后件数 ${nBad - 1}、红描边 ${redAfter}`
+      );
+      await t.shot('undo');
+
+      /* ===== ⑧ 看见它：3D 俯瞰 ===== */
+      await t.step('3D 俯瞰：墙真的立到顶、家具真的在里面');
+      await t.click('#btnDoll');
+      await t.waitFor(`is3D() && three && three.renderer`, 25000, '3D 场景就绪');
+      await t.waitFor(`three.furnMap && three.furnMap.size>=20`, 25000, '家具进场景');
+      const scene = await t.eval(
+        `(()=>({furn:three.furnMap.size,tri:(()=>{let n=0;three.staticGroup.traverse(o=>{if(o.isMesh&&o.geometry)n+=o.geometry.attributes.position.count/3;});return Math.round(n);})()}))()`
+      );
+      t.assert('demo-3d-scene', scene.furn === 20, `场景家具 ${scene.furn} 件 · 静态几何 ${scene.tri} 三角形`);
+      const hit = await t.eval(
+        `(()=>{const rc=new THREE.Raycaster();rc.set(new THREE.Vector3(1,CEIL_H+1.5,5),new THREE.Vector3(0,-1,0));` +
+          `const h=rc.intersectObjects(three.staticGroup.children,true);` +
+          `return h.length?{y:+h[0].point.y.toFixed(2),d:+h[0].distance.toFixed(2)}:null;})()`
+      );
+      const ceil = await t.eval('CEIL_H');
+      t.assert(
+        'demo-3d-wall-stands',
+        !!hit && hit.y > 8.0,
+        hit ? `左墙 x=1 在 y=${hit.y}ft 处挡住射线（层高 ${ceil}ft）` : '射线穿过左墙打到地板：墙没立起来'
+      );
+      await t.shot('3d-doll');
+
+      /* ===== ⑨ 走进去：室内视角 ===== */
+      await t.step('室内视角（第一人称漫游）');
+      await t.click('#btnFP');
+      await t.waitFor(`state.view==='fp'`, 15000, '进入室内视角');
+      await t.waitFor(`three && three.cam`, 15000, '相机就绪');
+      await sleep(600);
+      const eye = await t.eval(`+three.cam.position.y.toFixed(2)`);
+      const eyeH = await t.eval('EYE_H');
+      t.assert('demo-fp-eye', Math.abs(eye - eyeH) < 0.25, `眼高 ${eye}ft（EYE_H=${eyeH}）`);
+      const fpo = JSON.parse(
+        await t.eval(
+          `(()=>{const fp=floorPts();const x=three.cam.position.x,z=three.cam.position.z;let ins=false;for(let i=0,j=fp.length-1;i<fp.length;j=i++){const xi=fp[i][0],yi=fp[i][1],xj=fp[j][0],yj=fp[j][1];if((yi>z)!==(yj>z)&&x<(xj-xi)*(z-yi)/(yj-yi)+xi)ins=!ins;}return JSON.stringify({x:+x.toFixed(2),z:+z.toFixed(2),ins});})()`
+        )
+      );
+      t.assert(
+        'demo-fp-inside',
+        fpo.ins,
+        `站内点 (${fpo.x}, ${fpo.z}) 在户型内 → 看见的是室内（旧版落在硬编码的内置户型客厅）`
+      );
+      await t.shot('fp');
+
+      /* ===== ⑩ 照片级：GPU 路径追踪（草稿档） ===== */
+      await t.step('光追渲染（草稿档）：真全局光照 / 真反射折射 / 真软阴影');
+      await t.click('#btnPT');
+      await t.waitFor(`getComputedStyle(document.querySelector('#ptModal')).display!=='none'`, 8000, '光追对话框');
+      await t.click('#ptSeg button[data-q="draft"]');
+      await t.click('#ptGo');
+      await t.waitFor(`!!window.__PT_DIAG`, 240000, '光追跑完（草稿档）');
+      const diag = await t.eval(`window.__PT_DIAG`);
+      const px = await t.eval(
+        `(()=>{const cv=three.ptResult;if(!cv)return null;const g=cv.getContext('2d');` +
+          `const d=g.getImageData(0,0,cv.width,cv.height).data;let s=0,mx=0;` +
+          `for(let i=0;i<d.length;i+=4){const l=(d[i]+d[i+1]+d[i+2])/3;s+=l;if(l>mx)mx=l;}` +
+          `return {w:cv.width,h:cv.height,mean:+(s/(d.length/4)).toFixed(1),max:Math.round(mx)};})()`
+      );
+      t.assert(
+        'demo-pt-render',
+        !!diag && diag.spp > 0 && !!px && px.mean > 8 && px.max > 90,
+        diag && px
+          ? `${diag.spp}/${diag.want} 次采样 · 出图 ${px.w}×${px.h} · 平均亮度 ${px.mean} · 最亮 ${px.max}${diag.lost ? ' · 显卡上下文被重置' : ''} · 分块 ${diag.grid}`
+          : '光追没出图'
+      );
+      await t.shot('pt');
+      await t.click('#photoOut > div:last-child > button:last-child');
+      await t.waitFor(`getComputedStyle(document.querySelector('#photoModal')).display==='none'`, 8000, '关掉光追出图');
+
+      /* ===== ⑪ 带走它：导出户型 ===== */
+      await t.step('回 2D → 导出户型（工具 ⌄ → 导出户型）');
+      await t.click('#btn2d');
+      await t.waitFor(`state.view==='2d'`, 10000, '回到 2D');
+      await ensureProTools(t);
+      const { readdirSync, readFileSync } = await import('node:fs');
+      const dlBefore = new Set(readdirSync(t.downloads).filter((n) => n.endsWith('.json')));
+      await t.click('#btnExportDoc');
+      let file = null;
+      for (let i = 0; i < 40 && !file; i++) {
+        await sleep(500);
+        const now = readdirSync(t.downloads).filter((n) => n.endsWith('.json'));
+        file = now.find((n) => !dlBefore.has(n)) || null;
+      }
+      t.assert('demo-export-file', !!file, file ? '下载 ' + file : '20s 内没有新的 .json 下载');
+      if (file) {
+        const doc = JSON.parse(readFileSync(t.downloads + '/' + file, 'utf8'));
+        const live = await counts();
+        /* 导出户型 = 户型几何（ProjectDoc）；家具不在这份文件里 ——
+           它们走「导入布局」（另一个入口）。导入确认框里也这么写。
+           断言把这条边界坐实，而不是假装导出一份「什么都在」的文件。 */
+        t.assert(
+          'demo-export-content',
+          doc.walls.length === live.walls &&
+            doc.windows.length === live.win &&
+            doc.doors.length === live.doors &&
+            doc.fixtures.length === live.fx &&
+            doc.items === undefined &&
+            Array.isArray(doc.floorOutline) &&
+            doc.floorOutline.length >= 3,
+          `导出 JSON：墙${doc.walls.length} 窗${doc.windows.length} 门${doc.doors.length} 洁具${doc.fixtures.length}（与界面逐项相等）· 地板轮廓 ${doc.floorOutline && doc.floorOutline.length} 个点 · 家具不在户型文档里（走「导入布局」）· 户型名「${doc.name}」`
+        );
+      }
+
+      /* ===== ⑫ 刷新后还在 ===== */
+      await t.step('真实刷新（F5）：房子、门、洁具、家具都还在');
+      await t.reload();
+      const after = await counts();
+      t.assert(
+        'demo-reload-persist',
+        after.walls === 19 && after.win === 3 && after.doors === 4 && after.fx === 4 && after.items === 20,
+        `刷新后 墙${after.walls} 窗${after.win} 门${after.doors} 洁具${after.fx} 家具${after.items}`
+      );
+      const builtinId = await t.eval('BUILTIN_PLAN_ID');
+      const still = await t.eval(
+        `({id:PLAN_ID, name:(PLAN_REG.plans.find(p=>p.id===PLAN_ID)||{}).name, active:PLAN_REG.active})`
+      );
+      t.assert(
+        'demo-reload-plan',
+        still.id !== builtinId && still.active === still.id,
+        `当前户型仍是演示户型「${still.name}」（id ${still.id}）`
+      );
+      await t.click('#btnDoll');
+      await t.waitFor(`is3D() && three && three.renderer`, 25000, '3D 重建');
+      await t.waitFor(`three.furnMap && three.furnMap.size>=20`, 25000, '家具重建');
+      t.assert('demo-reload-3d', (await t.eval(`three.furnMap.size`)) === 20, '3D 里 20 件都在');
+      await t.shot('after-reload');
+
+      /* ===== ⑬ 收尾：这份演示户型删掉，回到内置 ===== */
+      await t.step('收尾：切回内置户型 → 两步删除演示户型');
+      await ensureProTools(t);
+      await t.eval(`switchPlan(${JSON.stringify(builtinId)}, true)`);
+      await t.waitFor(`PLAN_ID===${JSON.stringify(builtinId)}`, 12000, '切回内置');
+      await t.eval(
+        `(()=>{const s=document.querySelector('#planSel');for(const o of s.options){if(o.value!==${JSON.stringify(builtinId)}){s.value=o.value;s.dispatchEvent(new Event('change'));return;}}})()`
+      );
+      await t.waitFor(`PLAN_ID!==${JSON.stringify(builtinId)}`, 12000, '选中演示户型');
+      await t.click('#btnPlanDel');
+      await t.waitFor(`document.querySelector('#btnPlanDel').classList.contains('arm')`, 8000, '第一次点击 = 待确认');
+      await t.click('#btnPlanDel');
+      await t.waitFor(`PLAN_ID===${JSON.stringify(builtinId)}`, 12000, '删除后回到内置');
+      const reg = await t.eval(
+        `({n:PLAN_REG.plans.length, active:PLAN_REG.active, builtin:${JSON.stringify(builtinId)}})`
+      );
+      t.assert(
+        'demo-plan-cleanup',
+        reg.n === 1 && reg.active === reg.builtin,
+        `户型列表剩 ${reg.n} 份（内置），当前 = ${reg.active}`
+      );
+    },
+  },
 ];

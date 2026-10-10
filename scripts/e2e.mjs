@@ -414,8 +414,14 @@ async function runEntry(entry) {
       await t.mouse('mouseReleased', b.x, b.y, { button: 'left', buttons: 0, clickCount: 1 });
       if (SPEED) await sleep(Math.min(SPEED, 300));
     },
-    async key(key, code, vk) {
-      const base = { key, code: code || key, windowsVirtualKeyCode: vk, nativeVirtualKeyCode: vk };
+    async key(key, code, vk, mods) {
+      const base = {
+        key,
+        code: code || key,
+        windowsVirtualKeyCode: vk,
+        nativeVirtualKeyCode: vk,
+        ...(mods ? { modifiers: mods } : {}),
+      };
       await cdp('Input.dispatchKeyEvent', { type: 'keyDown', ...base });
       await cdp('Input.dispatchKeyEvent', { type: 'keyUp', ...base });
       if (SPEED) await sleep(120);
@@ -460,7 +466,10 @@ async function runEntry(entry) {
 
   /* ---------- 跑流程 ---------- */
   const { FLOWS } = await import('./e2e-flows.mjs');
-  const flows = ONLY ? FLOWS.filter((f) => f.name === ONLY) : FLOWS;
+  // ciSkip：演示类长流程（含光追这类真 GPU 步骤）在 CI 上跑只会变慢，不会多抓住什么——
+  // 同一条路径的断言密度已经在 bench 里了。本地 / 手动跑照跑。
+  const pool = CI ? FLOWS.filter((f) => !f.ciSkip) : FLOWS;
+  const flows = ONLY ? FLOWS.filter((f) => f.name === ONLY) : pool;
   if (!flows.length) {
     console.error('没有匹配的 flow（可选：' + FLOWS.map((f) => f.name).join(', ') + '）');
     ws.close();
