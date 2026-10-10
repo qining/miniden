@@ -15,6 +15,14 @@ import { dist, expand, segLen, type Pt, type Geom, type Seg } from './primitives
 import type { ProjectDoc, Wall, Window, Door, Solid, WindowStyle, DoorKind, FixtureType } from './project';
 import { blankDoc, FIXTURE_TYPES, nextId } from './project';
 
+/* legacy 投影里 `wd` 的实际消费单位 = viewBox px（app 的 S = 22 px/ft）：
+   wallPolys / wallBand / 3D 挤出全部按 `wd / 2 / S` 算半厚（内置户型没 wd →
+   默认 6.5px → 9cm 墙，calib 基线就是按这个定的）。
+   以前用 `doc.sc`（图纸 px/ft = 11.2）反推，导入户型的真实墙厚被读成不到一半，
+   投影干脆不出 `wd`（导入文档没有 sc）→ 2D/3D 一律画成默认 9cm，
+   而贴墙吸附用的是真实厚 → 洁具离画出来的墙面 15cm（bug 猎 #20 的根）。 */
+const WD_PX_PER_FT = 22;
+
 /* ---------------------------------------------------------------------
    legacy 形状（= planner.html 现状；fixture 里存的就是这个）
    注意（e73cb45 起）：几何主体已是 ft 原生（W/WSPLIT/DR/CP 定义时就 /SC）；
@@ -426,7 +434,7 @@ export function docToLegacy(doc: ProjectDoc): LegacyProjection {
         ...(w.fullHeight ? { fc: true } : {}),
         ...(w.style === 'slide' ? { slider: true } : {}),
         ...(w.steel ? { steel: true } : {}),
-        ...(w.thick != null ? { wd: w.wdPx ?? (doc.sc ? w.thick * doc.sc : undefined) } : {}),
+        ...(w.thick != null ? { wd: w.wdPx ?? w.thick * WD_PX_PER_FT } : {}),
         _src: w.src === 'user' ? 'u' : 'b',
         _i: w.chainIndex ?? (w.userIndex as number),
         _id: w.id,
@@ -441,7 +449,7 @@ export function docToLegacy(doc: ProjectDoc): LegacyProjection {
         x2: g.x2,
         y2: g.y2,
         t: w.kind === 'thin' ? 'i' : w.kind === 'opening' ? 'd' : w.kind === 'passage' ? 'o' : 'w',
-        ...(w.thick != null ? { wd: w.wdPx ?? (doc.sc ? w.thick * doc.sc : undefined) } : {}),
+        ...(w.thick != null ? { wd: w.wdPx ?? w.thick * WD_PX_PER_FT } : {}),
         _src: w.src === 'user' ? 'u' : 'b',
         _i: w.chainIndex ?? (w.userIndex as number),
         _id: w.id,

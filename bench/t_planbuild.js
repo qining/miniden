@@ -125,6 +125,47 @@ async function runPBTest() {
     }
     return d;
   };
+  /* 画出来的墙厚：从 wallPolys() 返回来的多边形量「垂直于墙轴的外缘跨度」——
+     2D 填充与 3D 挤出用的就是这张表。断言如果照抄吸附实现里的公式，只能证明
+     「代码自洽」，抓不到「代码与现实不符」（AGENTS §5.1；bug 猎 #20 就是这样藏着的）。 */
+  const pbDrawnThick = (s) => {
+    const L = Math.hypot(s.x2 - s.x1, s.y2 - s.y1);
+    if (L < 1e-9) return NaN;
+    const ux = (s.x2 - s.x1) / L,
+      uy = (s.y2 - s.y1) / L,
+      nx = -uy,
+      ny = ux;
+    /* wallPolys() 返回的是封口多边形 [a1,b1,b2,a2]：a1→b1 就是沿墙轴的那条边。
+       先按「走向对齐 + 形心落在这段墙上」认人，再量垂直跨度；
+       只按形心距离认会拿到邻墙的多边形（厚度量出来是另一个数）。 */
+    let best = null,
+      bd = 1e9;
+    for (const q of wallPolys()) {
+      const ex = q[1][0] - q[0][0],
+        ey = q[1][1] - q[0][1],
+        el = Math.hypot(ex, ey);
+      if (el < 0.1) continue;
+      if (Math.abs((ex * ux + ey * uy) / el) < 0.9) continue;
+      const cx = (q[0][0] + q[1][0] + q[2][0] + q[3][0]) / 4,
+        cy = (q[0][1] + q[1][1] + q[2][1] + q[3][1]) / 4;
+      let t = (cx - s.x1) * ux + (cy - s.y1) * uy;
+      t = Math.max(0, Math.min(L, t));
+      const d = Math.hypot(cx - (s.x1 + ux * t), cy - (s.y1 + uy * t));
+      if (d < bd) {
+        bd = d;
+        best = q;
+      }
+    }
+    if (!best || bd > 0.2) return NaN;
+    let lo = 1e9,
+      hi = -1e9;
+    for (const p of best) {
+      const v = p[0] * nx + p[1] * ny;
+      if (v < lo) lo = v;
+      if (v > hi) hi = v;
+    }
+    return hi - lo;
+  };
   const pbFree = (() => {
     let best = null,
       bs = -1;
@@ -804,7 +845,7 @@ async function runPBTest() {
         let target = null,
           bestD = -1;
         for (const s of effWalls()) {
-          if (s.t !== 'w' && s.t !== 'i') continue;
+          if (s.t !== 'w') continue; // 只选实墙：契约从 wallPolys() 的多边形量厚度，薄墙不在那张表里
           const L = Math.hypot(s.x2 - s.x1, s.y2 - s.y1);
           if (L < 3) continue;
           const ux = (s.x2 - s.x1) / L,
@@ -838,8 +879,10 @@ async function runPBTest() {
               uy = (s.y2 - s.y1) / L;
             const tp = (cxm2 - s.x1) * ux + (cym2 - s.y1) * uy;
             const dWall = Math.hypot(cxm2 - (s.x1 + ux * tp), cym2 - (s.y1 + uy * tp));
-            const docE = entById(s._id);
-            const th = docE && docE.thick != null ? docE.thick : (s.wd || 6.5) / SC;
+            /* 墙厚从 pbDrawnThick() 量（见定义处的注释）。
+               以前这里写的就是 fixtureWallSnap 里那个 /SC 公式，所以它一直绿着，
+               而台柜/镜子实际离墙面 4.3cm（bug 猎 #20）。 */
+            const th = pbDrawnThick(s);
             const expect = (th + FX_DEFS.mirror.d) / 2;
             // rot 契约：长边（本地 x 轴）平行墙 → rot = 墙角归一到 [0,180) 后取整
             let wa = (Math.atan2(uy, ux) * 180) / Math.PI;
@@ -852,7 +895,7 @@ async function runPBTest() {
             const dimOK =
               (Math.abs(wx - FX_DEFS.mirror.w) < 1e-6 && Math.abs(wy - FX_DEFS.mirror.d) < 1e-6) ||
               (Math.abs(wx - FX_DEFS.mirror.d) < 1e-6 && Math.abs(wy - FX_DEFS.mirror.w) < 1e-6);
-            snapOK = rotOK && dWall > 0.05 && Math.abs(dWall - expect) < 0.05 && dimOK;
+            snapOK = Number.isFinite(th) && rotOK && dWall > 0.05 && Math.abs(dWall - expect) < 0.05 && dimOK;
             snapInfo =
               'wall=' +
               s._id +
@@ -864,6 +907,8 @@ async function runPBTest() {
               dWall.toFixed(3) +
               ' expect=' +
               expect.toFixed(3) +
+              ' 画出的墙厚=' +
+              (Number.isFinite(th) ? th.toFixed(3) + 'ft' : '未匹配到多边形') +
               ' rect=' +
               wx.toFixed(2) +
               'x' +
@@ -2172,13 +2217,13 @@ async function runPBTest() {
           const L = Math.hypot(wall.x2 - wall.x1, wall.y2 - wall.y1);
           const ux = (wall.x2 - wall.x1) / L,
             uy = (wall.y2 - wall.y1) / L;
-          const docE = entById(wall._id);
-          const th = docE && docE.thick != null ? docE.thick : (wall.wd || 6.5) / SC;
+          const th = pbDrawnThick(wall);
           const expect = (th + FX_DEFS.mirror.d) / 2;
           let wa = (Math.atan2(uy, ux) * 180) / Math.PI;
           wa = ((wa % 360) + 360) % 360;
           if (wa >= 180) wa -= 180;
           ok =
+            Number.isFinite(th) &&
             zMir.t === 'mirror' &&
             zMir.rot != null &&
             Math.abs((zMir.rot || 0) - Math.round(wa)) < 0.6 &&
@@ -2253,6 +2298,36 @@ async function runPBTest() {
         'pb-zero-3d-furniture',
         !!three && three.furnMap && three.furnMap.size === 3,
         'furnMap=' + (three && three.furnMap ? three.furnMap.size : '-')
+      );
+      /* 13.6b 第一人称落点：自包含户型不能落在硬编码的 (22,27)ft（那是内置户型的客厅，
+         在画出来的户型外面 → 点「室内」先看见自家外墙背面）。落点必须在户型内。 */
+      setView('fp');
+      await new Promise((r) => setTimeout(r, 1500));
+      const zCamFP = three && three.cam ? [three.cam.position.x, three.cam.position.z] : null;
+      const zFpHome = floorPts();
+      const zInsideFP = (x, y) => {
+        let ins = false;
+        for (let i = 0, j = zFpHome.length - 1; i < zFpHome.length; j = i++) {
+          const xi = zFpHome[i][0],
+            yi = zFpHome[i][1],
+            xj = zFpHome[j][0],
+            yj = zFpHome[j][1];
+          if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) ins = !ins;
+        }
+        return ins;
+      };
+      T(
+        'pb-zero-fp-inside-plan',
+        !!zCamFP && zInsideFP(zCamFP[0], zCamFP[1]),
+        '室内落点 (' +
+          (zCamFP ? zCamFP[0].toFixed(1) : '?') +
+          ', ' +
+          (zCamFP ? zCamFP[1].toFixed(1) : '?') +
+          ') 在画出的户型内；视线方向 (' +
+          (three.fpDir ? three.fpDir.x.toFixed(2) : '?') +
+          ', ' +
+          (three.fpDir ? three.fpDir.z.toFixed(2) : '?') +
+          ')（旧版硬编码 (22,27) 在户型外）'
       );
       setView('2d');
       await tick();
