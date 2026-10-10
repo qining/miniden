@@ -76,9 +76,25 @@ npm run build              # app.html → dist/（单文件）+ 重新生成 ben
 npm test                   # vitest（schema / DXF / PDF / 图片描摹）
 node scripts/run-bench.mjs # 浏览器交互测试台（t_walledit / t_3d / t_pt × source/dist）
 npm run ui:gate            # UI 黄金截图门禁（8 个规范态，≤0.3%）
+npm run e2e                # 真实输入 E2E（headful Chrome，人可看着跑）
 ```
 
-CI（GitHub Actions）跑 generic 子集：vitest + build + bench + ui-gate + 包体预算。
+### 完整演示：一条流程走完产品承诺
+
+从空白户型 → 画出两室一厅一卫 → 门 / 洁具 / 固定灯具 → 摆家具 → 撤销 → 3D → 室内 →
+光追 → 导出户型 JSON → 真实刷新后还在 → 删掉那份户型。每一步都有断言兜底，
+每个阶段留一张截图。
+
+```bash
+npm run build                                        # 先重捆 dist（否则跑的是旧版）
+node scripts/e2e.mjs --flow=demo-full                # 两个入口各 31 条（看着跑，约 100s / 入口）
+node scripts/e2e.mjs --entry=planner --flow=demo-full --fast   # 只跑个人入口、不减速（约 36s）
+```
+
+产物：`work/e2e/report.html`（逐步截图 + 断言，人可审）、`log.json`、`shots/`（全 gitignore）。
+`--ci` 口径不跑这条（它含一步真 GPU 光追，断言用的是未钉住取景的像素统计）。
+
+CI（GitHub Actions）跑 generic 子集：vitest + build + bench + ui-gate + E2E + 包体预算。
 接手这个项目请先读 **[AGENTS.md](AGENTS.md)**——它记录实测有效的流程、踩过的坑、
 以及验证方法论（校准基线、隐私边界、测试台方法论）。
 
