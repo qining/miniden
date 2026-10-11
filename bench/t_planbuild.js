@@ -3168,6 +3168,315 @@ async function runPBTest() {
       );
     }
 
+    /* ===== 15. 检视面板：撤销覆盖 / 旋转口径 / 自定义件尺寸上下限（E19 轮㉓） ===== */
+    {
+      /* 探针实测（work/_p23_probe*.html）：
+         · 改颜色 / 色温 / 亮度不进撤销环 → 改完按 Ctrl+Z 撤掉的是「放这件家具」那一步（家具直接消失）
+         · 旋转框里重打同一个数字 → 环 +1 而什么都没改 → 第一次 Ctrl+Z 什么都没发生，要按第二次
+         · 旋转框输入 720 → 框显示 720 而滑块显示 0（同一时刻两个控件读数矛盾），再按 +90° 跳到 90
+         · 自定义件尺寸没有上下限：99999cm 收（2D 图例 72178px = 户型宽的 72 倍，盖住整张图）、
+           0.1cm 收（0.07px，隐形且点不中 → 选不中也就删不掉）、高 -5cm 收（3D bbox y −0.164..0.000ft） */
+      await pbReset();
+      state.items = [];
+      drawFurniture();
+      save();
+      undoRing.length = 0;
+      redoRing.length = 0;
+      lastGesture = null;
+      updateUndoUI();
+      const u23z = () =>
+        window.dispatchEvent(
+          new KeyboardEvent('keydown', { key: 'z', ctrlKey: true, bubbles: true, cancelable: true })
+        );
+      const sel23 = (uid) => {
+        selected = uid;
+        updateProps();
+      };
+      const item23 = (uid) => state.items.find((i) => i.uid === uid) || null;
+      const lastUid23 = () => state.items[state.items.length - 1].uid;
+
+      // 15.1 改颜色必须能撤，而且撤的是颜色本身（不是「放这件家具」）
+      addItem(CATALOG[0].id);
+      await tick();
+      const cUid = lastUid23();
+      sel23(cUid);
+      const cBefore = item23(cUid).color; // undefined = 跟着目录配色
+      document.getElementById('pColor').value = '#ff0000';
+      document.getElementById('pColor').dispatchEvent(new Event('input'));
+      await tick();
+      const cAfter = item23(cUid).color;
+      u23z();
+      await tick();
+      const cIt = item23(cUid);
+      T(
+        'pb-undo-color-each-step',
+        cAfter === '#ff0000' && !!cIt && cIt.color === cBefore,
+        '颜色 ' +
+          String(cBefore) +
+          ' → ' +
+          cAfter +
+          ' → Ctrl+Z → ' +
+          (cIt ? String(cIt.color) : '（件没了）') +
+          ' 环 ' +
+          undoRing.length
+      );
+
+      // 15.2 色温 / 亮度同理（可调光的落地灯才有这两格）
+      undoRing.length = 0;
+      redoRing.length = 0;
+      lastGesture = null;
+      addItem('hw-02e');
+      await tick();
+      const lUid = lastUid23();
+      sel23(lUid);
+      const l0 = { cct: item23(lUid).cct, dim: item23(lUid).dim };
+      document.getElementById('pCCT').value = '2200';
+      document.getElementById('pCCT').dispatchEvent(new Event('input'));
+      await tick();
+      const cctSet = item23(lUid).cct;
+      u23z();
+      await tick();
+      const lIt1 = item23(lUid);
+      T(
+        'pb-undo-cct-each-step',
+        cctSet === 2200 && !!lIt1 && lIt1.cct === l0.cct,
+        '色温 ' + String(l0.cct) + ' → ' + cctSet + ' → Ctrl+Z → ' + (lIt1 ? String(lIt1.cct) : '（件没了）')
+      );
+      document.getElementById('pDim').value = '20';
+      document.getElementById('pDim').dispatchEvent(new Event('input'));
+      await tick();
+      const dimSet = item23(lUid) ? item23(lUid).dim : null;
+      u23z();
+      await tick();
+      const lIt2 = item23(lUid);
+      T(
+        'pb-undo-dim-each-step',
+        dimSet === 0.2 && !!lIt2 && lIt2.dim === l0.dim,
+        '亮度 ' + String(dimSet) + ' → Ctrl+Z → ' + (lIt2 ? String(lIt2.dim) : '（件没了）')
+      );
+
+      // 15.3 旋转框：口径必须与滑块 / +90° / [ ] 一致（mod 360）
+      undoRing.length = 0;
+      redoRing.length = 0;
+      lastGesture = null;
+      addItem(CATALOG[1].id);
+      await tick();
+      const rUid = lastUid23();
+      sel23(rUid);
+      document.getElementById('pRot').value = '720';
+      document.getElementById('pRot').dispatchEvent(new Event('input'));
+      await tick();
+      const rIt = item23(rUid);
+      const boxV = Number(document.getElementById('pRot').value);
+      const sliderV = Number(document.getElementById('pRotSlider').value);
+      T(
+        'pb-rot-box-normalized',
+        rIt.rot === 0 && boxV === 0 && sliderV === 0,
+        '输入 720 → it.rot=' + rIt.rot + ' 框=' + boxV + ' 滑块=' + sliderV
+      );
+      document.getElementById('pRot90').click();
+      await tick();
+      T(
+        'pb-rot-box-then-90-continuous',
+        item23(rUid).rot === 90,
+        '+90° 之后 it.rot=' + item23(rUid).rot + ' 框=' + document.getElementById('pRot').value
+      );
+
+      // 15.3a 逐字符打小数：number input 的半成品文本（"45."）不该被当成 0 应用到家具，
+      // 归一后的回写也不该吃掉用户正在打的小数点（面板宣称 0.1° 精度）。
+      // 模拟必须用真插入（execCommand insertText）：直接给 number input 赋 "45." 会被浏览器判非法吞掉。
+      undoRing.length = 0;
+      redoRing.length = 0;
+      lastGesture = null;
+      addItem(CATALOG[1].id);
+      await tick();
+      const decUid = lastUid23();
+      sel23(decUid);
+      const decBox = document.getElementById('pRot');
+      decBox.focus();
+      decBox.value = '';
+      decBox.dispatchEvent(new Event('input'));
+      await tick();
+      const decSteps = [];
+      const decVals = [];
+      for (const ch of ['4', '5', '.', '5']) {
+        document.execCommand('insertText', false, ch); // 真打字：文本累加，非法文本由浏览器保留
+        await tick();
+        decSteps.push(ch + '→rot=' + item23(decUid).rot + '/框=' + decBox.value);
+        decVals.push(item23(decUid).rot);
+      }
+      const decIt = item23(decUid);
+      T(
+        'pb-rot-decimal-typing',
+        !!decIt && decIt.rot === 45.5 && Number(decBox.value) === 45.5,
+        '逐字符打 4 5 . 5：' + decSteps.join(' ') + ' → it.rot=' + (decIt ? decIt.rot : '?')
+      );
+      // 清空框（准备重打）不该把家具转到 0°；非法文本（"-"）同理
+      decBox.value = '';
+      decBox.dispatchEvent(new Event('input'));
+      await tick();
+      const emptyRot = item23(decUid).rot;
+      decBox.value = '-';
+      decBox.dispatchEvent(new Event('input'));
+      await tick();
+      const negRot = item23(decUid).rot;
+      T(
+        'pb-rot-empty-or-invalid-not-applied',
+        emptyRot === 45.5 && negRot === 45.5,
+        '清空框 → rot=' + emptyRot + '；打「-」→ rot=' + negRot + '（都该仍是 45.5，不该被当成 0°）'
+      );
+
+      // 15.3b 焦点还在旋转框里时 Ctrl+Z 必须生效，而且面板数字要跟着回去（bug 猎 #45 / #46）
+      undoRing.length = 0;
+      redoRing.length = 0;
+      lastGesture = null;
+      addItem(CATALOG[1].id);
+      await tick();
+      const gUid = lastUid23();
+      sel23(gUid);
+      const gBox = document.getElementById('pRot');
+      const u23zOn = (el) =>
+        el.dispatchEvent(
+          new KeyboardEvent('keydown', { key: 'z', code: 'KeyZ', ctrlKey: true, bubbles: true, cancelable: true })
+        );
+      gBox.focus();
+      gBox.value = '45';
+      gBox.dispatchEvent(new Event('input'));
+      await tick();
+      document.getElementById('pRot90').click(); // 离散动作：把两次编辑分开
+      await tick();
+      const gBefore = { rot: item23(gUid).rot, ring: undoRing.length };
+      u23zOn(gBox); // 真键盘口径：事件 target 就是那个输入框
+      await tick();
+      const gIt = item23(gUid);
+      const gAfter = {
+        rot: gIt ? gIt.rot : null,
+        box: Number(document.getElementById('pRot').value),
+        slider: Number(document.getElementById('pRotSlider').value),
+      };
+      T(
+        'pb-undo-works-from-rot-input',
+        !!gIt && Math.abs(gBefore.rot - 135) < 0.2 && Math.abs(gAfter.rot - 45) < 0.2,
+        '焦点在旋转框里按 Ctrl+Z：' + gBefore.rot + '° → ' + String(gAfter.rot) + '°（撤销生效，撤的是那个离散动作）'
+      );
+      T(
+        'pb-props-panel-follows-undo',
+        Math.abs(gAfter.rot - 45) < 0.2 && gAfter.box === gAfter.rot && gAfter.slider === gAfter.rot,
+        '撤销后面板跟着回去：it.rot=' + String(gAfter.rot) + ' 框=' + gAfter.box + ' 滑块=' + gAfter.slider
+      );
+      // 对照组：自由文本框里的 Ctrl+Z 属于浏览器自己的「撤销打字」，不该被抢走
+      const ringBefore23 = undoRing.length;
+      const searchEl = document.getElementById('catSearch');
+      searchEl.focus();
+      u23zOn(searchEl);
+      await tick();
+      T(
+        'pb-undo-key-not-stolen-in-search',
+        undoRing.length === ringBefore23 && item23(gUid) && Math.abs(item23(gUid).rot - 45) < 0.2,
+        '搜索框里按 Ctrl+Z：环 ' + ringBefore23 + ' → ' + undoRing.length + '（没被抢走），rot 仍 ' + item23(gUid).rot
+      );
+      searchEl.value = '';
+      searchEl.dispatchEvent(new Event('input'));
+      await tick();
+
+      // 15.4 死步：重打同一个数字不该占一步（一次按键就该撤掉真正那一步）
+      undoRing.length = 0;
+      redoRing.length = 0;
+      lastGesture = null;
+      addItem(CATALOG[2].id);
+      await tick();
+      const dUid = lastUid23();
+      sel23(dUid);
+      const r1 = undoRing.length;
+      document.getElementById('pRot').value = String(item23(dUid).rot);
+      document.getElementById('pRot').dispatchEvent(new Event('input'));
+      await tick();
+      const r2 = undoRing.length;
+      const n1 = state.items.length;
+      u23z();
+      await tick();
+      const n2 = state.items.length;
+      T(
+        'pb-undo-no-dead-step',
+        n2 === n1 - 1,
+        '环 ' +
+          r1 +
+          '→' +
+          r2 +
+          '（重打同一个数字）· 件数 ' +
+          n1 +
+          ' → 一次 Ctrl+Z → ' +
+          n2 +
+          '（期望 ' +
+          (n1 - 1) +
+          '）'
+      );
+
+      // 15.5 自定义件尺寸上下限：一个笔误不该毁掉整张图
+      const cfN0 = state.customCat.length;
+      const cfTry = (w, d, h) => {
+        document.getElementById('cfName').value = '体检件';
+        document.getElementById('cfW').value = String(w);
+        document.getElementById('cfD').value = String(d);
+        document.getElementById('cfH').value = String(h);
+        document.getElementById('cfImg').value = '';
+        document.getElementById('cfAdd').click();
+      };
+      const cfToast = () => (document.getElementById('toast') || {}).textContent || '';
+      cfTry(99999, 100, 100);
+      await tick();
+      const hugeMsg = cfToast();
+      T(
+        'pb-custom-size-huge-rejected',
+        state.customCat.length === cfN0 && /1200/.test(hugeMsg),
+        '宽 99999 → 目录 ' + state.customCat.length + '/' + cfN0 + ' 提示「' + hugeMsg + '」'
+      );
+      cfTry(0.1, 0.1, 1);
+      await tick();
+      T(
+        'pb-custom-size-tiny-rejected',
+        state.customCat.length === cfN0,
+        '宽 0.1 → 目录 ' + state.customCat.length + '/' + cfN0 + ' 提示「' + cfToast() + '」'
+      );
+      cfTry(50, 50, -5);
+      await tick();
+      T(
+        'pb-custom-size-negative-rejected',
+        state.customCat.length === cfN0,
+        '高 -5 → 目录 ' + state.customCat.length + '/' + cfN0 + ' 提示「' + cfToast() + '」'
+      );
+      cfTry(90, 45, 75); // 对照组：正常尺寸必须照收
+      await tick();
+      T(
+        'pb-custom-size-sane-accepted',
+        state.customCat.length === cfN0 + 1 && state.items.length > 0,
+        '90×45×75 → 目录 ' + state.customCat.length + '/' + cfN0 + ' 件数 ' + state.items.length
+      );
+      const bb23 = gFurn.getBBox();
+      const fp23 = floorPts();
+      const pw23 = (Math.max(...fp23.map((p) => p[0])) - Math.min(...fp23.map((p) => p[0]))) * S;
+      T(
+        'pb-custom-legend-not-cover-plan',
+        bb23.width <= pw23 * 1.5,
+        '家具图层宽 ' + bb23.width.toFixed(0) + 'px vs 户型宽 ' + pw23.toFixed(0) + 'px'
+      );
+      // 收尾复位：这一段造的自定义件与摆出来的件都不留给后面
+      state.items = [];
+      state.customCat = state.customCat.slice(0, cfN0);
+      drawFurniture();
+      save();
+      buildCatalog('');
+      undoRing.length = 0;
+      redoRing.length = 0;
+      lastGesture = null;
+      updateUndoUI();
+      T(
+        'pb-props-round23-clean-exit',
+        state.items.length === 0 && state.customCat.length === cfN0 && undoRing.length === 0,
+        '件 ' + state.items.length + ' 自定义 ' + state.customCat.length + ' 环 ' + undoRing.length
+      );
+    }
+
     /* ===== 收尾：页面不得有未捕获异常 ===== */
     T('pb-no-page-errors', window.__ERRS.length === 0, window.__ERRS.slice(0, 3).join(' || '));
   } catch (e) {

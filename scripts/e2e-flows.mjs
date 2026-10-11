@@ -737,6 +737,161 @@ export const FLOWS = [
   },
 
   {
+    name: 'props-panel',
+    title: '检视面板：改颜色能撤销、旋转口径一致、自定义件尺寸有上下限',
+    run: async (t) => {
+      /* bug 猎 轮㉓。检视面板是「选中一件家具之后能改什么」的那一面，四件事必须用真实鼠标键盘确认：
+         ① 改颜色要能撤 —— 以前改完颜色按 Ctrl+Z，撤掉的是「放这件家具」那一步（家具直接消失）；
+         ② 焦点还留在旋转框里时 Ctrl+Z 必须生效 —— 实测以前：撤销按钮亮着（环 3 步）、按下去什么都没发生；
+         ③ 旋转框 / 滑块 / +90° 必须同一个口径，且撤销后面板数字要跟着回去 —— 以前输入 720 后框显示 720 而滑块显示 0；
+         ④ 一个笔误（宽 99999）不该毁掉整张平面图 —— 以前照收，2D 图例是户型宽的 72 倍、盖住整张图。 */
+      const before = await stateOf(t);
+      await t.step('放一件家具并选中', '点目录第一张卡片');
+      await t.click('.catCard');
+      await t.waitFor('state.items.length>' + before.items, 6000, '家具数 +1');
+      const uid = await t.eval('state.items[state.items.length-1].uid');
+      const title = await t.eval(`document.querySelector('#pTitle').textContent`);
+      t.assert('props-panel-open', title !== '未选中家具', `检视面板：${title}`);
+
+      await t.step('把颜色换成红色', '颜色选择器 → 红色');
+      await t.eval(
+        `(()=>{const c=document.querySelector('#pColor');c.value='#c0182c';c.dispatchEvent(new Event('input',{bubbles:true}));})()`
+      );
+      await t.waitFor(
+        `(()=>{const i=state.items.find(x=>x.uid===${uid});return i&&i.color==='#c0182c'})()`,
+        6000,
+        '颜色写入'
+      );
+      const swatch = await t.eval(
+        `(()=>{const c=document.querySelector('#pColor');const r=c.getBoundingClientRect();return {v:c.value,w:Math.round(r.width),h:Math.round(r.height)};})()`
+      );
+      t.assert(
+        'props-color-applied',
+        swatch.v === '#c0182c' && swatch.w >= 8 && swatch.h >= 8,
+        `色块 ${swatch.v} ${swatch.w}×${swatch.h}px`
+      );
+      await t.shot('props-color');
+
+      await t.step('按 Ctrl+Z：撤的必须是颜色，不是「放这件家具」');
+      await t.key('z', 'KeyZ', 90, 2);
+      await t.waitFor(`(()=>{const i=state.items.find(x=>x.uid===${uid});return !!i})()`, 6000, '那件家具还在');
+      const afterUndo = await t.eval(
+        `(()=>{const i=state.items.find(x=>x.uid===${uid});return i?{color:i.color||null,rot:i.rot}:null;})()`
+      );
+      t.assert(
+        'props-undo-undoes-color',
+        !!afterUndo && afterUndo.color === null,
+        afterUndo
+          ? `Ctrl+Z 之后：件还在，颜色回到目录配色（${String(afterUndo.color)}），rot=${afterUndo.rot}`
+          : 'Ctrl+Z 把整件家具撤掉了（撤的是「放件」那一步）'
+      );
+
+      await t.step('旋转：打 45° → 按「+90°」→ Ctrl+Z 只该撤那个 +90°');
+      await t.type('#pRot', '45');
+      await t.waitFor(
+        `(()=>{const i=state.items.find(x=>x.uid===${uid});return i&&Math.abs(i.rot-45)<0.2})()`,
+        6000,
+        'rot=45'
+      );
+      await t.click('#pRot90');
+      await t.waitFor(
+        `(()=>{const i=state.items.find(x=>x.uid===${uid});return i&&Math.abs(i.rot-135)<0.2})()`,
+        6000,
+        'rot=135'
+      );
+      await t.key('z', 'KeyZ', 90, 2);
+      await t.waitFor(
+        `(()=>{const i=state.items.find(x=>x.uid===${uid});return i&&Math.abs(i.rot-45)<0.2})()`,
+        6000,
+        'rot 回到 45'
+      );
+      const rotStep = await t.eval(`state.items.find(x=>x.uid===${uid}).rot`);
+      t.assert(
+        'props-rot-90-is-own-step',
+        Math.abs(rotStep - 45) < 0.2,
+        `45° → +90° → 135° → Ctrl+Z → ${rotStep}°（只撤那个离散动作）`
+      );
+
+      await t.step('再打 720°：框与滑块必须读同一个数');
+      await t.type('#pRot', '720');
+      await t.waitFor(
+        `(()=>{const i=state.items.find(x=>x.uid===${uid});return i&&i.rot===0})()`,
+        6000,
+        '720 归一成 0'
+      );
+      const rotRead = await t.eval(
+        `(()=>{const i=state.items.find(x=>x.uid===${uid});return {rot:i.rot,box:document.querySelector('#pRot').value,slider:document.querySelector('#pRotSlider').value};})()`
+      );
+      t.assert(
+        'props-rot-same-reading',
+        rotRead.rot === 0 && Number(rotRead.box) === 0 && Number(rotRead.slider) === 0,
+        `输入 720 → it.rot=${rotRead.rot} 框=${rotRead.box} 滑块=${rotRead.slider}`
+      );
+
+      await t.step('焦点还在那个框里按 Ctrl+Z：撤的必须是这次输入');
+      await t.key('z', 'KeyZ', 90, 2);
+      await t.waitFor(
+        `(()=>{const i=state.items.find(x=>x.uid===${uid});return i&&Math.abs(i.rot-45)<0.2})()`,
+        6000,
+        'rot 回到 45'
+      );
+      const rotBack = await t.eval(
+        `(()=>{const i=state.items.find(x=>x.uid===${uid});return {rot:i.rot,box:document.querySelector('#pRot').value,slider:document.querySelector('#pRotSlider').value};})()`
+      );
+      t.assert(
+        'props-rot-edit-is-own-step',
+        Math.abs(rotBack.rot - 45) < 0.2 &&
+          Math.abs(Number(rotBack.box) - 45) < 0.2 &&
+          Math.abs(Number(rotBack.slider) - 45) < 0.2,
+        `720°（归一为 0）→ Ctrl+Z → it.rot=${rotBack.rot} 框=${rotBack.box} 滑块=${rotBack.slider}（面板跟着回去）`
+      );
+      await t.shot('props-rot');
+
+      await t.step('自定义家具：宽填 99999（一个笔误）', '不该进目录，且要给一条非阻塞提示');
+      const cfN0 = await t.eval('state.customCat.length');
+      await t.eval(`document.querySelector('#customForm').scrollIntoView({block:'center'})`);
+      await t.type('#cfName', 'E2E 笔误件');
+      await t.type('#cfW', '99999');
+      await t.type('#cfD', '40');
+      await t.click('#cfAdd');
+      await t.waitFor(
+        `(()=>{const x=document.querySelector('#toast');return x&&/1200/.test(x.textContent)&&+getComputedStyle(x).opacity>0.5})()`,
+        6000,
+        '尺寸口径提示出现'
+      );
+      const cfToast = await t.eval(
+        `(()=>{const x=document.querySelector('#toast');if(!x)return null;const r=x.getBoundingClientRect();return {txt:x.textContent,w:Math.round(r.width),h:Math.round(r.height)};})()`
+      );
+      t.assert(
+        'props-custom-size-rejected',
+        (await t.eval('state.customCat.length')) === cfN0 && !!cfToast && cfToast.w > 60 && cfToast.h >= 14,
+        cfToast ? `目录仍 ${cfN0} 条 · 提示「${cfToast.txt}」${cfToast.w}×${cfToast.h}px` : '没有提示'
+      );
+      const cover = await t.eval(
+        `(()=>{const b=document.querySelector('#furn').getBBox();const fp=floorPts();
+          const w=(Math.max(...fp.map(p=>p[0]))-Math.min(...fp.map(p=>p[0])))*S;return {furn:Math.round(b.width),plan:Math.round(w)};})()`
+      );
+      t.assert(
+        'props-plan-not-covered',
+        cover.furn <= cover.plan * 1.5,
+        `家具图层宽 ${cover.furn}px vs 户型宽 ${cover.plan}px`
+      );
+      await t.shot('props-custom-rejected');
+
+      await t.step('收尾：把焦点从数字框里移开再按 Delete');
+      // 数字框里的 Delete 是「删文本」，不是删家具（与 Ctrl+Z 同一口径：提交式控件里的编辑优先）
+      await t.eval(`selected=${uid};document.activeElement.blur();drawFurniture();updateProps();`);
+      await t.key('Delete', 'Delete', 46);
+      await t.waitFor(`state.items.length===${before.items}`, 6000, '家具数复位');
+      t.assert(
+        'props-panel-cleanup',
+        (await stateOf(t)).items === before.items && (await t.eval('state.customCat.length')) === cfN0,
+        `复位到 ${before.items} 件 · 自定义 ${cfN0} 条`
+      );
+    },
+  },
+
+  {
     name: 'overlap-feedback',
     title: '两件重叠 → 红描边；移开 → 消失',
     run: async (t) => {
