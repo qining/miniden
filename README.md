@@ -94,6 +94,10 @@ node scripts/e2e.mjs --entry=planner --flow=demo-full --fast   # 只跑个人入
 产物：`work/e2e/report.html`（逐步截图 + 断言，人可审）、`log.json`、`shots/`（全 gitignore）。
 `--ci` 口径不跑这条（它含一步真 GPU 光追，断言用的是未钉住取景的像素统计）。
 
+共 20 条流程 / 141 断言（CI 口径 19 条 / 110 断言 × 2 入口）。其中两条走的是真实鼠标与真实键盘：
+`--flow=counter-run`（沿实墙画台面 → 「选择/调整」里选中 → 改深度 → 放冰箱 → 删除）与
+`--flow=undo-redo`（删洁具 → Ctrl+Z 找回来 → Ctrl+Y 重做 → 画墙 → Ctrl+Z → Ctrl+Y）。
+
 CI（GitHub Actions）跑 generic 子集：vitest + build + bench + ui-gate + E2E + 包体预算。
 接手这个项目请先读 **[AGENTS.md](AGENTS.md)**——它记录实测有效的流程、踩过的坑、
 以及验证方法论（校准基线、隐私边界、测试台方法论）。
