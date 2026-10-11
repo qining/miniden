@@ -611,7 +611,7 @@
 /* VENDORED —— 由 scripts/build-storage.mjs 从 src/storage/ 编译生成，勿手改。
    src/ 是唯一事实来源（单测 + tsc strict）；改 src/storage/ 后跑 `npm run storage:build`。
    build.mjs 校验本块与最新编译输出逐字节一致。 */
-"use strict";(()=>{var U=Object.defineProperty;var Z=(n,e)=>{for(var t in e)U(n,t,{get:e[t],enumerable:!0})};var $="miniden-planner",G="miniden_kv",nn="planner_store_degraded";function en(n){if(!n||typeof n.getItem!="function")return null;try{n.setItem("__miniden_probe","1"),n.removeItem("__miniden_probe")}catch{return null}return{name:"localStorage",read:async e=>{let t={};for(let i of e)try{let r=n.getItem(i);typeof r=="string"&&(t[i]=r)}catch{}return t},write:async(e,t)=>{try{return n.setItem(e,t),!0}catch{return!1}},remove:async e=>{try{return n.removeItem(e),!0}catch{return!1}}}}function tn(n){return new Promise(e=>{let t=null;try{t=n()}catch{e(void 0);return}if(!t){e(void 0);return}t.onsuccess=()=>e(t.result),t.onerror=()=>e(void 0)})}function W(n){return new Promise(e=>{let t=null;try{t=n()}catch{e(!1);return}if(!t){e(!1);return}t.onsuccess=()=>e(!0),t.onerror=()=>e(!1)})}function rn(n,e=G){let t=i=>{if(!n.transaction)return null;let r;try{r=n.transaction(e,i)}catch{return null}if(!r||typeof r.objectStore!="function")return null;try{return r.objectStore(e)}catch{return null}};return{name:"indexedDB",read:async i=>{let r={};for(let o of i){let d=t("readonly");if(!d)break;let a=await tn(()=>d.get(o));typeof a=="string"&&(r[o]=a)}return r},write:async(i,r)=>{let o=t("readwrite");return o?W(()=>o.put(r,i)):!1},remove:async i=>{let r=t("readwrite");return r?W(()=>r.delete(i)):!1}}}function H(n=$,e=1,t=G){let r=globalThis.indexedDB;if(!r||typeof r.open!="function")return Promise.resolve(null);let o=r.open.bind(r);return new Promise(d=>{let a;try{a=o(n,e)}catch{d(null);return}if(!a){d(null);return}a.onupgradeneeded=()=>{let l=a.result;if(l&&typeof l.createObjectStore=="function")try{l.createObjectStore(t)}catch{}},a.onsuccess=()=>{let l=a.result;if(!l||typeof l.transaction!="function"){d(null);return}d(rn(l,t))},a.onerror=()=>d(null),a.onblocked=()=>d(null)})}function z(n){let e=n.mirrorLimit??15e5,t=n.debounceMs??200,i=n.degradedFlag??nn,r=n.ls??null,o=new Map,d=new Map,a=new Set,l=new Set,P=new Set(n.warmKeys??[]),T=[],M=new Set,f={migrated:0,conflicts:0,idbWrites:0,idbFails:0,lsMirrors:0,lsFails:0,skippedMirror:0,hydrated:0},S=null,D=null,b=!1,N=Promise.resolve({migrated:0,conflicts:0,idbWrites:0,idbFails:0,lsMirrors:0,lsFails:0,skippedMirror:0,hydrated:0}),O=new Set,k=null,w=s=>{if(!r)return null;try{let u=r.getItem(s);return typeof u=="string"?u:null}catch{return null}},R=(s,u)=>{if(!r)return!1;try{return r.setItem(s,u),!0}catch{return!1}},B=()=>{b=!0,R(i,"1")},Y=()=>{if(b){b=!1;try{r?.removeItem(i)}catch{}}};function q(){if(t<=0){A();return}if(k!==null)return;let s=globalThis;if(typeof s.setTimeout!="function"){A();return}k=s.setTimeout(()=>{k=null,A()},t)}async function C(){return S||(D||(D=Promise.resolve(n.idb??null).then(s=>S=s??null)),D)}function j(s){for(let u of s??[])P.add(u);return N=N.then(()=>Q()),N}async function Q(){let s=Array.from(P).filter(c=>!O.has(c));if(!s.length)return{...f};let u=await C(),I=u?await u.read(s):{},p={};for(let c of s){let g=w(c);g!==null&&(p[c]=g)}b=w(i)==="1";let h=!1,_=[];for(let c of s){let g=I[c],y=p[c];if(l.has(c))continue;g!==void 0&&!b?(o.set(c,g),y!==void 0&&y!==g&&(f.conflicts++,g.length<=e&&R(c,g))):y!==void 0?(o.set(c,y),u&&(g===void 0?f.migrated++:g!==y&&f.conflicts++,await u.write(c,y)||(B(),h=!0))):g!==void 0&&o.set(c,g);let V=o.get(c);V!==void 0&&V!==y&&(M.add(c),_.push(c),f.hydrated++)}for(let c of s)O.add(c);if(b&&(h?R(i,"1"):Y()),_.length)for(let c of T)c(_);return{...f}}async function A(){if(k!==null){let p=globalThis;typeof p.clearTimeout=="function"&&p.clearTimeout(k),k=null}let s=await C(),u=Array.from(d.entries()),I=Array.from(a);if(d.clear(),a.clear(),!s)return{...f};for(let[p,h]of u)await s.write(p,h)?f.idbWrites++:(f.idbFails++,B());for(let p of I)await s.remove(p)?f.idbWrites++:(f.idbFails++,B());return{...f}}return{warm:j,ready:()=>j(),get(s){return o.has(s)?o.get(s)??null:w(s)},set(s,u){o.set(s,u),l.add(s),d.set(s,u),a.delete(s),u.length<=e?R(s,u)?f.lsMirrors++:f.lsFails++:f.skippedMirror++,q()},remove(s){o.set(s,null),l.add(s),d.delete(s),a.add(s);try{r?.removeItem(s)}catch{}q()},has(s){return o.has(s)?o.get(s)!==null:w(s)!==null},lsGet:w,lsRemove(s){try{r?.removeItem(s)}catch{}},flush:A,onHydrate(s){T.push(s),M.size&&s(Array.from(M))},stats:()=>({...f}),degraded:()=>b,backend:()=>S?S.name:en(r)?"localStorage":"none"}}var K={};Z(K,{MAX_PLANS:()=>an,PLANS_KEY:()=>sn,PLANS_SCHEMA:()=>on,docKeyFor:()=>ln,hasPlan:()=>E,itemsKeyFor:()=>un,newPlanId:()=>wn,normalizeRegistry:()=>pn,planById:()=>L,removePlan:()=>Pn,renamePlan:()=>Sn,serializeRegistry:()=>mn,setActive:()=>kn,sortedPlans:()=>hn,touchPlan:()=>yn,trimRegistry:()=>F,upsertPlan:()=>bn});var sn="planner_plans_v1",on=1,an=24,ln=n=>"planner_doc_v1:"+n,un=n=>"planner_v1:"+n,v=n=>typeof n=="string"&&n.length>0&&n.length<=64,x=n=>typeof n=="string"&&n.length>0&&n.length<=120,cn=n=>n==="builtin"||n==="imported"||n==="blank",X=n=>typeof n=="number"&&Number.isFinite(n);function dn(n){if(!n||typeof n!="object"||Array.isArray(n))return;let e=n,t=i=>typeof i=="number"&&Number.isFinite(i)&&i>=0?Math.floor(i):0;return{walls:t(e.walls),doors:t(e.doors),fixtures:t(e.fixtures),items:t(e.items)}}function fn(n){if(!n||typeof n!="object"||Array.isArray(n))return null;let e=n;if(!v(e.id)||!x(e.name)||!cn(e.origin))return null;let t=X(e.createdAt)?e.createdAt:0,i={id:e.id,name:e.name,origin:e.origin,createdAt:t,updatedAt:X(e.updatedAt)?e.updatedAt:t},r=dn(e.counts);return r&&(i.counts=r),i}function gn(n,e,t){return!v(e)||n.plans.some(i=>i.id===e)?n:{...n,plans:[{id:e,name:t,origin:"builtin",createdAt:0,updatedAt:0},...n.plans]}}function pn(n,e,t="\u5185\u7F6E\u6237\u578B"){let i=[],r="";if(n&&typeof n=="object"&&!Array.isArray(n)){let l=n;Array.isArray(l.plans)&&(i=l.plans.map(fn).filter(P=>P!==null)),v(l.active)&&(r=l.active)}let o=new Map;for(let l of i)o.set(l.id,l);i=Array.from(o.values());let a=gn({v:1,active:r,plans:i},e,t);return a.plans.some(l=>l.id===a.active)||(a.active=v(e)?e:a.plans[0]?.id??""),F(a)}function F(n){if(n.plans.length<=24)return n;let e=new Set([n.active]);for(let r of n.plans)r.origin==="builtin"&&e.add(r.id);let t=n.plans.filter(r=>!e.has(r.id)).sort((r,o)=>r.updatedAt-o.updatedAt),i=new Set(t.slice(0,n.plans.length-24).map(r=>r.id));return{...n,plans:n.plans.filter(r=>!i.has(r.id))}}function mn(n){return JSON.stringify({v:1,active:n.active,plans:n.plans})}function L(n,e){return n.plans.find(t=>t.id===e)??null}function E(n,e){return n.plans.some(t=>t.id===e)}function bn(n,e){if(!v(e.id)||!x(e.name))return n;let t=L(n,e.id),i={id:e.id,name:e.name,origin:t?t.origin:e.origin,createdAt:t?t.createdAt:e.now,updatedAt:e.now};e.counts&&(i.counts=e.counts);let r=t?n.plans.map(o=>o.id===e.id?i:o):[...n.plans,i];return F({...n,active:e.id,plans:r})}function yn(n,e,t){let i=L(n,e);if(!i)return n;let r={...i};return t.now!==void 0&&(r.updatedAt=t.now),t.counts&&(r.counts=t.counts),t.name!==void 0&&x(t.name)&&(r.name=t.name),{...n,plans:n.plans.map(o=>o.id===e?r:o)}}function kn(n,e){return E(n,e)?{...n,active:e}:n}function Pn(n,e){let t=L(n,e);if(!t||t.origin==="builtin"||n.plans.length<=1)return null;let i=n.plans.filter(o=>o.id!==e),r=n.active;if(r===e){let o=i.find(d=>d.origin==="builtin")||i[0];r=o?o.id:""}return{...n,active:r,plans:i}}function Sn(n,e,t){return!E(n,e)||!x(t)?null:{...n,plans:n.plans.map(i=>i.id===e?{...i,name:t}:i)}}function wn(n,e){let t=Math.floor(e()*1e9).toString(36);return"p"+n.toString(36)+t}function hn(n){return[...n.plans].sort((e,t)=>e.origin==="builtin"&&t.origin!=="builtin"?-1:t.origin==="builtin"&&e.origin!=="builtin"?1:t.updatedAt-e.updatedAt)}var m=globalThis,vn=m.localStorage&&typeof m.localStorage.getItem=="function"?m.localStorage:null,J=z({idb:H(),ls:vn});m.MINIDEN_STORE=J;m.MINIDEN_PLANS=K;if(typeof m.addEventListener=="function"){let n=m.addEventListener,e=()=>{try{J.flush()}catch{}};n("pagehide",e),n("visibilitychange",()=>{let t=m.document;t&&t.visibilityState==="hidden"&&e()})}})();
+"use strict";(()=>{var U=Object.defineProperty;var Z=(n,e)=>{for(var t in e)U(n,t,{get:e[t],enumerable:!0})};var $="miniden-planner",G="miniden_kv",nn="planner_store_degraded";function en(n){if(!n||typeof n.getItem!="function")return null;try{n.setItem("__miniden_probe","1"),n.removeItem("__miniden_probe")}catch{return null}return{name:"localStorage",read:async e=>{let t={};for(let i of e)try{let r=n.getItem(i);typeof r=="string"&&(t[i]=r)}catch{}return t},write:async(e,t)=>{try{return n.setItem(e,t),!0}catch{return!1}},remove:async e=>{try{return n.removeItem(e),!0}catch{return!1}}}}function tn(n){return new Promise(e=>{let t=null;try{t=n()}catch{e(void 0);return}if(!t){e(void 0);return}t.onsuccess=()=>e(t.result),t.onerror=()=>e(void 0)})}function W(n){return new Promise(e=>{let t=null;try{t=n()}catch{e(!1);return}if(!t){e(!1);return}t.onsuccess=()=>e(!0),t.onerror=()=>e(!1)})}function rn(n,e=G){let t=i=>{if(!n.transaction)return null;let r;try{r=n.transaction(e,i)}catch{return null}if(!r||typeof r.objectStore!="function")return null;try{return r.objectStore(e)}catch{return null}};return{name:"indexedDB",read:async i=>{let r={};for(let o of i){let d=t("readonly");if(!d)break;let l=await tn(()=>d.get(o));typeof l=="string"&&(r[o]=l)}return r},write:async(i,r)=>{let o=t("readwrite");return o?W(()=>o.put(r,i)):!1},remove:async i=>{let r=t("readwrite");return r?W(()=>r.delete(i)):!1}}}function H(n=$,e=1,t=G){let r=globalThis.indexedDB;if(!r||typeof r.open!="function")return Promise.resolve(null);let o=r.open.bind(r);return new Promise(d=>{let l;try{l=o(n,e)}catch{d(null);return}if(!l){d(null);return}l.onupgradeneeded=()=>{let u=l.result;if(u&&typeof u.createObjectStore=="function")try{u.createObjectStore(t)}catch{}},l.onsuccess=()=>{let u=l.result;if(!u||typeof u.transaction!="function"){d(null);return}d(rn(u,t))},l.onerror=()=>d(null),l.onblocked=()=>d(null)})}function z(n){let e=n.mirrorLimit??15e5,t=n.debounceMs??200,i=n.degradedFlag??nn,r=n.ls??null,o=new Map,d=new Map,l=new Set,u=new Set,k=new Set(n.warmKeys??[]),O=[],M=new Set,f={migrated:0,conflicts:0,idbWrites:0,idbFails:0,lsMirrors:0,lsFails:0,skippedMirror:0,hydrated:0},S=null,D=null,b=!1,N=Promise.resolve({migrated:0,conflicts:0,idbWrites:0,idbFails:0,lsMirrors:0,lsFails:0,skippedMirror:0,hydrated:0}),B=new Set,P=null,w=s=>{if(!r)return null;try{let a=r.getItem(s);return typeof a=="string"?a:null}catch{return null}},R=(s,a)=>{if(!r)return!1;try{return r.setItem(s,a),!0}catch{return!1}},F=()=>{b=!0,R(i,"1")},Y=()=>{if(b){b=!1;try{r?.removeItem(i)}catch{}}};function q(){if(t<=0){A();return}if(P!==null)return;let s=globalThis;if(typeof s.setTimeout!="function"){A();return}P=s.setTimeout(()=>{P=null,A()},t)}async function C(){return S||(D||(D=Promise.resolve(n.idb??null).then(s=>S=s??null)),D)}function j(s){for(let a of s??[])k.add(a);return N=N.then(()=>Q()),N}async function Q(){let s=Array.from(k).filter(c=>!B.has(c));if(!s.length)return{...f};let a=await C(),I=a?await a.read(s):{},m={};for(let c of s){let g=w(c);g!==null&&(m[c]=g)}b=w(i)==="1";let h=!1,_=[];for(let c of s){let g=I[c],y=m[c];if(u.has(c))continue;g!==void 0&&!b?(o.set(c,g),y!==void 0&&y!==g&&(f.conflicts++,g.length<=e&&R(c,g))):y!==void 0?(o.set(c,y),a&&(g===void 0?f.migrated++:g!==y&&f.conflicts++,await a.write(c,y)||(F(),h=!0))):g!==void 0&&o.set(c,g);let V=o.get(c);V!==void 0&&V!==y&&(M.add(c),_.push(c),f.hydrated++)}for(let c of s)B.add(c);if(b&&(h?R(i,"1"):Y()),_.length)for(let c of O)c(_);return{...f}}async function A(){if(P!==null){let m=globalThis;typeof m.clearTimeout=="function"&&m.clearTimeout(P),P=null}let s=await C(),a=Array.from(d.entries()),I=Array.from(l);if(d.clear(),l.clear(),!s)return{...f};for(let[m,h]of a)await s.write(m,h)?f.idbWrites++:(f.idbFails++,F());for(let m of I)await s.remove(m)?f.idbWrites++:(f.idbFails++,F());return{...f}}return{warm:j,warming(s){return s.some(a=>k.has(a)&&!B.has(a))},ready:()=>j(),get(s){return o.has(s)?o.get(s)??null:w(s)},set(s,a){o.set(s,a),u.add(s),d.set(s,a),l.delete(s),a.length<=e?R(s,a)?f.lsMirrors++:f.lsFails++:f.skippedMirror++,q()},remove(s){o.set(s,null),u.add(s),d.delete(s),l.add(s);try{r?.removeItem(s)}catch{}q()},has(s){return o.has(s)?o.get(s)!==null:w(s)!==null},lsGet:w,lsRemove(s){try{r?.removeItem(s)}catch{}},flush:A,onHydrate(s){O.push(s),M.size&&s(Array.from(M))},stats:()=>({...f}),degraded:()=>b,backend:()=>S?S.name:en(r)?"localStorage":"none"}}var T={};Z(T,{MAX_PLANS:()=>an,PLANS_KEY:()=>sn,PLANS_SCHEMA:()=>on,docKeyFor:()=>ln,hasPlan:()=>K,itemsKeyFor:()=>un,newPlanId:()=>wn,normalizeRegistry:()=>mn,planById:()=>L,removePlan:()=>Pn,renamePlan:()=>Sn,serializeRegistry:()=>pn,setActive:()=>kn,sortedPlans:()=>hn,touchPlan:()=>yn,trimRegistry:()=>E,upsertPlan:()=>bn});var sn="planner_plans_v1",on=1,an=24,ln=n=>"planner_doc_v1:"+n,un=n=>"planner_v1:"+n,v=n=>typeof n=="string"&&n.length>0&&n.length<=64,x=n=>typeof n=="string"&&n.length>0&&n.length<=120,cn=n=>n==="builtin"||n==="imported"||n==="blank",X=n=>typeof n=="number"&&Number.isFinite(n);function dn(n){if(!n||typeof n!="object"||Array.isArray(n))return;let e=n,t=i=>typeof i=="number"&&Number.isFinite(i)&&i>=0?Math.floor(i):0;return{walls:t(e.walls),doors:t(e.doors),fixtures:t(e.fixtures),items:t(e.items)}}function fn(n){if(!n||typeof n!="object"||Array.isArray(n))return null;let e=n;if(!v(e.id)||!x(e.name)||!cn(e.origin))return null;let t=X(e.createdAt)?e.createdAt:0,i={id:e.id,name:e.name,origin:e.origin,createdAt:t,updatedAt:X(e.updatedAt)?e.updatedAt:t},r=dn(e.counts);return r&&(i.counts=r),i}function gn(n,e,t){return!v(e)||n.plans.some(i=>i.id===e)?n:{...n,plans:[{id:e,name:t,origin:"builtin",createdAt:0,updatedAt:0},...n.plans]}}function mn(n,e,t="\u5185\u7F6E\u6237\u578B"){let i=[],r="";if(n&&typeof n=="object"&&!Array.isArray(n)){let u=n;Array.isArray(u.plans)&&(i=u.plans.map(fn).filter(k=>k!==null)),v(u.active)&&(r=u.active)}let o=new Map;for(let u of i)o.set(u.id,u);i=Array.from(o.values());let l=gn({v:1,active:r,plans:i},e,t);return l.plans.some(u=>u.id===l.active)||(l.active=v(e)?e:l.plans[0]?.id??""),E(l)}function E(n){if(n.plans.length<=24)return n;let e=new Set([n.active]);for(let r of n.plans)r.origin==="builtin"&&e.add(r.id);let t=n.plans.filter(r=>!e.has(r.id)).sort((r,o)=>r.updatedAt-o.updatedAt),i=new Set(t.slice(0,n.plans.length-24).map(r=>r.id));return{...n,plans:n.plans.filter(r=>!i.has(r.id))}}function pn(n){return JSON.stringify({v:1,active:n.active,plans:n.plans})}function L(n,e){return n.plans.find(t=>t.id===e)??null}function K(n,e){return n.plans.some(t=>t.id===e)}function bn(n,e){if(!v(e.id)||!x(e.name))return n;let t=L(n,e.id),i={id:e.id,name:e.name,origin:t?t.origin:e.origin,createdAt:t?t.createdAt:e.now,updatedAt:e.now};e.counts&&(i.counts=e.counts);let r=t?n.plans.map(o=>o.id===e.id?i:o):[...n.plans,i];return E({...n,active:e.id,plans:r})}function yn(n,e,t){let i=L(n,e);if(!i)return n;let r={...i};return t.now!==void 0&&(r.updatedAt=t.now),t.counts&&(r.counts=t.counts),t.name!==void 0&&x(t.name)&&(r.name=t.name),{...n,plans:n.plans.map(o=>o.id===e?r:o)}}function kn(n,e){return K(n,e)?{...n,active:e}:n}function Pn(n,e){let t=L(n,e);if(!t||t.origin==="builtin"||n.plans.length<=1)return null;let i=n.plans.filter(o=>o.id!==e),r=n.active;if(r===e){let o=i.find(d=>d.origin==="builtin")||i[0];r=o?o.id:""}return{...n,active:r,plans:i}}function Sn(n,e,t){return!K(n,e)||!x(t)?null:{...n,plans:n.plans.map(i=>i.id===e?{...i,name:t}:i)}}function wn(n,e){let t=Math.floor(e()*1e9).toString(36);return"p"+n.toString(36)+t}function hn(n){return[...n.plans].sort((e,t)=>e.origin==="builtin"&&t.origin!=="builtin"?-1:t.origin==="builtin"&&e.origin!=="builtin"?1:t.updatedAt-e.updatedAt)}var p=globalThis,vn=p.localStorage&&typeof p.localStorage.getItem=="function"?p.localStorage:null,J=z({idb:H(),ls:vn});p.MINIDEN_STORE=J;p.MINIDEN_PLANS=T;if(typeof p.addEventListener=="function"){let n=p.addEventListener,e=()=>{try{J.flush()}catch{}};n("pagehide",e),n("visibilitychange",()=>{let t=p.document;t&&t.visibilityState==="hidden"&&e()})}})();
 
 </script><!-- /miniden-storage -->
 <script id="miniden-schema">
@@ -1136,8 +1136,54 @@ let PLAN_ID = planIdFromUrl() || (PLANS.hasPlan(PLAN_REG, PLAN_REG.active) ? PLA
 let DOC_KEY = PLANS.docKeyFor(PLAN_ID), DOC_KEY_OLD = 'planner_doc_v1';
 let ITEMS_KEY = PLANS.itemsKeyFor(PLAN_ID), ITEMS_KEY_OLD = 'planner_v1';
 STORE.warm([DOC_KEY, ITEMS_KEY, PANEL_KEY, PRO_TOOLS_KEY, PLANS_KEY]);   // 异步预热 + 旧键迁移（不 await：读路径本来就是同步的）
+/* ---------- E19 轮⑲（bug 猎 #28）：「还没读到」不是「没有」 ----------
+   主存（IndexedDB）里可能存着这份户型的存档，而页面的同步读看不见它
+   （LS 被清过 / 值超过镜像上限 / LS 配额满）。处于这个状态时，回退出来的文档与布局
+   一律不许写回主存——写一次就把用户存好的那份盖掉（storage-probe 阶段 2 实测：
+   1,704,429B 的存档 → 切一次户型 → 5,221B，内容变成内置通用户型，而且再也回不来）。
+   warm 完成后解除：主存里真有存档就重新载入（与 onHydrate 同一件事），确实没有就恢复正常写。
+   为什么不能直接「warming 就挡住所有写」：那等于把存不存得进去绑在 warm 能不能完成上
+   （bench 页面跑在虚拟时间下，真实 I/O 比虚拟时钟慢很多，写会被永久挡住）。
+   bench / 校准 / 只显底图 / #ui: / testgeo 不参与：那些页面按定义就是「内置户型 + 空布局、不补水」（同 E10 的 hydrate 门禁）。 */
+/* 不能在这里用 CALIB / IMGONLY / UIH：它们分别在 2027 / 16665 行才声明，
+   而本行在 1140 行就要求值 → TDZ ReferenceError（整个脚本块挂掉）。
+   所以直接读 location，口径与那三个常量逐字一致。 */
+function noHydratePage(){
+  return location.hash==='#calib' || location.hash==='#calibimg' ||
+    /^#ui:(2d|2d-sel|3d|fp|night|ft|collapsed|dlg)$/.test(location.hash) ||
+    location.search.indexOf('testgeo') >= 0 || !!window.__MINIDEN_BENCH__;
+}
+const planArchiveUnknown = new Set();
+let archiveUnknownWarnedFor = '';
+function reloadCurrentPlan(why){
+  DOC = loadDoc(); load(); applyPlanChrome();
+  build2D(); if(wallEdit.on) drawWallEdit(); refresh(); planSelectUI();
+  if(typeof updatePlacedList==='function') updatePlacedList();
+  if(typeof updateTotals==='function') updateTotals();
+  if(state.view!=='2d') setView(state.view);
+  toast(why, 4000);
+}
+function watchPlanArchive(keys){
+  if(noHydratePage()) return;
+  /* 只有主存真的是 IndexedDB 时这个危险才存在：值可能只存在主存里。
+     主存就是 localStorage（或没有主存）时，get() 直读那份存放 ⇒「读不到」=「真的没有」，写是安全的。 */
+  const pending = keys.filter(k=>STORE.backend()==='indexedDB' && STORE.warming([k]));
+  if(!pending.length) return;
+  const pid = PLAN_ID;
+  pending.forEach(k=>planArchiveUnknown.add(k));
+  STORE.warm(keys).then(()=>{
+    pending.forEach(k=>planArchiveUnknown.delete(k));
+    if(pid!==PLAN_ID) return;                       // 期间又切了别份户型 → 由那一次自己处理
+    if(pending.includes(DOC_KEY) || pending.includes(ITEMS_KEY))
+      reloadCurrentPlan('已从浏览器主存（IndexedDB）里读回这份户型的存档');
+  });
+}
+watchPlanArchive([DOC_KEY, ITEMS_KEY]);
 let legacyOwned = true;   // 旧单桶存档是否属于当前户型（loadDoc 里判定）
 function save(){
+  /* 这份户型的家具存档可能只存在主存里、而门面还在读它：此刻内存里的 state.items
+     可能是「还没读到」而不是「真的没有」（bug 猎 #28）。warm 完成后会重新载入。 */
+  if(planArchiveUnknown.has(ITEMS_KEY)) return;
   try{ STORE.set(ITEMS_KEY, JSON.stringify({geo:GEO_VERSION, items:state.items, customCat:state.customCat, unit:state.unit})); }catch(e){}
 }
 /* S13：布局跟着 app 走。
@@ -1230,7 +1276,24 @@ function cleanDocEnv(d){
   if(d.env.mode!=='night') d.env.mode='day';
   return d;
 }
+/* 自包含户型（空白 / 导入）的回退必须是「它自己的形状」。
+   为什么这是红线：回退出来的文档紧接着会被 switchPlan 末尾的 saveGeo() 写回这份户型的键。
+   回退成内置公寓（freshDoc）就等于「把别人家的房子写进你的户型」，而原存档已被删掉。 */
+function planIsSelfContained(){
+  try{ const m=PLANS.planById(PLAN_REG, PLAN_ID); return !!m && m.origin!=='builtin'; }catch(e){ return false; }
+}
+function blankFallbackDoc(){
+  const m=PLANS.planById(PLAN_REG, PLAN_ID);
+  const d=SCHEMA.Project.blankDoc((m&&m.name)||'未命名户型');
+  d.imported=true; d.dataV=DOC_DATA_VERSION; d.plan={}; d.runs=[];
+  return cleanDocEnv(d);
+}
+/* 存档「读到了但读不动」：保留原样（用户还能手工修 / 重新导入 / 删掉这份户型），
+   绝不拿一份空白文档盖掉它。 */
+let docArchiveUnreadable=false, docArchiveWarnedFor='';
 function loadDoc(){
+  docArchiveUnreadable=false;
+  const self=planIsSelfContained();
   const A=v=>Array.isArray(v)?v:[], O=v=>(v&&typeof v==='object'&&!Array.isArray(v))?v:{};
   const usable=(d)=>!SCHEMA.Project.validate(d).length && (d.imported || d.dataV===DOC_DATA_VERSION);
   // 1) 本户型的文档快照：validate 通过且 dataV 匹配 → 原样采用
@@ -1238,15 +1301,19 @@ function loadDoc(){
     if(ds){ const d=JSON.parse(ds);
       // imported 文档（S5 DXF 导入）不含内置实体，dataV 对它无意义 → 不跟内置版本闸
       if(usable(d)) return cleanDocEnv(d);
-      STORE.remove(DOC_KEY); } }catch(e){}
+      /* 自包含户型：坏存档留着。原先这里直接 STORE.remove —— 把唯一能修/能取回的数据删了，
+         然后回退出来的内置公寓又被写回同一个键（bug 猎 #27）。内置户型保持旧恢复行为。 */
+      if(self) docArchiveUnreadable=true;
+      else STORE.remove(DOC_KEY); } }catch(e){}
   // 1b) 旧单桶文档（P1 之前的存档）：几何对得上当前户型才采用；对不上就原样留着
   //     （它属于另一份户型——别删，等那份户型打开时还要用）
+  //     E19 轮⑲：它属于**内置户型**，自包含户型不能拿它当自己的几何
   try{ const ds=STORE.lsGet(DOC_KEY_OLD);
-    if(ds){ const d=JSON.parse(ds);
+    if(ds && !self){ const d=JSON.parse(ds);
       if(usable(d) && docMatchesPlan(d)) return cleanDocEnv(d);
       legacyOwned = false; } }catch(e){ legacyOwned = false; }
-  // 2) 旧格式一次性迁移（planner_userGeo_v1）
-  try{ const s=JSON.parse(STORE.lsGet('planner_userGeo_v1'));
+  // 2) 旧格式一次性迁移（planner_userGeo_v1）：也是内置户型的覆盖层，自包含户型不适用
+  if(!self) try{ const s=JSON.parse(STORE.lsGet('planner_userGeo_v1'));
     if(s && s.geo===GEO_VERSION && s.uv===USERGEO_VERSION){
       const U={walls:A(s.walls), polys:A(s.polys).filter(p=>p&&Array.isArray(p.pts)), doors:A(s.doors),
                hiddenW:A(s.hiddenW), hiddenP:A(s.hiddenP), hiddenD:A(s.hiddenD), ovW:O(s.ovW), ovP:O(s.ovP), ovD:O(s.ovD)};
@@ -1255,12 +1322,12 @@ function loadDoc(){
       try{ STORE.lsRemove('planner_userGeo_v1'); }catch(_){}
       return cleanDocEnv(d);
     } }catch(e){}
-  return freshDoc();
+  return self ? blankFallbackDoc() : freshDoc();
 }
 let DOC = loadDoc();
 applyPlanChrome();                  // S11b：标题/照片/层高在文档就绪后才能应用
 function currentDoc(){ return DOC; }
-function resetDoc(){ DOC = freshDoc(); }   // 丢弃全部几何改动（含用户新增），回到内置户型
+function resetDoc(){ DOC = freshDoc(); docArchiveUnreadable=false; }   // 丢弃全部几何改动（含用户新增），回到内置户型
 /* ---------- E26：户型管理（切换 / 新建空白 / 重命名 / 删除） ----------
    口径：内置户型不可删（出厂入口）；当前户型不可删（删自己 = 界面上没有户型可用）；
    删除用两步确认（headless 里 confirm() 会永久挂住 bench，AGENTS §5.1）。 */
@@ -1310,6 +1377,7 @@ function switchPlan(id, quiet){
   PLAN_ID = id; DOC_KEY = PLANS.docKeyFor(id); ITEMS_KEY = PLANS.itemsKeyFor(id);
   PLAN_REG = PLANS.setActive(PLAN_REG, id);
   STORE.warm([DOC_KEY, ITEMS_KEY]);               // 这份户型的存档可能只存在主存里
+  watchPlanArchive([DOC_KEY, ITEMS_KEY]);         // 读到之前不许写回（bug 猎 #28）
   DOC = loadDoc();
   load();                                          // 这份户型的家具
   resetUndoRings();
@@ -1339,7 +1407,7 @@ function createBlankPlan(){
   const n = PLAN_REG.plans.filter(p=>p.origin==='blank').length + 1;
   const d = SCHEMA.Project.blankDoc('空白户型 '+n);
   d.imported = true; d.dataV = DOC_DATA_VERSION; d.plan = {}; d.runs = [];   // 自包含：不用内置专属构件
-  DOC = d;
+  DOC = d; docArchiveUnreadable=false;
   PLAN_ID = id; DOC_KEY = PLANS.docKeyFor(id); ITEMS_KEY = PLANS.itemsKeyFor(id);
   STORE.warm([DOC_KEY, ITEMS_KEY]);
   PLAN_REG = PLANS.upsertPlan(PLAN_REG, { id, name: d.name, origin:'blank', now: Date.now(), counts: planCounts() });
@@ -1389,6 +1457,23 @@ function deleteCurrentPlan(){
   return true;
 }
 function saveGeoImpl(){
+  /* 两种情况不许写文档（都是「把用户存好的那份覆盖掉」）：
+     ① 存档可能只存在主存里、门面还在读（此刻内存里的 DOC 是回退出来的文档）；
+     ② 存档读到了但读不动（保留原样给用户修）。 */
+  if(planArchiveUnknown.has(DOC_KEY)){
+    if(archiveUnknownWarnedFor!==PLAN_ID){
+      archiveUnknownWarnedFor=PLAN_ID;
+      toast('这份户型的存档还在从浏览器主存里读，先不写回（写一次就会把它盖掉）——稍等片刻会自动载入。', 8000);
+    }
+    return;
+  }
+  if(docArchiveUnreadable){
+    if(docArchiveWarnedFor!==PLAN_ID){
+      docArchiveWarnedFor=PLAN_ID;
+      toast('这份户型的存档读不动，已保留原样（没有被覆盖）。想继续用：重新导入一份，或删掉这份户型。', 9000);
+    }
+    return;
+  }
   try{ STORE.set(DOC_KEY, JSON.stringify(DOC)); }catch(e){}
   planTouch();
 }
@@ -1550,6 +1635,7 @@ function applyImportedDoc(doc, info){
   const errs=SCHEMA.Project.validate(doc).concat(SCHEMA.Project.checkGeoms(doc));
   if(errs.length) throw new Error('导入文档未通过 schema 校验：'+errs[0].path+' '+errs[0].message);
   pushUndo();          // 导入会整份替换文档 + 清空家具 → 必须可退回去
+  docArchiveUnreadable=false;   // 新户型的文档是刚刚校验通过的这份，与「读不动的旧存档」无关
   doc.imported=true; doc.dataV=DOC_DATA_VERSION;
   cleanDocEnv(doc);               // 导入文档的 env.preset 只保证「是字符串」→ 查表洗成合法预设
   doc.plan = doc.plan || {};        // S11b：导入文档的 plan 快照（空 = 没有那些专属构件）

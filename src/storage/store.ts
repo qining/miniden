@@ -262,6 +262,8 @@ export interface StoreStats {
 export interface Store {
   /** 预热：读主存 + 迁移旧键。可多次调用（累加键集合，每轮只处理未同步过的键）。 */
   warm(keys?: string[]): Promise<StoreStats>;
+  /** 这些键里有没有「已经登记要 warm、但还没同步完」的。 */
+  warming(keys: string[]): boolean;
   /** 最近一次 warm 的完成（没 warm 过则等第一次）。 */
   ready(): Promise<StoreStats>;
   get(k: string): string | null;
@@ -477,6 +479,13 @@ export function createStore(o: StoreOptions): Store {
 
   return {
     warm,
+    /** E10 × E26 交叉红线：切户型时 warm 是异步的。若那份户型的存档只存在主存
+        （LS 被清过 / 太大没镜像 / 配额满），页面同步读会读到「没有」。
+        这时回退出来的空白文档若被写回去，就把用户存好的那份覆盖掉了。
+        消费端用这个量区分「存档不存在」与「存档还在读」：后者不许写。 */
+    warming(keys: string[]) {
+      return keys.some((k) => warmKeys.has(k) && !warmed.has(k));
+    },
     ready: () => warm(),
     get(k) {
       if (cache.has(k)) return cache.get(k) ?? null;

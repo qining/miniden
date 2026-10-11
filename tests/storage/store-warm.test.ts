@@ -119,3 +119,79 @@ describe('warm 可重入', () => {
     expect(store.get('c')).toBe('3');
   });
 });
+
+/* E19 轮⑲（bug 猎 #28）：warming() —— 消费端要能区分「存档不存在」与「存档还在读」。
+   切户型时 warm 不 await，紧接着的同步读可能读到「没有」；此刻回退出来的空白文档
+   若被写回主存，就把用户存好的那份覆盖掉了。 */
+describe('warming()：哪些键还在读', () => {
+  /** 可手动放行的后端：read 挂起直到 release()，用来观察「warm 还没完成」这段时间。 */
+  function slowBackend(idb: Record<string, string>) {
+    let release: () => void = () => {};
+    const gate = new Promise<void>((ok) => {
+      release = ok;
+    });
+    const reads: string[][] = [];
+    return {
+      reads,
+      release,
+      name: 'slow',
+      async read(keys: string[]) {
+        reads.push([...keys]);
+        await gate;
+        const out: Record<string, string> = {};
+        for (const k of keys) if (typeof idb[k] === 'string') out[k] = idb[k];
+        return out;
+      },
+      async write(k: string, v: string) {
+        idb[k] = v;
+        return true;
+      },
+      async remove(k: string) {
+        delete idb[k];
+        return true;
+      },
+    };
+  }
+
+  it('没登记 warm 的键不算「还在读」（否则所有写入都会被无端挡掉）', () => {
+    const store = createStore({ idb: kvBackend(fakeIdb()), ls: fakeLs(), debounceMs: 0 });
+    expect(store.warming(['never-warmed'])).toBe(false);
+    expect(store.warming([])).toBe(false);
+  });
+
+  it('warm 进行中 = true，完成后 = false', async () => {
+    const be = slowBackend({ 'planner_doc_v1:p9': '{"name":"存好的"}' });
+    const store = createStore({ idb: be, ls: fakeLs(), debounceMs: 0 });
+    const p = store.warm(['planner_doc_v1:p9']);
+    expect(store.warming(['planner_doc_v1:p9'])).toBe(true);
+    // 同步读读不到（LS 没有、缓存还没有）——这正是回退会发生的那一刻
+    expect(store.get('planner_doc_v1:p9')).toBe(null);
+    be.release();
+    await p;
+    expect(store.warming(['planner_doc_v1:p9'])).toBe(false);
+    expect(store.get('planner_doc_v1:p9')).toBe('{"name":"存好的"}');
+  });
+
+  it('一组键里只要有一个还在读就报 true（切户型时文档键与家具键一起 warm）', async () => {
+    const be = slowBackend({ a: '1' });
+    const store = createStore({ idb: be, ls: fakeLs(), debounceMs: 0 });
+    store.warm(['a']);
+    store.warm(['b']); // b 不在主存里，但它也在读
+    expect(store.warming(['a', 'b'])).toBe(true);
+    expect(store.warming(['b'])).toBe(true);
+    be.release();
+    await store.warm([]);
+    expect(store.warming(['a', 'b'])).toBe(false);
+  });
+
+  it('warm 期间页面写过这个键，warming 依然如实报告（写不写是消费端的决定，门面不替它谎报）', async () => {
+    const be = slowBackend({});
+    const store = createStore({ idb: be, ls: fakeLs(), debounceMs: 0 });
+    store.warm(['k']);
+    store.set('k', '回退出来的空白文档');
+    expect(store.warming(['k'])).toBe(true);
+    be.release();
+    await store.warm([]);
+    expect(store.warming(['k'])).toBe(false);
+  });
+});

@@ -2136,6 +2136,75 @@ async function runPBTest() {
         'firstRun 存在=' + !!e26Fr + ' display=' + (e26Fr ? getComputedStyle(e26Fr).display : '-')
       );
 
+      /* 12.12 E19 轮⑲：一份「读得到但读不动」的存档，不许把内置公寓写进自包含户型。
+         loadDoc 的回退原先只有一种形状：freshDoc() = 内置公寓。切到一个存档坏了的自包含户型时
+         它拿到整套西雅图公寓，紧接着 switchPlan 末尾的 saveGeo() 把这套公寓写进那份户型的键——
+         用户的导入户型被替换成别人家的房子，而原存档在 usable() 失败那一步已被 STORE.remove 删掉。 */
+      Q('#btnPlanNew').click();
+      await tick();
+      const e26Broken = PLAN_ID,
+        e26BrokenKey = PLANS.docKeyFor(PLAN_ID);
+      STORE.set(e26BrokenKey, '{"v":1,"walls":"不是数组"}'); // 读得到、validate 判坏
+      e26Pick(BUILTIN_PLAN_ID);
+      await tick();
+      const e26BuiltWalls = effWalls().length;
+      e26Pick(e26Broken);
+      await tick();
+      T(
+        'pb-plan-corrupt-archive-not-builtin',
+        DOC.imported === true && (DOC.walls || []).length === 0 && effWalls().length !== e26BuiltWalls,
+        'walls=' +
+          effWalls().length +
+          '（内置=' +
+          e26BuiltWalls +
+          '） imported=' +
+          DOC.imported +
+          ' name=' +
+          JSON.stringify(DOC.name)
+      );
+      T(
+        'pb-plan-corrupt-archive-kept',
+        (STORE.get(e26BrokenKey) || '').indexOf('不是数组') >= 0,
+        '主存里现在存的是 ' + JSON.stringify(String(STORE.get(e26BrokenKey) || '').slice(0, 46))
+      );
+      // 存档坏了也得删得掉这份户型（删除路径不能因为读不动就卡住）
+      Q('#btnPlanDel').click();
+      await tick();
+      Q('#btnPlanDel').click();
+      await tick();
+      T(
+        'pb-plan-corrupt-archive-deleted',
+        !PLANS.hasPlan(PLAN_REG, e26Broken) && PLAN_ID === BUILTIN_PLAN_ID,
+        'plans=' + PLAN_REG.plans.length
+      );
+
+      /* 12.13 存档「缺失」时也不许拿旧单桶存档（它属于内置户型）当这份户型的几何 */
+      const e26LegacySeed = STORE.get(PLANS.docKeyFor(BUILTIN_PLAN_ID));
+      if (e26LegacySeed) localStorage.setItem('planner_doc_v1', e26LegacySeed); // 旧单桶键 = 内置公寓的存档
+      Q('#btnPlanNew').click();
+      await tick();
+      const e26Gone = PLAN_ID,
+        e26GoneKey = PLANS.docKeyFor(PLAN_ID);
+      STORE.remove(e26GoneKey); // 模拟「这份户型的存档不见了」（LS 配额满 / 主存读不到）
+      e26Pick(BUILTIN_PLAN_ID);
+      await tick();
+      e26Pick(e26Gone);
+      await tick();
+      T(
+        'pb-plan-missing-archive-not-legacy-builtin',
+        DOC.imported === true && (DOC.walls || []).length === 0 && effWalls().length !== e26BuiltWalls,
+        'walls=' + effWalls().length + '（内置=' + e26BuiltWalls + '） imported=' + DOC.imported
+      );
+      Q('#btnPlanDel').click();
+      await tick();
+      Q('#btnPlanDel').click();
+      await tick();
+      T(
+        'pb-plan-missing-archive-cleanup',
+        !PLANS.hasPlan(PLAN_REG, e26Gone) && PLAN_ID === BUILTIN_PLAN_ID,
+        'plans=' + PLAN_REG.plans.length
+      );
+
       await pbReset();
       await enterEdit();
       // 把 12.10 多建的那份空白户型删掉（两步），不让它留在注册表里影响后续
