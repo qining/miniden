@@ -435,6 +435,211 @@ export const FLOWS = [
   },
 
   {
+    name: 'counter-run',
+    title: '台面工具：沿墙画一条 → 选中 → 改深度 → 放冰箱 → 删除（真实鼠标）',
+    run: async (t) => {
+      const runsBefore = await t.eval('DOC.runs.length');
+      await t.step('进入编辑墙体 → 台面');
+      await t.click('#btnWallEdit');
+      await t.waitFor(`wallEdit.on`, 5000, 'wallEdit.on');
+      await t.click('#wtoolSeg button[data-t="run"]');
+      await t.waitFor(`wallEdit.tool==='run'`, 5000, 'tool=run');
+
+      /* 选一条「身上没有内置洁具」的长实墙：台面带（偏移 0.9ft + 深 60cm）与任何洁具
+         包围盒相交就换一条 —— 否则整条台面被洁具命中区盖住（洁具在台面之上，这是刻意的），
+         后面的「点台面」就变成点洁具。选点策略，不是断言。 */
+      await t.step('沿一条实墙点台面（起点 → 末点 → 再点末点结束）');
+      const seg = await t.eval(
+        `(()=>{const c=floorCentroid();const cands=[];` +
+          `for(const w of effWalls()){if(w.t!=='w')continue;const L=Math.hypot(w.x2-w.x1,w.y2-w.y1);if(L<7)continue;` +
+          `const ux=(w.x2-w.x1)/L,uy=(w.y2-w.y1)/L;let nx=-uy,ny=ux;` +
+          `const mx=(w.x1+w.x2)/2,my=(w.y1+w.y2)/2;` +
+          `if(nx*(c[0]-mx)+ny*(c[1]-my)<0){nx=-nx;ny=-ny;}` +
+          `const len=Math.min(5,L-2);` +
+          `const a=[mx-ux*len/2+nx*0.9,my-uy*len/2+ny*0.9],b=[mx+ux*len/2+nx*0.9,my+uy*len/2+ny*0.9];` +
+          `const x1=Math.min(a[0],b[0])-0.2,x2=Math.max(a[0],b[0])+0.2,y1=Math.min(a[1],b[1])-0.2,y2=Math.max(a[1],b[1])+2.2;` +
+          `const clash=DOC.fixtures.some(f=>f.x1<x2&&f.x2>x1&&f.y1<y2&&f.y2>y1);` +
+          `cands.push({a,b,len,bl:L,clash});}` +
+          `cands.sort((p,q)=>q.bl-p.bl);` +
+          `return cands.find(k=>!k.clash)||null;})()`
+      );
+      t.assert(
+        'counter-wall-found',
+        !!seg,
+        seg
+          ? `选中 ${seg.bl.toFixed(1)}ft 的实墙（台面带 ${seg.len.toFixed(1)}ft 不与任何内置洁具重叠）`
+          : '户型里没有「身上没有洁具」的 ≥7ft 实墙'
+      );
+      if (!seg) {
+        await t.click('#wDone');
+        return;
+      }
+      await t.click(await t.planPoint(seg.a[0], seg.a[1]));
+      await t.waitFor(`wallEdit.drawPts.length===1`, 5000, '起点已落下');
+      await t.click(await t.planPoint(seg.b[0], seg.b[1]));
+      await t.waitFor(`wallEdit.drawPts.length===2`, 5000, '末点已落下');
+      await t.click(await t.planPoint(seg.b[0], seg.b[1]));
+      await t.waitFor(`DOC.runs.length>${runsBefore}`, 8000, '台面数 +1');
+      const run = await t.eval(
+        `(()=>{const r=DOC.runs[DOC.runs.length-1];let L=0;` +
+          `for(let i=0;i<r.path.length-1;i++)L+=Math.hypot(r.path[i+1][0]-r.path[i][0],r.path[i+1][1]-r.path[i][1]);` +
+          `return {id:r.id,depth:r.depth,topH:r.topH,len:L};})()`
+      );
+      t.assert(
+        'counter-drawn',
+        Math.abs(run.len - seg.len) < 1.5,
+        `台面长 ${run.len.toFixed(2)}ft（目标 ≈${seg.len.toFixed(2)}ft）`
+      );
+      t.assert(
+        'counter-default-dims',
+        Math.abs(run.depth * 30.48 - 60) < 2 && Math.abs(run.topH * 30.48 - 90) < 2,
+        `默认深 ${(run.depth * 30.48).toFixed(1)}cm · 台面高 ${(run.topH * 30.48).toFixed(1)}cm`
+      );
+      await t.shot('counter');
+
+      await t.step('切到「选择/调整」再点台面 → 必须选得中（以前 data-run 只在台面工具分支里认）');
+      await t.click('#wtoolSeg button[data-t="select"]');
+      await t.waitFor(`wallEdit.tool==='select'`, 5000, 'tool=select');
+      const band = await t.eval(
+        `(()=>{const r=DOC.runs.find(x=>x.id===${JSON.stringify(run.id)});const p=r.path;` +
+          `const a=p[0],b=p[p.length-1],dx=b[0]-a[0],dy=b[1]-a[1],L=Math.hypot(dx,dy);` +
+          `const n=runNormal(dx,dy,a[0],a[1]),u=[dx/L,dy/L];` +
+          `const q=[a[0]+u[0]*L*0.5+n[0]*0.8, a[1]+u[1]*L*0.5+n[1]*0.8];` +
+          `const e=document.elementFromPoint(...(()=>{const ctm=svg2d.getScreenCTM();` +
+          `const pt=new DOMPoint(q[0]*S,q[1]*S).matrixTransform(ctm);return [pt.x,pt.y];})());` +
+          `return {q,under:e?(e.getAttribute('class')||e.tagName):'?'};})()`
+      );
+      t.info('counter-band-spot', `台面中点命中元素 = .${band.under}`);
+      await t.click(await t.planPoint(band.q[0], band.q[1]));
+      await t.waitFor(`wallEdit.sel && wallEdit.sel.kind==='run'`, 6000, '选中台面');
+      t.assert(
+        'counter-selectable-in-select',
+        (await t.eval(`wallEdit.sel && wallEdit.sel.id===${JSON.stringify(run.id)}`)) === true,
+        '选中模式下点台面 → 选中成功'
+      );
+      const ctlOn = await t.eval(`getComputedStyle(document.querySelector('#runCtl')).visibility!=='hidden'`);
+      t.assert('counter-ctl-visible', ctlOn, '#runCtl 可见（上下文控件跟着选中对象走）');
+
+      await t.step('把深度从 60cm 改成 75cm');
+      await t.type('#runDepth', '75');
+      await t.eval(`document.querySelector('#runDepth').dispatchEvent(new Event('change',{bubbles:true}))`);
+      const d2 = await t.eval(`DOC.runs.find(r=>r.id===${JSON.stringify(run.id)}).depth`);
+      t.assert('counter-depth-edited', Math.abs(d2 * 30.48 - 75) < 2, `深度 ${(d2 * 30.48).toFixed(1)}cm`);
+
+      await t.step('选「冰箱」→ 点台面放模块（模块整块必须落在台面上）');
+      await t.eval(
+        `(()=>{const s=document.querySelector('#runModule');s.value='fridge';s.dispatchEvent(new Event('change',{bubbles:true}));})()`
+      );
+      await t.click(await t.planPoint(band.q[0], band.q[1]));
+      await t.waitFor(
+        `((DOC.runs.find(r=>r.id===${JSON.stringify(run.id)})||{}).modules||[]).length===1`,
+        8000,
+        '模块 +1'
+      );
+      const mod = await t.eval(
+        `(()=>{const r=DOC.runs.find(x=>x.id===${JSON.stringify(run.id)});const m=r.modules[0];let L=0;` +
+          `for(let i=0;i<r.path.length-1;i++)L+=Math.hypot(r.path[i+1][0]-r.path[i][0],r.path[i+1][1]-r.path[i][1]);` +
+          `return {at:m.at,w:m.w,type:m.type,len:L};})()`
+      );
+      t.assert(
+        'counter-module-on-counter',
+        mod.at - mod.w / 2 >= -0.01 && mod.at + mod.w / 2 <= mod.len + 0.01,
+        `${mod.type} 中心沿台面 ${mod.at.toFixed(2)}ft · 宽 ${mod.w.toFixed(2)}ft · 台面 ${mod.len.toFixed(2)}ft（不悬出末端）`
+      );
+      await t.shot('counter-fridge');
+
+      await t.step('Delete 删除台面');
+      await t.eval(`(()=>{const a=document.activeElement;if(a&&a.blur)a.blur();})()`);
+      await t.key('Delete', 'Delete', 46);
+      await t.waitFor(`DOC.runs.length===${runsBefore}`, 8000, '台面数复位');
+      t.assert('counter-deleted', (await t.eval('DOC.runs.length')) === runsBefore, `回到 ${runsBefore} 条`);
+      await t.click('#wDone');
+    },
+  },
+
+  {
+    name: 'undo-redo',
+    title: '撤销 / 重做：误删的洁具、画错的墙都能退回去（真实键盘）',
+    run: async (t) => {
+      const before = await stateOf(t);
+      const blur = `(()=>{const a=document.activeElement;if(a&&a.blur)a.blur();})()`;
+      await t.step('进入编辑墙体');
+      await t.click('#btnWallEdit');
+      await t.waitFor(`wallEdit.on`, 5000, 'wallEdit.on');
+      const c = await planCenter(t);
+
+      await t.step('放一个马桶 → Delete 删掉 → 「撤销」按钮要变亮');
+      await t.click('#wtoolSeg button[data-t="fx"]');
+      await t.waitFor(`wallEdit.tool==='fx'`, 5000, 'tool=fx');
+      await t.eval(`document.querySelector('#fxType').value='toilet'`);
+      await t.click(await t.planPoint(c.x, c.y - 3));
+      await t.waitFor(`DOC.fixtures.length>${before.fixtures}`, 8000, '洁具数 +1');
+      const fx = await t.eval(`(()=>{const f=DOC.fixtures[DOC.fixtures.length-1];return {id:f.id,t:f.t};})()`);
+      await t.click('#wtoolSeg button[data-t="select"]');
+      await t.waitFor(`wallEdit.tool==='select'`, 5000, 'tool=select');
+      const hit = await t.rectOf(`.fxHit[data-fx="${fx.id}"]`);
+      await t.click({ x: hit.x, y: hit.y });
+      await t.waitFor(`wallEdit.sel && wallEdit.sel.kind==='fx'`, 6000, '选中洁具');
+      await t.key('Delete', 'Delete', 46);
+      await t.waitFor(`DOC.fixtures.length===${before.fixtures}`, 8000, '洁具已删除');
+      t.assert(
+        'undo-btn-lights-up',
+        (await t.eval(`document.querySelector('#btnUndo').disabled===false`)) === true,
+        '删完立刻：「撤销」按钮从灰变亮（用户看得见自己还有退路）'
+      );
+
+      await t.step('Ctrl+Z：误删的洁具要回到户型里');
+      await t.eval(blur);
+      await t.key('z', 'KeyZ', 90, 2);
+      await t.waitFor(`DOC.fixtures.length===${before.fixtures}+1`, 8000, 'Ctrl+Z 把洁具找回来');
+      const back = await t.eval(`!!DOC.fixtures.find(x=>x.id===${JSON.stringify(fx.id)})`);
+      t.assert('undo-brings-fixture-back', back, `误删的 ${fx.t}（${fx.id}）Ctrl+Z 后回到户型里（id 不变）`);
+
+      await t.step('Ctrl+Y 重做：再把它删掉');
+      await t.eval(blur);
+      await t.key('y', 'KeyY', 89, 2);
+      await t.waitFor(`DOC.fixtures.length===${before.fixtures}`, 8000, 'Ctrl+Y 重做删除');
+      t.assert(
+        'redo-reapplies-delete',
+        (await t.eval('DOC.fixtures.length')) === before.fixtures,
+        `重做后洁具数回到 ${before.fixtures}`
+      );
+
+      await t.step('画一段墙 → Ctrl+Z 撤掉 → Ctrl+Y 画回来 → 收尾再撤一次');
+      await t.click('#wtoolSeg button[data-t="wall"]');
+      await t.waitFor(`wallEdit.tool==='wall'`, 5000, 'tool=wall');
+      const w0 = await t.eval('DOC.walls.length');
+      const pa = await t.planPoint(c.x - 2, c.y + 2.5);
+      const pb = await t.planPoint(c.x + 2, c.y + 2.5);
+      await t.click(pa);
+      await t.waitFor(`wallEdit.drawPts.length===1`, 5000, '起点已落下');
+      await t.click(pb);
+      await t.waitFor(`wallEdit.drawPts.length===2`, 5000, '末点已落下');
+      await t.click(pb);
+      await t.waitFor(`DOC.walls.length===${w0}+1`, 8000, '墙 +1');
+      await t.eval(blur);
+      await t.key('z', 'KeyZ', 90, 2);
+      await t.waitFor(`DOC.walls.length===${w0}`, 8000, 'Ctrl+Z 撤掉这段墙');
+      t.assert('undo-removes-wall', (await t.eval('DOC.walls.length')) === w0, `画错的墙 Ctrl+Z 后回到 ${w0} 段`);
+      await t.eval(blur);
+      await t.key('y', 'KeyY', 89, 2);
+      await t.waitFor(`DOC.walls.length===${w0}+1`, 8000, 'Ctrl+Y 把墙画回来');
+      t.assert('redo-redraws-wall', (await t.eval('DOC.walls.length')) === w0 + 1, '重做把这段墙画回来');
+      await t.eval(blur);
+      await t.key('z', 'KeyZ', 90, 2);
+      await t.waitFor(`DOC.walls.length===${w0}`, 8000, '收尾：墙复位');
+
+      await t.click('#wDone');
+      const after = await stateOf(t);
+      t.assert(
+        'undo-flow-clean',
+        after.walls === before.walls && after.fixtures === before.fixtures,
+        `收尾：墙 ${after.walls}/${before.walls} · 洁具 ${after.fixtures}/${before.fixtures}`
+      );
+    },
+  },
+
+  {
     name: 'place-drag-rotate-delete',
     title: '点卡片放家具 → 拖动 → 旋转 → 删除（真实鼠标）',
     run: async (t) => {
