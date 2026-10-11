@@ -1049,6 +1049,33 @@ async function runPBTest() {
         hit ? 'y=' + hit.point.y.toFixed(2) : '3D 里没有这段新墙'
       );
       T('pb-3d-verts-increase', staticVerts() > v0, 'verts ' + v0 + ' → ' + staticVerts());
+
+      /* S12 台面在 3D 里也得站起来（柜体 + 台面石板 + 冰箱 ≥ 3 个 Box） */
+      const vWall = staticVerts();
+      const pbRun3d = pushUserRun(
+        [
+          [pbFree[0] - 2, pbFree[1] + 1.5],
+          [pbFree[0] + 2, pbFree[1] + 1.5],
+        ],
+        60 / 30.48,
+        90 / 30.48
+      );
+      pbRun3d.modules = [{ at: 2.0, type: 'fridge', w: 2.0 }];
+      geoChanged();
+      await tick();
+      setView('3d');
+      await wait3D();
+      const vRun = staticVerts();
+      T('pb-run-in-3d', vRun - vWall >= 24 * 3, 'verts ' + vWall + ' → ' + vRun + '（柜体+石板+冰箱）');
+      const pbRunN = runNormal(4, 0, pbFree[0] - 2, pbFree[1] + 1.5);
+      const hitR = rayDown(pbFree[0] + pbRunN[0] * 0.9, pbFree[1] + 1.5 + pbRunN[1] * 0.9);
+      T(
+        'pb-run-blocks-ray-3d',
+        !!hitR && hitR.point.y > 0.5,
+        hitR ? '柜体顶 y=' + hitR.point.y.toFixed(2) + 'ft（台面高 2.95ft）' : '射线穿过柜体'
+      );
+      DOC.runs = (DOC.runs || []).filter((r) => r.id !== pbRun3d.id);
+      geoChanged();
       setView('2d');
       await tick();
       await enterEdit();
@@ -1268,6 +1295,140 @@ async function runPBTest() {
       ckey(false);
       await tick();
       T('pb-undo-fx-removed', DOC.fixtures.length === nFx0, 'fx=' + DOC.fixtures.length);
+
+      /* E19 轮⑳：删用户洁具 / 删台面以前不进撤销环（deleteSel 只给墙/窗/门/多边形 pushUndo） */
+      {
+        await setTool('fx');
+        Q('#fxType').value = 'basin';
+        await tap(pbFree[0], pbFree[1] + 1.0);
+        const uFx2 = DOC.fixtures[DOC.fixtures.length - 1];
+        const nFx1 = DOC.fixtures.length;
+        wallEdit.sel = { kind: 'fx', id: uFx2.id };
+        deleteSel();
+        await tick();
+        T('pb-undo-del-fx', DOC.fixtures.length === nFx1 - 1, 'fx ' + nFx1 + ' → ' + DOC.fixtures.length);
+        ckey(false);
+        await tick();
+        T(
+          'pb-undo-restore-del-fx',
+          DOC.fixtures.length === nFx1 && !!DOC.fixtures.find((x) => x.id === uFx2.id),
+          'fx=' + DOC.fixtures.length + '/' + nFx1 + ' id 回来=' + !!DOC.fixtures.find((x) => x.id === uFx2.id)
+        );
+      }
+      {
+        const uRun2 = pushUserRun(
+          [
+            [pbFree[0] - 2, pbFree[1] + 2.5],
+            [pbFree[0] + 2, pbFree[1] + 2.5],
+          ],
+          60 / 30.48,
+          90 / 30.48
+        );
+        const nR0 = DOC.runs.length;
+        geoChanged();
+        await tick();
+        wallEdit.sel = { kind: 'run', id: uRun2.id };
+        deleteSel();
+        await tick();
+        T('pb-undo-del-run', DOC.runs.length === nR0 - 1, 'runs ' + nR0 + ' → ' + DOC.runs.length);
+        ckey(false);
+        await tick();
+        T(
+          'pb-undo-restore-del-run',
+          DOC.runs.length === nR0 && !!DOC.runs.find((r) => r.id === uRun2.id),
+          'runs=' + DOC.runs.length + '/' + nR0
+        );
+      }
+
+      /* E19 轮⑳：台面在「选中」工具下也要能选中（以前 data-run 只在台面工具分支里认） */
+      {
+        const uRun3 = pushUserRun(
+          [
+            [pbFree[0] - 2, pbFree[1] + 2.5],
+            [pbFree[0] + 2, pbFree[1] + 2.5],
+          ],
+          60 / 30.48,
+          90 / 30.48
+        );
+        geoChanged();
+        await tick();
+        const bandN = runNormal(4, 0, pbFree[0] - 2, pbFree[1] + 2.5);
+        const bandMid = [pbFree[0] + bandN[0] * 0.8, pbFree[1] + 2.5 + bandN[1] * 0.8];
+        // 上一段撤销回来的用户洁具可能正好落在台面带上（那是正确行为：洁具赢）——先清掉，本段只验台面可选中
+        DOC.fixtures = DOC.fixtures.filter((f) => f.src !== 'user');
+        await setTool('select');
+        wallEdit.sel = null;
+        drawWallEdit();
+        await tick();
+        await tap(bandMid[0], bandMid[1]);
+        T(
+          'pb-run-selectable-in-select',
+          !!wallEdit.sel && wallEdit.sel.kind === 'run' && wallEdit.sel.id === uRun3.id,
+          'sel=' + (wallEdit.sel ? wallEdit.sel.kind + ':' + wallEdit.sel.id : 'null')
+        );
+        /* 「选择/调整」模式下面板也显示模块下拉 —— 那里点台面必须真能放模块
+           （以前放置代码只在台面工具分支里 → 面板摆着下拉、点了只起手拖动，零反馈） */
+        Q('#runModule').value = 'fridge';
+        await tap(bandMid[0], bandMid[1]);
+        const modSel = (uRun3.modules || []).length;
+        T(
+          'pb-run-module-works-in-select',
+          modSel === 1,
+          '选择模式下选冰箱再点台面 → modules=' + modSel + '（面板给了下拉就得能用）'
+        );
+        Q('#runModule').value = '';
+        /* 台面命中区不能盖住它下面的洁具（洁具更小、更精准，应该赢） */
+        await setTool('fx');
+        Q('#fxType').value = 'toilet';
+        await tap(bandMid[0], bandMid[1]);
+        const overFx = DOC.fixtures[DOC.fixtures.length - 1];
+        await setTool('select');
+        wallEdit.sel = null;
+        drawWallEdit();
+        await tick();
+        await tap(bandMid[0], bandMid[1]);
+        T(
+          'pb-fx-click-wins-over-run',
+          !!wallEdit.sel && wallEdit.sel.kind === 'fx' && wallEdit.sel.id === overFx.id,
+          'sel=' + (wallEdit.sel ? wallEdit.sel.kind + ':' + wallEdit.sel.id : 'null') + ' 期望 fx:' + overFx.id
+        );
+        DOC.fixtures = DOC.fixtures.filter((x) => x.id !== overFx.id);
+        DOC.runs = (DOC.runs || []).filter((r) => r.id !== uRun3.id);
+        geoChanged();
+        await tick();
+      }
+
+      /* E19 轮⑳：只点一下、没拖动 → 不得进撤销环（否则「撤销」亮着但按下去什么都没发生） */
+      {
+        const uRun4 = pushUserRun(
+          [
+            [pbFree[0] - 2, pbFree[1] + 2.5],
+            [pbFree[0] + 2, pbFree[1] + 2.5],
+          ],
+          60 / 30.48,
+          90 / 30.48
+        );
+        geoChanged();
+        await tick();
+        const bandN2 = runNormal(4, 0, pbFree[0] - 2, pbFree[1] + 2.5);
+        const bandMid2 = [pbFree[0] + bandN2[0] * 0.8, pbFree[1] + 2.5 + bandN2[1] * 0.8];
+        await setTool('select');
+        wallEdit.sel = null;
+        drawWallEdit();
+        await tick();
+        const ring0 = undoRing.length;
+        const path0 = JSON.stringify(uRun4.path);
+        await tap(bandMid2[0], bandMid2[1]);
+        T(
+          'pb-undo-click-not-a-gesture',
+          undoRing.length === ring0 && JSON.stringify(uRun4.path) === path0,
+          'ring ' + ring0 + ' → ' + undoRing.length
+        );
+        DOC.runs = (DOC.runs || []).filter((r) => r.id !== uRun4.id);
+        geoChanged();
+        wallEdit.sel = null;
+        await tick();
+      }
 
       // 删用户墙 → 撤销（实体要能回来，id 不变）
       await setTool('select');
@@ -2598,6 +2759,146 @@ async function runPBTest() {
         'plans=' + PLAN_REG.plans.length + ' active=' + (PLAN_ID === BUILTIN_PLAN_ID ? '内置' : PLAN_ID)
       );
     }
+    /* ── 12.14 S12 台面 run 的消费面（E19 轮⑳）───────────── */
+    {
+      /* 凹型（L 型）地板 + 沿内边的台面：柜体必须长在地板那一侧。
+           旧判据「指向地板质心」在凹型上会把柜体翻到户型外——质心被另一条臂拉走了。 */
+      const s20Doc0 = JSON.parse(JSON.stringify(DOC));
+      const s20L = [
+        [0, 0],
+        [12, 0],
+        [12, 5],
+        [5, 5],
+        [5, 12],
+        [0, 12],
+      ];
+      DOC.imported = true;
+      DOC.floorOutline = s20L.map((p) => [p[0], p[1]]);
+      const s20Run = pushUserRun(
+        [
+          [5, 5],
+          [5, 12],
+        ],
+        60 / 30.48,
+        90 / 30.48
+      ); // 沿内边 x=5, y 5..12
+      fit2DToContent();
+      build2D(); // 视图复位到新地板（AGENTS §5.1：点击段开头先复位视图）
+      const s20N = runNormal(0, 7, 5, 5);
+      const s20In = [5 + s20N[0] * 1.0, 5 + s20N[1] * 1.0];
+      const s20Out = [5 - s20N[0] * 1.0, 5 - s20N[1] * 1.0];
+      T(
+        'pb-run-side-follows-floor-not-centroid',
+        s20N[0] < 0 && insideFloorPt(s20In[0], s20In[1]) && !insideFloorPt(s20Out[0], s20Out[1]),
+        '法线=(' +
+          s20N.map((v) => v.toFixed(2)).join(',') +
+          ') 探点内=' +
+          insideFloorPt(s20In[0], s20In[1]) +
+          ' 探点外=' +
+          insideFloorPt(s20Out[0], s20Out[1]) +
+          '（L 型内边：地板在 x<5 那侧）'
+      );
+      // 2D 真画出来的柜体多边形：顶点也得落在地板内（不能穿墙到户型外）
+      if (!wallEdit.on) Q('#btnWallEdit').click();
+      build2D();
+      drawWallEdit();
+      const s20Gs = pbSvg.querySelectorAll('g[data-run="' + s20Run.id + '"]');
+      const s20G = s20Gs.length ? s20Gs[s20Gs.length - 1] : null;
+      const s20Poly = s20G ? s20G.querySelector('polygon') : null;
+      const s20Pts = s20Poly
+        ? (s20Poly.getAttribute('points') || '')
+            .trim()
+            .split(/\s+/)
+            .map((s) => s.split(',').map((v) => +v / S))
+        : [];
+      const s20Cx = s20Pts.reduce((a, p) => a + p[0], 0) / (s20Pts.length || 1);
+      const s20Cy = s20Pts.reduce((a, p) => a + p[1], 0) / (s20Pts.length || 1);
+      T(
+        'pb-run-2d-band-inside-floor',
+        !!s20Poly && s20Pts.length === 4 && insideFloorPt(s20Cx, s20Cy),
+        s20Poly
+          ? '带中心=(' +
+              s20Cx.toFixed(2) +
+              ',' +
+              s20Cy.toFixed(2) +
+              ') 在地板内=' +
+              insideFloorPt(s20Cx, s20Cy) +
+              ' pts=' +
+              (s20Poly.getAttribute('points') || '') +
+              ' 组数=' +
+              s20Gs.length
+          : '没找到台面图例'
+      );
+
+      /* 模块不许超出台面末端：冰箱宽 2ft，放在台面末点上 → 一半悬在柜体外 */
+      wallEdit.tool = 'run';
+      wallEdit.sel = { kind: 'run', id: s20Run.id };
+      document.getElementById('runModule').value = 'fridge';
+      const s20Total = (() => {
+        let a = 0;
+        const p = s20Run.path;
+        for (let i = 0; i < p.length - 1; i++) a += Math.hypot(p[i + 1][0] - p[i][0], p[i + 1][1] - p[i][1]);
+        return a;
+      })();
+      await tap(5, 11.95); // 贴近台面末端放冰箱
+      const s20Mod = ((DOC.runs.find((r) => r.id === s20Run.id) || {}).modules || [])[0];
+      const s20At = s20Mod ? s20Mod.at : -1,
+        s20W = s20Mod ? s20Mod.w : 0;
+      T(
+        'pb-run-module-stays-on-counter',
+        !!s20Mod && s20At - s20W / 2 >= -0.01 && s20At + s20W / 2 <= s20Total + 0.01,
+        s20Mod
+          ? '沿台面 ' + s20At.toFixed(2) + 'ft · 宽 ' + s20W.toFixed(2) + 'ft · 台面长 ' + s20Total.toFixed(2) + 'ft'
+          : '模块没放进去'
+      );
+
+      /* 台面比模块窄 → 拒放并说明（不能放一个搁不下的冰箱） */
+      const s20Short = pushUserRun(
+        [
+          [1, 1],
+          [1, 2.2],
+        ],
+        60 / 30.48,
+        90 / 30.48
+      ); // 长 1.2ft
+      wallEdit.sel = { kind: 'run', id: s20Short.id };
+      const s20Msg0 = document.getElementById('wMsg').textContent;
+      await tap(1, 2.1);
+      const s20ShortMod = ((DOC.runs.find((r) => r.id === s20Short.id) || {}).modules || []).length;
+      const s20Msg1 = document.getElementById('wMsg').textContent;
+      T(
+        'pb-run-module-too-narrow-rejected',
+        s20ShortMod === 0 && s20Msg1 !== s20Msg0 && /窄|放不下|加长/.test(s20Msg1),
+        '模块数=' +
+          s20ShortMod +
+          ' 提示「' +
+          s20Msg1 +
+          '」 tool=' +
+          wallEdit.tool +
+          ' sel=' +
+          (wallEdit.sel ? wallEdit.sel.kind + ':' + wallEdit.sel.id : 'null') +
+          ' mod=' +
+          JSON.stringify(document.getElementById('runModule').value) +
+          ' 长=' +
+          runLength(s20Short).toFixed(2) +
+          ' clamp=' +
+          String(clampRunModuleAt(s20Short, 1.1, 2.0)) +
+          ' runs=' +
+          (DOC.runs || []).map((r) => r.id).join(',')
+      );
+
+      wallEdit.tool = '';
+      wallEdit.sel = null;
+      wallEdit.moved = false;
+      drag = null;
+      document.getElementById('runModule').value = '';
+      DOC.imported = s20Doc0.imported;
+      DOC.floorOutline = s20Doc0.floorOutline;
+      DOC.runs = s20Doc0.runs || [];
+      fit2DToContent();
+      drawWallEdit();
+    }
+
     /* ===== 收尾：页面不得有未捕获异常 ===== */
     T('pb-no-page-errors', window.__ERRS.length === 0, window.__ERRS.slice(0, 3).join(' || '));
   } catch (e) {

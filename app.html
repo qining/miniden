@@ -1558,6 +1558,14 @@ function updateUndoUI(){
   if(u) u.disabled = !undoRing.length;
   if(r) r.disabled = !redoRing.length;
 }
+// 真正动了才算一步手势：只点一下（没拖）不该进撤销环。
+// 以前 pointerdown 就 pushUndo：点一下家具/墙/台面（没拖）会把「撤销」按钮点亮，
+// 按下去却什么都没发生——零反馈 = 设计缺陷（R10）。手势键照旧，合并语义不变。（bug 猎 #33）
+function markDragGesture(drag, key){
+  if(!drag || drag.moved || !key) return;
+  drag.moved = true;
+  pushUndo(key);
+}
 /* 有效几何（S1 Phase 2b）：唯一几何源 = DOC（id 寻址文档）→ docToLegacy 投影。
    CALIB 校准模式永远用纯净内置常量（不走文档，md5 基线逐字节不变）。 */
 function effWalls(){
@@ -2644,14 +2652,12 @@ svg.addEventListener('pointerdown', ev=>{
   const p = svgPoint(ev);
   if(rh){
     const uid=+rh.dataset.uid; const it=state.items.find(i=>i.uid===uid);
-    pushUndo('drag:rot:'+uid);
-    drag={mode:'rotate', uid, cx:it.x, cy:it.y};
+    drag={mode:'rotate', uid, cx:it.x, cy:it.y, moved:false, undoKey:'drag:rot:'+uid};
     svg.setPointerCapture(ev.pointerId);
   } else if(fg){
     const uid=+fg.dataset.uid; const it=state.items.find(i=>i.uid===uid);
     selected=uid;
-    pushUndo('drag:move:'+uid);
-    drag={mode:'move', uid, dx:it.x-p[0], dy:it.y-p[1]};
+    drag={mode:'move', uid, dx:it.x-p[0], dy:it.y-p[1], moved:false, undoKey:'drag:move:'+uid};
     fg.classList.add('dragging');
     svg.setPointerCapture(ev.pointerId);
     drawFurniture();
@@ -2675,9 +2681,11 @@ svg.addEventListener('pointermove', ev=>{
   const it = state.items.find(i=>i.uid===drag.uid); if(!it) return;
   const p = svgPoint(ev);
   if(drag.mode==='move'){
+    markDragGesture(drag, drag.undoKey);
     it.x = Math.round((p[0]+drag.dx)*20)/20;
     it.y = Math.round((p[1]+drag.dy)*20)/20;
   } else if(drag.mode==='rotate'){
+    markDragGesture(drag, drag.undoKey);
     let a = Math.atan2(p[0]-drag.cx, -(p[1]-drag.cy))*180/Math.PI; // handle在-y方向
     if(!ev.shiftKey) a = Math.round(a);          // 默认 1° 吸附；按住 Shift 完全连续（0.1°）
     it.rot = Math.round(a*10)/10;
@@ -3081,11 +3089,19 @@ function floorCentroid(){
   let sx=0,sy=0; for(const p of pts){ sx+=p[0]; sy+=p[1]; }
   return [sx/pts.length, sy/pts.length];
 }
-// 柜体在 path 的哪一侧：取指向地板中心的那边（柜体必须在户型内）。
-// 这不是「猜厨房在哪」——path 是用户画的前沿线，柜体只能长在地板那一侧。
+// 柜体在 path 的哪一侧：实测「哪一侧真的有地板」，不是拿质心猜。
+// 质心法在凹型（L 型）户型上会把柜体翻到户型外：质心被另一条臂拉走，
+// 沿内边画的台面就会穿墙画到邻室/室外（实测 L 型内边：法线指向墙外）。
+// 做法：沿法线两侧各探 0.4 / 1.2 / 3.0 ft，看哪侧探点落在地板里。
+// 两侧同进同出（地板轮廓带外扩边距时）才回退质心。（bug 猎 #29）
 function runNormal(dx,dy,px,py){
   const L=Math.hypot(dx,dy); if(L<1e-9) return [0,0];
-  let nx=-dy/L, ny=dx/L;
+  let nx=-dy/L, ny=dx/L, votes=0;
+  for(const probe of [0.4, 1.2, 3.0]){
+    const a=insideFloorPt(px+nx*probe, py+ny*probe), b=insideFloorPt(px-nx*probe, py-ny*probe);
+    if(a&&!b) votes++; else if(b&&!a) votes--;
+  }
+  if(votes) return votes>0 ? [nx,ny] : [-nx,-ny];
   const c=floorCentroid();
   if(nx*(c[0]-px)+ny*(c[1]-py)<0){ nx=-nx; ny=-ny; }
   return [nx,ny];
@@ -3120,7 +3136,32 @@ function runDistAlong(r, x, y){
   return best;
 }
 const RUN_MOD_W={sink:1.8, cooktop:2.0, fridge:2.0, dishwasher:1.8, open:1.8};   // ft（标准模块宽）
+function runLength(r){ let a=0; const p=(r&&r.path)||[];
+  for(let i=0;i<p.length-1;i++) a+=Math.hypot(p[i+1][0]-p[i][0], p[i+1][1]-p[i][1]); return a; }
+// 模块整块必须搜在台面上：中心沿 path 的位置夹到 [w/2, L-w/2]。
+// 不夹的话「点台面末端」会把一半模块悬在柜体外（2D 一块悬空板、3D 半个冰箱飘在地板上）。
+// 台面比模块窄 → null（拒放，并告诉用户为什么）。（bug 猎 #30 悬出末端 / #31 放不下还照放）
+function clampRunModuleAt(r, at, w){
+  const L=runLength(r);
+  if(!(L>=w+0.01)) return null;
+  return Math.max(w/2, Math.min(L-w/2, at));
+}
 const RUN_MOD_NAMES={sink:'水槽', cooktop:'灶台', fridge:'冰箱', dishwasher:'洗碗机', open:'普通柜'};
+/* 放一个模块到选中的台面上。台面工具与「选择/调整」都要能用：
+   #runCtl（含模块下拉）在「选中了台面」时就显示，可放置代码以前只写在台面工具分支里
+   —— 于是「选择/调整」模式下面板摆着模块下拉、点台面却只起手拖动，零反馈（bug 猎 #35）。 */
+function tryPlaceRunModule(mod, r, p0){
+  if(!mod || !r) return false;
+  const mw=RUN_MOD_W[mod]||1.8;
+  const at=clampRunModuleAt(r, runDistAlong(r, p0[0], p0[1]), mw);
+  if(at===null){ wMsg(RUN_MOD_NAMES[mod]+'宽 '+fmtLen(mw,{precise:true})+'，这条台面只有 '+fmtLen(runLength(r),{precise:true})+' —— 放不下，先加长台面', true); return true; }
+  pushUndo('runMod:'+r.id);
+  r.modules = r.modules || [];
+  r.modules.push({ at:FT2(at), type:mod, w:mw });
+  geoChanged(); updateWallBarFromSel();
+  wMsg('已放 '+RUN_MOD_NAMES[mod]+'（沿台面 '+Math.round(at*30.48)+'cm）');
+  return true;
+}
 function pushUserRun(pts, depth, topH){
   if(!DOC.runs) DOC.runs=[];
   const ent={ id:SCHEMA.Project.nextId(DOC,'run'), src:'user', userIndex:nextUserIndex('runs'),
@@ -3142,9 +3183,8 @@ function closeDrawRun(){ pushUndo('runClose');
 }
 function startRunDrag(ev, p0){
   const r=selRun(); if(!r) return;
-  pushUndo('drag:run:'+r.id);
   drag={mode:'runMove', px:p0[0], py:p0[1], cX:ev.clientX, cY:ev.clientY,
-        orig:r.path.map(p=>[p[0],p[1]]), moved:false};
+        orig:r.path.map(p=>[p[0],p[1]]), moved:false, undoKey:'drag:run:'+r.id};
   svg.setPointerCapture(ev.pointerId);
   drawWallEdit(); updateWallBarFromSel();
 }
@@ -3178,9 +3218,8 @@ function fixtureWallSnap(cx, cy, type){
 }
 function startFxDrag(ev, p0){
   const f=selFixture(); if(!f) return;
-  pushUndo('drag:fx:'+f.id);
   drag={mode:'fxMove', px:p0[0], py:p0[1], cX:ev.clientX, cY:ev.clientY,
-        o:{x1:f.x1,y1:f.y1,x2:f.x2,y2:f.y2}, moved:false};
+        o:{x1:f.x1,y1:f.y1,x2:f.x2,y2:f.y2}, moved:false, undoKey:'drag:fx:'+f.id};
   svg.setPointerCapture(ev.pointerId);
   drawWallEdit(); updateWallBarFromSel();
 }
@@ -3302,17 +3341,11 @@ function drawWallEdit(){
       const act = wallEdit.dEndSel===ei;
       el('circle',{cx:x*S,cy:y*S,r:(act?7.5:6)/k,fill:act?'#f5c542':'#26e0a8',
         stroke:'#0b0d10','stroke-width':(act?2.2:1.6)/k,class:'dEnd','data-end':ei},gEdit); }); }
-  // 洁具命中区放最后（最上层）：选中的件也要能再点中继续拖
-  DOC.fixtures.forEach(f=>{
-    const isSel=sel&&sel.kind==='fx'&&sel.id===f.id;
-    const pad=Math.max(0.4, 6/k/S);
-    const g=el('g',{},gEdit);
-    if(f.rot) g.setAttribute('transform',`rotate(${f.rot} ${((f.x1+f.x2)/2)*S} ${((f.y1+f.y2)/2)*S})`);
-    el('rect',{x:(f.x1-pad)*S, y:(f.y1-pad)*S, width:(f.x2-f.x1+2*pad)*S, height:(f.y2-f.y1+2*pad)*S,
-      fill:'rgba(0,0,0,0)', 'pointer-events':'all', class:'fxHit', 'data-fx':f.id},g);
-  });
   // S12：台面 run 命中区（柜体带本身，按段）——选中后仍可点中继续拖
+  const hvRun=wallEdit.hoverSel;
   effRuns().forEach(r=>{
+    const isSel=sel&&sel.kind==='run'&&sel.id===r.id;
+    const isHov=hvRun&&hvRun.kind==='run'&&hvRun.id===r.id&&!isSel;
     const pad=Math.max(0.3, 5/k/S);
     const g=el('g',{},gEdit);
     for(let i=0;i<r.path.length-1;i++){
@@ -3322,9 +3355,22 @@ function drawWallEdit(){
       const cs=[[a[0]-n[0]*pad, a[1]-n[1]*pad],[b[0]-n[0]*pad, b[1]-n[1]*pad],
                [b[0]+n[0]*(r.depth+pad), b[1]+n[1]*(r.depth+pad)],
                [a[0]+n[0]*(r.depth+pad), a[1]+n[1]*(r.depth+pad)]];
-      el('polygon',{points:cs.map(p=>(p[0]*S)+','+(p[1]*S)).join(' '),
+      const pts=cs.map(p=>(p[0]*S)+','+(p[1]*S)).join(' ');
+      // 悬停/选中可见反馈：与墙、洁具同一套颜色语言（橙=悬停，绿=选中）
+      if(isSel) el('polygon',{points:pts,fill:'rgba(38,224,168,0.22)',stroke:'#26e0a8','stroke-width':1.8/k,'pointer-events':'none'},g);
+      else if(isHov) el('polygon',{points:pts,fill:'rgba(245,158,66,0.25)',stroke:'#f59e42','stroke-width':1.4/k,'pointer-events':'none'},g);
+      el('polygon',{points:pts,
         fill:'rgba(0,0,0,0)', 'pointer-events':'all', class:'runHit', 'data-run':r.id},g);
     }
+  });
+  // 洁具命中区放在台面之后（最上层）：洁具比台面小、目标更精准，重叠时洁具赢；
+  // 选中的件也要能再点中继续拖。（以前台面排在洁具后面 → 落在台面上的洁具永远点不中）
+  DOC.fixtures.forEach(f=>{
+    const pad=Math.max(0.4, 6/k/S);
+    const g=el('g',{},gEdit);
+    if(f.rot) g.setAttribute('transform',`rotate(${f.rot} ${((f.x1+f.x2)/2)*S} ${((f.y1+f.y2)/2)*S})`);
+    el('rect',{x:(f.x1-pad)*S, y:(f.y1-pad)*S, width:(f.x2-f.x1+2*pad)*S, height:(f.y2-f.y1+2*pad)*S,
+      fill:'rgba(0,0,0,0)', 'pointer-events':'all', class:'fxHit', 'data-fx':f.id},g);
   });
   // 手柄重画一遍放最上层（在命中区之上）
   if(sel && sel.kind==='w'){ const sw=selWallSeg(); if(sw)
@@ -3519,7 +3565,10 @@ function rescaleDocPlan(k){
     const mx=(f.x1+f.x2)/2, my=(f.y1+f.y2)/2, q=P(mx,my), dx=q[0]-mx, dy=q[1]-my;
     f.x1=FT2(f.x1+dx); f.x2=FT2(f.x2+dx); f.y1=FT2(f.y1+dy); f.y2=FT2(f.y2+dy); n++; }
   for(const r of (DOC.runs||[])){ r.path=(r.path||[]).map(p=>P(p[0],p[1]));
-    if(r.modules) r.modules.forEach(m=>{ if(typeof m.at==='number') m.at=FT2(m.at*k); }); n++; }
+    // 模块宽是真实世界尺寸（不缩放），台面缩了 → 模块中心要重新夹回来，否则悬在柜体外
+    if(r.modules) r.modules.forEach(m=>{ if(typeof m.at!=='number') return;
+      const mw=m.w||1.8, L=runLength(r);
+      m.at=FT2(L>=mw+0.01 ? Math.max(mw/2, Math.min(L-mw/2, m.at*k)) : L/2); }); n++; }
   let img=false;
   if(DOC.baseImage){ const b=DOC.baseImage; const q=P(b.ox,b.oy); b.ox=q[0]; b.oy=q[1]; b.mPerPx=b.mPerPx*k; img=true; }
   return {n, img, c:[cx,cy]};
@@ -3587,6 +3636,7 @@ function deleteSel(){
   if(s.kind==='fx'){
     const f=DOC.fixtures.find(x=>x.id===s.id);
     if(f && f.src==='user'){
+      pushUndo('del:'+s.id);   // 删用户洁具必须可撤销（以前只有墙/窗/门/多边形进环 → 误删按不回来，bug 猎 #32）
       DOC.fixtures=DOC.fixtures.filter(x=>x.id!==s.id);
       wallEdit.sel=null; geoChanged(); updateWallBarFromSel(); wMsg('已删除洁具'); return;
     }
@@ -3596,6 +3646,7 @@ function deleteSel(){
   if(s.kind==='run'){
     const r=(DOC.runs||[]).find(x=>x.id===s.id);
     if(r && r.src==='user'){
+      pushUndo('del:'+s.id);   // 同上：删用户画的台面必须可撤销
       DOC.runs=DOC.runs.filter(x=>x.id!==s.id);
       wallEdit.sel=null; geoChanged(); updateWallBarFromSel(); wMsg('已删除台面'); return;
     }
@@ -3635,17 +3686,16 @@ function wallEditDown(ev){
   if(t.classList && t.classList.contains('dEnd') && wallEdit.sel && wallEdit.sel.kind==='door'){
     const dd=selDoor();
     wallEdit.dEndSel=+t.dataset.end;
-    pushUndo('drag:dEnd:'+wallEdit.sel.id);
     const link=doorLinkage(dd, wallEdit.sel);
-    drag={mode:'dEnd', end:+t.dataset.end, link,
+    drag={mode:'dEnd', end:+t.dataset.end, link, moved:false, undoKey:'drag:dEnd:'+wallEdit.sel.id,
       u:(()=>{const dx=dd.x2-dd.x1,dy=dd.y2-dd.y1,L=Math.hypot(dx,dy)||1e-6;return [dx/L,dy/L];})(),
       o:{x1:dd.x1,y1:dd.y1,x2:dd.x2,y2:dd.y2}};
     svg.setPointerCapture(ev.pointerId); drawWallEdit(); updateWallBarFromSel(); return;
   }
   if(t.classList && t.classList.contains('wEnd') && wallEdit.sel && wallEdit.sel.kind==='w'){
     const seg = selWallSeg();
-    pushUndo('drag:wEnd:'+wallEdit.sel.id);
-    drag={mode:'wEnd', end:+t.dataset.end, seg, o:{x1:seg.x1,y1:seg.y1,x2:seg.x2,y2:seg.y2}};
+    drag={mode:'wEnd', end:+t.dataset.end, seg, o:{x1:seg.x1,y1:seg.y1,x2:seg.x2,y2:seg.y2},
+          moved:false, undoKey:'drag:wEnd:'+wallEdit.sel.id};
     svg.setPointerCapture(ev.pointerId); return;
   }
   if(t.classList && t.classList.contains('pVert') && wallEdit.sel && wallEdit.sel.kind==='p'){
@@ -3653,8 +3703,7 @@ function wallEditDown(ev){
     const pts = selPolyPts();
     if(pts && ev.altKey){ if(pts.length>3){ pushUndo('polyVertDel:'+wallEdit.sel.id); pts.splice(vi,1); geoChanged(); updateWallBarFromSel(); } return; }
     if(!pts) return;
-    pushUndo('drag:pVert:'+wallEdit.sel.id+':'+vi);
-    drag={mode:'pVert', vi, pts, o:[pts[vi][0],pts[vi][1]], inserted:false};
+    drag={mode:'pVert', vi, pts, o:[pts[vi][0],pts[vi][1]], inserted:false, moved:false, undoKey:'drag:pVert:'+wallEdit.sel.id+':'+vi};
     svg.setPointerCapture(ev.pointerId); return;
   }
   if(t.classList && t.classList.contains('pMid') && wallEdit.sel && wallEdit.sel.kind==='p'){
@@ -3664,7 +3713,7 @@ function wallEditDown(ev){
     const q=pts[(vi+1)%pts.length];
     pushUndo('polyVertIns:'+wallEdit.sel.id+':'+vi);
     pts.splice(vi+1,0,[(pts[vi][0]+q[0])/2,(pts[vi][1]+q[1])/2]);
-    drag={mode:'pVert', vi:vi+1, pts, o:[pts[vi+1][0],pts[vi+1][1]], inserted:true};
+    drag={mode:'pVert', vi:vi+1, pts, o:[pts[vi+1][0],pts[vi+1][1]], inserted:true, moved:true};
     svg.setPointerCapture(ev.pointerId); drawWallEdit(); return;
   }
   if(wallEdit.tool==='door'){
@@ -3708,15 +3757,7 @@ function wallEditDown(ev){
     return;
   }
   if(wallEdit.tool==='run'){
-    const mod=$('#runModule').value, sel=selRun();
-    if(mod && sel){   // 选中台面 + 选了模块 → 在点击处沿 path 放一个模块
-      pushUndo('runMod:'+sel.id);
-      const at=runDistAlong(sel, p0[0], p0[1]);
-      sel.modules = sel.modules || [];
-      sel.modules.push({ at:FT2(at), type:mod, w:RUN_MOD_W[mod]||1.8 });
-      geoChanged(); updateWallBarFromSel();
-      wMsg('已放 '+RUN_MOD_NAMES[mod]+'（沿台面 '+Math.round(at*30.48)+'cm）'); return;
-    }
+    if(tryPlaceRunModule($('#runModule').value, selRun(), p0)) return;   // 选中台面 + 选了模块 → 在点击处沿 path 放一个模块
     const rg = t.closest && t.closest('[data-run]');
     if(rg){ wallEdit.sel={kind:'run', id:rg.dataset.run}; startRunDrag(ev, p0); return; }
     const p=snapPt(p0,ev);
@@ -3758,10 +3799,10 @@ function wallEditDown(ev){
     }
     if(!(wallEdit.sel&&wallEdit.sel.kind==='door'&&wallEdit.sel.id===t.dataset.id)) wallEdit.dEndSel=null;
     wallEdit.sel={kind:'door', id:t.dataset.id};
-    pushUndo('drag:dMove:'+t.dataset.id);
     const dd=selDoor();
     const link=doorLinkage(dd, wallEdit.sel);
     drag={mode:'dMove', px:p0[0], py:p0[1], cX:ev.clientX, cY:ev.clientY, link, moved:false,
+      undoKey:'drag:dMove:'+t.dataset.id,
       u:(()=>{const dx=dd.x2-dd.x1,dy=dd.y2-dd.y1,L=Math.hypot(dx,dy)||1e-6;return [dx/L,dy/L];})(),
       o:{x1:dd.x1,y1:dd.y1,x2:dd.x2,y2:dd.y2}};
     svg.setPointerCapture(ev.pointerId);
@@ -3770,9 +3811,8 @@ function wallEditDown(ev){
   if(t.classList && t.classList.contains('wHit')){
     wallEdit.sel={kind:'w', id:t.dataset.id};
     const selRef={id:wallEdit.sel.id};
-    pushUndo('drag:wMove:'+t.dataset.id);
     drag={mode:'wMove', px:p0[0], py:p0[1], cX:ev.clientX, cY:ev.clientY, selRef, seg:null,
-          ox1:0,oy1:0,ox2:0,oy2:0, moved:false};
+          ox1:0,oy1:0,ox2:0,oy2:0, moved:false, undoKey:'drag:wMove:'+t.dataset.id};
     const cur=selWallSeg(); drag.ox1=cur.x1; drag.oy1=cur.y1; drag.ox2=cur.x2; drag.oy2=cur.y2;
     svg.setPointerCapture(ev.pointerId);
     drawWallEdit(); updateWallBarFromSel(); return;
@@ -3780,10 +3820,9 @@ function wallEditDown(ev){
   if(t.classList && t.classList.contains('pHit')){
     wallEdit.sel={kind:'p', id:t.dataset.id};
     const selRef={id:wallEdit.sel.id};
-    pushUndo('drag:pMove:'+t.dataset.id);
     const pts=selPolyPts();
     drag={mode:'pMove', px:p0[0], py:p0[1], cX:ev.clientX, cY:ev.clientY, selRef, pts:null,
-          orig:pts.map(q=>[q[0],q[1]]), moved:false};
+          orig:pts.map(q=>[q[0],q[1]]), moved:false, undoKey:'drag:pMove:'+t.dataset.id};
     svg.setPointerCapture(ev.pointerId);
     drawWallEdit(); updateWallBarFromSel(); return;
   }
@@ -3792,6 +3831,14 @@ function wallEditDown(ev){
   if(fxSel){
     wallEdit.sel={kind:'fx', id:fxSel.dataset.fx};
     startFxDrag(ev, p0); return;
+  }
+  // S12：台面在「选中」模式下同样要能选中 / 拖动 / 删除。以前 data-run 只在台面工具分支里认：
+  //       选中模式下点台面什么也不发生，而它的命中区又把下面的点击吞掉了（洁具点不中）。（bug 猎 #34）
+  const runSel = t.closest && t.closest('[data-run]');
+  if(runSel){
+    wallEdit.sel={kind:'run', id:runSel.dataset.run};
+    if(tryPlaceRunModule($('#runModule').value, selRun(), p0)) return;   // 面板上选了模块 = 明确意图，先放模块
+    startRunDrag(ev, p0); return;
   }
   wallEdit.sel=null; drawWallEdit(); updateWallBarFromSel();
   drag={mode:'pan', px:ev.clientX, py:ev.clientY, vx:vb.x, vy:vb.y, k:1/svg.getScreenCTM().a};
@@ -3816,13 +3863,14 @@ function wallEditMove(ev){
     if(t.classList && t.classList.contains('wHit')) hv={kind:'w', id:t.dataset.id};
     else if(t.classList && t.classList.contains('pHit')) hv={kind:'p', id:t.dataset.id};
     else if(t.closest && t.closest('[data-fx]')) hv={kind:'fx', id:t.closest('[data-fx]').dataset.fx};
+    else if(t.closest && t.closest('[data-run]')) hv={kind:'run', id:t.closest('[data-run]').dataset.run};
     const cur=wallEdit.hoverSel;
     if(JSON.stringify(hv)!==JSON.stringify(cur)){ wallEdit.hoverSel=hv; drawWallEdit(); }
     return;
   }
   if(drag.mode==='dMove'){
     if(!drag.moved && Math.hypot(ev.clientX-drag.cX, ev.clientY-drag.cY)<5) return;
-    drag.moved=true;
+    markDragGesture(drag, drag.undoKey);
     let t=FT2((p0[0]-drag.px)*drag.u[0]+(p0[1]-drag.py)*drag.u[1]); // 仅沿墙方向滑动
     const r0=drag.link.range(0), r1=drag.link.range(1);
     t=Math.max(Math.max(r0[0],r1[0]), Math.min(Math.min(r0[1],r1[1]), t));
@@ -3833,6 +3881,7 @@ function wallEditMove(ev){
     build2Dlight(); return;
   }
   if(drag.mode==='dEnd'){
+    markDragGesture(drag, drag.undoKey);
     const t=(p0[0]-drag.o.x1)*drag.u[0]+(p0[1]-drag.o.y1)*drag.u[1]; // 投影到门线
     const L0=Math.hypot(drag.o.x2-drag.o.x1,drag.o.y2-drag.o.y1);
     const rg=drag.link.range(drag.end);
@@ -3850,6 +3899,7 @@ function wallEditMove(ev){
     build2Dlight(); return;
   }
   if(drag.mode==='wEnd'){
+    markDragGesture(drag, drag.undoKey);
     const p=snapPt(p0,ev,wallEdit.sel||undefined);
     if(drag.end===0){ drag.seg.x1=p[0]; drag.seg.y1=p[1]; } else { drag.seg.x2=p[0]; drag.seg.y2=p[1]; }
     const L=Math.hypot(drag.seg.x2-drag.seg.x1,drag.seg.y2-drag.seg.y1);
@@ -3857,13 +3907,14 @@ function wallEditMove(ev){
     build2Dlight(); return;
   }
   if(drag.mode==='pVert'){
+    markDragGesture(drag, drag.undoKey);
     const p=snapPt(p0,ev);
     drag.pts[drag.vi][0]=p[0]; drag.pts[drag.vi][1]=p[1];
     build2Dlight(); return;
   }
   if(drag.mode==='wMove'){
     if(!drag.moved && Math.hypot(ev.clientX-drag.cX, ev.clientY-drag.cY)<5) return; // 屏幕像素阈值防误触
-    drag.moved=true;
+    markDragGesture(drag, drag.undoKey);
     if(!drag.seg) drag.seg = selSegLive(entById(drag.selRef.id));
     const dx=FT2(p0[0]-drag.px), dy=FT2(p0[1]-drag.py); // 平移量化 0.01ft(3mm)
     drag.seg.x1=drag.ox1+dx; drag.seg.y1=drag.oy1+dy; drag.seg.x2=drag.ox2+dx; drag.seg.y2=drag.oy2+dy;
@@ -3871,7 +3922,7 @@ function wallEditMove(ev){
   }
   if(drag.mode==='fxMove'){
     if(!drag.moved && Math.hypot(ev.clientX-drag.cX, ev.clientY-drag.cY)<5) return;
-    drag.moved=true;
+    markDragGesture(drag, drag.undoKey);
     const f=selFixture(); if(!f) return;
     const dx=FT2(p0[0]-drag.px), dy=FT2(p0[1]-drag.py);
     f.x1=drag.o.x1+dx; f.y1=drag.o.y1+dy; f.x2=drag.o.x2+dx; f.y2=drag.o.y2+dy;
@@ -3879,7 +3930,7 @@ function wallEditMove(ev){
   }
   if(drag.mode==='runMove'){
     if(!drag.moved && Math.hypot(ev.clientX-drag.cX, ev.clientY-drag.cY)<5) return;
-    drag.moved=true;
+    markDragGesture(drag, drag.undoKey);
     const r=selRun(); if(!r) return;
     const dx=FT2(p0[0]-drag.px), dy=FT2(p0[1]-drag.py);
     r.path.forEach((q,i)=>{ q[0]=drag.orig[i][0]+dx; q[1]=drag.orig[i][1]+dy; });
@@ -3887,7 +3938,7 @@ function wallEditMove(ev){
   }
   if(drag.mode==='pMove'){
     if(!drag.moved && Math.hypot(ev.clientX-drag.cX, ev.clientY-drag.cY)<5) return;
-    drag.moved=true;
+    markDragGesture(drag, drag.undoKey);
     if(!drag.pts){ const eR=entById(drag.selRef.id); drag.pts = eR && eR.geom.t==='poly' ? eR.geom.pts : null; }
     const dx=FT2(p0[0]-drag.px), dy=FT2(p0[1]-drag.py);
     drag.pts.forEach((q,i)=>{ q[0]=drag.orig[i][0]+dx; q[1]=drag.orig[i][1]+dy; });
@@ -15999,7 +16050,7 @@ function groundAt(ev){
     selected=hit.uid; drawFurniture(); updateProps();
     pushUndo('drag3d:'+hit.uid);
     d3={uid:hit.uid, dx:it.x-g0.x, dy:it.y-g0.z, rot0:it.rot||0,
-        sx:ev.clientX, moved:false, wasCtl:three.controls.enabled};
+        sx:ev.clientX, moved:false, undoKey:'drag3d:'+hit.uid, wasCtl:three.controls.enabled};
     three.controls.enabled=false;                 // 拖家具时不要转相机
     three.dragging3D=true;
     try{ canvas.setPointerCapture(ev.pointerId); }catch(_){}
@@ -16015,7 +16066,7 @@ function groundAt(ev){
       it.x = Math.round((p.x+d3.dx)*100)/100;
       it.y = Math.round((p.z+d3.dy)*100)/100;
     }
-    d3.moved=true;
+    markDragGesture(d3, d3.undoKey);
     drawFurniture();                               // 内部会 sync3D（增量，约 4ms）
     ev.stopPropagation();
   }, true);
