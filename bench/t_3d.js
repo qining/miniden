@@ -1288,6 +1288,189 @@ async function run3DTest() {
       T('catalog-price-variant-totals', /另一配置/.test(ciTxt), '清单文案: ' + ciTxt.replace(/\s+/g, ' ').slice(0, 96));
     }
 
+    /* ===== 15. 目录侧栏的用户状态（bug 猎 轮㉑）
+       目录是「挑家具」的主界面：用户在这里展开分类、搜索、造自定义件。
+       三条怀疑：①切币种 / 清空搜索会不会把用户展开的分类全折叠；
+       ②造出来的自定义件在目录里看不看得见；③输入校验用的是不是阻塞弹窗（§5.1 红线）。 */
+    {
+      const catList = document.querySelector('#catList');
+      const catGroups = () => [...catList.querySelectorAll('.catGroup')];
+      const catOpenNames = () =>
+        catGroups()
+          .filter((g) => g.classList.contains('open'))
+          .map((g) => g.querySelector('h3').textContent.replace('▾', '').trim());
+      const catToggle = (i) => catGroups()[i].querySelector('h3').click();
+
+      buildCatalog('');
+      await wait(150);
+      catToggle(2);
+      catToggle(4);
+      await wait(80);
+      const csUserOpen = catOpenNames();
+      document.querySelector('#curCAD').click();
+      await wait(150);
+      const csAfterCur = catOpenNames();
+      document.querySelector('#curUSD').click();
+      await wait(150);
+      const csAfterBack = catOpenNames();
+      T(
+        'cat-open-state-survives-currency',
+        csUserOpen.length >= 3 &&
+          csAfterCur.length === csUserOpen.length &&
+          csUserOpen.every((n) => csAfterCur.includes(n)) &&
+          csAfterBack.length === csUserOpen.length,
+        '用户展开 ' +
+          csUserOpen.length +
+          ' 组 → 切加元后展开 ' +
+          csAfterCur.length +
+          ' 组（' +
+          csAfterCur.join(' / ') +
+          '）→ 切回 ' +
+          csAfterBack.length +
+          ' 组'
+      );
+
+      /* 搜索期间全展开是对的；清空以后必须回到用户自己设的状态 */
+      const csSearch = document.querySelector('#catSearch');
+      csSearch.value = '床';
+      csSearch.dispatchEvent(new Event('input', { bubbles: true }));
+      await wait(150);
+      const csWhileSearch = catOpenNames().length;
+      csSearch.value = '';
+      csSearch.dispatchEvent(new Event('input', { bubbles: true }));
+      await wait(150);
+      const csAfterSearch = catOpenNames();
+      T(
+        'cat-open-state-survives-search',
+        csWhileSearch > csUserOpen.length && csUserOpen.every((n) => csAfterSearch.includes(n)),
+        '搜索「床」时展开 ' +
+          csWhileSearch +
+          ' 组（全展开）→ 清空后 ' +
+          csAfterSearch.length +
+          ' 组（' +
+          csAfterSearch.join(' / ') +
+          '）；用户设的是 ' +
+          csUserOpen.join(' / ')
+      );
+
+      /* 用户主动收起的那一组，重建后不许被重新打开（记的必须是状态，不是「打开过的集合」） */
+      catToggle(0);
+      await wait(80);
+      const csFirstClosed = !catGroups()[0].classList.contains('open');
+      document.querySelector('#curCAD').click();
+      await wait(150);
+      const csFirstStillClosed = !catGroups()[0].classList.contains('open');
+      document.querySelector('#curUSD').click();
+      await wait(150);
+      T(
+        'cat-user-collapse-stays-collapsed',
+        csFirstClosed && csFirstStillClosed,
+        '收起第一组 ' + (csFirstClosed ? 'OK' : 'FAIL') + ' → 切币种后仍收起 ' + (csFirstStillClosed ? 'OK' : 'FAIL')
+      );
+
+      /* 自定义家具：宽/深留空点「添加」——不许用阻塞弹窗（headless 一旦覆盖这条路径，
+         整套 bench 会永久挂死在 0% CPU，§5.1 的经典症状），且必须有非阻塞的可见反馈 */
+      const csItemsKeep = state.items.slice();
+      const csCatKeep = state.customCat.slice();
+      const csSelKeep = selected;
+      const csAlerts = [];
+      const csAlertOld = window.alert;
+      window.alert = (m) => {
+        csAlerts.push(String(m));
+      };
+      document.querySelector('#cfName').value = 'bench 自定义件';
+      document.querySelector('#cfW').value = '';
+      document.querySelector('#cfD').value = '';
+      document.querySelector('#cfAdd').click();
+      await wait(150);
+      const csToast = document.querySelector('#toast');
+      const csToastBox = csToast ? csToast.getBoundingClientRect() : null;
+      const csToastOp = csToast ? +getComputedStyle(csToast).opacity : 0;
+      T(
+        'cat-custom-add-no-blocking-dialog',
+        csAlerts.length === 0 &&
+          !!csToast &&
+          csToast.textContent.length > 0 &&
+          csToastOp > 0.5 &&
+          !!csToastBox &&
+          csToastBox.width > 60 &&
+          csToastBox.height >= 14,
+        '阻塞弹窗 ' +
+          csAlerts.length +
+          ' 次 · 提示「' +
+          (csToast ? csToast.textContent : '（没有提示）') +
+          '」' +
+          (csToastBox
+            ? ' ' + Math.round(csToastBox.width) + '×' + Math.round(csToastBox.height) + 'px opacity ' + csToastOp
+            : '')
+      );
+
+      /* 填对了再点一次：它必须真的能在目录里看见（几何 + 遮挡两层探针，§8.4） */
+      const csBefore = state.customCat.length;
+      document.querySelector('#cfName').value = 'bench 自定义件';
+      document.querySelector('#cfW').value = '80';
+      document.querySelector('#cfD').value = '60';
+      document.querySelector('#cfH').value = '70';
+      document.querySelector('#cfColor').value = '#c0392b';
+      document.querySelector('#cfImg').value = 'no-such-image-xyz.png';
+      document.querySelector('#cfAdd').click();
+      await wait(1400);
+      const csAdded = state.customCat.length - csBefore;
+      const csNewId = state.customCat[state.customCat.length - 1].id;
+      const csPh = catList.querySelector('.ph[data-thumb="' + csNewId + '"]');
+      const csCard = csPh && csPh.closest('.catCard');
+      const csGrid = csCard ? csCard.parentElement : null;
+      const csRect = csCard ? csCard.getBoundingClientRect() : null;
+      const csHit =
+        csRect && csRect.width > 0
+          ? document.elementFromPoint(csRect.left + csRect.width / 2, csRect.top + csRect.height / 2)
+          : null;
+      T(
+        'cat-custom-add-visible',
+        csAdded === 1 &&
+          !!csCard &&
+          !!csRect &&
+          csRect.width >= 8 &&
+          csRect.height >= 8 &&
+          !!csHit &&
+          (csHit === csCard || csCard.contains(csHit)),
+        '新增 ' +
+          csAdded +
+          ' 条 · 卡片 ' +
+          (csRect ? Math.round(csRect.width) + '×' + Math.round(csRect.height) : '不存在') +
+          ' · 中心命中 ' +
+          (csHit ? csHit.className || csHit.tagName : '-') +
+          ' · 网格 display ' +
+          (csGrid ? getComputedStyle(csGrid).display : '-')
+      );
+
+      /* 图片填了但打不开：卡片不许变成一块空白（用户选的颜色必须还在底下兜着）。
+         刚展开的分组里 IntersectionObserver 在 headless 下不一定触发，
+         所以直接调应用自己的 queueThumb（同一条代码路径，不是重写一份）。 */
+      if (csPh) queueThumb(csPh, state.customCat[state.customCat.length - 1]);
+      await wait(400);
+      const csPhCs = csPh ? getComputedStyle(csPh) : null;
+      T(
+        'cat-custom-broken-img-keeps-color',
+        !!csPhCs && csPhCs.backgroundColor !== 'rgba(0, 0, 0, 0)' && /192, 57, 43/.test(csPhCs.backgroundColor),
+        csPhCs
+          ? '背景色 ' +
+              csPhCs.backgroundColor +
+              '（用户选的是 #c0392b）· 背景图 ' +
+              String(csPhCs.backgroundImage).slice(0, 24)
+          : '无卡片'
+      );
+
+      /* 收尾：自定义目录、家具、选中、alert 全部恢复（探针不许漏给后面的断言） */
+      state.customCat = csCatKeep;
+      state.items = csItemsKeep;
+      selected = csSelKeep;
+      window.alert = csAlertOld;
+      buildCatalog('');
+      drawFurniture();
+      await wait(150);
+    }
+
     /* ===== 双击 = 进室内视角（2D 和俯瞰都要支持）
        S10：目标点从 floorPts() 中心派生（plan-independent：generic/mine 两个户型同一套脚本） ===== */
     setView('2d');

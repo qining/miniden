@@ -813,6 +813,127 @@ export const FLOWS = [
   },
 
   {
+    name: 'catalog-custom',
+    title: '目录侧栏：展开的分类不会被重建冲掉；自己造的家具在目录里看得见',
+    run: async (t) => {
+      /* bug 猎 轮㉑。目录是「挑家具」的主界面，三件事必须用真实鼠标键盘确认：
+         ① 展开的分类在切币种 / 清空搜索后还在（目录每次重建都从「只剩第一个」开始 = 用户状态被冲掉）；
+         ② 造出来的自定义件在目录里找得着（它排在最后一组，而新分组默认折叠）；
+         ③ 输入不全时不许弹阻塞窗（真实浏览器里它是一次模态打断，headless 里它把整条测试链路挂死）。 */
+      const catN0 = await t.eval('state.customCat.length');
+      const nameOf = async (i) =>
+        await t.eval(
+          `(()=>{const g=document.querySelectorAll('#catList .catGroup')[${i - 1}];return g.querySelector('h3').textContent.replace('▾','').trim();})()`
+        );
+      const n2 = await nameOf(2);
+      const n3 = await nameOf(3);
+
+      await t.step('展开第二、第三个分类', `${n2} / ${n3}`);
+      await t.click(`#catList .catGroup:nth-of-type(2) > h3`);
+      await t.click(`#catList .catGroup:nth-of-type(3) > h3`);
+      await t.waitFor(`document.querySelectorAll('#catList .catGroup.open').length>=3`, 5000, '展开 3 组');
+
+      await t.step('切到加元（这一步会重建整个目录）');
+      await t.click('#curCAD');
+      await t.waitFor(`curNow()==='cad'`, 5000, 'curNow=cad');
+      const openAfter = await t.eval(
+        `[...document.querySelectorAll('#catList .catGroup.open > h3')].map(h=>h.textContent.replace('▾','').trim())`
+      );
+      t.assert(
+        'catalog-open-groups-survive-rebuild',
+        openAfter.includes(n2) && openAfter.includes(n3),
+        `展开的「${n2}」「${n3}」切币种后仍展开（当前展开 ${openAfter.length} 组：${openAfter.join(' / ')}）`
+      );
+      await t.click('#curUSD');
+      await t.waitFor(`curNow()==='usd'`, 5000, 'curNow=usd');
+
+      await t.step('搜一下再清空：展开状态要回来');
+      await t.type('#catSearch', '床');
+      await t.waitFor(`document.querySelectorAll('#catList .catGroup.open').length>=4`, 5000, '搜索结果全展开');
+      await t.type('#catSearch', '');
+      await t.waitFor(
+        `(()=>{const o=[...document.querySelectorAll('#catList .catGroup.open > h3')].map(h=>h.textContent.replace('▾','').trim());return o.includes(${JSON.stringify(n2)})&&o.includes(${JSON.stringify(n3)})})()`,
+        5000,
+        '展开状态回来'
+      );
+      t.assert('catalog-open-groups-survive-search', true, `清空搜索后「${n2}」「${n3}」仍展开`);
+      await t.shot('catalog-groups-open');
+
+      await t.step('造一件自定义家具（真实输入宽 / 深）');
+      await t.eval(`document.querySelector('#customForm').scrollIntoView({block:'center'})`);
+      const cname = 'E2E 自定义边柜';
+      await t.type('#cfName', cname);
+      await t.type('#cfW', '90');
+      await t.type('#cfD', '45');
+      await t.click('#cfAdd');
+      await t.waitFor(`state.customCat.some(c=>c.name===${JSON.stringify(cname)})`, 6000, '目录里多了一条');
+      const cid = await t.eval(
+        `(()=>{const c=state.customCat.filter(x=>x.name===${JSON.stringify(cname)})[0];return c?c.id:null;})()`
+      );
+      const cardBox = await t.eval(
+        `(()=>{const ph=document.querySelector('.ph[data-thumb=${JSON.stringify(cid)}]');if(!ph)return null;
+          const c=ph.closest('.catCard');const r=c.getBoundingClientRect();
+          const hit=document.elementFromPoint(r.left+r.width/2,r.top+r.height/2);
+          return {w:Math.round(r.width),h:Math.round(r.height),top:Math.round(r.top),
+                  vh:window.innerHeight,hit:hit?(hit.className||hit.tagName):null,
+                  ok:!!hit&&(hit===c||c.contains(hit))};})()`
+      );
+      t.assert(
+        'catalog-custom-card-visible',
+        !!cardBox && cardBox.w >= 8 && cardBox.h >= 8 && cardBox.ok && cardBox.top >= 0 && cardBox.top < cardBox.vh,
+        cardBox
+          ? `卡片 ${cardBox.w}×${cardBox.h} · 中心命中 ${cardBox.hit} · 距顶 ${cardBox.top}px（视口高 ${cardBox.vh}）`
+          : '目录里找不到这张卡片'
+      );
+      await t.shot('catalog-custom-card');
+
+      await t.step('宽 / 深留空点「添加」：不许弹阻塞窗');
+      const dlgBefore = t.dialogs.length;
+      await t.type('#cfName', 'E2E 缺宽度的件');
+      await t.type('#cfW', '');
+      await t.type('#cfD', '40');
+      await t.click('#cfAdd');
+      await t.waitFor(
+        `(()=>{const x=document.querySelector('#toast');return x&&x.textContent.length>0&&+getComputedStyle(x).opacity>0.5})()`,
+        6000,
+        '非阻塞提示出现'
+      );
+      const dlg = t.dialogs.slice(dlgBefore);
+      t.assert(
+        'catalog-custom-no-blocking-dialog',
+        dlg.length === 0,
+        dlg.length ? '弹出 ' + dlg.map((d) => d.type + '：' + d.message).join(' | ') : '没有弹窗，只有一条非阻塞提示'
+      );
+      const toastBox = await t.eval(
+        `(()=>{const x=document.querySelector('#toast');if(!x)return null;const r=x.getBoundingClientRect();return {txt:x.textContent,w:Math.round(r.width),h:Math.round(r.height)};})()`
+      );
+      t.assert(
+        'catalog-custom-hint-visible',
+        !!toastBox && toastBox.w > 60 && toastBox.h >= 14,
+        toastBox ? `提示「${toastBox.txt}」${toastBox.w}×${toastBox.h}px` : '没有任何提示'
+      );
+      await t.shot('catalog-custom-hint');
+      t.assert(
+        'catalog-custom-invalid-input-rejected',
+        (await t.eval(`!state.customCat.some(c=>c.name==='E2E 缺宽度的件')`)) === true,
+        '缺宽度的条目没有进目录（也没被建成 0 宽家具）'
+      );
+
+      await t.step('收尾：把造的这件从目录和图里撤掉（不污染后面的流程）');
+      await t.eval(
+        `(()=>{const id=${JSON.stringify(cid)};state.customCat=state.customCat.filter(c=>c.id!==id);` +
+          `state.items=state.items.filter(i=>i.ref!==id);save();buildCatalog('');drawFurniture();updateTotals();updatePlacedList();})()`
+      );
+      await t.waitFor(`state.customCat.length===${catN0}`, 5000, '自定义目录回到原样');
+      t.assert(
+        'catalog-custom-cleanup',
+        (await t.eval('state.customCat.length')) === catN0,
+        `自定义条目数回到 ${catN0}`
+      );
+    },
+  },
+
+  {
     name: 'measure',
     title: '量尺寸：点起点 → 预览 → 落定 → 清除',
     run: async (t) => {
