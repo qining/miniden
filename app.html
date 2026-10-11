@@ -1485,6 +1485,9 @@ function geoChanged(){ geoDirty3D=true; saveGeo(); build2D(); if(typeof requestS
    节流：连续拖动 / 连续方向键微调只算**一步**——pushUndo(gestureKey) 对同一个手势键
    只压一次。不用计时器合并：--virtual-time-budget 会冻结 performance.now()，
    基于时间的合并在 bench 里不可靠（同 §5.5：兜底判据要用次数而不是时间）。
+   但「同一个键只压一次」只适用于连续手势：离散动作（一次放置、一次 +90°、一次改类型）
+   每次都是新手势，必须 pushUndo(key, true) 各自成一步，否则撤销一次会同时撤掉两件事
+   （bug 猎 轮㉒，bench 断言 pb-undo-*-each-step 守着这条）。
    覆盖：户型文档（墙/窗/门/柱/洁具/台面/底图）+ 已摆家具 + 导入替换。 */
 const UNDO_CAP = 50;
 let undoRing = [], redoRing = [], lastGesture = null;
@@ -1493,11 +1496,18 @@ function snapState(){
      文档写进新户型的键（串户型），而且刚创建的那份户型会在列表里残留。 */
   try{ return JSON.stringify({d:DOC, i:state.items, c:state.customCat, u:uidSeq, su:showUnderlay, st:showTrace, p:PLAN_ID, r:PLAN_REG}); }catch(e){ return null; }
 }
-function pushUndo(gestureKey){
+/* 手势键有两种身份，必须分开（bug 猎 轮㉒）：
+   · 连续手势（拖动中、滑块拖动中、连续方向键微调）：同一个键只该压一次 → 只传 gestureKey
+   · 离散动作（一次放置、一次 +90°、一次键盘旋转、一次改类型、一次改数值、一次导入）：
+     每次调用都是一个新的手势 → eachGesture=true。
+     以前离散动作也吃同一套合并，于是「连放两个洁具 / 连点两次同一件商品 / 按两次 +90°」
+     只算一步：撤销一次同时撤掉两件事，或者撤销按钮亮着而按下去什么都没发生（零反馈，R10）。
+     「按了但什么都没变」不需要靠键合并挡 —— 下面那句快照相等检查就是干这个的。 */
+function pushUndo(gestureKey, eachGesture){
   if(CALIB || IMGONLY) return;                        // 校准/底图视图不编辑，也不进环
   const s = snapState(); if(!s) return;
-  if(gestureKey && lastGesture === gestureKey) return;    // 同一手势（拖动中、连续微调）不重复压
-  lastGesture = gestureKey || null;
+  if(!eachGesture && gestureKey && lastGesture === gestureKey) return;   // 同一手势（拖动中、连续微调）不重复压
+  lastGesture = eachGesture ? null : (gestureKey || null);   // 离散动作收尾：下一个手势重新开始
   if(undoRing.length && undoRing[undoRing.length-1] === s) return;   // 无实际变化
   undoRing.push(s); if(undoRing.length > UNDO_CAP) undoRing.shift();
   redoRing.length = 0; updateUndoUI();
@@ -2823,10 +2833,10 @@ window.addEventListener('keydown', ev=>{
       .some((id)=>{ const m = document.getElementById(id); return m && m.style.display && m.style.display!=='none'; })) return;
   if(selected==null) return;
   const it = state.items.find(i=>i.uid===selected); if(!it) return;
-  if(ev.key==='Delete'||ev.key==='Backspace'){ pushUndo('key:del:'+selected); state.items=state.items.filter(i=>i.uid!==selected); selected=null; drawFurniture(); save(); }
-  else if(ev.key==='r'||ev.key==='R'){ pushUndo('key:rot:'+selected); it.rot=(it.rot+ (ev.shiftKey?-15:15))%360; drawFurniture(); save(); }
+  if(ev.key==='Delete'||ev.key==='Backspace'){ pushUndo('key:del:'+selected, true); state.items=state.items.filter(i=>i.uid!==selected); selected=null; drawFurniture(); save(); }
+  else if(ev.key==='r'||ev.key==='R'){ pushUndo('key:rot:'+selected, true); it.rot=(it.rot+ (ev.shiftKey?-15:15))%360; drawFurniture(); save(); }
   else if(ev.key==='['||ev.key===']'){ const st=ev.shiftKey?0.1:0.5;
-    pushUndo('key:rot:'+selected);
+    pushUndo('key:rot:'+selected, true);
     it.rot=Math.round(((it.rot+(ev.key===']'?st:-st))%360)*10)/10; drawFurniture(); save(); }
   else if(ev.key==='d'||ev.key==='D'){ const n={...it, uid:uidSeq++, x:it.x+1.5, y:it.y+1.5}; state.items.push(n); selected=n.uid; drawFurniture(); save(); }
   else if(ev.key.startsWith('Arrow')){
@@ -2999,7 +3009,7 @@ function selPolyPts(){ const s=wallEdit.sel; if(!s||s.kind!=='p') return null;
 function setSegType(ent, t){ // 墙族类型互转（wType 面板）；'g' = 窗（独立实体数组）
   const cur = ent.kind? (KIND2T[ent.kind]||'w') : 'g';
   if(t===cur) return;
-  pushUndo('segType:'+ent.id);
+  pushUndo('segType:'+ent.id, true);
   if(t==='g'){ winFromWall(ent); return; }
   if(cur==='g'){ winToWall(ent, t); return; }
   ent.kind = T2KIND[t] || 'wall';
@@ -3155,7 +3165,7 @@ function tryPlaceRunModule(mod, r, p0){
   const mw=RUN_MOD_W[mod]||1.8;
   const at=clampRunModuleAt(r, runDistAlong(r, p0[0], p0[1]), mw);
   if(at===null){ wMsg(RUN_MOD_NAMES[mod]+'宽 '+fmtLen(mw,{precise:true})+'，这条台面只有 '+fmtLen(runLength(r),{precise:true})+' —— 放不下，先加长台面', true); return true; }
-  pushUndo('runMod:'+r.id);
+  pushUndo('runMod:'+r.id, true);
   r.modules = r.modules || [];
   r.modules.push({ at:FT2(at), type:mod, w:mw });
   geoChanged(); updateWallBarFromSel();
@@ -3169,7 +3179,7 @@ function pushUserRun(pts, depth, topH){
   DOC.runs.push(ent);
   return ent;
 }
-function closeDrawRun(){ pushUndo('runClose');
+function closeDrawRun(){ pushUndo('runClose', true);
   let pts=wallEdit.drawPts;
   wallEdit.drawPts=[]; wallEdit.hover=null;
   pts=pts.filter((p,i)=> i===0 || Math.hypot(p[0]-pts[i-1][0], p[1]-pts[i-1][1])>0.05);
@@ -3510,7 +3520,7 @@ function applyLenEdit(){
     const PL=pw? Math.hypot(pw.x2-pw.x1, pw.y2-pw.y1) : L2;
     const maxL=Math.min(L2, Math.max(0.05, PL-0.02));
     const half=maxL/2, cx=(seg.x1+seg.x2)/2, cy=(seg.y1+seg.y2)/2;
-    pushUndo('lenEdit:'+ent.id);
+    pushUndo('lenEdit:'+ent.id, true);
     seg.x1=FT2(cx-ux*half); seg.y1=FT2(cy-uy*half);
     seg.x2=FT2(cx+ux*half); seg.y2=FT2(cy+uy*half);
     ent.width=maxL;
@@ -3530,7 +3540,7 @@ function applyLenEdit(){
     const t1=ptOnSeg(w.geom.x1,w.geom.y1,seg,tol), t2=ptOnSeg(w.geom.x2,w.geom.y2,seg,tol);
     if(t1<0&&t2<0) continue; need=Math.max(need, Math.max(t1,t2)*L); }
   if(L2<need-1e-6){ wMsg('这段墙上有门/窗：最短要 '+fmtLen(need,{precise:true})+'，再短它们就跑到墙外了', true); return; }
-  pushUndo('lenEdit:'+ent.id);
+  pushUndo('lenEdit:'+ent.id, true);
   seg.x2=FT2(seg.x1+ux*L2); seg.y2=FT2(seg.y1+uy*L2);
   geoChanged();
   wMsg('这段长 '+lenLabel(L2)+'（起点不动、终点沿轴移动；相邻墙不跟着动，可用「撤销」回退）');
@@ -3589,7 +3599,7 @@ function armRescale(){
   if(_calArm===null||Math.abs(_calArm-k)>1e-9){ _calArm=k;
     wMsg('整图将缩放 ×'+k.toFixed(4)+'（'+lenLabel(cur)+' → '+lenLabel(want)+'）；再点一次「整图按此缩放」确认', false); return; }
   _calArm=null;
-  pushUndo('rescale:'+k.toFixed(6));
+  pushUndo('rescale:'+k.toFixed(6), true);
   const info=rescaleDocPlan(k);
   /* bug 猎 #22：家具不在 ProjectDoc 里（它走 planner_v1:<id> 另一条存档），rescaleDocPlan 只摸 DOC。
      但它摆在墙边：整图缩放不把它一起搬走，它就留在旧坐标 —— ×2 后跑到墙外 / 房间错位。
@@ -3605,7 +3615,7 @@ function armRescale(){
        (moved?' · '+moved+' 件家具跟着搬':'')+
        '；洁具与台面保持真实尺寸不缩放；点「撤销」可回到缩放前');
 }
-function applyDrawWallChain(){ pushUndo('drawChain');
+function applyDrawWallChain(){ pushUndo('drawChain', true);
   const pts=wallEdit.drawPts;
   let added=0;
   const t=$('#wType').value, wd=cmToWd(+($('#wThick').value)||9);
@@ -3618,7 +3628,7 @@ function applyDrawWallChain(){ pushUndo('drawChain');
   wallEdit.drawPts=[]; wallEdit.hover=null;
   if(added){ geoChanged(); wMsg('已添加 '+added+' 段墙'); } else drawWallEdit();
 }
-function closeDrawPoly(){ pushUndo('polyClose');
+function closeDrawPoly(){ pushUndo('polyClose', true);
   let pts=wallEdit.drawPts;
   wallEdit.drawPts=[]; wallEdit.hover=null;
   pts=pts.filter((p,i)=> i===0 || Math.hypot(p[0]-pts[i-1][0],p[1]-pts[i-1][1])>0.05);
@@ -3636,7 +3646,7 @@ function deleteSel(){
   if(s.kind==='fx'){
     const f=DOC.fixtures.find(x=>x.id===s.id);
     if(f && f.src==='user'){
-      pushUndo('del:'+s.id);   // 删用户洁具必须可撤销（以前只有墙/窗/门/多边形进环 → 误删按不回来，bug 猎 #32）
+      pushUndo('del:'+s.id, true);   // 删用户洁具必须可撤销（以前只有墙/窗/门/多边形进环 → 误删按不回来，bug 猎 #32）
       DOC.fixtures=DOC.fixtures.filter(x=>x.id!==s.id);
       wallEdit.sel=null; geoChanged(); updateWallBarFromSel(); wMsg('已删除洁具'); return;
     }
@@ -3646,13 +3656,13 @@ function deleteSel(){
   if(s.kind==='run'){
     const r=(DOC.runs||[]).find(x=>x.id===s.id);
     if(r && r.src==='user'){
-      pushUndo('del:'+s.id);   // 同上：删用户画的台面必须可撤销
+      pushUndo('del:'+s.id, true);   // 同上：删用户画的台面必须可撤销
       DOC.runs=DOC.runs.filter(x=>x.id!==s.id);
       wallEdit.sel=null; geoChanged(); updateWallBarFromSel(); wMsg('已删除台面'); return;
     }
     wallEdit.sel=null; updateWallBarFromSel(); wMsg('只有用户画的台面可删除', true); return;
   }
-  pushUndo('del:'+s.id);   // 上面两个分支是拒删（无变化），不进环
+  pushUndo('del:'+s.id, true);   // 上面两个分支是拒删（无变化），不进环
   if(s.kind==='door'){
     if(e && e.src==='user') DOC.doors=DOC.doors.filter(x=>x.id!==s.id);
     else if(e && !DOC.hidden.doors.includes(s.id)) DOC.hidden.doors.push(s.id);
@@ -3701,7 +3711,7 @@ function wallEditDown(ev){
   if(t.classList && t.classList.contains('pVert') && wallEdit.sel && wallEdit.sel.kind==='p'){
     const vi=+t.dataset.vi;
     const pts = selPolyPts();
-    if(pts && ev.altKey){ if(pts.length>3){ pushUndo('polyVertDel:'+wallEdit.sel.id); pts.splice(vi,1); geoChanged(); updateWallBarFromSel(); } return; }
+    if(pts && ev.altKey){ if(pts.length>3){ pushUndo('polyVertDel:'+wallEdit.sel.id, true); pts.splice(vi,1); geoChanged(); updateWallBarFromSel(); } return; }
     if(!pts) return;
     drag={mode:'pVert', vi, pts, o:[pts[vi][0],pts[vi][1]], inserted:false, moved:false, undoKey:'drag:pVert:'+wallEdit.sel.id+':'+vi};
     svg.setPointerCapture(ev.pointerId); return;
@@ -3711,7 +3721,7 @@ function wallEditDown(ev){
     const pts = selPolyPts();
     if(!pts) return;
     const q=pts[(vi+1)%pts.length];
-    pushUndo('polyVertIns:'+wallEdit.sel.id+':'+vi);
+    pushUndo('polyVertIns:'+wallEdit.sel.id+':'+vi, true);
     pts.splice(vi+1,0,[(pts[vi][0]+q[0])/2,(pts[vi][1]+q[1])/2]);
     drag={mode:'pVert', vi:vi+1, pts, o:[pts[vi+1][0],pts[vi+1][1]], inserted:true, moved:true};
     svg.setPointerCapture(ev.pointerId); drawWallEdit(); return;
@@ -3731,7 +3741,7 @@ function wallEditDown(ev){
     const mid=[(best.x1+best.x2)/2,(best.y1+best.y2)/2];
     const found=effDoors().find(d=>Math.hypot((d.x1+d.x2)/2-mid[0],(d.y1+d.y2)/2-mid[1])<0.5);
     if(found){ wallEdit.dEndSel=null; wallEdit.sel={kind:'door', id:found._id}; drawWallEdit(); updateWallBarFromSel(); return; }
-    pushUndo('doorPlace');
+    pushUndo('doorPlace', true);
     const ent=pushUserDoor(best.x1,best.y1,best.x2,best.y2);
     wallEdit.dEndSel=null;
     wallEdit.sel={kind:'door', id:ent.id};
@@ -3746,7 +3756,7 @@ function wallEditDown(ev){
     }
     const type=$('#fxType').value;
     if(!FX_DEFS[type]){ wMsg('洁具类型无效（' + type + '），未放置', true); return; }
-    pushUndo('fxPlace');
+    pushUndo('fxPlace', true);
     const snap=fixtureWallSnap(p0[0],p0[1],type);
     const ent= snap? pushUserFixture(type, snap.cx, snap.cy, snap.rot)
                    : pushUserFixture(type, p0[0], p0[1], 0);
@@ -15440,7 +15450,7 @@ function addItem(refId){
   // 放到当前视图中心附近
   const cx = (vb.x+vb.w/2)/S, cy=(vb.y+vb.h/2)/S;
   const it = {uid:uidSeq++, ref:refId, x:Math.round(cx*4)/4, y:Math.round(cy*4)/4, rot:0};
-  pushUndo('addItem:'+refId);
+  pushUndo('addItem:'+refId, true);
   state.items.push(it); selected=it.uid;
   drawFurniture(); save();
 }
@@ -15478,7 +15488,7 @@ function updatePlacedList(){
     const p = showPrice ? fmtPrice(s) : '';
     row.innerHTML=`<div class="dot" style="background:${itemColor(it)}"></div><span>${s.name}</span>`+
       (p?`<span class="plPrice">${p}</span>`:'')+`<span class="x" title="删除">✕</span>`;
-    row.onclick=(e)=>{ if(e.target.classList.contains('x')){ pushUndo('listDel:'+it.uid); state.items=state.items.filter(i=>i.uid!==it.uid); if(selected===it.uid)selected=null; drawFurniture(); save(); }
+    row.onclick=(e)=>{ if(e.target.classList.contains('x')){ pushUndo('listDel:'+it.uid, true); state.items=state.items.filter(i=>i.uid!==it.uid); if(selected===it.uid)selected=null; drawFurniture(); save(); }
       else { selected=it.uid; drawFurniture(); } };
     el2.appendChild(row);
   };
@@ -15515,7 +15525,7 @@ function updateProps(){
 $('#pRot').addEventListener('input', e=>{ const it=state.items.find(i=>i.uid===selected); if(it){ pushUndo('rot:'+selected); it.rot=Math.round((+e.target.value||0)*10)/10; drawFurniture(); save(); }});
 $('#pRotSlider').addEventListener('input', e=>{ const it=state.items.find(i=>i.uid===selected);
   if(it){ pushUndo('rot:'+selected); it.rot=+e.target.value; if(document.activeElement!==$('#pRot')) $('#pRot').value=it.rot; drawFurniture(); save(); }});
-$('#pRot90').onclick=()=>{ const it=state.items.find(i=>i.uid===selected); if(it){ pushUndo('rot90:'+selected); it.rot=(it.rot+90)%360; drawFurniture(); save(); }};
+$('#pRot90').onclick=()=>{ const it=state.items.find(i=>i.uid===selected); if(it){ pushUndo('rot90:'+selected, true); it.rot=(it.rot+90)%360; drawFurniture(); save(); }};
 function syncLightUI(it){
   const spec=itemSpec(it);
   const on = hasLightCtl(spec);
@@ -15534,8 +15544,8 @@ $('#pCCT').addEventListener('input', e=>{ const it=state.items.find(i=>i.uid===s
 $('#pDim').addEventListener('input', e=>{ const it=state.items.find(i=>i.uid===selected);
   if(it){ it.dim=(+e.target.value)/100; syncLightUI(it); if(three&&is3D()) sync3D(); save(); }});
 $('#pColor').addEventListener('input', e=>{ const it=state.items.find(i=>i.uid===selected); if(it){ it.color=e.target.value; drawFurniture(); sync3D(); save(); }});
-$('#pDup').onclick=()=>{ const it=state.items.find(i=>i.uid===selected); if(it){ pushUndo('dup:'+selected); const n={...it,uid:uidSeq++,x:it.x+1.5,y:it.y+1.5}; state.items.push(n); selected=n.uid; drawFurniture(); save(); }};
-$('#pDel').onclick=()=>{ pushUndo('del:'+selected); state.items=state.items.filter(i=>i.uid!==selected); selected=null; drawFurniture(); save(); };
+$('#pDup').onclick=()=>{ const it=state.items.find(i=>i.uid===selected); if(it){ pushUndo('dup:'+selected, true); const n={...it,uid:uidSeq++,x:it.x+1.5,y:it.y+1.5}; state.items.push(n); selected=n.uid; drawFurniture(); save(); }};
+$('#pDel').onclick=()=>{ pushUndo('del:'+selected, true); state.items=state.items.filter(i=>i.uid!==selected); selected=null; drawFurniture(); save(); };
 
 $('#cfAdd').onclick=()=>{
   const name=$('#cfName').value.trim()||'自定义家具';
@@ -15800,21 +15810,21 @@ $('#fxRot').onchange=()=>{
   const f=selFixture(); if(!f) return;
   let v=Math.round((+($('#fxRot').value)||0));
   v=((v%360)+360)%360;
-  pushUndo('fxRot:'+f.id);
+  pushUndo('fxRot:'+f.id, true);
   if(v===0){ if(f.rot) delete f.rot; } else f.rot=v;
   geoChanged(); updateWallBarFromSel(); wMsg('旋转 '+v+'°');
 };
 // S12：选中 run 时改深度 / 台面高
 $('#runDepth').onchange=()=>{ const r=selRun(); if(!r) return;
-  const v=(+$('#runDepth').value||60)/30.48; pushUndo('runDepth:'+r.id); r.depth=FT2(v);
+  const v=(+$('#runDepth').value||60)/30.48; pushUndo('runDepth:'+r.id, true); r.depth=FT2(v);
   geoChanged(); updateWallBarFromSel(); wMsg('台面深度 '+Math.round(v*30.48)+'cm'); };
 $('#runTopH').onchange=()=>{ const r=selRun(); if(!r) return;
-  const v=(+$('#runTopH').value||90)/30.48; pushUndo('runTopH:'+r.id); r.topH=FT2(v);
+  const v=(+$('#runTopH').value||90)/30.48; pushUndo('runTopH:'+r.id, true); r.topH=FT2(v);
   geoChanged(); updateWallBarFromSel(); wMsg('台面高 '+Math.round(v*30.48)+'cm'); };
 $('#wType').onchange=()=>{ const s=wallEdit.sel; if(s&&s.kind==='w'){
   const seg=selWallSeg(); if(seg){ seg.t=$('#wType').value; geoChanged(); } } };
 $('#wThick').onchange=()=>{ const s=wallEdit.sel; if(s&&s.kind==='w'){
-  const seg=selWallSeg(); if(seg){ pushUndo('thick:'+s.id); seg.wd=cmToWd(+$('#wThick').value||9); geoChanged(); } } };
+  const seg=selWallSeg(); if(seg){ pushUndo('thick:'+s.id, true); seg.wd=cmToWd(+$('#wThick').value||9); geoChanged(); } } };
 function doorLenUnit(){ return state.unit==='ft' ? 'in' : 'cm'; }
 function doorLenToUI(ftLen){ return state.unit==='ft' ? Math.round(ftLen*12*10)/10 : Math.round(ftLen*30.48); }
 function doorLenFromUI(v){ return state.unit==='ft' ? v/12 : v/30.48; }
@@ -15829,7 +15839,7 @@ function setDoorWidth(newLenFt){
   if(moveEnd===1){ L2=Math.min(L2, L+rg[1]); L2=Math.max(L2, Math.max(DOOR_MIN, L+rg[0])); }
   else           { L2=Math.min(L2, L-rg[0]); L2=Math.max(L2, Math.max(DOOR_MIN, L-rg[1])); }
   if(Math.abs(L2-L)<1e-9){ wMsg('已到墙垛允许的极限', true); return; }
-  pushUndo('doorWidth:'+d.id);
+  pushUndo('doorWidth:'+d.id, true);
   if(moveEnd===1) link.apply(d.x1,d.y1, d.x1+u[0]*L2, d.y1+u[1]*L2);
   else            link.apply(d.x2-u[0]*L2, d.y2-u[1]*L2, d.x2, d.y2);
   geoChanged(); updateWallBarFromSel();
@@ -15867,7 +15877,7 @@ function nudgeDoor(signAlong, stepFt){ // 激活端点则改宽，否则整体�
 function doorMut(fn){ const s=wallEdit.sel; if(!s||s.kind!=='door') return;
   const d = selDoor();
   if(!d) return;
-  pushUndo('doorMut:'+s.id);
+  pushUndo('doorMut:'+s.id, true);
   fn(d); geoChanged(); updateWallBarFromSel(); }
 $('#dWidth').onchange=()=>{ const v=+$('#dWidth').value; if(v>0) setDoorWidth(doorLenFromUI(v)); };
 // E24：数值改这段长度 / 按已知长度重标定整图
@@ -15888,16 +15898,16 @@ const isDarkFrame=(c)=>!c || DARK_FRAMES.includes(c);
 function winSelEnt(){ const s=wallEdit.sel; if(!s||s.kind!=='w') return null;
   const e=entById(s.id); return (e&&e.id[0]==='n')?e:null; }
 $('#wWinStyle').onclick=()=>{ $('#wWinStyle').blur(); const e=winSelEnt(); if(!e) return;
-  const order=['fixed','slide','casement','awning']; pushUndo('winStyle:'+e.id);
+  const order=['fixed','slide','casement','awning']; pushUndo('winStyle:'+e.id, true);
   e.style=order[(order.indexOf(e.style)+1)%4];
   geoChanged(); updateWallBarFromSel(); };
 $('#wWinFull').onclick=()=>{ $('#wWinFull').blur(); const e=winSelEnt(); if(!e) return;
-  pushUndo('winFull:'+e.id);
+  pushUndo('winFull:'+e.id, true);
   e.fullHeight=!e.fullHeight;
   if(e.fullHeight){ e.sill=0; e.head=DOC.ceilingH; } else { e.sill=2.2; e.head=7.4; }
   geoChanged(); updateWallBarFromSel(); };
 $('#wWinFrame').onclick=()=>{ $('#wWinFrame').blur(); const e=winSelEnt(); if(!e) return;
-  pushUndo('winFrame:'+e.id);
+  pushUndo('winFrame:'+e.id, true);
   const was=isDarkFrame(e.frame);
   e.frame=was?'#f2f1ec':'#17181b'; e.steel=was?false:true;
   geoChanged(); updateWallBarFromSel(); };
@@ -16618,7 +16628,7 @@ $('#btnSaveJson').onclick=()=>{
 $('#btnLoadJson').onclick=()=>$('#fileJson').click();
 $('#fileJson').addEventListener('change', ev=>{
   const f=ev.target.files[0]; if(!f) return;
-  f.text().then(t=>{ try{ const s=JSON.parse(t); pushUndo('loadLayout'); state.items=s.items||[]; state.customCat=s.customCat||[];
+  f.text().then(t=>{ try{ const s=JSON.parse(t); pushUndo('loadLayout', true); state.items=s.items||[]; state.customCat=s.customCat||[];
     uidSeq=Math.max(0,...state.items.map(i=>i.uid),0)+1; selected=null; buildCatalog(); refresh(); save(); }
     catch(e){ toast('文件格式错误'); } });
   ev.target.value='';
