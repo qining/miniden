@@ -3538,6 +3538,13 @@ function restoreState(s){
   if(wasImported !== docImported()) fit2DToContent();     // 导入↔内置 切换：重新取景
   else { const a=floorSpan(); if(a>0 && spanBefore>0 && Math.abs(a-spanBefore)/spanBefore > 0.25) fit2DToContent(); }
   refresh();
+  // 撤销 / 重做后检视面板必须跟着回去：面板里的旋转框、色块、色温 / 亮度滑块存的是
+  // 撤销前的值，而图已经变了 —— 用户看到的数字与实际状态不一致（bug 猎 #46）。
+  // 焦点还停在面板输入框里时先结束这次编辑：updateProps 故意不覆盖用户正在打的字，
+  // 而按 Ctrl+Z 不是打字，不 blur 就会留下「框里 0 / 实际 45°」。
+  const ae = document.activeElement;
+  if(ae && ae.tagName === 'INPUT' && ae.closest && ae.closest('#props')) ae.blur();
+  updateProps();
   planSelectUI();
   if(JSON.stringify(state.customCat) !== ccBefore) buildCatalog();   // 自定义目录变了才重建（275 件重建不便宜）
   if(state.view !== '2d') setView(state.view);            // 3D 在场 → 让 geoDirty3D 生效
@@ -3545,17 +3552,43 @@ function restoreState(s){
 }
 function undoStep(){
   if(CALIB || IMGONLY) return;
+  const cur = pruneDeadRing();
   if(!undoRing.length){ toast('没有可撤销的改动'); return; }
   lastGesture = null;
-  const prev = undoRing.pop(); redoRing.push(snapState());
+  const prev = undoRing.pop(); redoRing.push(cur);
   restoreState(prev); toast('已撤销');
 }
 function redoStep(){
   if(CALIB || IMGONLY) return;
+  const cur = pruneDeadRing();
   if(!redoRing.length){ toast('没有可重做的改动'); return; }
   lastGesture = null;
-  const nxt = redoRing.pop(); undoRing.push(snapState());
+  const nxt = redoRing.pop(); undoRing.push(cur);
   restoreState(nxt); toast('已重做');
+}
+/* 死步：环顶那份快照与当前状态一模一样 = 那次动作其实什么都没改
+   （在旋转框里重打同一个数字、按「删除」但什么都没选中）。留着它的后果是
+   「撤销按钮亮着、按下去什么都没发生」，而真正的撤销要多按一次（bug 猎 #44）。
+   pushUndo 当时判不出来（动作还没发生），所以在按键按下这一刻把它跳掉。 */
+function pruneDeadRing(){
+  const cur = snapState();
+  while(undoRing.length && undoRing[undoRing.length-1] === cur) undoRing.pop();
+  while(redoRing.length && redoRing[redoRing.length-1] === cur) redoRing.pop();
+  updateUndoUI();
+  return cur;
+}
+/* 撤销快捷键的门控口径（bug 猎 #45）。自由文本框里 Ctrl+Z 是浏览器自己的「撤销打字」
+   （目录搜索框、自定义件名称），不该被抢走；但属性面板 / 墙长框这类**提交式控件**
+   （数字、颜色、滑块）不是文本编辑面 —— 用户在那里打完数字想撤的是这次改动。
+   以前一律挡掉：焦点留在旋转框里时撤销按钮亮着、按 Ctrl+Z 什么都没发生
+   （真键盘实测：ring=3 / rot 不变 / 框不变 = 零反馈，R10 红线）。 */
+function undoKeyBlocked(el){
+  if(!el || !el.tagName) return false;
+  const tag = el.tagName;
+  if(tag === 'TEXTAREA' || tag === 'SELECT') return true;
+  if(tag !== 'INPUT') return false;
+  const type = (el.getAttribute('type') || 'text').toLowerCase();
+  return ['text','search','url','email','password','tel'].indexOf(type) >= 0;
 }
 function updateUndoUI(){
   const u=$('#btnUndo'), r=$('#btnRedo');
@@ -4767,11 +4800,13 @@ if(firstRunEligible()){
 }
 window.addEventListener('keydown', ev=>{
   const tag=ev.target.tagName;
-  /* E23：撤销/重做快捷键。输入框里打字不能抢（在「实测长度」框里 Ctrl+Z 该撤销文本） */
-  if(!['INPUT','SELECT','TEXTAREA'].includes(tag) && (ev.metaKey||ev.ctrlKey) && ev.key.toLowerCase()==='z'){
+  /* E23：撤销/重做快捷键。口径见 undoKeyBlocked()：自由文本框里 Ctrl+Z 留给浏览器撤销打字，
+     提交式控件（数字 / 颜色 / 滑块）里它必须是全局撤销（bug 猎 #45） */
+  const typing = undoKeyBlocked(ev.target);
+  if(!typing && (ev.metaKey||ev.ctrlKey) && ev.key.toLowerCase()==='z'){
     ev.preventDefault(); if(ev.shiftKey) redoStep(); else undoStep(); return;
   }
-  if(!['INPUT','SELECT','TEXTAREA'].includes(tag) && (ev.metaKey||ev.ctrlKey) && ev.key.toLowerCase()==='y'){
+  if(!typing && (ev.metaKey||ev.ctrlKey) && ev.key.toLowerCase()==='y'){
     ev.preventDefault(); redoStep(); return;
   }
   if(meas.on && ev.key==='Escape' && !['INPUT','SELECT','TEXTAREA'].includes(tag)){ measEnd(); return; }
@@ -4831,7 +4866,7 @@ window.addEventListener('keydown', ev=>{
   else if(ev.key==='r'||ev.key==='R'){ pushUndo('key:rot:'+selected, true); it.rot=(it.rot+ (ev.shiftKey?-15:15))%360; drawFurniture(); save(); }
   else if(ev.key==='['||ev.key===']'){ const st=ev.shiftKey?0.1:0.5;
     pushUndo('key:rot:'+selected, true);
-    it.rot=Math.round(((it.rot+(ev.key===']'?st:-st))%360)*10)/10; drawFurniture(); save(); }
+    it.rot=Math.round(normDeg(it.rot+(ev.key===']'?st:-st))*10)/10; drawFurniture(); save(); }
   else if(ev.key==='d'||ev.key==='D'){ const n={...it, uid:uidSeq++, x:it.x+1.5, y:it.y+1.5}; state.items.push(n); selected=n.uid; drawFurniture(); save(); }
   else if(ev.key.startsWith('Arrow')){
     const st = ev.shiftKey? 1/12 : 0.25;
@@ -17495,6 +17530,9 @@ function updatePlacedList(){
     for(const [it, s] of fixed) mkRow(it, s, false);
   }
 }
+// 旋转口径：mod 360 且永远非负。输入框 / 滑块 / +90° / [ ] 微调必须同一个口径，
+// 否则同一时刻框里显示 720、滑块显示 0，再按 +90° 又跳到 90（bug 猎 #43）。
+function normDeg(x){ const v = (+x || 0) % 360; return v < 0 ? v + 360 : v; }
 function updateProps(){
   const it = state.items.find(i=>i.uid===selected);
   if(!it){ $('#pTitle').textContent='未选中家具'; $('#pInfo').style.display='block'; $('#pFields').style.display='none'; return; }
@@ -17516,10 +17554,21 @@ function updateProps(){
   // 离墙距离提示
   $('#pClear').textContent = `位置 (${it.x.toFixed(2)}, ${it.y.toFixed(2)}) ft`;
 }
-$('#pRot').addEventListener('input', e=>{ const it=state.items.find(i=>i.uid===selected); if(it){ pushUndo('rot:'+selected); it.rot=Math.round((+e.target.value||0)*10)/10; drawFurniture(); save(); }});
+$('#pRot').addEventListener('input', e=>{ const it=state.items.find(i=>i.uid===selected); if(!it) return;
+  // 空框 / 非法文本（"-"、"1e"）不是角度：把它当 0 会让家具先转没了再转回来，还白占一步撤销。
+  // （"45." 在 number input 里是合法浮点写法，Number("45.")=45，不需要特殊处理）
+  if(e.target.value === '' || (e.target.validity && e.target.validity.badInput)) return;
+  pushUndo('rot:'+selected);
+  // 归一后回写两个控件，让框与滑块读同一个数（0.1° 精度照旧）。
+  // 但只在「文本本身不是这个角度的忠实写法」时改用户正在打的字：无条件回写会把小数点吃掉
+  // ——逐字符打 45.5 时「45.」被写成「45」，再打 5 就变成 455°→95°（面板自己宣称 0.1° 精度）。
+  const v = Math.round(normDeg(e.target.value)*10)/10;
+  it.rot = v;
+  if(Number(e.target.value) !== v) e.target.value = v;
+  $('#pRotSlider').value = v; drawFurniture(); save(); });
 $('#pRotSlider').addEventListener('input', e=>{ const it=state.items.find(i=>i.uid===selected);
-  if(it){ pushUndo('rot:'+selected); it.rot=+e.target.value; if(document.activeElement!==$('#pRot')) $('#pRot').value=it.rot; drawFurniture(); save(); }});
-$('#pRot90').onclick=()=>{ const it=state.items.find(i=>i.uid===selected); if(it){ pushUndo('rot90:'+selected, true); it.rot=(it.rot+90)%360; drawFurniture(); save(); }};
+  if(it){ pushUndo('rot:'+selected); it.rot=normDeg(e.target.value); if(document.activeElement!==$('#pRot')) $('#pRot').value=it.rot; drawFurniture(); save(); }});
+$('#pRot90').onclick=()=>{ const it=state.items.find(i=>i.uid===selected); if(it){ pushUndo('rot90:'+selected, true); it.rot=normDeg(it.rot+90); drawFurniture(); save(); }};
 function syncLightUI(it){
   const spec=itemSpec(it);
   const on = hasLightCtl(spec);
@@ -17534,13 +17583,18 @@ function syncLightUI(it){
   $('#pDimv').textContent=dim+'% · '+lm+'lm';
 }
 $('#pCCT').addEventListener('input', e=>{ const it=state.items.find(i=>i.uid===selected);
-  if(it){ it.cct=+e.target.value; syncLightUI(it); drawFurniture(); if(three&&is3D()) sync3D(); save(); }});
+  // 色温 / 亮度 / 颜色都是离散动作，必须进撤销环：以前改完颜色按 Ctrl+Z，撤掉的是
+  // 「放这件家具」那一步 —— 家具直接消失（同一面板里改旋转能撤、改颜色撤不回 = 不一致，bug 猎 #42）。
+  // 滑块拖动中照旧合并成一步（不给 eachGesture）。
+  if(it){ pushUndo('cct:'+selected); it.cct=+e.target.value; syncLightUI(it); drawFurniture(); if(three&&is3D()) sync3D(); save(); }});
 $('#pDim').addEventListener('input', e=>{ const it=state.items.find(i=>i.uid===selected);
-  if(it){ it.dim=(+e.target.value)/100; syncLightUI(it); if(three&&is3D()) sync3D(); save(); }});
-$('#pColor').addEventListener('input', e=>{ const it=state.items.find(i=>i.uid===selected); if(it){ it.color=e.target.value; drawFurniture(); sync3D(); save(); }});
+  if(it){ pushUndo('dim:'+selected); it.dim=(+e.target.value)/100; syncLightUI(it); if(three&&is3D()) sync3D(); save(); }});
+$('#pColor').addEventListener('input', e=>{ const it=state.items.find(i=>i.uid===selected); if(it){ pushUndo('color:'+selected); it.color=e.target.value; drawFurniture(); sync3D(); save(); }});
 $('#pDup').onclick=()=>{ const it=state.items.find(i=>i.uid===selected); if(it){ pushUndo('dup:'+selected, true); const n={...it,uid:uidSeq++,x:it.x+1.5,y:it.y+1.5}; state.items.push(n); selected=n.uid; drawFurniture(); save(); }};
 $('#pDel').onclick=()=>{ pushUndo('del:'+selected, true); state.items=state.items.filter(i=>i.uid!==selected); selected=null; drawFurniture(); save(); };
 
+// 自定义件尺寸口径：5cm（把手级）~ 12m（长餐桌 / 整墙柜级）。目录里最大的商品是 5m 级。
+const CF_MIN_CM = 5, CF_MAX_CM = 1200;
 $('#cfAdd').onclick=()=>{
   const name=$('#cfName').value.trim()||'自定义家具';
   const w=+$('#cfW').value, d=+$('#cfD').value, h=+$('#cfH').value||75;
@@ -17549,6 +17603,19 @@ $('#cfAdd').onclick=()=>{
     // 在界面上也是模态打断。规划流程里的输入错误一律用 toast + 把焦点送到那一格。
     toast('请填写宽度和深度（cm）');
     (w>0 ? $('#cfD') : $('#cfW')).focus();
+    return;
+  }
+  // 尺寸上下限：一个笔误不该毁掉整张图。实测（bug 猎 #41）：
+  //   宽 99999cm → 2D 图例 72178px = 户型宽的 72 倍、viewBox 的 59 倍，整张平面图被一个矩形盖住
+  //   宽 0.1cm  → 图例 0.07px，隐形且点不中（选不中也就删不掉，只能靠撤销）
+  //   高 -5cm   → 3D 包围盒 y −0.164..0.000ft，整件沉到地板以下
+  const cfBad = [];
+  if(!(w>=CF_MIN_CM && w<=CF_MAX_CM)) cfBad.push(['cfW','宽',w]);
+  if(!(d>=CF_MIN_CM && d<=CF_MAX_CM)) cfBad.push(['cfD','深',d]);
+  if(!(h>=CF_MIN_CM && h<=CF_MAX_CM)) cfBad.push(['cfH','高',h]);
+  if(cfBad.length){
+    toast('宽 / 深 / 高要在 '+CF_MIN_CM+'–'+CF_MAX_CM+' cm 之间（你填的：'+cfBad.map(b=>b[1]+' '+b[2]).join('，')+'）');
+    $('#'+cfBad[0][0]).focus();
     return;
   }
   const id='custom_'+Date.now();
