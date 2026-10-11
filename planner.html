@@ -17265,8 +17265,17 @@ function _thumbApply(el, spec, url){
   else _thumbFallback(el, spec);
 }
 function queueThumb(el, spec){
-  if(spec.img){ el.style.backgroundImage = 'url('+spec.img+')'; el.style.backgroundColor='transparent';
-                el.classList.add('has'); return; }
+  if(spec.img){
+    // 用户手填的图片地址完全可能打不开（打错的本地路径、失效的外链）。
+    // 一上来就把兜底色清成 transparent，卡片就成了一块 184×138 的空白格子，
+    // 连用户自己选的颜色都不显示。兜底色先垫着，图片确认加载成功才清掉。
+    el.style.backgroundImage = 'url('+spec.img+')'; el.style.backgroundColor = spec.color || 'transparent';
+    el.classList.add('has');
+    const im = new Image();
+    im.onload = ()=>{ if(el.isConnected) el.style.backgroundColor = 'transparent'; };
+    im.src = spec.img;
+    return;
+  }
   if(_thumbCache.has(spec.id)){ _thumbApply(el, spec, _thumbCache.get(spec.id)); return; }
   _thumbQ.push([el, spec]);
   if(!_thumbBusy){ _thumbBusy = true; setTimeout(_runThumbs, 0); }
@@ -17315,6 +17324,12 @@ function observeThumbs(container){
   nodes.forEach(el=>_thumbIO.observe(el));
 }
 
+/* 分组的展开状态是用户数据（bug 猎 轮㉑）：切币种 / 清空搜索 / 撤销 / 导入布局都会重建目录，
+   重建时不能把用户展开的分类全折叠回「只剩第一个」。
+   记的是状态而不是「打开过的集合」——用户主动收起的那一组同样要记住，
+   否则收起第一组、一切币种它又自己弹回来。
+   搜索期间全展开是临时的（搜索结果当然都要露出来），不写进这里。 */
+const catOpenState = new Map();
 function buildCatalog(filter=''){
   const listEl = $('#catList'); listEl.innerHTML='';
   const cats = {};
@@ -17328,9 +17343,10 @@ function buildCatalog(filter=''){
   const _ordered = CAT_ORDER.filter(k=>cats[k]);
   const _rest = Object.keys(cats).filter(k=>!_ordered.includes(k));
   for(const cat of [..._ordered, ..._rest]){
-    const grp = document.createElement('div'); grp.className='catGroup'+((first||filter)?' open':''); first=false;
+    const open = filter ? true : catOpenState.has(cat) ? catOpenState.get(cat) : first;
+    const grp = document.createElement('div'); grp.className='catGroup'+(open?' open':''); first=false;
     const h = document.createElement('h3'); h.innerHTML=`${cat}<span>▾</span>`;
-    h.onclick=()=>grp.classList.toggle('open');
+    h.onclick=()=>catOpenState.set(cat, grp.classList.toggle('open'));
     grp.appendChild(h);
     const items = document.createElement('div'); items.className='catGrid';
     for(const c of cats[cat]){
@@ -17518,10 +17534,21 @@ $('#pDel').onclick=()=>{ pushUndo('del:'+selected); state.items=state.items.filt
 $('#cfAdd').onclick=()=>{
   const name=$('#cfName').value.trim()||'自定义家具';
   const w=+$('#cfW').value, d=+$('#cfD').value, h=+$('#cfH').value||75;
-  if(!w||!d){ alert('请填写宽度和深度（cm）'); return; }
+  if(!(w>0) || !(d>0)){
+    // 阻塞弹窗在 headless 里会永久挂死整条测试链路（§5.1：0% CPU、dump-dom 永远空），
+    // 在界面上也是模态打断。规划流程里的输入错误一律用 toast + 把焦点送到那一格。
+    toast('请填写宽度和深度（cm）');
+    (w>0 ? $('#cfD') : $('#cfW')).focus();
+    return;
+  }
   const id='custom_'+Date.now();
   state.customCat.push({id, cat:'自定义', name, w, d, h, color:$('#cfColor').value, kind:'box', img:$('#cfImg').value.trim()||null, price:0});
+  // 刚造的这件排在最后一组，而新分组默认折叠——不展开并滚过去，用户在目录里根本找不着它（轮㉑）
+  catOpenState.set('自定义', true);
   buildCatalog($('#catSearch').value);
+  const grpNew = [...$('#catList').querySelectorAll('.catGroup')]
+    .find(g=>{ const h3=g.querySelector('h3'); return h3 && h3.textContent.indexOf('自定义')>=0; });
+  if(grpNew) grpNew.scrollIntoView({block:'nearest'});
   addItem(id);
   $('#cfName').value=''; $('#cfW').value=''; $('#cfD').value=''; $('#cfH').value=''; $('#cfImg').value='';
 };
