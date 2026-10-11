@@ -36,7 +36,7 @@ const stateOf = (t) =>
   t.eval(
     `({items: state.items.length, view: state.view, unit: state.unit, cur: curNow(),
        walls: DOC.walls.length, fixtures: DOC.fixtures.length, doors: DOC.doors.length,
-       imported: docImported(), selected: selected})`
+       imported: docImported(), selected: selected, undo: undoRing.length})`
   );
 
 export const FLOWS = [
@@ -604,6 +604,68 @@ export const FLOWS = [
         (await t.eval('DOC.fixtures.length')) === before.fixtures,
         `重做后洁具数回到 ${before.fixtures}`
       );
+
+      await t.step('连放两个洁具 → Ctrl+Z 一次只该撤掉最后那一个（bug 猎 轮㉒）');
+      // 两个落点从运行时几何里挑（离已有墙/洁具最远的内部点 + 离它最远的另一个），
+      // 同一个点第二次点会选中已放的洁具，测的就不是「放了两件」
+      const two = await t.eval(`(()=>{
+        const dseg=(px,py,s)=>{const dx=s.x2-s.x1,dy=s.y2-s.y1,L2=dx*dx+dy*dy;
+          if(L2<1e-9)return Math.hypot(px-s.x1,py-s.y1);
+          const u=Math.max(0,Math.min(1,((px-s.x1)*dx+(py-s.y1)*dy)/L2));
+          return Math.hypot(px-(s.x1+dx*u),py-(s.y1+dy*u));};
+        const clear=(x,y)=>{let d=1e9;
+          for(const s of effWalls()) if(s.t==='w'||s.t==='i') d=Math.min(d,dseg(x,y,s));
+          for(const f of effFixtures()){const cx=(f.x1+f.x2)/2,cy=(f.y1+f.y2)/2;
+            d=Math.min(d,Math.max(0,Math.hypot(x-cx,y-cy)-Math.max(f.x2-f.x1,f.y2-f.y1)/2));}
+          for(const s of effFixed()) for(const q of (s.poly||[])) d=Math.min(d,Math.hypot(x-q[0],y-q[1]));
+          return d;};
+        const b=floorPts(); let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;
+        for(const p of b){x0=Math.min(x0,p[0]);y0=Math.min(y0,p[1]);x1=Math.max(x1,p[0]);y1=Math.max(y1,p[1]);}
+        const cand=[];
+        for(let gx=x0+0.5;gx<=x1-0.5;gx+=0.5) for(let gy=y0+0.5;gy<=y1-0.5;gy+=0.5){ const d=clear(gx,gy); if(d>1.0) cand.push([gx,gy,d]); }
+        if(!cand.length) return null;
+        cand.sort((a,b)=>b[2]-a[2]);
+        let p2=null,best=-1;
+        for(const c of cand){ const dd=Math.hypot(c[0]-cand[0][0],c[1]-cand[0][1]); if(dd>best){best=dd;p2=c;} }
+        if(!p2 || best<3) return null;
+        return {p1:[cand[0][0],cand[0][1]],p2:[p2[0],p2[1]],gap:Math.round(best*10)/10};
+      })()`);
+      if (!two)
+        t.assert('undo-two-fixtures-points-found', false, '这份户型里找不到两个相距 ≥3ft 的空落点，测不了「连放两件」');
+      else {
+        await t.click('#wtoolSeg button[data-t="fx"]');
+        await t.waitFor(`wallEdit.tool==='fx'`, 5000, 'tool=fx');
+        await t.eval(`document.querySelector('#fxType').value='toilet'`);
+        await t.click(await t.planPoint(two.p1[0], two.p1[1]));
+        await t.waitFor(`DOC.fixtures.length===${before.fixtures}+1`, 8000, '第一件落下');
+        await t.eval(`document.querySelector('#fxType').value='basin'`);
+        await t.click(await t.planPoint(two.p2[0], two.p2[1]));
+        await t.waitFor(`DOC.fixtures.length===${before.fixtures}+2`, 8000, '第二件落下');
+        const ring = await t.eval('undoRing.length');
+        t.assert(
+          'undo-two-fixtures-two-steps',
+          ring >= before.undo + 2,
+          `连放两件后撤销环 +${ring - before.undo}（期望 ≥2：每次放置各是一步） 落点相距 ${two.gap}ft`
+        );
+        await t.eval(blur);
+        await t.key('z', 'KeyZ', 90, 2);
+        await t.waitFor(`DOC.fixtures.length===${before.fixtures}+1`, 8000, 'Ctrl+Z 只撤最后那件');
+        t.assert(
+          'undo-one-step-one-fixture',
+          (await t.eval('DOC.fixtures.length')) === before.fixtures + 1,
+          '按一次 Ctrl+Z 只撤掉最后放的那件（以前一次撤销两件都没了）'
+        );
+        await t.eval(blur);
+        await t.key('z', 'KeyZ', 90, 2);
+        await t.waitFor(`DOC.fixtures.length===${before.fixtures}`, 8000, '再按一次撤掉第一件（收尾复位）');
+        t.assert(
+          'undo-second-step-second-fixture',
+          (await t.eval('DOC.fixtures.length')) === before.fixtures,
+          '第二次撤销撤掉第一件：两步两步地退，不是一次退光'
+        );
+        await t.click('#wtoolSeg button[data-t="select"]');
+        await t.waitFor(`wallEdit.tool==='select'`, 5000, 'tool=select');
+      }
 
       await t.step('画一段墙 → Ctrl+Z 撤掉 → Ctrl+Y 画回来 → 收尾再撤一次');
       await t.click('#wtoolSeg button[data-t="wall"]');
@@ -1791,14 +1853,24 @@ export const FLOWS = [
       await t.click('#btn2d');
       await t.waitFor(`state.view==='2d'`, 10000, '回到 2D');
       await ensureProTools(t);
-      const { readdirSync, readFileSync } = await import('node:fs');
-      const dlBefore = new Set(readdirSync(t.downloads).filter((n) => n.endsWith('.json')));
+      const { readdirSync, readFileSync, rmSync, mkdirSync } = await import('node:fs');
+      /* 下载目录是整个入口共用的一份：上一段流程（导出/导入）已经往里写过同名文件。
+         用「与快照比有没有新文件」判定，撞上 Chrome 的重名改名规则就不稳 ——
+         这一段开头清空目录，只认「这一段点出去的那一个」。 */
+      rmSync(t.downloads, { recursive: true, force: true });
+      mkdirSync(t.downloads, { recursive: true });
       await t.click('#btnExportDoc');
       let file = null;
-      for (let i = 0; i < 40 && !file; i++) {
-        await sleep(500);
-        const now = readdirSync(t.downloads).filter((n) => n.endsWith('.json'));
-        file = now.find((n) => !dlBefore.has(n)) || null;
+      for (let round = 0; round < 2 && !file; round++) {
+        if (round) {
+          await ensureProTools(t);
+          await t.click('#btnExportDoc');
+        }
+        for (let i = 0; i < 30 && !file; i++) {
+          await sleep(500);
+          const now = readdirSync(t.downloads).filter((n) => n.endsWith('.json'));
+          file = now.find((n) => !n.endsWith('.crdownload')) || null;
+        }
       }
       t.assert('demo-export-file', !!file, file ? '下载 ' + file : '20s 内没有新的 .json 下载');
       if (file) {

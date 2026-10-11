@@ -2899,6 +2899,275 @@ async function runPBTest() {
       drawWallEdit();
     }
 
+    /* ===== 14. 离散动作各自成一步（E19 轮㉒：撤销一次不该丢掉两件事） ===== */
+    {
+      /* 手势键同时当两个身份用：「同一个手势」与「同一种动作」。
+         连续手势（拖动中、滑块、连续方向键微调）合并是对的；
+         离散动作（一次放置、一次 +90°、一次键盘旋转、一次开关切换）每次都是新手势，
+         合并的结果是「撤销一次同时撤掉两件事」与「撤销按钮亮着、按下去什么都没发生」。 */
+      await pbReset();
+      undoRing.length = 0;
+      redoRing.length = 0;
+      lastGesture = null;
+      updateUndoUI();
+      const u22z = () =>
+        window.dispatchEvent(
+          new KeyboardEvent('keydown', { key: 'z', ctrlKey: true, bubbles: true, cancelable: true })
+        );
+      const u22y = () =>
+        window.dispatchEvent(
+          new KeyboardEvent('keydown', { key: 'y', ctrlKey: true, bubbles: true, cancelable: true })
+        );
+      const u22fx = () => DOC.fixtures.filter((f) => f.src === 'user').length;
+      // 两个互不干扰的落点（同一个点第二次点会选中已放的洁具，测的就不是「放两件」了）
+      const u22cand = [];
+      const u22sx = (BX1 - BX0) / 14,
+        u22sy = (BY1 - BY0) / 14;
+      for (let gx = BX0 + u22sx; gx <= BX1 - u22sx; gx += u22sx)
+        for (let gy = BY0 + u22sy; gy <= BY1 - u22sy; gy += u22sy)
+          if (pbClearance(gx, gy) > 0.9) u22cand.push([gx, gy]);
+      let u22p2 = pbFree,
+        u22bd = -1;
+      for (const c of u22cand) {
+        const d = Math.hypot(c[0] - pbFree[0], c[1] - pbFree[1]);
+        if (d > u22bd) {
+          u22bd = d;
+          u22p2 = c;
+        }
+      }
+
+      /* 14.1 连放两个洁具（fxPlace 是常量键） */
+      await enterEdit();
+      await setTool('fx');
+      Q('#fxType').value = 'toilet';
+      await tap(pbFree[0], pbFree[1]);
+      const u22f1 = u22fx();
+      Q('#fxType').value = 'basin';
+      await tap(u22p2[0], u22p2[1]);
+      const u22f2 = u22fx();
+      const u22ring1 = undoRing.length;
+      u22z();
+      await tick();
+      const u22f3 = u22fx();
+      T(
+        'pb-undo-two-fixtures-each-step',
+        u22f1 === 1 && u22f2 === 2 && u22f3 === 1,
+        '放第一件=' + u22f1 + ' 放第二件=' + u22f2 + ' 撤销一次后=' + u22f3 + '（期望剩 1 件） 环=' + u22ring1
+      );
+      u22y();
+      await tick();
+      T('pb-undo-two-fixtures-redo', u22fx() === 2, '重做后=' + u22fx() + '（期望 2）');
+      await pbReset();
+
+      /* 14.2 同一件商品连点两次（addItem 的键带 refId → 同 ref 就合并） */
+      Q('#btnWallEdit').click();
+      await tick();
+      const u22ref = CATALOG[0].id;
+      const u22i0 = state.items.length;
+      addItem(u22ref);
+      addItem(u22ref);
+      const u22i1 = state.items.length;
+      u22z();
+      await tick();
+      T(
+        'pb-undo-two-adds-each-step',
+        u22i1 === u22i0 + 2 && state.items.length === u22i0 + 1,
+        '连点两次=' + (u22i1 - u22i0) + ' 件，撤销一次后剩 ' + (state.items.length - u22i0) + ' 件（期望 1）'
+      );
+
+      /* 14.3 属性面板「+90°」按两次（rot90 的键带 uid，而 uid 不变） */
+      // 上面那次撤销把两件全撤掉了（就是被证明的 bug），这里重新给一件干净的被测件
+      state.items = [];
+      selected = null;
+      addItem(u22ref);
+      await tick();
+      const u22it = state.items[state.items.length - 1];
+      // 撤销会把 state.items 换成从快照里重新解析出来的一批新对象 → 必须按 uid 重新找
+      const u22rotNow = () => {
+        const c = state.items.find((i) => i.uid === u22it.uid);
+        return c ? ((c.rot % 360) + 360) % 360 : NaN;
+      };
+      Q('#pRot90').click();
+      await tick();
+      Q('#pRot90').click();
+      await tick();
+      const u22rot1 = u22rotNow();
+      u22z();
+      await tick();
+      const u22rot2 = u22rotNow();
+      T(
+        'pb-undo-rot90-each-step',
+        u22rot1 === 180 && u22rot2 === 90,
+        '按两次 +90° 后 rot=' + u22rot1 + '°，撤销一次后 rot=' + u22rot2 + '°（期望 90）'
+      );
+
+      /* 14.4 键盘 R 转两次（key:rot 同样带 uid） */
+      key('r', document.body);
+      await tick();
+      key('r', document.body);
+      await tick();
+      const u22rot3 = u22rotNow();
+      u22z();
+      await tick();
+      const u22rot4 = u22rotNow();
+      T(
+        'pb-undo-key-rot-each-step',
+        u22rot3 === u22rot2 + 30 && u22rot4 === u22rot3 - 15,
+        '再按两次 R 后 rot=' + u22rot3 + '°，撤销一次后 rot=' + u22rot4 + '°（期望 195）'
+      );
+
+      /* 14.5 对照组：复制两次本来就该是两步（第二次的面板选中已经换成了新的 uid） */
+      const u22d0 = state.items.length;
+      Q('#pDup').click();
+      await tick();
+      Q('#pDup').click();
+      await tick();
+      const u22d1 = state.items.length;
+      u22z();
+      await tick();
+      T(
+        'pb-undo-dup-two-steps-control',
+        u22d1 === u22d0 + 2 && state.items.length === u22d0 + 1,
+        '复制两次=' + (u22d1 - u22d0) + ' 件，撤销一次后多 ' + (state.items.length - u22d0) + ' 件（期望 1）'
+      );
+      state.items = [];
+      selected = null;
+      drawFurniture();
+      save();
+
+      /* 14.6 同一段墙连续改两次类型（segType 的键带墙 id，走 wallView 代理的 setter） */
+      await enterEdit();
+      await setTool('select');
+      fit2DToContent();
+      await tick();
+      const u22w = pushUserWall([pbFree[0] - 1.5, pbFree[1] + 1.2], [pbFree[0] + 1.5, pbFree[1] + 1.2], 'w', 9);
+      geoChanged();
+      wallEdit.sel = { kind: 'w', id: u22w.id };
+      drawWallEdit();
+      await tick();
+      const u22typeCtl = Q('#wType');
+      const u22t = () => {
+        const x = effWalls().find((v) => v._id === u22w.id);
+        return x ? x.t : '?';
+      };
+      const u22t0 = u22t();
+      u22typeCtl.value = 'd';
+      u22typeCtl.dispatchEvent(new Event('change'));
+      await tick();
+      const u22t1 = u22t();
+      u22typeCtl.value = 'o';
+      u22typeCtl.dispatchEvent(new Event('change'));
+      await tick();
+      const u22t2 = u22t();
+      u22z();
+      await tick();
+      const u22t3 = u22t();
+      T(
+        'pb-undo-seg-type-each-step',
+        u22t0 === 'w' && u22t1 === 'd' && u22t2 === 'o' && u22t3 === 'd',
+        '类型 ' +
+          u22t0 +
+          '→' +
+          u22t1 +
+          '→' +
+          u22t2 +
+          '，撤销一次后=' +
+          u22t3 +
+          '（期望回到 d；回到 w = 一次撤销撤掉了两件事）'
+      );
+      DOC.walls = DOC.walls.filter((e) => e.id !== u22w.id);
+      DOC.windows = (DOC.windows || []).filter((e) => e.id !== u22w.id);
+      wallEdit.sel = null;
+      geoChanged();
+
+      /* 14.7 同一块台面上连放两个模块（runMod 的键带 run id） */
+      {
+        const u22doc0 = JSON.parse(JSON.stringify(DOC));
+        DOC.imported = true;
+        DOC.floorOutline = [
+          [0, 0],
+          [12, 0],
+          [12, 8],
+          [0, 8],
+        ];
+        const u22run = pushUserRun(
+          [
+            [1, 1],
+            [9, 1],
+          ],
+          60 / 30.48,
+          90 / 30.48
+        );
+        wallEdit.sel = { kind: 'run', id: u22run.id };
+        tryPlaceRunModule('fridge', u22run, [3, 1]);
+        await tick();
+        tryPlaceRunModule('sink', u22run, [6, 1]);
+        await tick();
+        const u22m1 = ((DOC.runs.find((r) => r.id === u22run.id) || {}).modules || []).length;
+        u22z();
+        await tick();
+        const u22m2 = ((DOC.runs.find((r) => r.id === u22run.id) || {}).modules || []).length;
+        T(
+          'pb-undo-two-run-modules-each-step',
+          u22m1 === 2 && u22m2 === 1,
+          '连放两个模块=' + u22m1 + '，撤销一次后=' + u22m2 + '（期望 1）'
+        );
+        wallEdit.sel = null;
+        DOC.imported = u22doc0.imported;
+        DOC.floorOutline = u22doc0.floorOutline;
+        DOC.runs = u22doc0.runs || [];
+        fit2DToContent();
+        drawWallEdit();
+      }
+
+      /* 14.8 对照组：连续手势照旧只算一步（修离散动作不能把连续手势也拆开） */
+      await pbReset();
+      undoRing.length = 0;
+      redoRing.length = 0;
+      lastGesture = null;
+      updateUndoUI();
+      await enterEdit();
+      await setTool('select');
+      fit2DToContent();
+      await tick();
+      wallEdit.sel = { kind: 'w', id: pbWall._id };
+      drawWallEdit();
+      const u22ring0 = undoRing.length;
+      for (let i = 0; i < 5; i++) {
+        key('ArrowRight', document.body);
+        await tick();
+      }
+      T(
+        'pb-undo-nudge-still-coalesces',
+        undoRing.length === u22ring0 + 1,
+        '连按 5 次方向键后环 +' + (undoRing.length - u22ring0) + '（期望 +1：连续微调只算一步）'
+      );
+      u22z();
+      await tick();
+      await pbReset();
+      DOC.runs = (DOC.runs || []).filter((r) => r.src !== 'user');
+      geoChanged();
+      undoRing.length = 0;
+      redoRing.length = 0;
+      lastGesture = null;
+      updateUndoUI();
+      T(
+        'pb-undo-round22-clean-exit',
+        DOC.fixtures.filter((f) => f.src === 'user').length === 0 &&
+          DOC.doors.filter((e) => e.src === 'user').length === 0 &&
+          (DOC.runs || []).filter((r) => r.src === 'user').length === 0 &&
+          undoRing.length === 0,
+        '洁具 ' +
+          DOC.fixtures.filter((f) => f.src === 'user').length +
+          ' 门 ' +
+          DOC.doors.filter((e) => e.src === 'user').length +
+          ' 台面 ' +
+          (DOC.runs || []).filter((r) => r.src === 'user').length +
+          ' 环 ' +
+          undoRing.length
+      );
+    }
+
     /* ===== 收尾：页面不得有未捕获异常 ===== */
     T('pb-no-page-errors', window.__ERRS.length === 0, window.__ERRS.slice(0, 3).join(' || '));
   } catch (e) {
