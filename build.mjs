@@ -27,6 +27,7 @@ import esbuild from 'esbuild';
 import { bundleSchema } from './scripts/build-schema.mjs';
 import { bundleGeo } from './scripts/build-geo.mjs';
 import { bundleStorage } from './scripts/build-storage.mjs';
+import { bundleCatalog } from './scripts/build-catalog.mjs';
 
 const root = dirname(fileURLToPath(import.meta.url));
 const TMP = join(root, 'build', 'tmp');
@@ -76,6 +77,20 @@ if (storageEmbedded !== freshStorage) {
   process.exit(1);
 }
 console.log('  storage: 嵌入块与 src/storage/ 最新编译一致');
+
+// --- S10：校验嵌入的 catalog 块 == src/catalog/ 最新编译 ---
+const freshCatalog = await bundleCatalog();
+const CAT_START = '<script id="miniden-catalog">\n';
+const CAT_END = '\n</script><!-- /miniden-catalog -->';
+const ca = html.indexOf(CAT_START);
+if (ca < 0) throw new Error('app.html 缺 <script id="miniden-catalog">（跑 npm run catalog:build）');
+const cb = html.indexOf(CAT_END, ca);
+if (cb < 0) throw new Error('app.html 的 miniden-catalog 块缺结束标记');
+if (html.slice(ca + CAT_START.length, cb) !== freshCatalog) {
+  console.error('✗ 嵌入的 catalog 块与 src/catalog/ 最新编译不一致。跑 `npm run catalog:build` 后重试。');
+  process.exit(1);
+}
+console.log('  catalog: 嵌入块与 src/catalog/ 最新编译一致');
 
 // --- S10：校验嵌入的 #miniden-plan 块 == data/plans/generic.json（入库版唯一事实来源）---
 // 两者静默分叉的话，CI 跑的户型和 data/ 里的不是同一个，查起来很贵。

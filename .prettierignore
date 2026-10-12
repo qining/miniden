@@ -15,6 +15,7 @@ lib/
 src/geo/dist-geo.js
 src/schema/dist-schema.js
 src/storage/dist-storage.js
+src/catalog/dist-catalog.js
 
 # 测试夹具与户型数据（数据文件，非代码；generic.json 还被 build.mjs 逐字节比对）
 tests/fixtures/

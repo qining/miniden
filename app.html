@@ -102,6 +102,9 @@
   /* E26 户型管理（工具 ⌄ 第二层：多户型不是日常主路径，但必须找得到） */
   #proTools #planSel{max-width:300px; background:var(--field-bg); color:var(--fg); border:1px solid var(--field-line); border-radius:6px; padding:4px 6px; font-size:12px;}
   #proTools #planName{width:150px; background:var(--field-bg); color:var(--fg); border:1px solid var(--field-line); border-radius:6px; padding:4px 6px; font-size:12px;}
+  #proTools #packSel{max-width:230px; background:var(--field-bg); color:var(--fg); border:1px solid var(--field-line); border-radius:6px; padding:4px 6px; font-size:12px;}
+  #proTools #btnPackRemove:disabled{opacity:.45;}
+  #proTools #btnPackRemove.arm{border-color:var(--warn); color:var(--warn);}
   #btnPlanDel:disabled{opacity:.38; cursor:default;}
   #btnPlanDel.arm{background:var(--danger); border-color:var(--danger); color:#fff;}
   /* E26 首次引导卡：一次性，告诉新用户三条路。#calib / #ui: / bench 一律不出现（像素基线不动）。 */
@@ -196,6 +199,8 @@
     display:flex; justify-content:space-between; gap:6px;}
   .catCard .sub b{color:var(--ok); font-weight:600; white-space:nowrap;}
   .catCard .sub b.builtin{color:var(--muted); font-weight:400;}
+  .catCard .sub i.packTag{font-style:normal; font-size:9px; color:var(--muted);
+    border:1px solid var(--line); border-radius:4px; padding:0 3px; margin-left:4px;}
   .catGroup{border-bottom:1px solid var(--line);}
   .catGroup>h3{
     font-size:12px; color:var(--muted); padding:8px 12px; cursor:pointer; user-select:none;
@@ -368,6 +373,12 @@
   <input type="file" id="filePdf" accept=".pdf,.PDF" style="display:none">
   <button class="btn" id="btnImportImg" title="导入底图（户型照片/扫描件/扫描PDF页）：两点标定比例 + 墙体特征提取，磁性吸附描墙（新建一份户型并切过去，当前户型保留）">导入底图</button>
   <input type="file" id="fileImg" accept="image/*" style="display:none">
+  <span class="pDiv"></span>
+  <span class="pLabel">目录包</span>
+  <button class="btn" id="btnPackImport" title="导入目录包（JSON：目录条目 + 可选建模代码）——把一批商品装进目录而不改 app.html；见 docs/design/catalog-extension.md">导入目录包</button>
+  <input type="file" id="filePack" accept=".json" style="display:none">
+  <select id="packSel" title="已加载的目录包"></select>
+  <button class="btn" id="btnPackRemove" title="移除选中的目录包（两步确认）：包里的条目从目录里消失，已摆好的家具会留下但不再显示/计价">移除包</button>
 </div>
 <div id="firstRun" style="display:none">
   <h3>MiniDen 迷你窝 · 三条路</h3>
@@ -505,6 +516,14 @@
     <button class="btn" id="docOk">导入并替换户型</button>
   </div>
 </div></div>
+<div id="packModal" style="display:none"><div id="packDlg">
+  <h3>导入目录包</h3>
+  <div id="packInfo"></div>
+  <div class="dxfBtns">
+    <button class="btn" id="packCancel">取消</button>
+    <button class="btn" id="packOk">加载这个包</button>
+  </div>
+</div></div>
 <div id="ptModal" style="display:none"><div id="ptDlg">
   <h3>光线追踪渲染</h3>
   <div class="ptRow"><label>画质</label>
@@ -607,6 +626,13 @@
 <script src="lib/three.min.js"></script>
 <script src="lib/OrbitControls.js"></script>
 <script src="lib/dxf-parser.iife.js"></script>
+<script id="miniden-catalog">
+/* VENDORED —— 由 scripts/build-catalog.mjs 从 src/catalog/ 编译生成，勿手改。
+   src/ 是唯一事实来源（单测 + tsc strict）；改 src/catalog/ 后跑 `npm run catalog:build`。
+   build.mjs 校验本块与最新编译输出逐字节一致。 */
+"use strict";(()=>{var K=Object.defineProperty;var I=(r,t)=>{for(var i in t)K(r,i,{get:t[i],enumerable:!0})};var P={};I(P,{BUILTIN_LIGHT_KINDS:()=>O,ENTRY_MAX_CM:()=>H,ENTRY_MAX_PRICE:()=>X,ENTRY_MIN_CM:()=>Y,ENTRY_SCHEMA:()=>L,KNOWN_KINDS:()=>$,KNOWN_WOODS:()=>T,duplicateIds:()=>w,validateEntry:()=>M});var L=1,Y=1,H=1200,X=1e5,$=["accentConsole","armchair","balanceBike","ballPit","bed","bedMetal","bookcase","cart","ceilingLight","chair","climber","clothesRail","coatRack","coffeeTable","crib","desk","deskSitStand","downlight","dresser","easel","goal","lamp","magTiles","nightstand","officeChair","pendant","pikler","playCouch","playKitchen","playMat","playset","recliner","rideOn","rocking","rug","sandTable","scooter","shelf","shoeCab","sideTable","sofa","sofaL","sportsZone","stool","swivelChair","tableDrawer","tableFold","tableRect","tableRound","trampoline","tubChair","tvBench","vanityLight","wagon","walker","wobble","xylophone"],T=["pine","beech","birch","oak","walnut"],O=["downlight","ceilingLight","vanityLight","pendant"],x=new Set(["id","cat","name","w","d","h","kind","model","price","priceCA","caNA","caVar","color","color2","seatH","wood","dimmable","url","note","cct","lum","glassShelf","spShelves","noCal","sourcePack","noPrice","seat","col2"]),S=/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/,j=/^[a-z][A-Za-z0-9]{0,31}$/,z=/^#[0-9a-fA-F]{3,8}$/,u=r=>typeof r=="string",_=r=>typeof r=="number"&&Number.isFinite(r);function M(r,t){let i=[];if(!r||typeof r!="object"||Array.isArray(r))return{issues:[{level:"error",where:t||"?",field:"",message:"\u6761\u76EE\u5FC5\u987B\u662F\u5BF9\u8C61"}],ok:!1};let e=Object.assign({},r),n=u(e.id)&&e.id?e.id:t||"?",o=(s,l,p)=>i.push({level:s,where:n,field:l,message:p});e.col2!==void 0&&(e.color2===void 0?(e.color2=e.col2,o("warning","col2","col2 \u662F\u65E7\u522B\u540D\uFF08\u5185\u7F6E\u76EE\u5F55\u66FE\u8BEF\u7528\u8FC7\uFF09\uFF0C\u5DF2\u6309 color2 \u5904\u7406 \u2014\u2014 \u8BF7\u6539\u5199 color2")):o("warning","col2","\u540C\u65F6\u7ED9\u4E86 col2 \u4E0E color2\uFF1A\u6309 color2 \u5904\u7406"),delete e.col2),!u(e.id)||!e.id?o("error","id","\u7F3A\u5C11 id"):S.test(e.id)||o("error","id",`id \u53EA\u80FD\u7528\u5B57\u6BCD/\u6570\u5B57/._-\uFF0C\u4E14\u4E0D\u8D85\u8FC7 64 \u5B57\u7B26\uFF08\u5F53\u524D "${e.id}"\uFF09`),!u(e.cat)||!e.cat.trim()?o("error","cat","\u7F3A\u5C11\u5206\u7C7B\uFF08cat\uFF09"):e.cat.length>60&&o("error","cat","\u5206\u7C7B\u540D\u8FC7\u957F\uFF08>60 \u5B57\u7B26\uFF09"),!u(e.name)||!e.name.trim()?o("error","name","\u7F3A\u5C11\u540D\u79F0\uFF08name\uFF09"):e.name.length>140&&o("error","name","\u540D\u79F0\u8FC7\u957F\uFF08>140 \u5B57\u7B26\uFF09");let c=["w","d","h"];for(let s of c){let l=e[s];_(l)?(l<1||l>1200)&&o("error",s,`${s}=${l}cm \u8D85\u51FA 1\u20131200cm \u7684\u5408\u7406\u8303\u56F4`):o("error",s,`${s} \u5FC5\u987B\u662F\u6570\u5B57\uFF08cm\uFF09`)}!u(e.kind)||!e.kind?o("error","kind","\u7F3A\u5C11 kind\uFF08\u51B3\u5B9A 2D \u56FE\u4F8B / \u6750\u8D28 / \u901A\u7528\u56DE\u9000\u5EFA\u6A21\uFF09"):j.test(e.kind)?$.includes(e.kind)||o("warning","kind",`\u964C\u751F\u7684 kind "${e.kind}"\uFF1A\u80FD\u653E\u80FD\u641C\uFF0C\u4F46\u5EFA\u6A21\u4F1A\u8D70\u901A\u7528\u56DE\u9000\u30012D \u56FE\u4F8B\u662F\u901A\u7528\u77E9\u5F62`):o("error","kind",`kind \u53EA\u80FD\u7528\u5B57\u6BCD\u5F00\u5934\u7684 [A-Za-z0-9]\uFF08\u5F53\u524D "${e.kind}"\uFF09`),e.model!==void 0&&(!u(e.model)||!S.test(e.model))&&o("error","model","model \u5FC5\u987B\u662F\u5408\u6CD5\u7684\u6A21\u578B\u540D");for(let s of["price","priceCA"]){let l=e[s];l!==void 0&&(!_(l)||l<0||l>1e5)&&o("error",s,`${s} \u5FC5\u987B\u662F 0\u2013100000 \u7684\u6570\u5B57`)}e.caNA!==void 0&&typeof e.caNA!="boolean"&&o("error","caNA","caNA \u5FC5\u987B\u662F\u5E03\u5C14"),e.caVar!==void 0&&typeof e.caVar!="boolean"&&!(u(e.caVar)&&e.caVar.length<=240)&&o("error","caVar","caVar \u5FC5\u987B\u662F\u5E03\u5C14\uFF0C\u6216 \u2264240 \u5B57\u7B26\u7684\u8BF4\u660E\u6587\u672C"),e.noPrice!==void 0&&e.noPrice!==!0&&o("error","noPrice","noPrice \u53EA\u7528\u6765\u663E\u5F0F\u58F0\u660E\u300C\u6CA1\u6709\u72EC\u7ACB\u552E\u4EF7\u300D\uFF0C\u5199 true \u6216\u4E0D\u5199"),e.price===void 0&&e.priceCA===void 0&&e.caNA!==!0&&e.noPrice!==!0&&!O.includes(String(e.kind))&&o("warning","price","\u6CA1\u6709\u4EFB\u4F55\u4EF7\u683C\uFF1A\u754C\u9762\u4F1A\u663E\u793A\u4E3A\u7A7A\uFF08\u56FA\u5B9A\u706F\u5177\u672C\u6765\u5C31\u8BE5\u6CA1\u6709\u4EF7\u683C\uFF0C\u5176\u5B83\u6761\u76EE\u901A\u5E38\u662F\u6F0F\u91C7\u4E86\uFF09");for(let s of["color","color2"]){let l=e[s];l!==void 0&&(!u(l)||!z.test(l))&&o("error",s,`${s} \u5FC5\u987B\u662F #hex\uFF08\u5982 "#D4C4A8"\uFF09`)}e.wood!==void 0&&!T.includes(String(e.wood))&&o("warning","wood",`\u964C\u751F\u7684 wood "${String(e.wood)}"\uFF1A\u4F1A\u9000\u56DE\u9ED8\u8BA4\u6728\u7EB9`),e.seatH!==void 0&&(!_(e.seatH)||e.seatH<1||e.seatH>120)&&o("error","seatH","seatH \u5FC5\u987B\u5728 1\u2013120cm"),e.dimmable!==void 0&&typeof e.dimmable!="boolean"&&o("error","dimmable","dimmable \u5FC5\u987B\u662F\u5E03\u5C14"),e.url!==void 0&&(!u(e.url)||e.url.length>300?o("error","url","url \u5FC5\u987B\u662F \u2264300 \u5B57\u7B26\u7684\u6587\u672C"):/^https?:\/\//.test(e.url)||o("error","url","url \u5FC5\u987B\u4EE5 http:// \u6216 https:// \u5F00\u5934")),e.note!==void 0&&(!u(e.note)||e.note.length>400)&&o("error","note","note \u5FC5\u987B\u662F \u2264400 \u5B57\u7B26\u7684\u6587\u672C");for(let s of Object.keys(e))!x.has(s)&&s!=="sourcePack"&&o("warning",s,`\u672A\u77E5\u5B57\u6BB5 "${s}"\uFF08\u4F1A\u88AB\u4FDD\u7559\u4F46\u4E0D\u6D88\u8D39\uFF09`);if(i.some(s=>s.level==="error"))return{issues:i,ok:!1};let m={id:String(e.id),cat:String(e.cat).trim(),name:String(e.name).trim(),w:Number(e.w),d:Number(e.d),h:Number(e.h),kind:String(e.kind)};for(let s of["model","price","priceCA","caNA","caVar","color","color2","seatH","wood","dimmable","url","note","cct","lum","glassShelf","spShelves","noCal","noPrice","seat"])e[s]!==void 0&&(m[s]=e[s]);for(let s of Object.keys(e))x.has(s)||(m[s]=e[s]);return{entry:m,issues:i,ok:!0}}function w(r){let t=new Set,i=new Set;for(let e of r)t.has(e.id)&&i.add(e.id),t.add(e.id);return Array.from(i)}var R={};I(R,{MAX_MODEL_SRC:()=>E,MAX_PACKS:()=>N,MAX_PACK_ENTRIES:()=>A,MAX_PACK_MODELS:()=>b,MAX_PACK_MODELS_BYTES:()=>v,PACKS_KEY:()=>V,PACK_SCHEMA:()=>h,compileModel:()=>W,mergeCatalog:()=>G,normalizeRegistry:()=>U,packKeyFor:()=>Z,packMetaFor:()=>ne,removePackMeta:()=>ee,serializeRegistry:()=>q,upsertPackMeta:()=>Q,validatePack:()=>B});var h=1,V="planner_packs_v1",Z=r=>"planner_pack:"+r,A=2e3,b=500,E=6e4,v=4e5,N=32,D=/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/,F=/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/,f=r=>typeof r=="string",y=r=>typeof r=="number"&&Number.isFinite(r);function B(r){let t=[],i=[],e=(a,g)=>t.push({level:"error",where:"?",field:a,message:g});if(!r||typeof r!="object"||Array.isArray(r))return e("","\u76EE\u5F55\u5305\u5FC5\u987B\u662F\u4E00\u4E2A JSON \u5BF9\u8C61"),{issues:t,entryIssues:i,ok:!1};let n=r,o=f(n.pack)&&n.pack?n.pack:"?",c=(a,g,d)=>t.push({level:a,where:o,field:g,message:d});!f(n.pack)||!n.pack?e("pack","\u7F3A\u5C11\u5305 id\uFF08pack\uFF09"):D.test(n.pack)?n.pack==="builtin"&&e("pack",'\u5305 id \u4E0D\u80FD\u53EB "builtin"\uFF08\u90A3\u662F\u5185\u7F6E\u76EE\u5F55\u7684\u547D\u540D\u7A7A\u95F4\uFF09'):e("pack",`\u5305 id \u53EA\u80FD\u7528\u5B57\u6BCD/\u6570\u5B57/._-\uFF0C\u4E14\u4E0D\u8D85\u8FC7 64 \u5B57\u7B26\uFF08\u5F53\u524D "${n.pack}"\uFF09`);let m=1;n.version!==void 0&&(!y(n.version)||!Number.isInteger(n.version)||n.version<1?e("version","version \u5FC5\u987B\u662F \u22651 \u7684\u6574\u6570"):m=n.version);let s=f(n.pack)?n.pack:"\u672A\u547D\u540D\u76EE\u5F55\u5305";n.name!==void 0&&(!f(n.name)||!n.name.trim()||n.name.length>80?e("name","name \u5FC5\u987B\u662F 1\u201380 \u5B57\u7B26\u7684\u6587\u672C"):s=n.name.trim()),Array.isArray(n.entries)?n.entries.length===0?e("entries","entries \u662F\u7A7A\u7684\uFF1A\u8FD9\u4E2A\u5305\u6CA1\u6709\u4EFB\u4F55\u6761\u76EE"):n.entries.length>A&&e("entries",`entries \u8D85\u8FC7 ${A} \u6761\u4E0A\u9650\uFF08\u5F53\u524D ${n.entries.length}\uFF09`):e("entries","\u7F3A\u5C11 entries\uFF08\u6761\u76EE\u6570\u7EC4\uFF09");let l={};if(n.models!==void 0)if(!n.models||typeof n.models!="object"||Array.isArray(n.models))e("models","models \u5FC5\u987B\u662F {\u540D\u5B57: \u51FD\u6570\u6E90\u7801\u5B57\u7B26\u4E32} \u5BF9\u8C61");else{let a=Object.keys(n.models);a.length>b&&e("models",`models \u8D85\u8FC7 ${b} \u4E2A\u4E0A\u9650\uFF08\u5F53\u524D ${a.length}\uFF09`);let g=0;for(let d of a){let k=n.models[d];if(!F.test(d)){c("error",`models.${d}`,"\u6A21\u578B\u540D\u53EA\u80FD\u7528\u5B57\u6BCD/\u6570\u5B57/._-\uFF0C\u4E14\u4E0D\u8D85\u8FC7 64 \u5B57\u7B26");continue}if(!f(k)){c("error",`models.${d}`,'\u6A21\u578B\u5FC5\u987B\u662F\u51FD\u6570\u6E90\u7801\u5B57\u7B26\u4E32\uFF08\u5982 "(C)=>{ \u2026 }"\uFF09');continue}if(k.length>E){c("error",`models.${d}`,`\u5355\u4E2A\u6A21\u578B\u6E90\u7801\u8D85\u8FC7 ${E} \u5B57\u7B26`);continue}g+=k.length,l[d]=k}g>v&&e("models",`\u6574\u5305\u6A21\u578B\u6E90\u7801\u8D85\u8FC7 ${v} \u5B57\u7B26\u4E0A\u9650\uFF08\u5F53\u524D ${g}\uFF09`)}for(let a of Object.keys(n))a!=="pack"&&a!=="name"&&a!=="version"&&a!=="entries"&&a!=="models"&&a!=="homepage"&&a!=="note"&&c("warning",a,`\u672A\u77E5\u5B57\u6BB5 "${a}"\uFF08\u4F1A\u88AB\u5FFD\u7565\uFF09`);n.homepage!==void 0&&(!f(n.homepage)||!/^https?:\/\//.test(n.homepage)||n.homepage.length>300)&&c("error","homepage","homepage \u5FC5\u987B\u662F http(s) \u94FE\u63A5\uFF08\u2264300 \u5B57\u7B26\uFF09"),n.note!==void 0&&(!f(n.note)||n.note.length>600)&&c("error","note","note \u5FC5\u987B\u662F \u2264600 \u5B57\u7B26\u7684\u6587\u672C");let p=[];if(Array.isArray(n.entries)){for(let d of n.entries){let k=M(d);i.push(...k.issues),k.ok&&k.entry&&p.push({...k.entry,sourcePack:o})}for(let d of w(p))t.push({level:"error",where:o,field:"entries",message:`\u5305\u5185 id \u91CD\u590D\uFF1A"${d}"\uFF08\u540E\u4E00\u6761\u88AB\u4E22\u5F03\uFF09`});let a=new Set,g=p.filter(d=>a.has(d.id)?!1:(a.add(d.id),!0));p.length=0,p.push(...g)}if(t.some(a=>a.level==="error"))return{issues:t,entryIssues:i,ok:!1};if(p.length===0)return{issues:t,entryIssues:i,ok:!1};let C={pack:String(n.pack),name:s,version:m,entries:p,models:l};return f(n.homepage)&&(C.homepage=n.homepage),f(n.note)&&(C.note=n.note),{pack:C,issues:t,entryIssues:i,ok:!0}}function W(r){try{let t=new Function('"use strict";return ('+r+");")();return typeof t!="function"?{error:"\u6E90\u7801\u6C42\u503C\u7ED3\u679C\u4E0D\u662F\u51FD\u6570"}:{fn:t}}catch(t){return{error:(t instanceof Error?t.message:"")||"\u7F16\u8BD1\u5931\u8D25"}}}function G(r,t){let i=[],e=[],n=new Set;for(let o of r)n.has(o.id)||(n.add(o.id),i.push(o));for(let o of t)for(let c of o.entries){if(n.has(c.id)){e.push({id:c.id,pack:o.pack,reason:"\u4E0E\u5DF2\u52A0\u8F7D\u7684\u6761\u76EE\u540C id\uFF08\u5185\u7F6E\u76EE\u5F55 / \u5148\u52A0\u8F7D\u7684\u5305\u8D62\uFF09"});continue}n.add(c.id),i.push({...c,sourcePack:o.pack})}return{entries:i,conflicts:e}}function J(r){if(!r||typeof r!="object"||Array.isArray(r))return null;let t=r;if(!f(t.pack)||!D.test(t.pack))return null;let i=f(t.name)&&t.name&&t.name.length<=80?t.name:t.pack,e=(n,o)=>y(n)&&n>=0?Math.min(Math.floor(n),o):0;return{pack:t.pack,name:i,version:y(t.version)&&t.version>=1?Math.floor(t.version):1,entries:e(t.entries,A),models:e(t.models,b),addedAt:y(t.addedAt)&&t.addedAt>=0?Math.floor(t.addedAt):0}}function U(r){let t=[];if(r&&typeof r=="object"&&!Array.isArray(r)){let i=r;if(Array.isArray(i.packs)){let e=new Map;for(let n of i.packs){let o=J(n);o&&e.set(o.pack,o)}t.push(...Array.from(e.values()))}}return{v:h,packs:t.slice(0,N)}}var q=r=>JSON.stringify({v:h,packs:r.packs});function Q(r,t,i){let e={...t,addedAt:t.addedAt||i},o=r.packs.some(c=>c.pack===e.pack)?r.packs.map(c=>c.pack===e.pack?e:c):[...r.packs,e];return{v:h,packs:o.slice(0,N)}}function ee(r,t){return{v:h,packs:r.packs.filter(i=>i.pack!==t)}}var ne=r=>({pack:r.pack,name:r.name,version:r.version,entries:r.entries.length,models:Object.keys(r.models).length,addedAt:0});var re=globalThis;re.MINIDEN_CATALOG={...P,...R};})();
+
+</script><!-- /miniden-catalog -->
 <script id="miniden-storage">
 /* VENDORED —— 由 scripts/build-storage.mjs 从 src/storage/ 编译生成，勿手改。
    src/ 是唯一事实来源（单测 + tsc strict）；改 src/storage/ 后跑 `npm run storage:build`。
@@ -771,9 +797,9 @@ const CATALOG = [
   {id:'pg_magnolia_c', cat:'儿童游乐架', name:'Avenlur Magnolia 7合1 游乐架 L · 彩色横杆', w:145.5,d:121.6,h:142.8, priceCA:808, color:'#dcc59d', color2:'#5aa9b8', kind:'climber', model:'magnolia', wood:'pine', url:'https://avenlur.ca/products/magnolia-real-wood-playset', note:'彩色横杆版'},
   {id:'pg_magnolia_m', cat:'儿童游乐架', name:'Avenlur Magnolia 7合1 游乐架 M', w:131.1,d:109.2,h:119.9, priceCA:728, color:'#dcc59d', kind:'climber', model:'magnolia', wood:'pine', url:'https://avenlur.ca/products/magnolia-real-wood-playset', note:'中号'},
   {id:'pg_sweetgum', cat:'儿童游乐架', name:'Avenlur Sweetgum 8合1 感统攀爬架', w:180,d:177,h:160, priceCA:1618, color:'#dfc7a0', kind:'climber', model:'sweetgum', wood:'pine', url:'https://avenlur.ca/products/avenlur-sweetgum-indoor-sensory-climber-montessori-play-gym-with-slide-swing-rock-wall-and-rope-ladder-small-copy', note:'FSC木·鸟巢秋千/绳墙/彩环/圆木斜坡/绳梯·平台高63cm'},
-  {id:'pg_qtower', cat:'儿童游乐架', name:'QUADRO A0140 大塔 + 超长滑梯', w:188,d:125,h:165,  color:'#d8281f', kind:'climber', model:'qtower', url:'https://quadroworld.com/en/designs/a0140/big-tower-with-mega-slide', note:'管件系统·需 1×Evolution 套件·2岁起·组装约4小时'},
-  {id:'pg_qcraft', cat:'儿童桌 / 活动', name:'QUADRO A0294 儿童手工大桌', w:165,d:125,h:98,  color:'#00963f', kind:'climber', model:'qcraft', url:'https://quadroworld.com/en/designs/a0294/large-craft-table-for-kids-with-big-play-area-for-modeling-and-painting', note:'管件系统·需 1×Evolution 套件·1岁起·组装约3小时'},
-  {id:'pg_qriser', cat:'儿童桌 / 活动', name:'QUADRO A0164 厨房学习塔', w:65,d:45,h:85,  color:'#0058a6', kind:'climber', model:'qriser', url:'https://quadroworld.com/en/designs/a0164/countertop-riser-for-kitchen', note:'管件系统·需 1×Beginner 套件·1岁半起·组装约1小时'},
+  {id:'pg_qtower', cat:'儿童游乐架', name:'QUADRO A0140 大塔 + 超长滑梯', w:188,d:125,h:165,  noPrice:true, color:'#d8281f', kind:'climber', model:'qtower', url:'https://quadroworld.com/en/designs/a0140/big-tower-with-mega-slide', note:'管件系统·需 1×Evolution 套件·2岁起·组装约4小时'},
+  {id:'pg_qcraft', cat:'儿童桌 / 活动', name:'QUADRO A0294 儿童手工大桌', w:165,d:125,h:98,  noPrice:true, color:'#00963f', kind:'climber', model:'qcraft', url:'https://quadroworld.com/en/designs/a0294/large-craft-table-for-kids-with-big-play-area-for-modeling-and-painting', note:'管件系统·需 1×Evolution 套件·1岁起·组装约3小时'},
+  {id:'pg_qriser', cat:'儿童桌 / 活动', name:'QUADRO A0164 厨房学习塔', w:65,d:45,h:85,  noPrice:true, color:'#0058a6', kind:'climber', model:'qriser', url:'https://quadroworld.com/en/designs/a0164/countertop-riser-for-kitchen', note:'管件系统·需 1×Beginner 套件·1岁半起·组装约1小时'},
  {id:'ps2026-tbl-0', cat:'餐桌', name:'PS 2026 折叠桌 · 松木/透明漆', w:156,d:75,h:73, price:299, priceCA:299, color:'#DDB584', color2:'#C4262E', model:'ps2026-tbl', wood:'pine', kind:'tableFold', url:'https://www.ikea.com/ca/en/p/ikea-ps-2026-table-folding-pine-clear-lacquered-00617861/', note:'设计师 Ola Wihlborg，实木交叉腿（cross-leg）折叠餐桌，坐 4 人'},
  {id:'ps2026-tbl-drw-0', cat:'餐桌', name:'PS 2026 带抽屉桌 · 松木 清漆', w:70,d:70,h:75, price:249, priceCA:249, color:'#D6AE7B', color2:'#1C63B8', model:'ps2026-tbl-drw', wood:'pine', kind:'tableDrawer', url:'https://www.ikea.com/ca/en/p/ikea-ps-2026-table-with-drawer-pine-clear-lacquered-40617878/', note:'IKEA PS 2026 系列双人方桌（设计师 Ola Wihlborg，货号 406.178.78）'},
  {id:'vihals-chair-0', cat:'餐椅 / 吧凳', name:'VIHALS 餐椅 · 绿色 / Tibbleby 灰绿色', w:49,d:55,h:81, price:55, priceCA:55, color:'#929683', color2:'#78846C', seatH:48, model:'vihals-chair', kind:'chair', url:'https://www.ikea.com/ca/en/p/vihals-chair-green-tibbleby-gray-green-90595124/', note:'【颜色字段约定】hex = 钢管框架/椅腿的粉末喷涂色（IKEA 型号名里的第一个颜色），hex2 = 座面与靠背软包织'},
@@ -1017,18 +1043,18 @@ const CATALOG = [
  {id:'nuby-ballpit-0', cat:'儿童玩具', name:"Nuby Kids' Ball Pit 球池(200球) · Aqua", w:90, d:90, h:27, price:99.99, caNA:true, color:'#a9b4ad', color2:'#3ec9c0', kind:'ballPit', model:'nubybp', url:'https://us.nuby.com/products/kids-ball-pit-with-200-balls', note:'软布圆桶：直径90cm(35.4")，软壁可倚靠、可机洗，含200球(白/水绿/浅灰)；高27cm（官方未公布高度，由官方商品图几何测量）；10个月+；美$99.99（us.nuby.com，原价$134.99），加拿大无售（caNA）'},
  {id:'hidesc-0', cat:'儿童游乐架', name:'Little Tikes Hide & Seek 攀爬滑梯秋千组', w:135.9, d:132.1, h:104.1, price:169.99, priceCA:169.96, caVar:true, color:'#e6d5ac', color2:'#b3121c', kind:'playset', model:'hidesc', url:'https://www.littletikes.com/products/hide-seek-climber-swing', note:'2-5 岁：拱门攀爬平台+红色滑梯(28")+匍匐钻洞(藏猫猫)+树形秋千架(蓝吊椅+安全带式)；53.5"L×52"W×41"H=135.9×132.1×104.1cm（含秋千）；美$169.99（含秋千版，littletikes.com；基础版$147.99），加$169.96（Well.ca，为基础版故 caVar）'},
  {id:'mckinney-0', cat:'儿童桌 / 活动', name:'KidKraft McKinney 幼儿玩具厨房 · 薄荷绿', w:80, d:34.3, h:83.8, price:70.99, caNA:true, color:'#a9d8c0', color2:'#e8a866', kind:'playKitchen', model:'mckinney', url:'https://www.target.com/p/kidkraft-mckinney-toddler-mid-century-modern-play-kitchen/-/A-53511595', note:'2-5岁中世纪风玩具厨房（Target 限定薄荷绿款）：微波炉+四眼灶+烤箱+冰箱门+2抽+水槽龙头+上排翻门；3 种玩法（煮/洗/收纳）；31.5"L×13.5"W×33"H=80×34.3×83.8cm，台面高18"；美$70.99（Target），加拿大无售（caNA）'},
- {id:'giantex7-blue', cat:'运动器材', name:'Giantex 7ft 圆形蹦床带安全网 · Blue', w:221.6,d:221.6,h:185.4, price:199.99, priceCA:259.99, color:'#3d6cb4', col2:'#46b13c', kind:'trampoline', model:'giantex7', note:'直径 7.3ft，高 6.1ft（含网架），3 组 A 字架 + PE 护垫 + 绿色底座，3 岁+', url:'https://www.giantex.com/products/7-ft-kids-trampoline-with-safety-enclosure-net'},
- {id:'giantex7-green', cat:'运动器材', name:'Giantex 7ft 圆形蹦床带安全网 · Green', w:221.6,d:221.6,h:185.4, price:199.99, priceCA:259.99, color:'#3f9e3a', col2:'#46b13c', kind:'trampoline', model:'giantex7', note:'直径 7.3ft，高 6.1ft（含网架），3 组 A 字架 + PE 护垫 + 绿色底座，3 岁+', url:'https://www.giantex.com/products/7-ft-kids-trampoline-with-safety-enclosure-net'},
- {id:'giantex7-yellow', cat:'运动器材', name:'Giantex 7ft 圆形蹦床带安全网 · Yellow', w:221.6,d:221.6,h:185.4, price:189.99, priceCA:259.99, color:'#e8b524', col2:'#46b13c', kind:'trampoline', model:'giantex7', note:'直径 7.3ft，高 6.1ft（含网架），3 组 A 字架 + PE 护垫 + 绿色底座，3 岁+', url:'https://www.giantex.com/products/7-ft-kids-trampoline-with-safety-enclosure-net'},
- {id:'giantex7-rainbow', cat:'运动器材', name:'Giantex 7ft 圆形蹦床带安全网 · Red/Yellow/Blue', w:221.6,d:221.6,h:185.4, price:189.99, priceCA:259.99, color:'#d1442e', col2:'#46b13c', kind:'trampoline', model:'giantex7', note:'直径 7.3ft，高 6.1ft（含网架），三色款，3 岁+', url:'https://www.giantex.com/products/7-ft-kids-trampoline-with-safety-enclosure-net'},
- {id:'giantex7-purple', cat:'运动器材', name:'Giantex 7ft 圆形蹦床带安全网 · Purple/Pink', w:221.6,d:221.6,h:185.4, price:199.99, priceCA:259.99, color:'#8e4f9e', col2:'#46b13c', kind:'trampoline', model:'giantex7', note:'直径 7.3ft，高 6.1ft（含网架），紫粉款，3 岁+', url:'https://www.giantex.com/products/7-ft-kids-trampoline-with-safety-enclosure-net'},
+ {id:'giantex7-blue', cat:'运动器材', name:'Giantex 7ft 圆形蹦床带安全网 · Blue', w:221.6,d:221.6,h:185.4, price:199.99, priceCA:259.99, color:'#3d6cb4', color2:'#46b13c', kind:'trampoline', model:'giantex7', note:'直径 7.3ft，高 6.1ft（含网架），3 组 A 字架 + PE 护垫 + 绿色底座，3 岁+', url:'https://www.giantex.com/products/7-ft-kids-trampoline-with-safety-enclosure-net'},
+ {id:'giantex7-green', cat:'运动器材', name:'Giantex 7ft 圆形蹦床带安全网 · Green', w:221.6,d:221.6,h:185.4, price:199.99, priceCA:259.99, color:'#3f9e3a', color2:'#46b13c', kind:'trampoline', model:'giantex7', note:'直径 7.3ft，高 6.1ft（含网架），3 组 A 字架 + PE 护垫 + 绿色底座，3 岁+', url:'https://www.giantex.com/products/7-ft-kids-trampoline-with-safety-enclosure-net'},
+ {id:'giantex7-yellow', cat:'运动器材', name:'Giantex 7ft 圆形蹦床带安全网 · Yellow', w:221.6,d:221.6,h:185.4, price:189.99, priceCA:259.99, color:'#e8b524', color2:'#46b13c', kind:'trampoline', model:'giantex7', note:'直径 7.3ft，高 6.1ft（含网架），3 组 A 字架 + PE 护垫 + 绿色底座，3 岁+', url:'https://www.giantex.com/products/7-ft-kids-trampoline-with-safety-enclosure-net'},
+ {id:'giantex7-rainbow', cat:'运动器材', name:'Giantex 7ft 圆形蹦床带安全网 · Red/Yellow/Blue', w:221.6,d:221.6,h:185.4, price:189.99, priceCA:259.99, color:'#d1442e', color2:'#46b13c', kind:'trampoline', model:'giantex7', note:'直径 7.3ft，高 6.1ft（含网架），三色款，3 岁+', url:'https://www.giantex.com/products/7-ft-kids-trampoline-with-safety-enclosure-net'},
+ {id:'giantex7-purple', cat:'运动器材', name:'Giantex 7ft 圆形蹦床带安全网 · Purple/Pink', w:221.6,d:221.6,h:185.4, price:199.99, priceCA:259.99, color:'#8e4f9e', color2:'#46b13c', kind:'trampoline', model:'giantex7', note:'直径 7.3ft，高 6.1ft（含网架），紫粉款，3 岁+', url:'https://www.giantex.com/products/7-ft-kids-trampoline-with-safety-enclosure-net'},
  {id:'tramp60-blue', cat:'运动器材', name:'FFFROG 60" 室内儿童蹦床 · 蓝色', w:140,d:140,h:170, priceCA:159.99, color:'#5aa8d4', color2:'#a0d0f0', kind:'trampoline', model:'tramp60', url:'https://www.amazon.ca/dp/B0FB8N8F3X', note:'官方 140×140×170cm，1-8 岁承重 440lbs · 安全网+拉链门+三档高低杠（13.7/16.5/19.2"）· 含沙包/吊环/吊床/篮球筐/6 个沙滩球 · 加元实际标价，美元为折算 ≈'},
  {id:'tramp60-green', cat:'运动器材', name:'FFFROG 60" 室内儿童蹦床 · 绿黄', w:140,d:140,h:170, priceCA:159.99, color:'#b8e8b8', color2:'#d8d058', kind:'trampoline', model:'tramp60', url:'https://www.amazon.ca/dp/B0FB8N8F3X', note:'官方 140×140×170cm，1-8 岁承重 440lbs · 绿黄配色，含全套附件'},
  {id:'tramp60-pink', cat:'运动器材', name:'FFFROG 60" 室内儿童蹦床 · 粉紫', w:140,d:140,h:170, priceCA:159.99, color:'#e090b0', color2:'#c898d0', kind:'trampoline', model:'tramp60', url:'https://www.amazon.ca/dp/B0FB8N8F3X', note:'官方 140×140×170cm，1-8 岁承重 440lbs · 粉紫配色，含全套附件'},
- {id:'mmjeep12-black', cat:'骑乘玩具', name:'Miniature Motors 12V 4x4 Jeep 儿童电动车 · Black', w:99.1,d:62,h:62, price:116.99, caNA:true, color:'#17181a', col2:'#202226', kind:'rideOn', model:'mmjeep12', note:'双 35W 电机，2-3.5MPH，遥控 + 蓝牙音乐，LED 大灯，2 座，2 岁+', url:'https://www.amazon.com/dp/B0CY5HRL3K'},
- {id:'mmjeep12-blue', cat:'骑乘玩具', name:'Miniature Motors 12V 4x4 Jeep 儿童电动车 · Blue', w:99.1,d:62,h:62, price:116.99, caNA:true, color:'#2e5fa3', col2:'#202226', kind:'rideOn', model:'mmjeep12', note:'双 35W 电机，2-3.5MPH，遥控 + 蓝牙音乐，LED 大灯，2 座，2 岁+', url:'https://www.amazon.com/dp/B0CY5HRL3K'},
- {id:'mmjeep12-red', cat:'骑乘玩具', name:'Miniature Motors 12V 4x4 Jeep 儿童电动车 · Red', w:99.1,d:62,h:62, price:129.99, caNA:true, color:'#c22a3a', col2:'#202226', kind:'rideOn', model:'mmjeep12', note:'双 35W 电机，2-3.5MPH，遥控 + 蓝牙音乐，LED 大灯，2 座，2 岁+', url:'https://www.amazon.com/dp/B0CY5HRL3K'},
- {id:'mmjeep12-pink', cat:'骑乘玩具', name:'Miniature Motors 12V 4x4 Jeep 儿童电动车 · Pink', w:99.1,d:62,h:62, price:107.99, caNA:true, color:'#e0559a', col2:'#202226', kind:'rideOn', model:'mmjeep12', note:'双 35W 电机，2-3.5MPH，遥控 + 蓝牙音乐，LED 大灯，2 座，2 岁+', url:'https://www.amazon.com/dp/B0CY5HRL3K'},
+ {id:'mmjeep12-black', cat:'骑乘玩具', name:'Miniature Motors 12V 4x4 Jeep 儿童电动车 · Black', w:99.1,d:62,h:62, price:116.99, caNA:true, color:'#17181a', color2:'#202226', kind:'rideOn', model:'mmjeep12', note:'双 35W 电机，2-3.5MPH，遥控 + 蓝牙音乐，LED 大灯，2 座，2 岁+', url:'https://www.amazon.com/dp/B0CY5HRL3K'},
+ {id:'mmjeep12-blue', cat:'骑乘玩具', name:'Miniature Motors 12V 4x4 Jeep 儿童电动车 · Blue', w:99.1,d:62,h:62, price:116.99, caNA:true, color:'#2e5fa3', color2:'#202226', kind:'rideOn', model:'mmjeep12', note:'双 35W 电机，2-3.5MPH，遥控 + 蓝牙音乐，LED 大灯，2 座，2 岁+', url:'https://www.amazon.com/dp/B0CY5HRL3K'},
+ {id:'mmjeep12-red', cat:'骑乘玩具', name:'Miniature Motors 12V 4x4 Jeep 儿童电动车 · Red', w:99.1,d:62,h:62, price:129.99, caNA:true, color:'#c22a3a', color2:'#202226', kind:'rideOn', model:'mmjeep12', note:'双 35W 电机，2-3.5MPH，遥控 + 蓝牙音乐，LED 大灯，2 座，2 岁+', url:'https://www.amazon.com/dp/B0CY5HRL3K'},
+ {id:'mmjeep12-pink', cat:'骑乘玩具', name:'Miniature Motors 12V 4x4 Jeep 儿童电动车 · Pink', w:99.1,d:62,h:62, price:107.99, caNA:true, color:'#e0559a', color2:'#202226', kind:'rideOn', model:'mmjeep12', note:'双 35W 电机，2-3.5MPH，遥控 + 蓝牙音乐，LED 大灯，2 座，2 岁+', url:'https://www.amazon.com/dp/B0CY5HRL3K'},
  {id:'sc172-0', cat:'沙发 / 单椅', name:'Simply Comfort SC172 电动功能沙发 · 深灰', w:96.5,d:87.6,h:104.8, priceCA:1399.99, color:'#333538', color2:'#8a8272', seatH:47, model:'sc172', kind:'armchair', url:'https://www.costco.ca/p/-/simply-comfort-power-reclining-chair-dark-grey/4000359775?langId=-24', note:'100%头层牛皮·电动躺椅（电动头枕/腰托/脚踏）·高密度海绵·加拿大制造（Costco.ca 在售，美国站未查到同型号→只录加元价）·官方 upright 尺寸 L87.63×W96.52×H104.78cm，座高47/座深50.8/扶手高59.7cm·香槟金控制面板在左扶手外'},
  {id:'aldryn-0', cat:'沙发 / 单椅', name:'Gilman Creek Aldryn 电动躺椅（电动头枕）· Dark Brown', w:82.8,d:95.8,h:100.8, price:599.99, caNA:true, color:'#282524', color2:'#4a4744', seatH:48.8, model:'aldryn', kind:'recliner', url:'https://www.costco.com/p/-/gilman-creek-aldryn-leather-gliding-power-recliner-with-power-headrest/4201001396?langId=-1', note:'头层牛皮（侧面/背面为同色 PVC 贴面）·Leggett & Platt 电动躺椅机构 + 电动头枕，脚踏收合（建模按 upright 姿态，展开后深度增加）·左扶手外侧控制面板（2 按钮 + USB-A 15W / USB-C 20W）·官方 upright W82.8×D95.8×H100.8cm（32.6"×37.7"×39.7"），座高48.8/座深53.9/座宽57.9/扶手高61.0cm·加拿大不售（Costco.ca 无此型号）·美国 $599.99（含 9/21–10/4 的 $100 促销）'},
  {id:'murphy-0', cat:'沙发 / 单椅', name:'Henredon Murphy 马蹄形旋转椅（bouclé）· Cream', w:79.25,d:74.93,h:76.46, price:299.99, priceCA:449.99, caVar:'加拿大在售的是同系列不同配置（Dark Wood Pedestal，Yellow/Taupe，item 4000438049）', color:'#d3cfc6', color2:'#8b6a45', seatH:48.0, model:'murphy', kind:'tubChair', url:'https://www.costco.com/p/-/henredon-murphy-swivel-boucle-chair-cream/4000222234?langId=-1', note:'100% polyester bouclé（绒圈织）·plywood 框架 + solid wood·全 360° 旋转，实心木圆盘底座 Ø50.2×高11cm（官方未写，由正交背视图量出）·马蹄形外壳（224° 弧，前口敞开），厚 11cm，顶边 waterfall：背 76.5 → 扶手端 64.0cm；外壳向下收窄（g6 正交背视图拟合 79.0cm@72.7 → 66.3cm@16.7）·座宽 53.9 / 座高 48.0cm·完全组装·承重 275lb·美国 $299.99（原 $399.99，9/21–10/18 减 $100）'},
@@ -1036,6 +1062,28 @@ const CATALOG = [
 ];
 /* 目录侧栏分类的显示顺序（未列出的分类，如用户自定义，按出现顺序附后） */
 const CAT_ORDER = ['床 / 婴儿床','床头柜','沙发 / 单椅','儿童沙发','餐椅 / 吧凳','办公椅','餐桌','茶几 / 边几','书桌','收纳 / 搁架','手推车','入户 / 衣物','落地灯','固定灯具','地毯 / 爬行垫','儿童游乐架','运动器材','骑乘玩具','儿童桌 / 活动','儿童玩具'];
+
+/* =====================================================================
+   S10（R8-5K）：目录扩展包 —— 条目与建模代码的外部来源
+   内置 CATALOG 是 app 数据（跟着文件走）；扩展包是用户自己选的本地 JSON 文件。
+   解析链（R8-5K-2）：
+     条目 = 内置 CATALOG → 包条目 → 自定义件
+     建模 = MODELS[key] → 包 models[key] → kind 通用回退
+   内置永远赢：一个包不能顶掉内置商品，也不能把内置 model 换成别的东西。
+   校准 / 只显底图 / #ui: 黄金态 / bench / testgeo 一律不加载包：
+   目录卡片进那些页面的像素基线（§1.1 硬红线）。
+   ===================================================================== */
+const CATPACK = window.MINIDEN_CATALOG;
+const PACKS_KEY = CATPACK.PACKS_KEY;   // 注册表键（必须在这里声明：STORE.warm 在 ~1141 行就要用它）
+let packRegistry = { v: 1, packs: [] };   // 存盘的元数据
+const packDocs = new Map();              // packId → 解析后的包（条目 + 模型源码）
+const packModelFns = new Map();          // modelKey → 已编译的模型函数
+let packEntries = [];                    // 合并后的包条目（带 sourcePack）
+let packConflicts = [];                  // 最近一次合并跳过的同 id 条目
+/* 目录的唯一取用口径（内置 + 包 + 自定义）。包没加载时与旧写法完全等价。 */
+function catalogAll(){ return packEntries.length ? [...CATALOG, ...packEntries, ...state.customCat] : [...CATALOG, ...state.customCat]; }
+/* 建模解析链：内置 MODELS 优先，其次包里的模型，都没有就走 kind 通用回退 */
+function modelFor(key){ return MODELS[key] || packModelFns.get(key) || null; }
 
 /* ---------- 预设布局 ---------- */
 const mid = (a,b)=>[(a[0]+b[0])/2,(a[1]+b[1])/2];
@@ -1058,11 +1106,17 @@ let state = {
 let uidSeq = 1;
 const $ = s => document.querySelector(s);
 function itemSpec(it){
-  if(it.ref){ const c = CATALOG.find(c=>c.id===it.ref) || state.customCat.find(c=>c.id===it.ref);
+  if(it.ref){ const c = catalogAll().find(c=>c.id===it.ref);
     return c; }
   return it.custom;
 }
 function itemName(it){ const s=itemSpec(it); return s? s.name : '?'; }
+/* 目录条目不见了（移除目录包 / 旧版本导出的布局引用了已下架的条目）：
+   这件家具仍在布局里 —— 必须还能看见、能选、能删，同时界面如实说「目录里没有这件」。
+   itemSpec() 本身仍然返回 null（价格统计、包内件数都靠 null 把它排除），
+   只有「显示」这一层用 ghost 尺寸。 */
+const GHOST_CM = 40;
+function ghostDims(){ return { w:GHOST_CM, d:GHOST_CM, h:GHOST_CM }; }
 /* 色温(K) → 线性 RGB（Tanner Helland 近似），用于灯光与灯具发光面 */
 function cctToRGB(k){
   k=Math.max(1800,Math.min(7500,k))/100;
@@ -1135,7 +1189,7 @@ function planIdFromUrl(){
 let PLAN_ID = planIdFromUrl() || (PLANS.hasPlan(PLAN_REG, PLAN_REG.active) ? PLAN_REG.active : BUILTIN_PLAN_ID);
 let DOC_KEY = PLANS.docKeyFor(PLAN_ID), DOC_KEY_OLD = 'planner_doc_v1';
 let ITEMS_KEY = PLANS.itemsKeyFor(PLAN_ID), ITEMS_KEY_OLD = 'planner_v1';
-STORE.warm([DOC_KEY, ITEMS_KEY, PANEL_KEY, PRO_TOOLS_KEY, PLANS_KEY]);   // 异步预热 + 旧键迁移（不 await：读路径本来就是同步的）
+STORE.warm([DOC_KEY, ITEMS_KEY, PANEL_KEY, PRO_TOOLS_KEY, PLANS_KEY, PACKS_KEY]);   // 异步预热 + 旧键迁移（不 await：读路径本来就是同步的）
 /* ---------- E19 轮⑲（bug 猎 #28）：「还没读到」不是「没有」 ----------
    主存（IndexedDB）里可能存着这份户型的存档，而页面的同步读看不见它
    （LS 被清过 / 值超过镜像上限 / LS 配额满）。处于这个状态时，回退出来的文档与布局
@@ -1179,6 +1233,97 @@ function watchPlanArchive(keys){
   });
 }
 watchPlanArchive([DOC_KEY, ITEMS_KEY]);
+
+/* ---------- S10：目录包的读盘 / 应用 / 存盘 ----------
+   注册表 planner_packs_v1 = 元数据（永远镜像进 LS，KB 级）；
+   包内容另存 planner_pack:<packId>（可能几百 KB，超镜像上限就只存主存）。
+   为什么拆两个键：注册表必须在 warm 完成前就能同步读到（否则刷新后「已加载的包」会空），
+   而包内容可能很大——两者挤在一个键里就会一起变成「只存在主存」。 */
+function readPackRegistry(){
+  let raw=null; try{ raw = JSON.parse(STORE.get(PACKS_KEY) || 'null'); }catch(e){ raw=null; }
+  return CATPACK.normalizeRegistry(raw);
+}
+function savePackRegistry(){ try{ STORE.set(PACKS_KEY, CATPACK.serializeRegistry(packRegistry)); }catch(e){} }
+/* 合并口径：内置赢（mergeCatalog），这里只取它追加的那一段 */
+function rebuildPackCatalog(){
+  const r = CATPACK.mergeCatalog(CATALOG, [...packDocs.values()]);
+  packEntries = r.entries.slice(Math.min(CATALOG.length, r.entries.length));
+  packConflicts = r.conflicts;
+}
+function compilePackModels(p){
+  const errs = [];
+  for(const [key, src] of Object.entries(p.models)){
+    const c = CATPACK.compileModel(src);
+    if(c.error) errs.push({ model:key, message:c.error });
+    else packModelFns.set(key, c.fn);        // 内置同名模在 modelFor() 里赢（见 packShadowedModels）
+  }
+  return errs;
+}
+/* 被内置顶掉的模型名（内置赢）。为什么不在加载时算：MODELS 在文件更靠后才声明，
+   启动期的包加载（loadPacksFromStore 在 ~1290 行）会撞 TDZ ReferenceError（§5.1 的坑）。
+   谁需要谁现算（导入确认对话框 / bench）。 */
+function packShadowedModels(){
+  const out = [];
+  for(const p of packDocs.values()) for(const key of Object.keys(p.models))
+    if(MODELS[key]) out.push({ model:key, pack:p.pack, reason:'内置已有同名模型（内置赢）' });
+  return out;
+}
+function dropPackModels(p){ for(const key of Object.keys(p.models)) packModelFns.delete(key); }
+function addPackDoc(p, opts){
+  const persist = !opts || opts.persist !== false;
+  if(packDocs.has(p.pack)) dropPackModels(packDocs.get(p.pack));   // 同包重装（新版本）：先清旧模型
+  packDocs.set(p.pack, p);
+  const errs = compilePackModels(p);
+  rebuildPackCatalog();
+  packRegistry = CATPACK.upsertPackMeta(packRegistry, CATPACK.packMetaFor(p), Date.now());
+  if(persist){
+    try{ STORE.set(CATPACK.packKeyFor(p.pack), JSON.stringify(p)); }catch(e){}
+    savePackRegistry();
+  }
+  return errs;
+}
+function removePackDoc(id, opts){
+  const p = packDocs.get(id); if(!p) return false;
+  dropPackModels(p); packDocs.delete(id);
+  rebuildPackCatalog();
+  packRegistry = CATPACK.removePackMeta(packRegistry, id);
+  if(!opts || opts.persist !== false){ STORE.remove(CATPACK.packKeyFor(id)); savePackRegistry(); }
+  return true;
+}
+function loadPacksFromStore(){
+  packRegistry = readPackRegistry();
+  for(const m of packRegistry.packs){
+    let raw=null; try{ raw = JSON.parse(STORE.get(CATPACK.packKeyFor(m.pack)) || 'null'); }catch(e){ raw=null; }
+    if(raw === null) continue;                    // 元数据在、内容还没读到：不猜，等主存补水
+    const r = CATPACK.validatePack(raw);
+    if(!r.ok || !r.pack) continue;                // 存下来的包坏了：不加载也不删（bug 猎 #27 同一条红线）
+    addPackDoc(r.pack, { persist:false });
+  }
+  return packRegistry.packs.length;
+}
+/* 写门禁（bug 猎 #28 同一条红线）：主存还在读注册表时写注册表，
+   会把「还没读到」的那几份包元数据当成「没有」写掉。
+   bench / 校准 / #ui: / testgeo 不参与（那些页面按定义不加载包，同 E10 的 hydrate 门禁）。 */
+function packWriteBlocked(){
+  if(noHydratePage()) return false;
+  return STORE.backend() === 'indexedDB' && STORE.warming([PACKS_KEY]);
+}
+function watchPackStore(){
+  if(noHydratePage()) return;
+  STORE.warm([PACKS_KEY]).then(()=>{
+    const keys = readPackRegistry().packs.map(m=>CATPACK.packKeyFor(m.pack));
+    if(!keys.length) return;
+    STORE.warm(keys).then(()=>{
+      const before = packRegistry.packs.map(p=>p.pack).join('|');
+      loadPacksFromStore();
+      if(before !== packRegistry.packs.map(p=>p.pack).join('|')){
+        buildCatalog(); refresh(); if(three && is3D()) sync3D();
+      }
+    });
+  });
+}
+loadPacksFromStore();
+watchPackStore();
 let legacyOwned = true;   // 旧单桶存档是否属于当前户型（loadDoc 里判定）
 function save(){
   /* 这份户型的家具存档可能只存在主存里、而门面还在读它：此刻内存里的 state.items
@@ -2605,6 +2750,15 @@ function furnShape(it, spec){
   return g;
 }
 
+/* 目录里没有这件：画一个中性占位（虚线框 + ?），它照样带 data-uid，所以点得中、能删 */
+function ghostShape(it){
+  const wf=cm2ft(GHOST_CM), df=cm2ft(GHOST_CM);
+  const g = el('g',{'data-uid':it.uid, class:'ghostItem', transform:`translate(${it.x*S} ${it.y*S}) rotate(${it.rot||0})`});
+  el('rect',{x:-wf/2*S, y:-df/2*S, width:wf*S, height:df*S, fill:'rgba(150,158,172,.16)', stroke:'#9aa4b4', 'stroke-width':1.5, 'stroke-dasharray':'4 3'},g);
+  const t = el('text',{x:0, y:4, 'text-anchor':'middle', 'font-size':11, fill:'#9aa4b4'},g);
+  t.textContent = '?';
+  return g;
+}
 function drawFurniture(){
   if(!gFurn) return;
   gFurn.innerHTML=''; gSel.innerHTML='';
@@ -2616,7 +2770,8 @@ function drawFurniture(){
   const sorted = [...state.items].sort((a,b)=>layer(a)-layer(b));
   const boxes = [];
   for(const it of sorted){
-    const spec = itemSpec(it); if(!spec) continue;
+    const spec = itemSpec(it);
+    if(!spec){ gFurn.appendChild(ghostShape(it)); continue; }   // 目录里没有这件：占位符号，别整层不画
     const g = furnShape(it, spec);
     g.setAttribute('transform',`translate(${it.x*S} ${it.y*S}) rotate(${it.rot})`);
     gFurn.appendChild(g);
@@ -2644,14 +2799,15 @@ function drawFurniture(){
   if(selected!=null){
     const it = state.items.find(i=>i.uid===selected);
     if(it){ const spec=itemSpec(it);
-      const wf=cm2ft(spec.w), df=cm2ft(spec.d);
+      const gd = spec || ghostDims();                 // 没有 spec 也要能画选中框（否则整层停摆）
+      const wf=cm2ft(gd.w), df=cm2ft(gd.d);
       const gs = el('g',{transform:`translate(${it.x*S} ${it.y*S}) rotate(${it.rot})`},gSel);
       el('rect',{x:-wf/2*S-4,y:-df/2*S-4,width:wf*S+8,height:df*S+8,fill:'none',stroke:'#4c8dff','stroke-width':1.5,'stroke-dasharray':'5 3'},gs);
       const rh = el('circle',{cx:0, cy:(-df/2)*S-16, r:6, fill:'#4c8dff', class:'rotHandle','data-uid':it.uid},gs);
       el('line',{x1:0,y1:-df/2*S-4,x2:0,y2:-df/2*S-10,stroke:'#4c8dff','stroke-width':1.5},gs);
       // 尺寸标注
       const lbl = el('text',{x:0, y:df/2*S+16, 'text-anchor':'middle','font-size':11, fill:'#7fb8ff'},gs);
-      lbl.textContent = fmtDims(spec);
+      lbl.textContent = spec ? fmtDims(spec) : '目录里没有这件';
     }
   }
   updateTotals(); updatePlacedList(); updateProps();
@@ -14715,7 +14871,8 @@ function furn3D(it, spec){
   const kind=spec.kind||'box';
   const col2 = spec.color2 ? new THREE.Color(spec.color2) : null;
   const modelKey = spec.model || spec.id;
-  if(!isLight(spec) && MODELS[modelKey]){
+  const _model = modelFor(modelKey);   // S10 解析链：内置 MODELS → 扩展包 models → kind 通用回退
+  if(!isLight(spec) && _model){
     const matlib = {
       fab:  new THREE.MeshStandardMaterial({map:fabricTexture(), color:col, roughness:.95, envMapIntensity:.25}),
       fabD: new THREE.MeshStandardMaterial({map:fabricTexture(), color:col.clone().multiplyScalar(.86), roughness:.95, envMapIntensity:.25}),
@@ -14737,7 +14894,7 @@ function furn3D(it, spec){
       glass: new THREE.MeshPhysicalMaterial({color:0xaecbe0, transparent:true, opacity:.28, roughness:.06, metalness:.05}),
     };
     try{
-      MODELS[modelKey](modelCtx(g, spec, col, col2, matlib, it));
+      _model(modelCtx(g, spec, col, col2, matlib, it));
       ensureTextured(g);
       mergeByMaterial(g);
       g.position.set(it.x, 0, it.y);
@@ -15220,6 +15377,17 @@ function furnSig(it, spec, shadow){
           it.color||'', it.cct||'', it.dim==null?'':it.dim, shadow?1:0,
           it.custom? JSON.stringify(it.custom):''].join('|');
 }
+let _ghostMat = null;
+const GHOST_SIG = '__ghost__';
+/* 与 2D 占位同一口径：中性灰半透明盒，不冒充任何真实商品 */
+function ghostGroup3D(){
+  const g = new THREE.Group();
+  const w=cm2ft(GHOST_CM), d=cm2ft(GHOST_CM), hh=cm2ft(GHOST_CM);
+  if(!_ghostMat) _ghostMat = new THREE.MeshPhysicalMaterial({color:0x9aa4b4, roughness:.9, metalness:0, transparent:true, opacity:.42, envMapIntensity:.2});
+  const m = new THREE.Mesh(new THREE.BoxGeometry(w, hh, d), _ghostMat);
+  m.position.y = hh/2; g.add(m);
+  return g;
+}
 function sync3D(){
   if(!three) return;
   if(!three.furnMap) three.furnMap=new Map();
@@ -15227,7 +15395,15 @@ function sync3D(){
   let lightBudget=6;                       // 只给前几盏灯开阴影，避免帧率崩塌
   let changed=0;
   for(const it of state.items){
-    const base=itemSpec(it); if(!base) continue;
+    const base=itemSpec(it);
+    if(!base){                                       // 目录里没有这件：3D 同样给一个中性占位盒
+      const prev=map.get(it.uid);
+      if(prev && prev.sig!==GHOST_SIG){ disposeOwned(prev.g); three.furnGroup.remove(prev.g); prev.g=ghostGroup3D(); prev.sig=GHOST_SIG; changed++; }
+      else if(!prev){ const g=ghostGroup3D(); three.furnGroup.add(g); map.set(it.uid,{g,sig:GHOST_SIG}); changed++; }
+      const rec=map.get(it.uid);
+      rec.g.position.set(it.x, 0, it.y); rec.g.rotation.y = -(it.rot||0)*Math.PI/180;
+      alive.add(it.uid); continue;
+    }
     let spec=base, shadow=false;
     if(isLight(base) && lightBudget>0){ shadow=true; spec=Object.assign({},base,{shadow:true}); lightBudget--; }
     alive.add(it.uid);
@@ -15425,7 +15601,7 @@ function _runThumbs(){
 }
 let _thumbIO = null;
 function observeThumbs(container){
-  const all = [...CATALOG, ...state.customCat];
+  const all = catalogAll();
   const nodes = container.querySelectorAll('.ph[data-thumb]');
   // 黄金截图态（#ui:*）：IO 回调时机取决于渲染帧，同一份代码连截两次可能
   // 「一边缩略图渲完了、一边还没渲」——CI 实测 2d-sel 双截差 10.69%，逐区定位：
@@ -15449,7 +15625,7 @@ function observeThumbs(container){
       for(const e of es){
         if(!e.isIntersecting) continue;
         _thumbIO.unobserve(e.target);
-        const sp = [...CATALOG, ...state.customCat].find(c=>c.id===e.target.dataset.thumb);
+        const sp = catalogAll().find(c=>c.id===e.target.dataset.thumb);
         if(sp) queueThumb(e.target, sp);
       }
     }, {root: $('#catList'), rootMargin: '220px 0px'});
@@ -15466,7 +15642,7 @@ const catOpenState = new Map();
 function buildCatalog(filter=''){
   const listEl = $('#catList'); listEl.innerHTML='';
   const cats = {};
-  const all = [...CATALOG, ...state.customCat];
+  const all = catalogAll();
   const q = foldText(String(filter).trim());
   for(const c of all){
     if(q && !(foldText(c.name).includes(q) || foldText(c.cat).includes(q))) continue;
@@ -15489,7 +15665,7 @@ function buildCatalog(filter=''){
       card.innerHTML = `<div class="ph" data-thumb="${c.id}" style="background-color:${c.color}"></div>
         <div class="meta">
           <div class="nm2" title="${tip}">${c.name}</div>
-          <div class="sub"><span>${fmtLen(cm2ft(c.w))}×${fmtLen(cm2ft(c.d))}</span>${p?`<b class="${isBuiltIn(c)?'builtin':''}"${typeof c.caVar==='string'?` title="${c.caVar.replace(/"/g,'&quot;')}"`:''}>${p}</b>`:''}</div>
+          <div class="sub"><span>${fmtLen(cm2ft(c.w))}×${fmtLen(cm2ft(c.d))}</span>${p?`<b class="${isBuiltIn(c)?'builtin':''}"${typeof c.caVar==='string'?` title="${c.caVar.replace(/"/g,'&quot;')}"`:''}>${p}</b>`:''}${c.sourcePack?`<i class="packTag" title="来自目录包 ${c.sourcePack}">包</i>`:''}</div>
         </div>`;
       card.onclick=()=>addItem(c.id);
       items.appendChild(card);
@@ -15626,6 +15802,21 @@ function updateProps(){
   const it = state.items.find(i=>i.uid===selected);
   if(!it){ $('#pTitle').textContent='未选中家具'; $('#pInfo').style.display='block'; $('#pFields').style.display='none'; return; }
   const s = itemSpec(it);
+  if(!s){
+    /* 目录条目已不在（移除的目录包 / 旧布局引用的下架条目）：如实说明，别崩，也别假装它还在卖 */
+    $('#pTitle').textContent = '目录里没有这件（仍在布局里）';
+    $('#pInfo').style.display='none';
+    $('#pFields').style.display='flex';
+    $('#pDims').textContent = '尺寸未知 · 位置可改、可旋转、可删除';
+    if(document.activeElement!==$('#pRot')) $('#pRot').value = it.rot;
+    if(document.activeElement!==$('#pRotSlider')) $('#pRotSlider').value = ((it.rot%360)+360)%360;
+    $('#pLightRow').style.display='none';
+    $('#pColor').value = /^#/.test(itemColor(it))? itemColor(it) : '#8a7d6b';
+    $('#pPrice').textContent = '—'; $('#pPrice').title = '目录里没有这件，不进采购清单';
+    const ag=$('#pUrl'); ag.removeAttribute('href'); ag.textContent='—';
+    $('#pClear').textContent = `位置 (${it.x.toFixed(2)}, ${it.y.toFixed(2)}) ft`;
+    return;
+  }
   $('#pTitle').textContent = s.name;
   $('#pInfo').style.display='none';
   $('#pFields').style.display='flex';
@@ -16885,6 +17076,148 @@ $('#docOk').onclick=()=>{
   try{ applyImportedDoc(d, { source:'projectdoc' }); toast('户型已导入（家具布局为空，可用「导入布局」导入）'); }
   catch(err){ toast('导入失败：' + err.message); }
 };
+
+/* ---------- S10（R8-5K）：目录包导入 / 移除（「工具 ⌄ → 目录包」） ----------
+   与户型导入同一条路：读文件 → 校验 → 一次性确认对话框 → 应用。
+   不用 alert/confirm（§5.1：headless 下阻塞）。提示走 toast，确认走对话框。
+   可测试性：validatePackJSON / showPackConfirm / commitPendingPack / removeLoadedPack
+   都是可直接调用的入口——headless 填不了 input[type=file]，bench 直接调这四个跑交互流程脚本。 */
+function validatePackJSON(text){
+  let raw = null;
+  try{ raw = JSON.parse(text); }
+  catch(e){ return { pack:null, issues:[{ level:'error', where:'file', field:'', message:'不是有效 JSON：' + e.message }] }; }
+  return CATPACK.validatePack(raw);
+}
+function packPlacedCount(packId){
+  const p = packDocs.get(packId); if(!p) return 0;
+  const ids = new Set(p.entries.map(e=>e.id));
+  return state.items.filter(it=>it.ref && ids.has(it.ref)).length;
+}
+function showPackConfirm(p, issues, entryIssues, fname){
+  const errN = entryIssues.filter(i=>i.level==='error').length;
+  const warn = issues.filter(i=>i.level==='warning').concat(entryIssues.filter(i=>i.level==='warning'));
+  const modelKeys = Object.keys(p.models);
+  let h = `<div class="dxfRow">文件：<b>${escHtml(fname || '')}</b></div>`;
+  h += `<div class="dxfRow">包：<b>${escHtml(p.name)}</b>（id ${escHtml(p.pack)}，版本 ${p.version}）</div>`;
+  h += `<div class="dxfRow">条目：<b>${p.entries.length}</b> 条可用${errN?`，另有 <b>${errN}</b> 条未通过校验（逐条拒收，不连坐其余条目）`:''}</div>`;
+  h += `<div class="dxfRow">建模代码：${modelKeys.length ? `<b>${modelKeys.length}</b> 个（解析失败 ${packCompileErrors.length} 个）` : '无 → 条目走 kind 通用回退建模'}</div>`;
+  const shadow = packShadowedModels().filter(s=>s.pack===p.pack);
+  if(shadow.length) h += `<div class="dxfRow">其中 ${shadow.length} 个模型名内置已有：内置赢，包里的同名模型不会被用</div>`;
+  const same = packDocs.get(p.pack);
+  if(same) h += `<div class="dxfRow">同名包已加载（${same.entries.length} 条 / ${Object.keys(same.models).length} 模型）：导入会整包替换它</div>`;
+  const merged = CATPACK.mergeCatalog(CATALOG, [...packDocs.values(), p]);
+  const clash = merged.conflicts.filter(c=>c.pack===p.pack);
+  if(clash.length) h += `<div class="dxfRow">${clash.length} 条与内置目录 / 已加载的包同 id：会被跳过（内置赢）</div>`;
+  const bad = entryIssues.filter(i=>i.level==='error');
+  if(bad.length){
+    h += `<div class="dxfWarn">被拒收的条目（${bad.length} 条）</div>`;
+    for(const b2 of bad.slice(0, 8)) h += `<div class="dxfRow">✗ ${escHtml(b2.where || '')} [${escHtml(b2.field || '')}] ${escHtml(b2.message)}</div>`;
+    if(bad.length > 8) h += `<div class="dxfRow">… 其余 ${bad.length-8} 条同上</div>`;
+  }
+  if(warn.length){
+    h += `<div class="dxfWarn">${warn.length} 条提醒（能用但可疑）</div>`;
+    for(const w of warn.slice(0, 8)) h += `<div class="dxfRow">· ${escHtml(w.where || '')} [${escHtml(w.field || '')}] ${escHtml(w.message)}</div>`;
+    if(warn.length > 8) h += `<div class="dxfRow">… 其余 ${warn.length-8} 条同上</div>`;
+  }
+  h += `<div class="dxfWarn">包里的建模代码会在你本机本地执行（这个应用不联网、不存凭据，包文件是你自己选的）。只加载你信任来源的包。</div>`;
+  $('#packInfo').innerHTML = h;
+  $('#packModal').style.display = 'flex';
+}
+let _packPending = null;
+let _packEntryIssues = [];
+let packCompileErrors = [];
+function commitPendingPack(){
+  if(!_packPending) return null;
+  const p = _packPending; _packPending = null;
+  if(packWriteBlocked()){ toast('浏览器主存还在读目录包列表，稍几秒再试'); return null; }
+  packCompileErrors = addPackDoc(p);
+  packSelectUI();
+  revealCatalogEntries(p.entries.map(e=>e.id));   // 刚导入的条目不许藏在收起的分组里（零反馈 = 设计缺陷）
+  refresh();
+  if(three && is3D()) sync3D();
+  const bad = packCompileErrors.length;
+  const rejected = _packEntryIssues.filter(i=>i.level==='error').length;
+  toast(`目录包「${p.name}」已加载：${p.entries.length} 条` +
+        (rejected?`，${rejected} 条未通过校验被拒收`:'') +
+        (bad?`，${bad} 个模型编译失败（那些条目退回通用建模）`:''));
+  return p;
+}
+/* 把含指定条目的分组记成「展开」并滚到第一张卡片。
+   记的是状态（catOpenState），不是临时展开：下次重建目录时它仍然展开。 */
+function revealCatalogEntries(ids){
+  const set = new Set(ids);
+  const cats = new Set();
+  for(const c of catalogAll()) if(set.has(c.id)) cats.add(c.cat);
+  for(const cat of cats) catOpenState.set(cat, true);
+  buildCatalog($('#catSearch').value || '');
+  const first = [...set][0];
+  const ph = first ? $('#catList').querySelector('.ph[data-thumb="'+first+'"]') : null;
+  const card = ph ? ph.closest('.catCard') : null;
+  if(card) card.scrollIntoView({block:'center'});
+  observeThumbs($('#catList'));
+}
+function removeLoadedPack(id){
+  const placed = packPlacedCount(id);
+  if(!removePackDoc(id)) return false;
+  packSelectUI(); buildCatalog($('#catSearch').value || ''); refresh();
+  if(three && is3D()) sync3D();
+  toast(`目录包「${id}」已移除${placed?`：布局里 ${placed} 件用的条目已不在目录里（它们仍在布局里，但不再显示与计价）`:''}`);
+  return true;
+}
+function packSelectUI(){
+  const sel = $('#packSel'); if(!sel) return;
+  const list = packRegistry.packs.slice().sort((a,b)=>a.name.localeCompare(b.name, 'zh'));
+  sel.innerHTML = '';
+  if(!list.length){
+    const o = document.createElement('option'); o.value=''; o.textContent='（没有加载的目录包）';
+    sel.appendChild(o); sel.disabled = true;
+  } else {
+    sel.disabled = false;
+    for(const m of list){
+      const o = document.createElement('option'); o.value = m.pack;
+      o.textContent = `${m.name}（${m.entries} 条${m.models?` / ${m.models} 模型`:''}）`;
+      sel.appendChild(o);
+    }
+  }
+  const btn = $('#btnPackRemove');
+  if(btn){ btn.disabled = !list.length; btn.classList.remove('arm'); }
+}
+$('#btnPackImport').onclick=()=>{ $('#btnPackImport').blur(); $('#filePack').click(); };
+$('#filePack').addEventListener('change', ev=>{
+  const f = ev.target.files[0]; ev.target.value=''; if(!f) return;
+  f.text().then(t=>{
+    const r = validatePackJSON(t);
+    if(!r.ok || !r.pack){
+      /* 包层 error（包 id 非法 / 上限超了 / 模型源码不是函数）或者整包没一条条目能用：整包不加载 */
+      const e0 = r.issues.find(i=>i.level==='error') || r.entryIssues.find(i=>i.level==='error') || r.issues[0];
+      toast('目录包未通过校验：' + (e0 ? (e0.field ? e0.field + ' — ' : '') + e0.message : '未知错误'));
+      return;
+    }
+    _packPending = r.pack; _packEntryIssues = r.entryIssues; packCompileErrors = [];
+    for(const [key, src] of Object.entries(r.pack.models))
+      if(CATPACK.compileModel(src).error) packCompileErrors.push({ model:key });
+    showPackConfirm(r.pack, r.issues, r.entryIssues, f.name);
+  });
+});
+$('#packModal').onclick=e=>{ if(e.target.id==='packModal'){ _packPending=null; $('#packModal').style.display='none'; } };
+$('#packCancel').onclick=()=>{ _packPending=null; $('#packModal').style.display='none'; };
+$('#packOk').onclick=()=>{ $('#packModal').style.display='none'; commitPendingPack(); };
+/* 移除 = 两步确认（它会让已摆好的家具失去规格，不是一句撤销能兑的） */
+let _packRemoveArm = '';
+$('#btnPackRemove').onclick=()=>{
+  const id = $('#packSel').value;
+  if(!id){ toast('没有可移除的目录包'); return; }
+  if(_packRemoveArm !== id){
+    _packRemoveArm = id;
+    const btn = $('#btnPackRemove'); btn.classList.add('arm');
+    const placed = packPlacedCount(id);
+    toast(`再点一次「移除包」确认：移除「${id}」${placed?`，布局里有 ${placed} 件用的是它`:''}`, 6000);
+    return;
+  }
+  _packRemoveArm = '';
+  removeLoadedPack(id);
+};
+packSelectUI();
 /* 导出图片 */
 $('#btnExport').onclick=()=>{
   if(is3D() && three){
@@ -16974,6 +17307,12 @@ STORE.onHydrate((keys)=>{
   if(keys.indexOf(PLANS_KEY)>=0){
     PLAN_REG = readRegistry();
     planSelectUI();
+  }
+  /* S10：目录包的注册表与包内容都可能只存在主存里 → 补读一次，
+     否则刷新后「已加载的目录包」会空、摆着的包家具会退回通用建模。 */
+  if(keys.indexOf(PACKS_KEY)>=0 || keys.some(k=>String(k).indexOf('planner_pack:')===0)){
+    loadPacksFromStore(); packSelectUI(); buildCatalog($('#catSearch') ? $('#catSearch').value : '');
+    if(three && is3D()) sync3D();
   }
   if(keys.indexOf(DOC_KEY)>=0){ DOC = loadDoc(); applyPlanChrome(); }
   if(keys.indexOf(ITEMS_KEY)>=0) load();

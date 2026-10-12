@@ -11,7 +11,7 @@ const root = dirname(dirname(fileURLToPath(import.meta.url)));
 // 预算（字节）。基线 2026-10-06：app.html 996,855 · dist/app.html 3,809,369（three 608KB +
 // dxf 25KB + pdf ~1MB 内联）。留 ~10-15% 余量吸收正常增长。
 const BUDGETS = [
-  { path: 'app.html', max: 1_150_000, note: '唯一事实来源（含 275 条目录 + 146 模型）' },
+  { path: 'app.html', max: 1_250_000, note: '唯一事实来源（含 280 条目录 + 146 模型 + S10 目录扩展协议接线）' },
   { path: 'dist/app.html', max: 4_200_000, note: '公开入口单文件（运行时库全部内联）' },
 ];
 

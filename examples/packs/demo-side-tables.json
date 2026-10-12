@@ -1,0 +1,54 @@
+{
+  "pack": "demo-side-tables",
+  "name": "示例目录包 · 三只边几",
+  "version": 1,
+  "homepage": "https://example.com/",
+  "note": "S10 目录扩展协议的示例包：演示「条目 + 建模代码」两条路。第 1 条没有 model → 走 kind 通用回退建模；第 2、3 条带 model → 用包里的建模代码。直接拿它当模板改。",
+  "entries": [
+    {
+      "id": "demo-st-0",
+      "cat": "茶几 / 边几",
+      "name": "示例 · 圆形边几（无建模代码 → 通用回退）",
+      "w": 45,
+      "d": 45,
+      "h": 50,
+      "kind": "sideTable",
+      "price": 39.0,
+      "color": "#c8b79a",
+      "wood": "oak",
+      "note": "没有 model 字段，也没有包里的模型 → 用 kind 的通用造型（能放能搜能计价，细节差一档）"
+    },
+    {
+      "id": "demo-st-1",
+      "cat": "茶几 / 边几",
+      "name": "示例 · 三脚托盘边几（包内建模）",
+      "w": 42,
+      "d": 42,
+      "h": 52,
+      "kind": "sideTable",
+      "model": "demo-tray",
+      "price": 59.0,
+      "priceCA": 79.0,
+      "color": "#2f3134",
+      "color2": "#c9a575",
+      "note": "model 指向本包 models 里的 demo-tray；内置没有同名模型，所以包里的建模生效"
+    },
+    {
+      "id": "demo-st-2",
+      "cat": "茶几 / 边几",
+      "name": "示例 · 双层置物小几（包内建模）",
+      "w": 40,
+      "d": 34,
+      "h": 60,
+      "kind": "sideTable",
+      "model": "demo-shelf",
+      "price": 49.0,
+      "color": "#e7e2d8",
+      "note": "白粉涂层钢管 + 两层板"
+    }
+  ],
+  "models": {
+    "demo-tray": "(C)=>{\n  const cm=C.cm, T=C.THREE;\n  const dark = C.M(C.col, {rough:.55, metal:.15, plastic:true});\n  const wood = C.M(C.col2 || 0xC9A575, {wood:'oak', rough:.5, clear:.25});\n  /* 托盘面（圆）+ 三条外撇腿：占地 42×42×52cm */\n  const R = cm(21), topH = cm(48), th = cm(2.2);\n  const top = new T.Mesh(new T.CylinderGeometry(R, R*0.94, th, 40), wood);\n  top.position.y = topH; C.g.add(top);\n  const lip = new T.Mesh(new T.TorusGeometry(R*0.94, cm(0.9), 8, 40), dark);\n  lip.rotation.x = Math.PI/2; lip.position.y = topH + th/2 + cm(0.6); C.g.add(lip);\n  for(let i=0;i<3;i++){\n    const a = i*Math.PI*2/3 + Math.PI/6;\n    const leg = C.cyl(cm(1.1), cm(0.8), topH, dark, Math.cos(a)*R*0.72, 0, Math.sin(a)*R*0.72, 12);\n    leg.rotation.z = Math.cos(a)*0.10; leg.rotation.x = -Math.sin(a)*0.10;\n  }\n  C.g.updateMatrixWorld(true);\n  return C.g;\n}",
+    "demo-shelf": "(C)=>{\n  const cm=C.cm;\n  const steel = C.M(C.col, {rough:.35, metal:.65});\n  const board = C.M(0xE7E2D8, {rough:.6, plastic:true});\n  const W=cm(20), D=cm(17), H=cm(60), r=cm(1.0);\n  /* 四根立管 + 两层板（占地 40×34×60cm） */\n  for(const sx of [-1,1]) for(const sz of [-1,1])\n    C.cyl(r, r, H, steel, sx*(W-cm(1)), 0, sz*(D-cm(1)), 12);\n  C.box(W*2-cm(1.5), cm(1.6), D*2-cm(1.5), board, 0, cm(16), 0);\n  C.box(W*2-cm(1.5), cm(1.6), D*2-cm(1.5), board, 0, H-cm(3), 0);\n  C.g.updateMatrixWorld(true);\n  return C.g;\n}"
+  }
+}

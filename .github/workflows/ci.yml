@@ -44,6 +44,13 @@ jobs:
       # dist/app.html 无 private/ 引用 + 户型=generic-2br + layout:null
       - run: npm run build
 
+      # S10 目录体检：内置目录必须 0 error 0 warning（schema 与消费端逐字段对表），
+      # 示例包必须合法（协议的可运行样本坏了 CI 就红）
+      - name: S10 catalog health (built-in entries + example pack)
+        run: |
+          npm run catalog:check
+          node scripts/catalog-check.mjs examples/packs/demo-side-tables.json
+
       # E13 包体预算（棘轮：上调是显式动作）
       - run: npm run size:check
 
