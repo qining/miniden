@@ -1821,10 +1821,41 @@ export const FLOWS = [
       const builtinWalls = (await stateOf(t)).walls;
       t.assert('builtin-wall-added', builtinWalls === before.walls + 1, `墙段 ${before.walls} → ${builtinWalls}`);
 
+      // E19 轮㉗：换户型时编辑层里的「选中」必须作废。以前只有切户型做了，
+      // 「新建空白户型」漏了 → 新户型的工具条描述一份不存在的墙，按 Delete 会说「已删除」。
+      await t.step('先选中刚才那段墙（工具条现在描述它）');
+      await t.click('#wtoolSeg button[data-t="select"]');
+      await t.waitFor(`wallEdit.tool==='select'`, 5000, 'tool=select');
+      const mid27 = await t.planPoint(c.x - 1, c.y + 5);
+      await t.click({ x: mid27.x, y: mid27.y });
+      const sel27 = await t.eval(`({sel:wallEdit.sel, msg:(document.querySelector('#wMsg')||{}).textContent})`);
+      t.assert(
+        'edit27-wall-selected-before',
+        !!sel27.sel && sel27.sel.kind === 'w' && /长 /.test(sel27.msg || ''),
+        'sel=' + JSON.stringify(sel27.sel) + ' · 提示=' + JSON.stringify(sel27.msg)
+      );
+
       await t.step('新建一份空白户型');
       await ensureProTools(t);
       await t.click('#btnPlanNew');
       await t.waitFor(`PLAN_ID!==BUILTIN_PLAN_ID`, 8000, '切到空白户型');
+      const new27 = await t.eval(
+        `({sel:wallEdit.sel, pts:wallEdit.drawPts.length, walls:effWalls().length,
+           msg:(document.querySelector('#wMsg')||{}).textContent})`
+      );
+      t.assert(
+        'edit27-plan-new-drops-selection',
+        new27.sel === null && new27.pts === 0 && /悬停会亮出墙体/.test(new27.msg || ''),
+        'sel=' + JSON.stringify(new27.sel) + ' drawPts=' + new27.pts + ' · 提示=' + JSON.stringify(new27.msg)
+      );
+      await t.key('Delete', 'Delete', 46);
+      const del27 = await t.eval(`({msg:(document.querySelector('#wMsg')||{}).textContent, walls:effWalls().length})`);
+      t.assert(
+        'edit27-delete-does-not-claim-a-deletion',
+        del27.walls === 0 && !/已删除/.test(del27.msg || ''),
+        '新户型里本来没这段墙：提示=' + JSON.stringify(del27.msg) + ' · 墙数=' + del27.walls
+      );
+      await t.shot('edit27-plan-new');
       const blank = await t.eval(
         `({id:PLAN_ID, walls:effWalls().length, items:state.items.length, fp:floorPts().length, plans:PLAN_REG.plans.length})`
       );

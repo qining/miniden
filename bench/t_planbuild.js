@@ -3901,6 +3901,214 @@ async function runPBTest() {
       );
     }
 
+    /* ===== 18. E19 轮㉗：换户型时编辑层的作废（悬空选中 / 进行中的画墙链） ===== */
+    {
+      const plans27_0 = PLAN_REG.plans.length;
+      const e27Pick = (id) => {
+        const sel = Q('#planSel');
+        sel.value = id;
+        sel.dispatchEvent(new Event('change', { bubbles: true }));
+      };
+      const box27 = () => {
+        const fp = floorPts() || [];
+        const a = [1e9, 1e9, -1e9, -1e9];
+        for (const q of fp) {
+          a[0] = Math.min(a[0], q[0]);
+          a[1] = Math.min(a[1], q[1]);
+          a[2] = Math.max(a[2], q[0]);
+          a[3] = Math.max(a[3], q[1]);
+        }
+        return a;
+      };
+      const key27 = (k) =>
+        document.body.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true, cancelable: true }));
+      const msg27 = () => (Q('#wMsg') || {}).textContent || '';
+
+      await enterEdit();
+      // 选一处连门都离得远的空地（同 §17 口径：门的命中区在墙垛缺口里，点上去会选中门）
+      const free27 = (() => {
+        let best = null,
+          bs = -1;
+        const stepX = (BX1 - BX0) / 14,
+          stepY = (BY1 - BY0) / 14;
+        for (let gx = BX0 + stepX; gx <= BX1 - stepX; gx += stepX)
+          for (let gy = BY0 + stepY; gy <= BY1 - stepY; gy += stepY) {
+            let d = pbClearance(gx, gy);
+            for (const dd of effDoors()) if (dd && dd.x1 != null) d = Math.min(d, distSeg(gx, gy, dd));
+            if (d > bs) {
+              bs = d;
+              best = [gx, gy];
+            }
+          }
+        return best || pbFree;
+      })();
+      const [fx27, fy27] = free27;
+      pushUserWall(fx27 - 2, fy27, fx27 + 2, fy27, 'w', 8);
+      geoChanged();
+      drawWallEdit();
+      await tick();
+      const wid27 = DOC.walls[DOC.walls.length - 1].id;
+      for (const off of [0, 1.2, -1.2, 0.7, -0.7]) {
+        await tap(fx27 + off, fy27);
+        if (wallEdit.sel && wallEdit.sel.kind === 'w' && wallEdit.sel.id === wid27) break;
+      }
+      const sel27 = !!wallEdit.sel && wallEdit.sel.id === wid27;
+      const msg27a = msg27();
+      T(
+        'pb-edit27-wall-selected',
+        sel27 && /长 /.test(msg27a),
+        'sel=' + JSON.stringify(wallEdit.sel) + ' · #wMsg=' + JSON.stringify(msg27a)
+      );
+
+      /* 18.1 新建空白户型：上一份户型的选中必须作废，工具条不能描述一个不存在的东西 */
+      Q('#btnPlanNew').click();
+      await tick();
+      const blank27a = PLAN_ID;
+      const msg27b = msg27();
+      T(
+        'pb-edit27-plan-new-clears-selection',
+        wallEdit.sel === null && /悬停会亮出墙体/.test(msg27b) && msg27b !== msg27a,
+        'sel=' + JSON.stringify(wallEdit.sel) + ' · #wMsg=' + JSON.stringify(msg27b)
+      );
+      const ctlOn = (s) => Q(s).classList.contains('on');
+      T(
+        'pb-edit27-plan-new-controls-off',
+        !ctlOn('#doorCtl') && !ctlOn('#fxCtl') && !ctlOn('#runCtl') && !ctlOn('#winCtl'),
+        'doorCtl=' +
+          ctlOn('#doorCtl') +
+          ' fxCtl=' +
+          ctlOn('#fxCtl') +
+          ' runCtl=' +
+          ctlOn('#runCtl') +
+          ' winCtl=' +
+          ctlOn('#winCtl') +
+          '（修前：门控件还亮着、#dWidth=' +
+          Q('#dWidth').value +
+          'cm）'
+      );
+
+      /* 18.2 悬空选中按 Delete：不能说「已删除」（什么都没删），也不能往撤销环塞一步死快照 */
+      wallEdit.sel = { kind: 'w', id: wid27 }; // 上一份户型的墙 id，这份文档里没有
+      const w27a = DOC.walls.length,
+        hid27a = DOC.hidden.walls.length,
+        r27a = undoRing.length;
+      key27('Delete');
+      await tick();
+      const msg27c = msg27();
+      T(
+        'pb-edit27-dangling-delete-not-a-lie',
+        DOC.walls.length === w27a &&
+          DOC.hidden.walls.length === hid27a &&
+          undoRing.length === r27a &&
+          msg27c.indexOf('已删除') < 0 &&
+          msg27c.indexOf('不在当前户型里') >= 0,
+        'walls ' +
+          w27a +
+          '→' +
+          DOC.walls.length +
+          ' · hidden.walls ' +
+          hid27a +
+          '→' +
+          DOC.hidden.walls.length +
+          ' · 撤销环 ' +
+          r27a +
+          '→' +
+          undoRing.length +
+          ' · #wMsg=' +
+          JSON.stringify(msg27c)
+      );
+
+      /* 18.3 进行中的画墙链：换户型后必须作废 —— 否则下一击就把上一份户型的坐标变成这份的几何 */
+      await setTool('wall');
+      let bb27 = box27();
+      await tap((bb27[0] + bb27[2]) / 2, (bb27[1] + bb27[3]) / 2);
+      bb27 = box27();
+      await tap((bb27[0] + bb27[2]) / 2 + 3, (bb27[1] + bb27[3]) / 2);
+      const chain27 = wallEdit.drawPts.map((p) => [Math.round(p[0] * 100) / 100, Math.round(p[1] * 100) / 100]);
+      T('pb-edit27-chain-in-progress', wallEdit.drawPts.length === 2, 'drawPts=' + JSON.stringify(chain27));
+      Q('#btnPlanNew').click();
+      await tick();
+      const blank27b = PLAN_ID;
+      T(
+        'pb-edit27-plan-new-clears-chain',
+        wallEdit.drawPts.length === 0,
+        'drawPts=' + JSON.stringify(wallEdit.drawPts) + '（修前带着上一份的 ' + JSON.stringify(chain27) + '）'
+      );
+      const w27b = DOC.walls.length;
+      bb27 = box27();
+      await tap((bb27[0] + bb27[2]) / 2, bb27[3] + 1);
+      key27('Enter');
+      await tick();
+      T(
+        'pb-edit27-chain-not-leaked',
+        DOC.walls.length === w27b,
+        '这份户型 walls ' +
+          w27b +
+          '→' +
+          DOC.walls.length +
+          '（修前 +1：坐标 ' +
+          JSON.stringify(chain27[0]) +
+          ' 来自上一份）'
+      );
+
+      /* 18.4 对照组：同一份户型里画墙链照常工作（别把修好的东西修坏） */
+      await setTool('wall');
+      bb27 = box27();
+      await tap(bb27[0] + 1, bb27[1] + 1);
+      await tap(bb27[2] - 1, bb27[1] + 1);
+      key27('Enter');
+      await tick();
+      T(
+        'pb-edit27-chain-still-works',
+        DOC.walls.length >= w27b + 1,
+        '同一份户型里画两点→回车 walls ' + w27b + '→' + DOC.walls.length
+      );
+
+      /* 18.5 对照组：切户型（#planSel）同样作废编辑层 —— 这条 switchPlan 早就做了 */
+      wallEdit.sel = { kind: 'w', id: 'wZZZ' };
+      wallEdit.drawPts = [
+        [1, 1],
+        [2, 2],
+      ];
+      e27Pick(BUILTIN_PLAN_ID);
+      await tick();
+      T(
+        'pb-edit27-plan-switch-clears-layer',
+        wallEdit.sel === null && wallEdit.drawPts.length === 0,
+        'sel=' + JSON.stringify(wallEdit.sel) + ' drawPts=' + wallEdit.drawPts.length
+      );
+
+      /* 18.6 收尾：删掉本轮建的两份空白户型，注册表回到本轮开始前的样子 */
+      for (const id of [blank27a, blank27b]) {
+        if (!PLANS.hasPlan(PLAN_REG, id)) continue;
+        if (PLAN_ID !== id) {
+          e27Pick(id);
+          await tick();
+        }
+        Q('#btnPlanDel').click();
+        await tick();
+        Q('#btnPlanDel').click();
+        await tick();
+      }
+      if (PLAN_ID !== BUILTIN_PLAN_ID) {
+        e27Pick(BUILTIN_PLAN_ID);
+        await tick();
+      }
+      await pbReset();
+      T(
+        'pb-edit27-round27-clean-exit',
+        PLAN_ID === BUILTIN_PLAN_ID && PLAN_REG.plans.length === plans27_0 && userCounts().w === 0,
+        '户型 ' +
+          (PLAN_ID === BUILTIN_PLAN_ID ? '内置' : PLAN_ID) +
+          ' · plans ' +
+          plans27_0 +
+          '→' +
+          PLAN_REG.plans.length +
+          ' · userWalls=' +
+          userCounts().w
+      );
+    }
+
     /* ===== 收尾：页面不得有未捕获异常 ===== */
     T('pb-no-page-errors', window.__ERRS.length === 0, window.__ERRS.slice(0, 3).join(' || '));
   } catch (e) {
