@@ -397,6 +397,116 @@ export const FLOWS = [
   },
 
   {
+    name: 'edit-in-3d',
+    title: '编辑模式 × 3D 视图：工具条只属于 2D，快捷键不隔空改几何，3D 画面跟着数据走',
+    run: async (t) => {
+      const before = await stateOf(t);
+      const c = await planCenter(t);
+      await t.step('进入「编辑墙体」，画一段墙');
+      await t.click('#btnWallEdit');
+      await t.waitFor(`wallEdit.on`, 5000, 'wallEdit.on');
+      await t.click('#wtoolSeg button[data-t="wall"]');
+      await t.waitFor(`wallEdit.tool==='wall'`, 5000, 'tool=wall');
+      await t.click(await t.planPoint(c.x - 3, c.y - 4));
+      await t.click(await t.planPoint(c.x + 1, c.y - 4));
+      await t.key('Enter', 'Enter', 13);
+      await t.waitFor(`DOC.walls.length>${before.walls}`, 8000, '墙数 +1');
+      const nw = await t.eval(
+        `(()=>{const s=DOC.walls[DOC.walls.length-1];return {id:s.id,x1:s.geom.x1,y1:s.geom.y1,x2:s.geom.x2,y2:s.geom.y2};})()`
+      );
+      await t.click('#wtoolSeg button[data-t="select"]');
+      await t.waitFor(`wallEdit.tool==='select'`, 5000, 'tool=select');
+      const mx = (nw.x1 + nw.x2) / 2,
+        my = (nw.y1 + nw.y2) / 2;
+      const mid = await t.planPoint(mx, my);
+      await t.click({ x: mid.x, y: mid.y });
+      await t.waitFor(`wallEdit.sel && wallEdit.sel.id===${JSON.stringify(nw.id)}`, 6000, '选中刚画的墙');
+      t.assert(
+        'edit-toolbar-in-2d',
+        await t.eval(`getComputedStyle(document.querySelector('#wallbar')).display!=='none'`),
+        '2D 编辑中：编辑工具条可见'
+      );
+
+      await t.step('切到 3D 俯瞰：刚画的墙要立起来');
+      await t.click('#btnDoll');
+      await t.waitFor(`three && three.staticGroup && !geoDirty3D`, 15000, '3D 场景就绪');
+      const hit = await t.eval(
+        `(()=>{three.staticGroup.updateMatrixWorld(true);const rc=new THREE.Raycaster();
+         rc.set(new THREE.Vector3(${mx},CEIL_H+1.5,${my}),new THREE.Vector3(0,-1,0));
+         const h=rc.intersectObjects(three.staticGroup.children,true);
+         return h.length?{y:h[0].point.y}:null;})()`
+      );
+      t.assert(
+        'drawn-wall-stands-in-3d',
+        !!hit && hit.y > 1.0,
+        hit ? '在墙的中点向下打射线，命中墙顶 y=' + hit.y.toFixed(2) + 'ft' : '3D 里没有这段墙'
+      );
+      t.assert(
+        'edit-toolbar-hidden-in-3d',
+        await t.eval(`getComputedStyle(document.querySelector('#wallbar')).display==='none'`),
+        '3D 画布上没有 2D 编辑工具条（「画墙/画柱/门/洁具」在 3D 里做不了任何事）'
+      );
+      t.assert(
+        'edit-mode-still-visible',
+        await t.eval(`document.querySelector('#btnWallEdit').classList.contains('on')`),
+        '「编辑墙体」按钮还亮着 = 模式可见（模式保留，工具条只是 2D 的）'
+      );
+      await t.shot('edit-in-3d');
+
+      await t.step('在 3D 里按方向键：不该隔空改一段看不见的墙');
+      const g0 = await t.eval(`JSON.stringify(entById(${JSON.stringify(nw.id)}).geom)`);
+      const ring0 = await t.eval(`undoRing.length`);
+      for (let i = 0; i < 3; i++) await t.key('ArrowRight', 'ArrowRight', 39);
+      const g1 = await t.eval(`JSON.stringify(entById(${JSON.stringify(nw.id)}).geom)`);
+      const ring1 = await t.eval(`undoRing.length`);
+      t.assert(
+        'edit-keys-inert-in-3d',
+        g0 === g1 && ring1 === ring0,
+        `连按三次 → 墙几何变化=${g0 !== g1} · 撤销环 ${ring0}→${ring1}（用户看不见 2D，改了就等于偷偷改）`
+      );
+
+      await t.step('在 3D 里按 Delete：不该静默删掉一段还立着的墙');
+      await t.key('Delete', 'Delete', 46);
+      await t.key('Backspace', 'Backspace', 8);
+      const alive = await t.eval(
+        `!!entById(${JSON.stringify(nw.id)}) && !DOC.hidden.walls.includes(${JSON.stringify(nw.id)})`
+      );
+      const ring2 = await t.eval(`undoRing.length`);
+      t.assert(
+        'edit-delete-in-3d-not-silent',
+        alive === true && ring2 === ring0,
+        `墙 ${nw.id} 还在文档里=${alive} · 撤销环 ${ring0}→${ring2}（旧版：文档里删了、3D 里那堵墙还立着）`
+      );
+
+      await t.step('回 2D：工具条回来，微调照常工作');
+      await t.click('#btn2d');
+      await t.waitFor(`state.view==='2d'`, 6000, '回到 2D');
+      t.assert(
+        'edit-toolbar-back-in-2d',
+        await t.eval(`getComputedStyle(document.querySelector('#wallbar')).display!=='none'`),
+        '工具条原样回来'
+      );
+      await t.eval(`wallEdit.sel={kind:'w',id:${JSON.stringify(nw.id)}}`);
+      const g2 = await t.eval(`JSON.stringify(entById(${JSON.stringify(nw.id)}).geom)`);
+      await t.key('ArrowRight', 'ArrowRight', 39);
+      const g3 = await t.eval(`JSON.stringify(entById(${JSON.stringify(nw.id)}).geom)`);
+      t.assert('edit-nudge-works-in-2d', g2 !== g3, '2D 里方向键微调照常生效（对照组）');
+
+      await t.step('收尾：删掉这段墙并退出编辑');
+      await t.click('#wDelete');
+      await t.waitFor(`DOC.walls.length===${before.walls}`, 8000, '墙数复位');
+      await t.click('#wDone');
+      await t.waitFor(`!wallEdit.on`, 5000, '退出编辑');
+      const after = await stateOf(t);
+      t.assert(
+        'edit-in-3d-cleanup',
+        after.walls === before.walls && after.undo >= ring2,
+        `墙数回到 ${before.walls} · 撤销环 ${after.undo}`
+      );
+    },
+  },
+
+  {
     name: 'fixture-tool',
     title: '洁具工具：放置 → 选中 → 方向键 1cm → 删除',
     run: async (t) => {

@@ -3778,6 +3778,129 @@ async function runPBTest() {
       );
     }
 
+    /* ===== 17. E19 轮㉕：编辑模式跨视图 + 3D 静态场景的同步时机 ===== */
+    {
+      /* 选一处连门都离得远的空地：pbClearance 只算墙/洁具/柱，门的命中区在墙垛缺口里，
+         点上去会选中门而不是我新画的墙（探针实测：sel={"kind":"door","id":"d1"}）。 */
+      const free25 = (() => {
+        let best = null,
+          bs = -1;
+        const stepX = (BX1 - BX0) / 14,
+          stepY = (BY1 - BY0) / 14;
+        for (let gx = BX0 + stepX; gx <= BX1 - stepX; gx += stepX)
+          for (let gy = BY0 + stepY; gy <= BY1 - stepY; gy += stepY) {
+            let d = pbClearance(gx, gy);
+            for (const dd of effDoors()) if (dd && dd.x1 != null) d = Math.min(d, distSeg(gx, gy, dd));
+            if (d > bs) {
+              bs = d;
+              best = [gx, gy];
+            }
+          }
+        return { p: best || pbFree, clear: bs };
+      })();
+      const [fx25, fy25] = free25.p;
+      await enterEdit();
+      pushUserWall(fx25 - 2, fy25, fx25 + 2, fy25, 'w', 8);
+      geoChanged();
+      drawWallEdit(); // 新实体要重画命中区（命中区是命中唯一来源，AGENTS §5.1）
+      await tick();
+      const wid25 = DOC.walls[DOC.walls.length - 1].id;
+      for (const off of [0, 1.2, -1.2, 0.7, -0.7]) {
+        await tap(fx25 + off, fy25);
+        if (wallEdit.sel && wallEdit.sel.kind === 'w' && wallEdit.sel.id === wid25) break;
+      }
+      const selOK = !!wallEdit.sel && wallEdit.sel.kind === 'w' && wallEdit.sel.id === wid25;
+      T(
+        'pb-edit-selected-user-wall',
+        selOK,
+        'sel=' + JSON.stringify(wallEdit.sel) + ' 期望墙 ' + wid25 + ' 净空 ' + free25.clear.toFixed(2) + 'ft'
+      );
+      const bar25 = () => getComputedStyle(Q('#wallbar')).display;
+      T('pb-edit-toolbar-visible-in-2d', bar25() !== 'none', '#wallbar display=' + bar25());
+
+      /* 17.1 切到 3D：模式可以跟着走（#btnWallEdit 还亮着），但属于 2D 的工具条不该糊在 3D 画布上 */
+      setView('3d');
+      await wait3D();
+      T(
+        'pb-edit-mode-kept-across-view',
+        wallEdit.on === true && !!wallEdit.sel && wallEdit.sel.id === wid25,
+        'on=' + wallEdit.on + ' sel=' + JSON.stringify(wallEdit.sel)
+      );
+      T('pb-edit-toolbar-hidden-in-3d', bar25() === 'none', '3D 俯瞰里 #wallbar display=' + bar25());
+
+      /* 17.2 在 3D 里按方向键：2D 被藏着，用户看不见被改的几何 —— 不该隔空偷偷改 */
+      const g25a = JSON.stringify(entById(wid25).geom);
+      const ring25a = undoRing.length;
+      for (const k of ['ArrowRight', 'ArrowRight', 'ArrowRight']) {
+        document.body.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true, cancelable: true }));
+        await tick();
+      }
+      const moved25 = g25a !== JSON.stringify(entById(wid25).geom);
+      T(
+        'pb-edit-keys-inert-in-3d',
+        !moved25 && undoRing.length === ring25a,
+        '墙 ' + wid25 + ' 几何被改=' + moved25 + ' · 撤销环 ' + ring25a + '→' + undoRing.length
+      );
+
+      /* 17.3 在 3D 里按 Delete：静默删掉一段墙，而 3D 里那堵墙还立着 */
+      document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Delete', bubbles: true, cancelable: true }));
+      await tick();
+      await tick();
+      T(
+        'pb-edit-delete-in-3d-not-silent',
+        !!entById(wid25) && !DOC.hidden.walls.includes(wid25) && undoRing.length === ring25a,
+        '墙 ' + wid25 + ' 还在文档里=' + !!entById(wid25) + ' · 撤销环 ' + ring25a + '→' + undoRing.length
+      );
+
+      /* 17.4 3D 在场时几何变了（任何路径）→ 静态场景必须重建，不能只标脏等下一次切视图 */
+      const grp25 = three && three.staticGroup;
+      const v25a = staticVerts();
+      const off25 = Math.max(0.8, Math.min(1.4, free25.clear * 0.4));
+      pushUserWall(fx25 - 2, fy25 + off25, fx25 + 2, fy25 + off25, 'w', 8);
+      geoChanged();
+      await tick();
+      await tick();
+      const rebuilt25 = three.staticGroup !== grp25;
+      const v25b = staticVerts();
+      const hit25 = rayDown(fx25, fy25 + off25);
+      T(
+        'pb-3d-rebuilds-on-geo-change-in-3d',
+        rebuilt25 && v25b > v25a,
+        'staticGroup 换了=' +
+          rebuilt25 +
+          ' · verts ' +
+          v25a +
+          '→' +
+          v25b +
+          ' · 新墙处射线=' +
+          (hit25 ? 'y=' + hit25.point.y.toFixed(2) : '没有')
+      );
+
+      /* 17.5 回 2D：编辑快捷键照常工作（对照组，别把修好的东西修坏） */
+      setView('2d');
+      await tick();
+      wallEdit.sel = { kind: 'w', id: wid25 };
+      const g25b = JSON.stringify(entById(wid25).geom);
+      document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, cancelable: true }));
+      await tick();
+      const moved25b = g25b !== JSON.stringify(entById(wid25).geom);
+      T('pb-edit-keys-work-in-2d', moved25b, '2D 里微调生效=' + moved25b + ' · 工具条 ' + bar25());
+
+      await pbReset();
+      setView('2d');
+      await tick();
+      T(
+        'pb-round25-clean-exit',
+        DOC.walls.filter((e) => e.src === 'user').length === 0 && PLAN_ID === BUILTIN_PLAN_ID && bar25() !== 'none',
+        'userWalls=' +
+          DOC.walls.filter((e) => e.src === 'user').length +
+          ' · 户型 ' +
+          (PLAN_ID === BUILTIN_PLAN_ID ? '内置' : PLAN_ID) +
+          ' · 工具条 ' +
+          bar25()
+      );
+    }
+
     /* ===== 收尾：页面不得有未捕获异常 ===== */
     T('pb-no-page-errors', window.__ERRS.length === 0, window.__ERRS.slice(0, 3).join(' || '));
   } catch (e) {
