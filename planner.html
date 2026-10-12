@@ -3382,6 +3382,7 @@ function switchPlan(id, quiet){
   showUnderlay=false; $('#btnUnderlay').classList.remove('on');
   showTrace=false; _traceCache=null; $('#btnTrace').classList.remove('on');
   if(meas && meas.on) measEnd();
+  measDropForGeometry();   // bug 猎 #48：旧标注跨的是上一份户型的坐标，换户型就作废
   applyPlanChrome();
   if(wallEdit.on) updateWallBarFromSel();          // 编辑模式跟着户型走（sel 已作废，不强制退出）
   save(); saveGeo(); saveRegistry();
@@ -3406,6 +3407,7 @@ function createBlankPlan(){
   STORE.warm([DOC_KEY, ITEMS_KEY]);
   PLAN_REG = PLANS.upsertPlan(PLAN_REG, { id, name: d.name, origin:'blank', now: Date.now(), counts: planCounts() });
   state.items=[]; selected=null; uidSeq=1; lastImportInfo=null;
+  measDropForGeometry();   // bug 猎 #48：空白户型的图上不该挂着上一份户型的量尺寸标注
   applyPlanChrome();
   if(wallEdit.on) updateWallBarFromSel();
   save(); saveGeo(); saveRegistry();
@@ -3488,7 +3490,7 @@ let undoRing = [], redoRing = [], lastGesture = null;
 function snapState(){
   /* E26：快照带上「哪份户型」+ 注册表。不带的话，导入/新建后 Ctrl+Z 会把上一份户型的
      文档写进新户型的键（串户型），而且刚创建的那份户型会在列表里残留。 */
-  try{ return JSON.stringify({d:DOC, i:state.items, c:state.customCat, u:uidSeq, su:showUnderlay, st:showTrace, p:PLAN_ID, r:PLAN_REG}); }catch(e){ return null; }
+  try{ return JSON.stringify({d:DOC, i:state.items, c:state.customCat, u:uidSeq, su:showUnderlay, st:showTrace, p:PLAN_ID, r:PLAN_REG, m:meas.list}); }catch(e){ return null; }
 }
 /* 手势键有两种身份，必须分开（bug 猎 轮㉒）：
    · 连续手势（拖动中、滑块拖动中、连续方向键微调）：同一个键只该压一次 → 只传 gestureKey
@@ -3532,6 +3534,10 @@ function restoreState(s){
   // 快照里的实体可能已不存在 → 编辑层选中/进行中的拖动一律作废
   wallEdit.sel = null; wallEdit.drawPts = []; wallEdit.hover = null; wallEdit.dEndSel = null;
   drag = null; if(imgMove) setImgMove(false);
+  /* 量尺寸标注跟着撤销环走：整图缩放现在会把标注一起缩（rescaleDocPlan），
+     撤销那次缩放时几何回去了、标注不回就会留下「标注只跨一半」的不一致。 */
+  meas.list = Array.isArray(o.m) ? o.m : [];
+  meas.p0 = null; meas.hover = null;
   applyPlanChrome();
   save(); saveGeo(); saveRegistry(); geoDirty3D = true;
   build2D(); if(wallEdit.on) drawWallEdit();
@@ -3661,6 +3667,10 @@ function floorPts(){
   return [[0,0],[20,0],[20,14],[0,14]];
 }
 /* 导入后把 2D 视野对准新户型（保持画布纵横比） */
+/* 量尺寸状态。声明在取景管线旁边（而不是下面「2D 量尺寸」那一节）：
+   fit2DToContent / switchPlan / applyImportedDoc / rescaleDocPlan / snapState 都在文件更靠前的位置，
+   而 const 的暂时性死区按「声明行」算 —— 声明靠后就是给调用方埋雷（AGENTS §5.1 的 TDZ 坑）。 */
+const meas = {on:false, list:[], p0:null, hover:null};
 function fit2DToContent(){
   const b=floorPts();   // ft
   let x0=Infinity,y0=Infinity,x1=-Infinity,y1=-Infinity;
@@ -3673,6 +3683,12 @@ function fit2DToContent(){
   if(w/h < ar) w=h*ar; else h=w/ar;
   vb={x:cx-w/2, y:cy-h/2, w, h};
   svg.setAttribute('viewBox',`${vb.x} ${vb.y} ${vb.w} ${vb.h}`);
+  /* 按屏幕尺寸恒定的叠加层（量尺寸标注 / 编辑手柄）在绘制时除以当时的 getScreenCTM().a：
+     viewBox 一变它们的屏幕尺寸就跟着变（bug 猎 #47 实测：重新取景后标注 1.600→4.150px、
+     字号 10→25.9px、手柄 1.000→2.594px；整图重标定后反而缩一半）。重画必须与取景变化
+     同一步完成，不能指望调用方记得补一刀（滚轮处理器就是只补了 wallEdit、漏了 meas）。 */
+  if(meas.on) drawMeasure();
+  if(wallEdit.on) drawWallEdit();
 }
 /* 一次性确认 → 整套替换：导入文档成唯一几何源，旧家具（绑旧户型）清空 */
 let lastImportInfo = null;
@@ -3706,6 +3722,7 @@ function applyImportedDoc(doc, info){
   $('#btnTrace').classList.remove('on');
   $('#btnImgMove').classList.remove('on');
   if(meas && meas.on) measEnd();
+  measDropForGeometry();   // bug 猎 #48：导入后旧标注还在，跨的却是另一份户型的坐标
   applyPlanChrome();     // S11b：标题/原户型照片/层高跟着新文档
   if(wallEdit.on) $('#btnWallEdit').click();      // 旧 doc 的 sel 已悬空 → 先退出编辑模式
   save(); saveGeo(); saveRegistry();
@@ -4745,6 +4762,7 @@ svg.addEventListener('wheel', ev=>{
   vb.x = mx - (mx-vb.x)*k; vb.y = my - (my-vb.y)*k;
   svg.setAttribute('viewBox',`${vb.x} ${vb.y} ${vb.w} ${vb.h}`);
   if(wallEdit.on) drawWallEdit();   // 手柄按屏幕尺寸恒定，缩放后需重绘
+  if(meas.on) drawMeasure();        // 量尺寸标注同理（bug 猎 #47：以前只重绘了手柄，标注跟着缩放跑）
 },{passive:false});
 
 /* S9 渐进披露（R9 §4）：pro 工具行（导入/导出 + 底图）收进第二层；
@@ -5610,6 +5628,13 @@ function rescaleDocPlan(k){
       m.at=FT2(L>=mw+0.01 ? Math.max(mw/2, Math.min(L-mw/2, m.at*k)) : L/2); }); n++; }
   let img=false;
   if(DOC.baseImage){ const b=DOC.baseImage; const q=P(b.ox,b.oy); b.ox=q[0]; b.oy=q[1]; b.mPerPx=b.mPerPx*k; img=true; }
+  /* 量尺寸标注跨的是几何：不跟着搬就停在原地、读数也不再对应它跨的那一段
+     （bug 猎 #48 实测：×2 后墙 67.190ft 而标注仍跨 33.596ft，端点偏差 21.316ft）。
+     与家具同一条规则：端点按同一个中心缩放；读数由端点自动重算，不需要额外维护。 */
+  const measPt=(p)=> p ? P(p[0],p[1]) : p;
+  meas.list = meas.list.map(m=>[measPt(m[0]), measPt(m[1])]);
+  if(meas.p0) meas.p0 = measPt(meas.p0);
+  if(meas.hover) meas.hover = measPt(meas.hover);
   return {n, img, c:[cx,cy]};
 }
 let _calArm=null;
@@ -17646,7 +17671,6 @@ $('#btnFP').onclick=()=>{ setView('fp'); $('#btnFP').blur(); };
 /* ===== 2D 量尺寸 =====
    点第一下定起点，移动时实时预览，点第二下落定。可以连续量多条，
    长度跟着单位切换走。Esc 或再点一次「量尺寸」退出。 */
-const meas = {on:false, list:[], p0:null, hover:null};
 function measFmt(a, b){
   const L = Math.hypot(b[0]-a[0], b[1]-a[1]);
   return {L, txt: fmtLen(L, {precise:true})};
@@ -17694,6 +17718,13 @@ function measEnd(){
   drawMeasure();
 }
 function measClear(){ meas.list = []; meas.p0 = null; meas.hover = null; drawMeasure(); }
+/* 标注属于它量到的那份几何：几何被整份换掉（换户型 / 导入 / 新建 / 回到内置）就作废，
+   否则旧标注停在原地、跨的却是另一份户型的坐标（bug 猎 #48：导入后图上还挂着 16 个旧元素）。
+   整图缩放不在此列 —— 那种情况下标注跟着几何一起缩（见 rescaleDocPlan）。 */
+function measDropForGeometry(){
+  if(!meas.list.length && !meas.p0 && !meas.hover) return;
+  meas.list = []; meas.p0 = null; meas.hover = null; drawMeasure();
+}
 function measSnap(p, ref, shift){
   if(!shift || !ref) return p;
   return Math.abs(p[0]-ref[0]) > Math.abs(p[1]-ref[1]) ? [p[0], ref[1]] : [ref[0], p[1]];
@@ -17991,6 +18022,7 @@ $('#wRestore').onclick=()=>{
       DOC=freshDoc(); state.items=[]; selected=null; uidSeq=1; lastImportInfo=null;
       showUnderlay=false; $('#btnUnderlay').classList.remove('on');
       showTrace=false; _traceCache=null; $('#btnTrace').classList.remove('on');
+      measDropForGeometry();   // bug 猎 #48：几何整份换回内置，旧标注跟着作废
       save(); saveGeo(); geoDirty3D=true;
       build2D(); fit2DToContent(); buildCatalog(); refresh();
       planSelectUI();
