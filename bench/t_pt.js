@@ -428,8 +428,10 @@ async function runPT() {
       await wait(400);
       let kalMean = null,
         kalSd = null,
-        kalOk = false;
-      for (let kalTry = 0; kalTry < 3; kalTry++) {
+        kalOk = false,
+        kalTries = 0;
+      for (let kalTry = 0; kalTry < 5; kalTry++) {
+        kalTries = kalTry + 1;
         const kr = await new Promise((r) => {
           ptRender(24, { maxPx: 140 * 100, bounces: 4, denoise: false, onDone: (cv, spp) => r({ cv, spp }) });
           setTimeout(() => r(null), 300000);
@@ -457,10 +459,11 @@ async function runPT() {
           }
         kalMean = sum / n;
         kalSd = Math.sqrt(Math.max(0, sum2 / n - kalMean * kalMean));
-        // AGENTS §3：探针偶发全黑（均值 0/标准差 0，headless 瞬态；慢速软件 GL 上可连续两次）
-        // → 最多重渲两次再下结论；非全黑的失败不重试（不掩盖真回归）
-        if (kalMean === 0 && kalSd === 0 && kalTry < 2) {
-          await wait(1200);
+        // AGENTS §3：探针偶发全黑（均值 0/标准差 0，headless 瞬态；慢速软件 GL 上可连续几次）
+        // → 最多重渲四次再下结论；**只有「整块全黑」这个签名重试**（非全黑的失败不重试，不掩盖真回归：
+        // 「糊成一片」的签名是均值不为 0 而标准差太小，两者不同）
+        if (kalMean === 0 && kalSd === 0 && kalTry < 4) {
+          await wait(2000);
           continue;
         }
         break;
@@ -473,7 +476,9 @@ async function runPT() {
             kalMean.toFixed(1) +
             ' 标准差 ' +
             kalSd.toFixed(1) +
-            '（标准差太小=糊成一片，均值贴边=过曝或全黑）'
+            '（渲染尝试 ' +
+            kalTries +
+            ' 次）（标准差太小=糊成一片，均值贴边=过曝或全黑）'
         );
       else T('pt-kallax-visible', false, '渲染没返回');
       state.items = [];
