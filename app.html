@@ -1480,7 +1480,15 @@ function saveGeoImpl(){
   planTouch();
 }
 let saveGeo = saveGeoImpl;   // let：testgeo 测试种子会把它重赋值为 no-op（ESM 兼容）
-function geoChanged(){ geoDirty3D=true; saveGeo(); build2D(); if(typeof requestShadowUpdate==='function') requestShadowUpdate(); }
+let _3dGeoTimer = null;      // 3D 在场时几何变化的重建派发（声明在 geoChanged 之前：避开 TDZ）
+/* bug 猎 轮㉕：geoChanged 原本只把 3D 标脏，重建要等下一次 setView。用户正看着 3D 时改了
+   墙 / 门 / 洁具 —— 画面还是旧的（实测：staticGroup 没换、顶点数 55965→55965、新墙处射线打不到）。
+   派发用 setTimeout 而不是 rAF：无合成帧时 rAF 可能一直不触发（§5.5）。 */
+function geoChanged(){
+  geoDirty3D=true; saveGeo(); build2D();
+  if(typeof requestShadowUpdate==='function') requestShadowUpdate();
+  if(is3D()) schedule3DRebuild();
+}
 /* ---------- E23 undo/redo（R5 §3 设计：快照环，不做命令模式） ----------
    为什么快照环：Project 文档就是一个 KB 级 JSON。命令模式要为每种编辑写逆操作
    （门垛联动的逆操作尤其难写对），快照环只需要「改动前存一份」。容量 50 步。
@@ -2837,7 +2845,7 @@ window.addEventListener('keydown', ev=>{
   if(proToolsOpen && ev.key==='Escape' && !['INPUT','SELECT','TEXTAREA'].includes(tag)){ setProTools(false); $('#btnMore').focus(); return; }
   const frEl=$('#firstRun');
   if(frEl && frEl.style.display!=='none' && ev.key==='Escape'){ closeFirstRun(); return; }
-  if(wallEdit.on){
+  if(wallEdit.on && state.view==='2d'){
     if(['INPUT','SELECT','TEXTAREA'].includes(tag)) return; // 输入框正常输入；按钮焦点不挡编辑快捷键
     ev.stopPropagation();
     if(ev.key==='Escape'){
@@ -2877,6 +2885,13 @@ window.addEventListener('keydown', ev=>{
     }
     if((ev.key==='Delete'||ev.key==='Backspace') && wallEdit.sel){ deleteSel(); ev.preventDefault(); return; }
     return; // 编辑模式屏蔽家具快捷键
+  } else if(wallEdit.on){
+    /* E19 轮㉕：墙体编辑是 2D 平面上的活。切到 3D 后 SVG 被藏起来，但模式与选中还留着 ——
+       快捷键继续隔空改几何（实测：按三次方向键 → 墙被挪走、撤销环 +1；按 Delete → 墙从文档里
+       消失，而 3D 里那堵墙还立着）。用户看不见被改的东西 = 零反馈（R10 红线）。
+       所以非 2D 视图里编辑快捷键不作用于构件，其余按键落到下面的家具快捷键分支：
+       3D 里选中的家具照常可删、可转。 */
+    if(ev.key==='Escape'){ wallEdit.sel=null; wallEdit.drawPts=[]; wallEdit.hover=null; updateWallBarFromSel(); return; }
   }
   if(['INPUT','SELECT','TEXTAREA'].includes(tag)) return;
   // 焦点在按钮上不该挡住家具快捷键（与墙体编辑模式同一口径：见上面那句「按钮焦点不挡编辑快捷键」）。
@@ -15750,6 +15765,20 @@ function measMove(ftPt, shift){
 /* 视图共三档：'2d' | 'doll'(3D 俯瞰) | 'fp'(室内)。
    后两档共用同一个 WebGL 画布，只是相机模式不同——所以到处要问的是"是不是 3D"。 */
 function is3D(){ return state.view === 'doll' || state.view === 'fp'; }
+/* 3D 在场时几何变了（geoChanged / 撤销 / 导入之外的任何路径）：把静态场景补建出来。
+   与 setView 用同一条 setTimeout 派发；谁先跑谁消费 geoDirty3D，不会重建两次。
+   光追进行中不补建：那轮采样已经按旧几何收集好了，中途换场景等于把两张图混在一起（bug #26 同因）。 */
+function schedule3DRebuild(){
+  if(_3dGeoTimer) return;                          // 连续变化只补建一次
+  _3dGeoTimer = setTimeout(()=>{
+    _3dGeoTimer = null;
+    if(!three || !is3D() || three.photo) return;
+    try{
+      if(geoDirty3D) buildStatic3D();
+      geoDirty3D=false; sync3D(); requestShadowUpdate();
+    }catch(e){ console.error(e); }
+  }, 40);
+}
 function setView(v){
   if(v === '3d') v = 'doll';                       // 兼容旧调用
   state.view = v;
@@ -15770,6 +15799,10 @@ function setView(v){
   $('#btnPT').style.display = fp?'inline-block':'none';
   $('#measSeg').style.display = v==='2d'?'flex':'none';
   if(v!=='2d' && typeof measEnd==='function') measEnd();
+  /* E19 轮㉕：编辑工具条属于 2D 平面图。切到 3D 时 SVG 被藏起来，工具条却还挂在 3D 画布上
+     （实测 display 仍是 flex），它的「画墙 / 画柱 / 门 / 洁具」按钮在 3D 里什么都做不了。
+     模式本身保留（#btnWallEdit 还亮着 = 模式可见），回到 2D 工具条原样回来。 */
+  $('#wallbar').style.display = (wallEdit.on && v==='2d') ? 'flex' : 'none';
   // 画布左下角那一个提示位：2D 编辑时归编辑提示（wMsg），其余时候归 #hint
   if(wallEdit.on){ if(v==='2d') updateWallBarFromSel(); else wMsg(''); }
   if(in3){
