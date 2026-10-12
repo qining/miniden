@@ -599,6 +599,102 @@ async function runPT() {
       three.photo = null;
     }
 
+    /* ===== E19 轮㉖：光追进行中，它依赖的那份场景必须冻结 =====
+       #26 守住了「换环镜 / 昼夜 / 开关灯」，但同一条依赖还有两个入口没守：
+       （a）顶栏视角按钮与「双击走过去」——相机位姿是渲染的输入；
+       （b）检视面板改旋转 / Delete 删家具 / 目录再加一件——三角形集合是渲染的输入。
+       光追在开始那一刻把场景冻结成纹理（BVH + 三角形纹理 + 相机位姿），之后累积的是样本均值：
+       中途改了场景，交出来的那张图属于一个已经不存在的房间，而进度条照样跑到 100%。 */
+    {
+      // 前面几段会把 state.items 清空（KALLAX 可见性那段）——本段自己带一件，不依赖前段残留
+      const labK = (LABELS.find((l) => /客厅/.test(l.t)) || {}).p || [20, 26];
+      state.items = [{ uid: 9199, ref: 'kallax-a-0', x: labK[0], y: labK[1], rot: 0 }];
+      drawFurniture();
+      await wait(500);
+      const triOf = () => {
+        let n = 0;
+        three.scene.traverse((o) => {
+          if (o.isMesh && o.geometry && o.geometry.attributes && o.geometry.attributes.position)
+            n += o.geometry.attributes.position.count / 3;
+        });
+        return n;
+      };
+      const view0 = state.view,
+        cam0 = three.cam.position.clone(),
+        tri0 = triOf(),
+        items0 = state.items.length;
+      let doneSpp4d = null;
+      ptRender(400, {
+        size: [73, 97],
+        bounces: 2,
+        denoise: false,
+        onDone: (cv, spp) => {
+          doneSpp4d = spp;
+        },
+      });
+      await wait(1500);
+      const running4d = !!three.photo;
+      setView('doll');
+      T(
+        's4d-pt-blocks-view-switch',
+        running4d && state.view === view0 && three.cam.position.distanceTo(cam0) < 1e-6,
+        running4d
+          ? 'view=' +
+              state.view +
+              '(期望 ' +
+              view0 +
+              ') · 相机被挪 ' +
+              three.cam.position.distanceTo(cam0).toFixed(3) +
+              'ft'
+          : '光追没在跑，测不到'
+      );
+      // 「双击地面 = 走过去」同样摄走相机，同一条依赖
+      const lab4d = (LABELS.find((l) => /客厅/.test(l.t)) || {}).p || [20, 26];
+      fpJumpTo(lab4d[0] + 2, lab4d[1] + 2);
+      T(
+        's4d-pt-blocks-walk',
+        three.cam.position.distanceTo(cam0) < 1e-6,
+        '相机被挪 ' + three.cam.position.distanceTo(cam0).toFixed(3) + 'ft'
+      );
+      // Delete 删家具（检视面板/键盘都是真实入口）
+      selected = state.items[0].uid;
+      document.body.focus();
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Delete', bubbles: true, cancelable: true }));
+      T('s4d-pt-blocks-furniture-delete', state.items.length === items0, '家具 ' + items0 + '→' + state.items.length);
+      // 检视面板改旋转
+      const rot0 = state.items[0].rot || 0;
+      const pr4d = document.getElementById('pRot');
+      if (pr4d) {
+        pr4d.value = String(rot0 + 90);
+        pr4d.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+      T(
+        's4d-pt-blocks-props-rotate',
+        (state.items[0].rot || 0) === rot0,
+        'rot=' + (state.items[0].rot || 0) + ' 期望 ' + rot0
+      );
+      T(
+        's4d-pt-scene-frozen',
+        triOf() === tri0,
+        '三角形 ' + tri0.toLocaleString() + '→' + triOf().toLocaleString() + '（出图用的就是开始那一刻的那份场景）'
+      );
+      const toast4d = (document.getElementById('toast') || {}).textContent || '';
+      T('s4d-pt-freeze-tells-user', /取消/.test(toast4d), 'toast=' + JSON.stringify(toast4d.slice(0, 50)));
+      if (three.photo && three.photo.cancel) three.photo.cancel();
+      await wait(700);
+      selected = null;
+      T(
+        's4d-photo-cancel-still-works',
+        three.photo === null && (window.__PT_DIAG || {}).spp < (window.__PT_DIAG || {}).want,
+        '停在 ' +
+          ((window.__PT_DIAG || {}).spp || 0) +
+          '/' +
+          ((window.__PT_DIAG || {}).want || 0) +
+          ' spp · onDone spp=' +
+          doneSpp4d
+      );
+    }
+
     T('pt-cleanup', PT === null, PT === null ? '已释放' : '仍占用');
     T(
       'pt-quality-presets',

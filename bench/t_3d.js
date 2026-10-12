@@ -128,6 +128,73 @@ async function run3DTest() {
       'drot=' + (it.rot - rot0).toFixed(1) + '° dpos=' + Math.hypot(it.x - px0, it.y - py0).toFixed(3)
     );
 
+    /* ===== E19 轮㉖：3D 拖动的「点击 vs 拖动」判据 =====
+       2D 拖动有 ≥5px 的屏幕阈值（AGENTS §8.2：1px 手抖会静默改坏几何），3D 拖动没有。
+       探针实测：在 3D 俯瞰里点住一件家具手抖 1px → 家具被挪 3.02cm、2px → 3.71cm，还落盘。
+       另外 3D 拖动在 pointerdown 就 pushUndo（#33 修的是 2D，这条漏了）：
+       纯点击（没拖）也会进撤销环 → 撤销按钮亮着、按下去只弹「没有可撤销的改动」。 */
+    {
+      const [jx, jy] = proj(it.x, 1.2, it.y);
+      const jx0 = it.x,
+        jy0 = it.y,
+        ring0 = undoRing.length;
+      lastGesture = null; // 上一个手势是别的动作（真实使用里几乎总是这样）：否则两次同键动作会被合并，测不到「只点一下也算一步」
+      PE('pointerdown', jx, jy);
+      await wait(60);
+      PE('pointermove', jx + 1, jy + 1);
+      await wait(60);
+      PE('pointermove', jx + 2, jy);
+      await wait(60);
+      PE('pointerup', jx + 2, jy);
+      await wait(140);
+      const jitter = Math.hypot(it.x - jx0, it.y - jy0);
+      T(
+        '3d-drag-jitter-ignored',
+        jitter < 1e-9,
+        '手抖 1~2px → 挪了 ' + (jitter * 30.48).toFixed(2) + 'cm（2D 同类操作被 5px 阈值挡住）'
+      );
+      T(
+        '3d-click-not-a-gesture',
+        undoRing.length === ring0,
+        '撤销环 ' + ring0 + '→' + undoRing.length + '（只点一下没拖，不该算一步）'
+      );
+      // 控制组：真拖动照旧生效，并且算一步（否则上面两条就是把拖动关掉）
+      const [kx, ky] = proj(it.x, 1.2, it.y);
+      const kx0 = it.x,
+        ky0 = it.y,
+        ring1 = undoRing.length;
+      PE('pointerdown', kx, ky);
+      await wait(60);
+      PE('pointermove', kx + 40, ky + 20);
+      await wait(60);
+      PE('pointerup', kx + 40, ky + 20);
+      await wait(140);
+      const moved = Math.hypot(it.x - kx0, it.y - ky0);
+      T(
+        '3d-drag-still-moves-and-undoes',
+        moved > 0.3 && undoRing.length === ring1 + 1,
+        'd=' + moved.toFixed(2) + 'ft · 撤销环 ' + ring1 + '→' + undoRing.length
+      );
+      // 真拖动之后撤销一次，家具要回到拖动前的位置
+      undoStep();
+      await wait(120);
+      // restoreState 把快照里的 items 重新解析一遍 → state.items 里是新的对象。
+      // 拿拖动前那个引用去读只会读到孤儿对象（轮㉒ 同一类坑），必须按 uid 重查。
+      const back = state.items.find((i) => i.uid === it.uid) || {};
+      T(
+        '3d-drag-undo-restores-origin',
+        Math.hypot((back.x || 0) - kx0, (back.y || 0) - ky0) < 1e-9,
+        '撤销后离原点 ' +
+          (Math.hypot((back.x || 0) - kx0, (back.y || 0) - ky0) * 30.48).toFixed(2) +
+          'cm · 件数 ' +
+          state.items.length
+      );
+      it.x = back.x;
+      it.y = back.y;
+      drawFurniture();
+      await wait(120);
+    }
+
     /* ===== v3.3 新增件：卫生间镜子 / Lunix 沙发 / Honeywell 落地灯 ===== */
     // 镜子数量随户型（mine 3 面 / generic 1 面）→ 断言「投影里有、且 3D 建的数量与投影一致」，不写死
     const nMir = FX.filter((f) => f.t === 'mirror').length;

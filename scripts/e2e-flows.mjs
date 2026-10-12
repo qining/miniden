@@ -1493,6 +1493,125 @@ export const FLOWS = [
   },
 
   {
+    name: 'photo-freeze',
+    title: '光追进行中那份场景被冻结（切视角 / 走动 / 删家具被拒并给出提示）· 3D 里点住家具手抖不挪',
+    async run(t) {
+      const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+      await t.step('先保证 3D 里有家具：公开入口开局不预置家具 → 从目录点一件（真实点击卡片）');
+      await t.click('#btn2d');
+      await t.waitFor(`state.view==='2d'`, 12000, '在 2D');
+      if ((await t.eval(`state.items.length`)) === 0) {
+        await t.click('.catCard');
+        await t.waitFor(`state.items.length>0`, 12000, '目录里点了一件家具');
+      }
+      await t.step('3D 俯瞰：点住一件家具手抖 2px → 不该把它挪走（2D 同类操作有 5px 屏幕阈值）');
+      await t.click('#btnDoll');
+      await t.waitFor(
+        `state.view==='doll' && three && three.furnMap && three.furnMap.size>0`,
+        30000,
+        '3D 俯瞰 + 家具就绪'
+      );
+      await sleep(900);
+      /* 目标不能假定是 state.items[0]：满屋布局里那个屏幕点上真正被拾取的可能是压在它上面的另一件。
+         先按投影点问一次 pickFurniture，用它答出来的那件当目标（坐标也从它取）。 */
+      const p = JSON.parse(
+        await t.eval(
+          `(()=>{const it0=state.items[0];if(!it0)return null;three.cam.updateMatrixWorld(true);three.furnGroup.updateMatrixWorld(true);` +
+            `const r=three.canvas.getBoundingClientRect();` +
+            `const pt=(x,z)=>{const v=new THREE.Vector3(x,1.2,z).project(three.cam);` +
+            `return [r.left+(v.x*0.5+0.5)*r.width, r.top+(-v.y*0.5+0.5)*r.height];};` +
+            `for(const it of state.items){const q=pt(it.x,it.y);const hit=pickFurniture({clientX:q[0],clientY:q[1]});` +
+            `if(hit && hit.uid===it.uid)return JSON.stringify({uid:it.uid,x:+q[0].toFixed(1),y:+q[1].toFixed(1),x0:it.x,y0:it.y});}` +
+            `return null;})()`
+        )
+      );
+      t.assert('freeze-target-found', !!p, p ? `家具 uid=${p.uid} 在屏幕 (${p.x}, ${p.y})` : '3D 里没有家具');
+      if (!p) return;
+      const at = async () =>
+        JSON.parse(
+          await t.eval(
+            `(()=>{const it=state.items.find(i=>i.uid===${p.uid});return JSON.stringify(it?{x:it.x,y:it.y}:null);})()`
+          )
+        );
+      await t.drag({ x: p.x, y: p.y }, { x: p.x + 2, y: p.y + 1 }, { steps: 3 });
+      await sleep(500);
+      const j = await at();
+      const jm = Math.hypot(j.x - p.x0, j.y - p.y0);
+      t.assert('freeze-jitter-does-not-move', jm < 1e-9, `手抖 2px → 挪了 ${(jm * 30.48).toFixed(2)}cm`);
+
+      await t.step('控制组：真拖动照旧生效，Ctrl+Z 一次回到拖动前');
+      await t.drag({ x: p.x, y: p.y }, { x: p.x + 90, y: p.y + 45 }, { steps: 12 });
+      await sleep(500);
+      const d1 = await at();
+      const dm = Math.hypot(d1.x - j.x, d1.y - j.y);
+      t.assert('freeze-real-drag-works', dm > 0.3, `拖 90px → 挪了 ${dm.toFixed(2)}ft`);
+      await t.key('z', 'KeyZ', 90, 2);
+      await sleep(600);
+      const d2 = await at();
+      const du = Math.hypot(d2.x - j.x, d2.y - j.y);
+      t.assert('freeze-drag-undo-one-step', du < 1e-9, `Ctrl+Z 后离拖动前位置 ${(du * 30.48).toFixed(2)}cm`);
+
+      await t.step('室内视角 → 开光追（精细档：跑得够久，才好在中途动手）');
+      await t.click('#btnFP');
+      await t.waitFor(`state.view==='fp' && three && three.cam`, 25000, '进入室内视角');
+      await sleep(900);
+      await t.click('#btnPT');
+      await t.waitFor(`getComputedStyle(document.querySelector('#ptModal')).display!=='none'`, 8000, '光追对话框');
+      await t.click('#ptSeg button[data-q="fine"]');
+      await t.click('#ptGo');
+      await t.waitFor(`!!three && !!three.photo`, 30000, '光追开始累积');
+      const snap = `JSON.stringify({view:state.view,cam:three.cam.position.toArray().map(v=>+v.toFixed(4)),items:state.items.length})`;
+      const before = JSON.parse(await t.eval(snap));
+      await t.shot('pt-running');
+
+      await t.step('中途试着切「3D 俯瞰」→ 视角不动，但界面说明为什么');
+      await t.click('#btnDoll');
+      await sleep(800);
+      const mid = JSON.parse(await t.eval(snap));
+      const camMove = Math.hypot(mid.cam[0] - before.cam[0], mid.cam[1] - before.cam[1], mid.cam[2] - before.cam[2]);
+      t.assert(
+        'freeze-pt-blocks-view-switch',
+        mid.view === before.view && camMove < 1e-6,
+        `view=${mid.view}（期望 ${before.view}）· 相机被挪 ${camMove.toFixed(3)}ft`
+      );
+      const toastTxt = await t.eval(`(document.getElementById('toast')||{}).textContent||''`);
+      t.assert('freeze-pt-tells-user', /取消/.test(toastTxt), `toast=${JSON.stringify(toastTxt.slice(0, 64))}`);
+      await t.shot('pt-refused');
+
+      await t.step('中途试着走动（滚轮）与删家具（Delete）→ 都不生效');
+      const cr = await t.rectOf('#c3d');
+      for (let i = 0; i < 3; i++) await t.mouse('mouseWheel', cr.x, cr.y, { deltaX: 0, deltaY: -120 });
+      await sleep(600);
+      const cam2 = JSON.parse(await t.eval(`JSON.stringify(three.cam.position.toArray().map(v=>+v.toFixed(4)))`));
+      const walk = Math.hypot(cam2[0] - before.cam[0], cam2[1] - before.cam[1], cam2[2] - before.cam[2]);
+      t.assert('freeze-pt-blocks-walk', walk < 1e-6, `滚轮走动 → 相机被挪 ${walk.toFixed(3)}ft`);
+      await t.key('Delete', 'Delete', 46);
+      await sleep(600);
+      const itemsNow = await t.eval(`state.items.length`);
+      t.assert('freeze-pt-blocks-delete', itemsNow === before.items, `按 Delete → 家具 ${before.items}→${itemsNow}`);
+
+      await t.step('点「取消」→ 光追真的提前停下，之后切视角照常');
+      await t.click('#photoCancel');
+      await t.waitFor(`!three.photo`, 30000, '光追停下');
+      const diag = await t.eval(`window.__PT_DIAG`);
+      t.assert(
+        'freeze-pt-cancel-stops-early',
+        !!diag && diag.spp < diag.want,
+        `停在 ${diag ? diag.spp : '?'}/${diag ? diag.want : '?'} 次采样`
+      );
+      await t.click('#btnDoll');
+      await t.waitFor(`state.view==='doll'`, 25000, '取消后可以切视角');
+      await t.click('#btn2d');
+      await t.waitFor(`state.view==='2d'`, 12000, '回 2D');
+      t.assert(
+        'freeze-cleanup',
+        (await t.eval(`!!three.photo`)) === false && (await t.eval(`state.view`)) === '2d',
+        '光追已结束、回到 2D'
+      );
+    },
+  },
+
+  {
     name: 'persistence-reload',
     title: '真实刷新后家具还在（bench 做不到这一段）',
     run: async (t) => {
