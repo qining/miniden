@@ -286,9 +286,12 @@ open('/tmp/planner_check.js','w').write(m.group(1))
 每次跑之前先 `pkill -f 'Google Chrome.app.*--headless'`（别误杀 playwright 的 headless-shell）。
 
 **`t_pt` 的 `pt-kallax-visible` 探针会偶发全黑**（均值 0 / 标准差 0，headless 瞬态；
-CI 的 Linux 软件 GL 上更易触发）：bench 内置自愈（读到全黑 0/0 → 重渲一次再断言），
-`scripts/run-bench.mjs` 还会对 FAIL 的 bench 整体原样重跑一次；两层都红才是真红。
-非全黑的失败（如标准差小）不会重试，不掩盖真回归。
+CI 的 Linux 软件 GL 上更易触发，慢 runner 上会连击）：bench 内置自愈（读到全黑 0/0 →
+重渲，最多 5 次、间隔 2s，断言读数里带「渲染尝试 N 次」），`scripts/run-bench.mjs` 还会对
+FAIL 的 bench 整体原样重跑一次；两层都红才是真红。**只有「整块全黑」这个签名重试**：
+真回归的签名是「均值不为 0 而标准差太小」（白格架与白墙糊成一片），那条当场红、不重试、
+不掩盖。实测边界（CI run 38197749463，一个只改 .md 的提交）：旧口径（内部 3 次 + 整页 1 次）
+在慢 runner 上四次全黑把整条 CI 判红，重跑就全绿；重试上限抬到 5 次后不再出现这种连击。
 
 **Chrome ≥140 软件 WebGL 需显式 opt-in**：`--use-angle=swiftshader` 之外还要
 `--enable-unsafe-swiftshader`，否则 Linux runner 上 PT 的 float FBO 路径变 no-op
@@ -589,6 +592,7 @@ sips -z 高 宽 /tmp/x.png --out /tmp/x_big.png               # 放大
 | **把「标脏」当成「已经重建」**（`geoChanged()` 只置 `geoDirty3D=true`，重建要等下一次 `setView`） | 用户正看着 3D 时改了墙 / 门 / 洁具，画面还是旧的（实测 `staticGroup` 没换对象、顶点数 55965→55965、新墙处射线打不到）（#50） | 脏标记必须配一个「在场就补建」的派发：`if(is3D()) schedule3DRebuild()`（与 `setView` 同一条 setTimeout 派发，谁先跑谁消费 `geoDirty3D`，不会重建两次）。补建要排除「累积式渲染进行中」（`three.photo`，与 bug #26 同因） |
 | **新实体没有命中区就以为它能被选中**（`pushUserWall` + `geoChanged()` 之后不调 `drawWallEdit()`） | 探针里点新画的墙，`wallEdit.sel` 却是 `{"kind":"door","id":"d1"}`——命中的是隔壁门的命中区（§5.1 那条老红线在**写测试**时又踩了一次） | 任何改实体的分支末尾 `geoChanged()+drawWallEdit()`；写「选中它」的断言之前，先确认它的命中区真的存在 |
 | **bench 的选点净空只算墙 / 洁具 / 柱，不算门**（`pbClearance`） | 门的命中区在墙垛缺口里，「户型中心附近」这种落点会选中门而不是目标构件，断言红得像是选中逻辑坏了 | 选点判据要覆盖**同一层里所有可命中的东西**；新写一段点击类断言之前，先看那一层都画了哪些命中区 |
+| **门禁的自愈次数按本地经验定**（`pt-kallax-visible` 的全黑瞬态：内部重渲 3 次 + 整页重跑 1 次） | 慢 runner 上瞬态会连击：四次全黑把整条 CI 判红（一个只改 `.md` 的提交），重跑就全绿——红的是门禁自己，不是代码 | 自愈次数按**最弱环境**定（与「覆盖率阈值按 CI 定」同一口径），并把「试了几次」写进断言读数（健康跑就是 1 次，日志里能直接看出这一轮撞了几次）；重试只能绑在**瞬态的签名**上（整块全黑 0/0），不能绑在「断言失败」上 |
 
 ### 5.1.1 bug 猎方法论（2026-09~10 二十五轮，49 个真 bug + 1 处防御性统一，全走这条路）
 
