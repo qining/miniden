@@ -51,6 +51,7 @@ roadmap.md（状态推进）→ 代码 + AGENTS.md 沉淀
 |---|---|
 | [floorplan-input-and-eng-audit.md](design/floorplan-input-and-eng-audit.md) | 研究/提案（未实施；含工程审计 P0-P2） |
 | [architecture.md](design/architecture.md) | **已实施（现状描述）**：一个事实来源→两个入口、几何数据流、模块边界、构建守卫、门禁矩阵、不变量清单、与 R7 目标模块图的差距 |
+| [catalog-extension.md](design/catalog-extension.md) | **已实施（Phase 1）+ 待办（Phase 2）**：目录扩展协议——条目 schema、包格式与上限、建模代码契约（modelCtx + 建模三律不豁免）、合并规则（内置赢）、持久化、信任边界、幽灵件、门禁矩阵、5,000 件规模还缺什么 |
 
 ### research/
 
