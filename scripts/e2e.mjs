@@ -78,6 +78,10 @@ function chromeArgs(entryPath) {
     '--no-first-run',
     '--no-default-browser-check',
     '--disable-sync',
+    // 不让 Chrome 自己开自己的页面（实测 headless=new 下它开过 chrome://settings/help，
+    // 那张标签会把我们的页面挤成后台，输入事件的确认就回不来）
+    '--disable-component-update',
+    '--disable-background-networking',
     '--disable-features=SigninPromo,DesktopFirstRun',
     '--allow-file-access-from-files',
     '--window-size=1500,1000',
@@ -191,12 +195,46 @@ async function runEntry(entry) {
       () => {}
     );
   };
-  const cdp = (method, params = {}) =>
+  /* 每个 CDP 调用都必须能失败。实测：headless=new 下 Chrome 会自己在同一个 profile 里开一张额外页面
+     （chrome://settings/help），我们的页面变成后台标签后 Chrome 不再给它提交帧，
+     `Input.dispatchMouseEvent` 的确认就永远不回来 —— 驱动挂在第一个滚轮调用上 8 分钟、CPU 0%，
+     而页面本身对 `Runtime.evaluate` / `Page.captureScreenshot` 完全响应。
+     挂死的调用必须报错并指名方法，不能把整个 CI 步骤挂到 job 超时。 */
+  const cdp = (method, params = {}, ms = 30000) =>
     new Promise((res, rej) => {
       const id = ++seq;
-      pending.set(id, { res, rej });
+      const done = (fn) => (v) => {
+        clearTimeout(timer);
+        fn(v);
+      };
+      const timer = setTimeout(() => {
+        if (!pending.has(id)) return;
+        pending.delete(id);
+        rej(new Error(`CDP 调用超时（${method}，${ms}ms）——页面可能不是前台标签，或已停止提交帧`));
+      }, ms);
+      pending.set(id, { res: done(res), rej: done(rej) });
       ws.send(JSON.stringify({ id, method, params }));
     });
+
+  /* 额外页面会把我们的页面挤成后台标签（见上）。每张流程开头把它关掉。 */
+  const ensureSingleTab = async () => {
+    try {
+      // 自己的 targetId 要从这个会话里问（/json/list 的 id 与 Target 域的 targetId 实测可以不一致，
+      // 拿错的那个就会把自家页面关掉）；再加一道保险：URL 是我们入口的绝不关。
+      const me = await cdp('Target.getTargetInfo', {}, 8000);
+      const myId = me && me.targetInfo && me.targetInfo.targetId;
+      const r = await cdp('Target.getTargets', {}, 8000);
+      const others = (r.targetInfos || []).filter(
+        (x) => x.type === 'page' && x.targetId !== myId && !String(x.url || '').endsWith(entry)
+      );
+      for (const o of others) {
+        await cdp('Target.closeTarget', { targetId: o.targetId }, 8000).catch(() => {});
+      }
+      if (others.length) console.log(`  关掉 ${others.length} 张额外页面（${others.map((o) => o.url).join(', ')}）`);
+    } catch {
+      /* Target 域读不到就算了：cdp 超时是兜底 */
+    }
+  };
 
   await cdp('Page.enable');
   await cdp('Runtime.enable');
@@ -462,6 +500,8 @@ async function runEntry(entry) {
     downloads: DL,
     /** 真实导入用的 DXF（仓库自带 fixture，无个人数据） */
     fixtureDxf: [join(root, 'tests', 'fixtures', 'apartment-mm.dxf')],
+    /** 真实导入用的目录包（仓库自带的示例包，无个人数据） */
+    fixturePack: [join(root, 'examples', 'packs', 'demo-side-tables.json')],
   };
 
   /* ---------- 跑流程 ---------- */
@@ -487,6 +527,7 @@ async function runEntry(entry) {
     currentStep = null;
     console.log('\n— ' + f.name + (f.title ? ' · ' + f.title : ''));
     try {
+      await ensureSingleTab();
       if (!KEEP_STATE) await t.freshState();
       await f.run(t);
       await shot(f.name + '_end');
