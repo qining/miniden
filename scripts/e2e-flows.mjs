@@ -1380,6 +1380,124 @@ export const FLOWS = [
   },
 
   {
+    name: 'catalog-pack',
+    title: '导入目录包：真实文件选择 → 一次性确认（条目/建模/内置赢）→ 目录里能挑能摆 → 移除后如实说明',
+    run: async (t) => {
+      /* S10 目录扩展协议（R8-5K）。bench 测的是协议本身（校验/合并/编译/存盘），
+         这条流程测的是「用户真的选了一个文件」这条路：确认框说了什么、
+         新条目在目录里找得着吗、摆上去以后移除包会不会把东西弄丢或把界面弄崩。 */
+      const base = await t.eval('CATALOG.length');
+      const items0 = await t.eval('state.items.length');
+
+      await t.step('展开「工具 ⌄」（导入目录包 / 移除包 都在这一排里）');
+      await t.click('#btnMore');
+      await t.waitFor(`document.querySelector('#proTools').style.display==='flex'`, 6000, '工具 ⌄ 展开');
+
+      await t.step('选择示例目录包文件');
+      await t.setFiles('#filePack', t.fixturePack);
+      await t.waitFor(`document.querySelector('#packModal').style.display==='flex'`, 25000, '确认弹窗出现');
+      const info = await t.eval(`document.querySelector('#packInfo').textContent.replace(/\\s+/g,' ')`);
+      t.assert(
+        'pack-modal-says-what-it-is',
+        /条目/.test(info) && /建模代码/.test(info) && /信任/.test(info),
+        info.slice(0, 200)
+      );
+      await t.shot('pack-modal');
+
+      await t.step('点「加载这个包」');
+      await t.click('#packOk');
+      await t.waitFor(`catalogAll().length===${base}+3`, 15000, '目录多出 3 条');
+      const after = await t.eval(
+        `({all: catalogAll().length, packs: packDocs.size, tag: !!document.querySelector('.packTag'),
+           model: modelFor('demo-tray')!==null})`
+      );
+      t.assert(
+        'pack-entries-in-catalog',
+        after.all === base + 3 && after.packs === 1 && after.tag && after.model,
+        `目录 ${base} → ${after.all} · 已加载包 ${after.packs} 个 · 卡片带「包」标记 ${after.tag} · 包内模型已编译 ${after.model}`
+      );
+
+      await t.step('新条目不许藏在收起的分组里（刚导入的东西必须看得见）');
+      const cardBox = await t.eval(
+        `(()=>{const ph=document.querySelector('.ph[data-thumb="demo-st-1"]');if(!ph)return null;
+          const c=ph.closest('.catCard');const r=c.getBoundingClientRect();
+          const hit=document.elementFromPoint(r.left+r.width/2,r.top+r.height/2);
+          return {w:Math.round(r.width),h:Math.round(r.height),top:Math.round(r.top),vh:window.innerHeight,
+                  hit:hit?(hit.className||hit.tagName):null,ok:!!hit&&(hit===c||c.contains(hit))};})()`
+      );
+      t.assert(
+        'pack-card-visible',
+        !!cardBox && cardBox.w >= 8 && cardBox.h >= 8 && cardBox.ok && cardBox.top >= 0 && cardBox.top < cardBox.vh,
+        cardBox
+          ? `卡片 ${cardBox.w}×${cardBox.h} · 中心命中 ${cardBox.hit} · 距顶 ${cardBox.top}px（视口高 ${cardBox.vh}）`
+          : '目录里找不到这张卡片'
+      );
+      await t.shot('pack-card');
+
+      await t.step('点卡片把它摆上图');
+      await t.click('.ph[data-thumb="demo-st-1"]');
+      await t.waitFor(`state.items.length===${items0}+1`, 8000, '布局里多了一件');
+      const placed = await t.eval(
+        `(()=>{const it=state.items.filter(i=>i.ref==='demo-st-1')[0];if(!it)return null;
+          return {uid:it.uid, shape:!!document.querySelector('#furn [data-uid="'+it.uid+'"]')};})()`
+      );
+      t.assert(
+        'pack-item-placeable',
+        !!placed && placed.shape,
+        placed ? `已摆放 uid=${placed.uid} · 2D 图例已画 ${placed.shape}` : '点了卡片但没摆上去'
+      );
+
+      await t.step('刷新：包跟着文件走（不是只活在内存里）');
+      await t.reload();
+      const reloaded = await t.eval(`({packs: packDocs.size, all: catalogAll().length})`);
+      t.assert(
+        'pack-survives-reload',
+        reloaded.packs === 1 && reloaded.all === base + 3,
+        `刷新后已加载包 ${reloaded.packs} 个 · 目录 ${reloaded.all} 条（基线 ${base}）`
+      );
+
+      await t.step('移除包（两步确认）');
+      await t.eval(`document.querySelector('#packSel').value='demo-side-tables'`);
+      await t.click('#btnPackRemove');
+      await t.waitFor(
+        `(()=>{const x=document.querySelector('#toast');return x&&/再点一次/.test(x.textContent)})()`,
+        8000,
+        '出现二次确认提示'
+      );
+      await t.click('#btnPackRemove');
+      await t.waitFor(`packDocs.size===0`, 10000, '包已移除');
+      const gone = await t.eval(
+        `(()=>{const it=state.items.filter(i=>i.ref==='demo-st-1')[0];if(!it)return null;
+          selected=it.uid;updateProps();drawFurniture();
+          const ghost=!!document.querySelector('#furn [data-uid="'+it.uid+'"] rect');
+          return {items:state.items.length, ghost, title:document.querySelector('#pTitle').textContent,
+                  price:document.querySelector('#pPrice').textContent, spec:itemSpec(it)==null};})()`
+      );
+      t.assert(
+        'pack-remove-keeps-placed-item-honest',
+        !!gone && gone.items === items0 + 1 && gone.ghost && /目录里没有这件/.test(gone.title) && gone.spec,
+        gone
+          ? `布局仍有 ${gone.items} 件 · 2D 占位 ${gone.ghost} · 面板「${gone.title}」· 价格「${gone.price}」`
+          : `移除后布局件数 = ${await t.eval('state.items.length')}（期望 ${items0 + 1}）`
+      );
+      await t.shot('pack-removed-ghost');
+
+      await t.step('收尾：把那件从图里撤掉，目录回到基线');
+      await t.eval(
+        `(()=>{state.items=state.items.filter(i=>i.ref!=='demo-st-1');selected=null;` +
+          `save();buildCatalog('');drawFurniture();sync3D();updateTotals();updateProps();})()`
+      );
+      await t.waitFor(`catalogAll().length===${base} && state.items.length===${items0}`, 8000, '回到基线');
+      const clean = await t.eval(`({all: catalogAll().length, packs: packDocs.size, items: state.items.length})`);
+      t.assert(
+        'pack-cleanup',
+        clean.all === base && clean.packs === 0 && clean.items === items0,
+        `目录 ${clean.all} 条 · 包 ${clean.packs} 个 · 布局 ${clean.items} 件`
+      );
+    },
+  },
+
+  {
     name: 'measure',
     title: '量尺寸：点起点 → 预览 → 落定 → 清除',
     run: async (t) => {

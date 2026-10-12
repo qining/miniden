@@ -2230,6 +2230,424 @@ async function run3DTest() {
         'preset=' + three.preset
       );
     }
+    /* ── S10 目录扩展协议（R8-5K）：内置目录体检 + 包导入 → 生效 → 移除 ─────────────
+       这一段的判据全部来自「条目出文件之后」的对外契约，与户型无关（plan-independent）。 */
+    {
+      const CP = window.MINIDEN_CATALOG;
+      const baseN = CATALOG.length;
+      const demoPack = {
+        pack: 'bench-pack',
+        name: 'bench 目录包',
+        version: 1,
+        entries: [
+          {
+            id: 'bench-st-0',
+            cat: '茶几 / 边几',
+            name: 'bench · 通用回退边几',
+            w: 45,
+            d: 45,
+            h: 50,
+            kind: 'sideTable',
+            price: 39,
+            color: '#c8b79a',
+            wood: 'oak',
+          },
+          {
+            id: 'bench-st-1',
+            cat: '茶几 / 边几',
+            name: 'bench · 包内建模边几',
+            w: 42,
+            d: 42,
+            h: 52,
+            kind: 'sideTable',
+            model: 'bench-tray',
+            price: 59,
+            color: '#2f3134',
+            color2: '#c9a575',
+          },
+        ],
+        models: {
+          'bench-tray':
+            "(C)=>{const cm=C.cm,T=C.THREE;const dark=C.M(C.col,{rough:.55,metal:.15,plastic:true});const wood=C.M(C.col2||0xC9A575,{wood:'oak',rough:.5,clear:.25});" +
+            'const R=cm(21),topH=cm(48),th=cm(2.2);' +
+            'const top=new T.Mesh(new T.CylinderGeometry(R,R*0.94,th,40),wood);top.position.y=topH;C.g.add(top);' +
+            'const lip=new T.Mesh(new T.TorusGeometry(R*0.94,cm(0.9),8,40),dark);lip.rotation.x=Math.PI/2;lip.position.y=topH+th/2+cm(0.6);C.g.add(lip);' +
+            'for(let i=0;i<3;i++){const a=i*Math.PI*2/3+Math.PI/6;C.cyl(cm(1.1),cm(0.8),topH,dark,Math.cos(a)*R*0.72,0,Math.sin(a)*R*0.72,12);}' +
+            'C.g.updateMatrixWorld(true);return C.g;}',
+        },
+      };
+
+      /* 关 0：内置目录必须过自己的 schema（协议生效的前提：内置是那份「参照实现」） */
+      let cpErr = 0,
+        cpWarn = 0,
+        cpFirst = '';
+      for (const sp of CATALOG) {
+        const r = CP.validateEntry(sp);
+        for (const i of r.issues) {
+          if (i.level === 'error') cpErr++;
+          else cpWarn++;
+          if (!cpFirst) cpFirst = sp.id + ' ' + i.field + ' ' + i.message;
+        }
+      }
+      T(
+        'cat-schema-builtin-clean',
+        cpErr === 0 && cpWarn === 0,
+        CATALOG.length + ' 条内置目录 · 错误 ' + cpErr + ' · 提醒 ' + cpWarn + (cpFirst ? ' · ' + cpFirst : '')
+      );
+
+      /* 关 1：校准 / bench / #ui: 页面按定义不加载包（§1.1：包内容是不可控数据，
+         绝不能进 calib 的像素基线） */
+      T(
+        'cat-pack-excluded-from-calib-pages',
+        noHydratePage() === true && packDocs.size === 0 && packEntries.length === 0,
+        'noHydratePage()=' + noHydratePage() + ' · 启动时已加载包 ' + packDocs.size + ' 个'
+      );
+
+      /* 关 2：包校验 —— 合法包通过 */
+      const pkOk = validatePackJSON(JSON.stringify(demoPack));
+      T(
+        'cat-pack-validate-accepts',
+        pkOk.ok &&
+          !!pkOk.pack &&
+          pkOk.pack.entries.length === 2 &&
+          pkOk.entryIssues.filter((i) => i.level === 'error').length === 0,
+        'ok=' +
+          pkOk.ok +
+          ' 条目 ' +
+          (pkOk.pack ? pkOk.pack.entries.length : 0) +
+          ' 模型 ' +
+          Object.keys(pkOk.pack ? pkOk.pack.models : {}).length
+      );
+
+      /* 关 3：包层坏（包 id 非法 / 占用内置命名空间）→ 整包不加载 */
+      const pkBadId = validatePackJSON(JSON.stringify({ ...demoPack, pack: 'bad id' }));
+      const pkBuiltin = validatePackJSON(JSON.stringify({ ...demoPack, pack: 'builtin' }));
+      const pkNotJson = validatePackJSON('{ 这不是 JSON');
+      T(
+        'cat-pack-validate-rejects-pack-level',
+        !pkBadId.ok && !pkBuiltin.ok && !pkNotJson.ok,
+        '非法 id ' + !pkBadId.ok + ' · 占用 builtin ' + !pkBuiltin.ok + ' · 非 JSON ' + !pkNotJson.ok
+      );
+
+      /* 关 4：条目层坏只拒收那几条（一个 99999cm 的笔误不该毁掉其余条目） */
+      const pkMixed = validatePackJSON(
+        JSON.stringify({
+          ...demoPack,
+          entries: [
+            demoPack.entries[0],
+            { ...demoPack.entries[1], id: 'bench-bad', w: 99999 },
+            { ...demoPack.entries[0], id: 'bench-st-2' },
+          ],
+        })
+      );
+      T(
+        'cat-pack-entry-error-not-poison-pack',
+        pkMixed.ok &&
+          pkMixed.pack.entries.length === 2 &&
+          pkMixed.entryIssues.some((i) => i.level === 'error' && i.where === 'bench-bad'),
+        '可用 ' +
+          (pkMixed.pack ? pkMixed.pack.entries.length : 0) +
+          ' / 3 · 拒收 bench-bad ' +
+          pkMixed.entryIssues.filter((i) => i.level === 'error').length +
+          ' 条'
+      );
+
+      /* 关 5：导入 → 目录真的多出来了，卡片在界面上看得见（几何 + 遮挡两层探针，§8.4） */
+      /* 走的是界面导入真正用的那两个函数（addPackDoc + revealCatalogEntries）；
+         确认框那一段（选文件 → 确认 → 提交）由 E2E 的 catalog-pack 流程用真实文件选择覆盖。 */
+      const pkErrs = addPackDoc(pkOk.pack, { persist: false });
+      revealCatalogEntries(pkOk.pack.entries.map((e) => e.id));
+      await wait(300);
+      const pkTotal = catalogAll().length;
+      const pkPh = catList.querySelector('.ph[data-thumb="bench-st-1"]');
+      const pkCard = pkPh ? pkPh.closest('.catCard') : null;
+      const pkRect = pkCard ? pkCard.getBoundingClientRect() : null;
+      const pkHit =
+        pkRect && pkRect.width > 0
+          ? document.elementFromPoint(pkRect.left + pkRect.width / 2, pkRect.top + pkRect.height / 2)
+          : null;
+      const pkTag = pkCard ? !!pkCard.querySelector('.packTag') : false;
+      T(
+        'cat-pack-add-applies',
+        pkErrs.length === 0 &&
+          pkTotal === baseN + 2 &&
+          !!pkCard &&
+          !!pkRect &&
+          pkRect.width >= 8 &&
+          !!pkHit &&
+          (pkHit === pkCard || pkCard.contains(pkHit)) &&
+          pkTag,
+        '目录 ' +
+          baseN +
+          ' → ' +
+          pkTotal +
+          ' · 卡片 ' +
+          (pkRect ? Math.round(pkRect.width) + '×' + Math.round(pkRect.height) : '不存在') +
+          ' · 中心命中 ' +
+          (pkHit ? pkHit.className || pkHit.tagName : '-') +
+          ' · 包标记 ' +
+          pkTag
+      );
+
+      /* 关 6：包里的建模代码走的是同一条建模管线 —— 占地填充率 92%~102%、贴地、重心归零
+         （内置目录的硬约束对包同样生效，不能因为「是外部代码」就放水） */
+      const pkFill = (id) => {
+        const sp = catalogAll().find((c) => c.id === id);
+        const g = furn3D({ uid: -1, ref: id, x: 0, y: 0, rot: 0 }, sp);
+        g.updateMatrixWorld(true);
+        const bb = new THREE.Box3();
+        let meshes = 0;
+        g.traverse((o) => {
+          if (o.isMesh && o.geometry) {
+            meshes++;
+            const p = o.geometry.attributes.position,
+              v = new THREE.Vector3();
+            for (let i = 0; i < p.count; i++) {
+              v.fromBufferAttribute(p, i).applyMatrix4(o.matrixWorld);
+              bb.expandByPoint(v);
+            }
+          }
+        });
+        const sz = new THREE.Vector3(),
+          ct = new THREE.Vector3();
+        bb.getSize(sz);
+        bb.getCenter(ct);
+        return {
+          meshes,
+          fx: sz.x / cm2ft(sp.w),
+          fy: sz.y / cm2ft(sp.h),
+          fz: sz.z / cm2ft(sp.d),
+          miny: bb.min.y,
+          cx: ct.x,
+          cz: ct.z,
+        };
+      };
+      const pkModel = pkFill('bench-st-1');
+      const pkOk6 =
+        pkModel.meshes >= 3 &&
+        [pkModel.fx, pkModel.fy, pkModel.fz].every((v) => v >= 0.92 && v <= 1.02) &&
+        pkModel.miny > -0.02 &&
+        Math.abs(pkModel.cx) < 0.01 &&
+        Math.abs(pkModel.cz) < 0.01;
+      T(
+        'cat-pack-model-honours-footprint',
+        pkOk6,
+        '包内建模 ' +
+          pkModel.meshes +
+          ' mesh · 填充率 ' +
+          pkModel.fx.toFixed(3) +
+          '/' +
+          pkModel.fy.toFixed(3) +
+          '/' +
+          pkModel.fz.toFixed(3) +
+          ' · min.y ' +
+          pkModel.miny.toFixed(3) +
+          ' · 中心 ' +
+          pkModel.cx.toFixed(3) +
+          ',' +
+          pkModel.cz.toFixed(3)
+      );
+
+      /* 关 7：没有 model 的条目退回 kind 通用建模（能建、能贴图，不是空白卡片） */
+      const pkGeneric = pkFill('bench-st-0');
+      const pkSpec = catalogAll().find((c) => c.id === 'bench-st-0');
+      const pkMats = new Set();
+      {
+        const g = furn3D({ uid: -1, ref: 'bench-st-0', x: 0, y: 0, rot: 0 }, pkSpec);
+        g.traverse((o) => {
+          if (o.isMesh && o.material) pkMats.add(!!(o.material.map || o.material.normalMap));
+        });
+      }
+      T(
+        'cat-pack-generic-fallback-builds',
+        pkGeneric.meshes >= 1 && pkMats.size === 1 && pkMats.has(true),
+        '通用回退 ' +
+          pkGeneric.meshes +
+          ' mesh · 填充率 ' +
+          pkGeneric.fx.toFixed(3) +
+          ' · 材质有贴图 ' +
+          [...pkMats].join('/')
+      );
+
+      /* 关 8：内置赢 —— 同名模型与同 id 条目都不许被包顶掉（R8-5K 的「不覆盖内置」） */
+      const shadowKey = Object.keys(MODELS)[0];
+      const clashId = CATALOG[0].id;
+      const pkShadow = validatePackJSON(
+        JSON.stringify({
+          pack: 'bench-shadow',
+          entries: [{ id: clashId, cat: 'x', name: '包想顶掉内置条目', w: 30, d: 30, h: 30, kind: 'sideTable' }],
+          models: { [shadowKey]: '(C)=>{ C.g.add(new C.THREE.Mesh(new C.THREE.BoxGeometry(1,1,1))); }' },
+        })
+      );
+      addPackDoc(pkShadow.pack, { persist: false });
+      const shadowWin = modelFor(shadowKey) === MODELS[shadowKey];
+      const entryWin =
+        catalogAll().filter((c) => c.id === clashId).length === 1 &&
+        catalogAll().find((c) => c.id === clashId).name === CATALOG[0].name;
+      const shadowListed = packShadowedModels().some((s) => s.pack === 'bench-shadow' && s.model === shadowKey);
+      T(
+        'cat-pack-builtin-wins',
+        shadowWin && entryWin && shadowListed,
+        '模型 ' +
+          shadowKey +
+          ' 内置赢 ' +
+          shadowWin +
+          ' · 条目 ' +
+          clashId +
+          ' 内置赢 ' +
+          entryWin +
+          ' · 确认框会列出被顶掉的模型 ' +
+          shadowListed
+      );
+      removePackDoc('bench-shadow', { persist: false });
+
+      /* 关 9：模型源码编译失败 → 明说，并且那条退回通用建模（不是静默变成空白卡片） */
+      const pkBroken = validatePackJSON(
+        JSON.stringify({
+          pack: 'bench-broken',
+          entries: [
+            {
+              id: 'bench-brk',
+              cat: 'x',
+              name: '包内坏模型条目',
+              w: 40,
+              d: 40,
+              h: 40,
+              kind: 'sideTable',
+              model: 'bench-oops',
+            },
+          ],
+          models: { 'bench-oops': '(C)=>{ this is not javascript' },
+        })
+      );
+      const pkBrokenErrs = addPackDoc(pkBroken.pack, { persist: false });
+      const pkBrokenBuild = pkFill('bench-brk');
+      T(
+        'cat-pack-model-compile-fallback',
+        pkBrokenErrs.length === 1 && pkBrokenErrs[0].model === 'bench-oops' && pkBrokenBuild.meshes >= 1,
+        '编译失败 ' +
+          pkBrokenErrs.length +
+          ' 个（' +
+          (pkBrokenErrs[0] ? pkBrokenErrs[0].message.slice(0, 40) : '') +
+          '）· 条目仍能建模 ' +
+          pkBrokenBuild.meshes +
+          ' mesh'
+      );
+      removePackDoc('bench-broken', { persist: false });
+
+      /* 关 10：包跟着文件走（S13 同一条理由：localStorage 不是长期存放）——
+         存盘 → 清空内存 → 从注册表读回来 */
+      removePackDoc('bench-pack', { persist: false });
+      const pkPersist = addPackDoc(pkOk.pack, { persist: true });
+      packDocs.clear();
+      packModelFns.clear();
+      packEntries.length = 0;
+      const pkReloaded = loadPacksFromStore();
+      T(
+        'cat-pack-survives-reload',
+        pkPersist.length === 0 &&
+          packDocs.has('bench-pack') &&
+          catalogAll().length === baseN + 2 &&
+          modelFor('bench-tray') !== null,
+        '重启后注册表 ' +
+          pkReloaded +
+          ' 个包 · 目录 ' +
+          catalogAll().length +
+          ' 条 · 模型还在 ' +
+          (modelFor('bench-tray') !== null)
+      );
+
+      /* 关 11：移除包 —— 目录回到基线；已摆放的件不静默消失，
+         而且必须还能看见 / 能选 / 能删（以前这里 drawFurniture 直接读 spec.w 崩掉，
+         整个 2D 家具层停摆 —— 症状是「删了包以后平面图上的家具全不见了」） */
+      addItem('bench-st-1');
+      await wait(200);
+      const pkPlaced = state.items.length;
+      const pkUid = selected;
+      let pkThrew = null;
+      try {
+        removeLoadedPack('bench-pack');
+      } catch (e) {
+        pkThrew = e.message;
+      }
+      const pkAfter = state.items.length;
+      const pkGhostIt = state.items.find((it) => it.ref === 'bench-st-1');
+      const pkKept = pkAfter === pkPlaced && !!pkGhostIt;
+      const pkGhost = pkKept ? itemName(pkGhostIt) : '';
+      T(
+        'cat-pack-remove-honest',
+        !pkThrew &&
+          catalogAll().length === baseN &&
+          packDocs.size === 0 &&
+          pkKept &&
+          pkGhost === '?' &&
+          itemSpec(pkGhostIt) == null,
+        '目录回到 ' +
+          catalogAll().length +
+          ' · 布局件仍在 ' +
+          pkAfter +
+          ' 件 · 名字显示「' +
+          pkGhost +
+          '」' +
+          (pkThrew ? ' · 移除时抛错: ' + pkThrew : '')
+      );
+
+      /* 关 11b：占位符号在 2D 与 3D 里都在（两边不一致 = 用户以为东西消失了） */
+      drawFurniture();
+      await wait(120);
+      const pkGhostG = gFurn.querySelector('[data-uid="' + pkUid + '"]');
+      const pkGhostRect = pkGhostG ? pkGhostG.querySelector('rect') : null;
+      const pkGhost3D = !!(three && three.furnMap && three.furnMap.get(pkUid));
+      T(
+        'cat-pack-ghost-visible-2d-3d',
+        !!pkGhostG && !!pkGhostRect && +pkGhostRect.getAttribute('width') > 0 && pkGhost3D,
+        '2D 占位 ' +
+          (pkGhostG ? '有' : '无') +
+          ' · rect 宽 ' +
+          (pkGhostRect ? pkGhostRect.getAttribute('width') : '-') +
+          ' · 3D 占位 ' +
+          (pkGhost3D ? '有' : '无')
+      );
+
+      /* 关 11c：检视面板如实说明（不崩、不假装它还在卖、也不给一个假价格） */
+      selected = pkUid;
+      updateProps();
+      const pkTitle = document.querySelector('#pTitle').textContent;
+      const pkPrice = document.querySelector('#pPrice').textContent;
+      T(
+        'cat-pack-ghost-props-honest',
+        /目录里没有这件/.test(pkTitle) && pkPrice === '—',
+        '标题「' + pkTitle + '」· 价格「' + pkPrice + '」'
+      );
+
+      /* 关 11d：它仍然可删（删完不留残影） */
+      document.querySelector('#pDel').click();
+      await wait(120);
+      const pkGone = !state.items.some((it) => it.uid === pkUid) && !gFurn.querySelector('[data-uid="' + pkUid + '"]');
+      T(
+        'cat-pack-ghost-deletable',
+        pkGone,
+        '删除后布局 ' +
+          state.items.length +
+          ' 件 · 2D 残留 ' +
+          (gFurn.querySelector('[data-uid="' + pkUid + '"]') ? '有' : '无')
+      );
+
+      buildCatalog('');
+      drawFurniture();
+      await wait(150);
+
+      /* 关 12：收尾干净 —— 探针不许漏给后面的断言 */
+      T(
+        'cat-pack-clean-exit',
+        packDocs.size === 0 &&
+          packEntries.length === 0 &&
+          catalogAll().length === baseN &&
+          packShadowedModels().length === 0,
+        '包 ' + packDocs.size + ' · 包条目 ' + packEntries.length + ' · 目录 ' + catalogAll().length
+      );
+    }
+
     T('t3d-bench-done', true, __E3.length + ' tests', 'done');
   } catch (e) {
     log.push('EXC ' + e.message + ' | ' + (e.stack || '').split('\n')[1]);
