@@ -3612,10 +3612,15 @@ function updateUndoUI(){
 // 真正动了才算一步手势：只点一下（没拖）不该进撤销环。
 // 以前 pointerdown 就 pushUndo：点一下家具/墙/台面（没拖）会把「撤销」按钮点亮，
 // 按下去却什么都没发生——零反馈 = 设计缺陷（R10）。手势键照旧，合并语义不变。（bug 猎 #33）
+let gestureSeq = 0;
 function markDragGesture(drag, key){
   if(!drag || drag.moved || !key) return;
   drag.moved = true;
-  pushUndo(key);
+  /* 手势身份要能区分「同一次手势」与「同一种动作」（#40 同一条判据）。
+     只用 'drag3d:<uid>' 这种稳定键，连着拖同一件两次会并成一步：
+     实测撤销一次退 27cm，两次拖动一起没了。每次拖动一个序号，手势内仍合并，手势之间不合并。 */
+  if(drag.gestureSeq == null) drag.gestureSeq = ++gestureSeq;
+  pushUndo(key + '#' + drag.gestureSeq);
 }
 /* 有效几何（S1 Phase 2b）：唯一几何源 = DOC（id 寻址文档）→ docToLegacy 投影。
    CALIB 校准模式永远用纯净内置常量（不走文档，md5 基线逐字节不变）。 */
@@ -4893,6 +4898,7 @@ window.addEventListener('keydown', ev=>{
   // 例外：对话框开着时键盘归对话框，不隔窗改后面的家具。
   if(tag==='BUTTON' && ['dxfModal','pdfModal','imgModal','docModal','ptModal','photoModal']
       .some((id)=>{ const m = document.getElementById(id); return m && m.style.display && m.style.display!=='none'; })) return;
+  if(photoFrozen('改家具')) return;   // 删 / 转 / 复制 / 微调都会换掉它正在累积的那份场景
   if(selected==null) return;
   const it = state.items.find(i=>i.uid===selected); if(!it) return;
   if(ev.key==='Delete'||ev.key==='Backspace'){ pushUndo('key:del:'+selected, true); state.items=state.items.filter(i=>i.uid!==selected); selected=null; drawFurniture(); save(); }
@@ -6102,6 +6108,7 @@ function fpHomePos(){
   return best;
 }
 function fpJumpTo(fx, fz){
+  if(photoFrozen('走动')) return;
   const pt=[fx,fz];
   const dir=fpFaceDir(fx,fz);
   three.fpPos=new THREE.Vector3(fx, EYE_H, fz);
@@ -6969,7 +6976,15 @@ function requestRender(){ if(three) three.needsRender=true; }
 /* 光追/照片级渲染跑的是样本累积：跑到一半换环境 = 出图里混两种光照，谁都不是。
    顶栏这些按钮在光追期间照样能点，所以入口直接拒收并说清怎么办（不用 confirm()，headless 会挂）。 */
 function photoBusy(what){
-  toast('光追渲染进行中：先点「取消」再换' + what + '（跑到一半换会把两种光照混进同一张图）', 6000);
+  toast('光追渲染进行中：先点「取消」再' + what + '（跑到一半改动会把新旧两个状态混进同一张图）', 6000);
+}
+/* 光追在开始那一刻把场景冻结成纹理（BVH + 三角形 + 相机位姿 + 光照），之后累积的是样本均值。
+   中途改任何一样，交出来的那张图属于一个已经不存在的房间，而进度条照样跑到 100%。
+   #26 守住了光照三个入口；视角 / 相机 / 家具是同一依赖的其余入口（E19 轮㉖）。 */
+function photoFrozen(what){
+  if(!three || !three.photo) return false;
+  photoBusy(what);
+  return true;
 }
 function requestShadowUpdate(){ if(three){ three.renderer.shadowMap.needsUpdate=true; three.needsRender=true; } }
 function buildEnvironment(){
@@ -17516,6 +17531,7 @@ function syncCurUI(){
 }
 
 function addItem(refId){
+  if(photoFrozen('加家具')) return;
   // 放到当前视图中心附近
   const cx = (vb.x+vb.w/2)/S, cy=(vb.y+vb.h/2)/S;
   const it = {uid:uidSeq++, ref:refId, x:Math.round(cx*4)/4, y:Math.round(cy*4)/4, rot:0};
@@ -17594,7 +17610,7 @@ function updateProps(){
   // 离墙距离提示
   $('#pClear').textContent = `位置 (${it.x.toFixed(2)}, ${it.y.toFixed(2)}) ft`;
 }
-$('#pRot').addEventListener('input', e=>{ const it=state.items.find(i=>i.uid===selected); if(!it) return;
+$('#pRot').addEventListener('input', e=>{ if(photoFrozen('改家具')) return; const it=state.items.find(i=>i.uid===selected); if(!it) return;
   // 空框 / 非法文本（"-"、"1e"）不是角度：把它当 0 会让家具先转没了再转回来，还白占一步撤销。
   // （"45." 在 number input 里是合法浮点写法，Number("45.")=45，不需要特殊处理）
   if(e.target.value === '' || (e.target.validity && e.target.validity.badInput)) return;
@@ -17606,9 +17622,9 @@ $('#pRot').addEventListener('input', e=>{ const it=state.items.find(i=>i.uid===s
   it.rot = v;
   if(Number(e.target.value) !== v) e.target.value = v;
   $('#pRotSlider').value = v; drawFurniture(); save(); });
-$('#pRotSlider').addEventListener('input', e=>{ const it=state.items.find(i=>i.uid===selected);
+$('#pRotSlider').addEventListener('input', e=>{ if(photoFrozen('改家具')) return; const it=state.items.find(i=>i.uid===selected);
   if(it){ pushUndo('rot:'+selected); it.rot=normDeg(e.target.value); if(document.activeElement!==$('#pRot')) $('#pRot').value=it.rot; drawFurniture(); save(); }});
-$('#pRot90').onclick=()=>{ const it=state.items.find(i=>i.uid===selected); if(it){ pushUndo('rot90:'+selected, true); it.rot=normDeg(it.rot+90); drawFurniture(); save(); }};
+$('#pRot90').onclick=()=>{ if(photoFrozen('改家具')) return; const it=state.items.find(i=>i.uid===selected); if(it){ pushUndo('rot90:'+selected, true); it.rot=normDeg(it.rot+90); drawFurniture(); save(); }};
 function syncLightUI(it){
   const spec=itemSpec(it);
   const on = hasLightCtl(spec);
@@ -17622,16 +17638,16 @@ function syncLightUI(it){
   const sp0=itemSpec(it)||{}; const lm=Math.round((sp0.lum||800)*dim/100);
   $('#pDimv').textContent=dim+'% · '+lm+'lm';
 }
-$('#pCCT').addEventListener('input', e=>{ const it=state.items.find(i=>i.uid===selected);
+$('#pCCT').addEventListener('input', e=>{ if(photoFrozen('改灯具')) return; const it=state.items.find(i=>i.uid===selected);
   // 色温 / 亮度 / 颜色都是离散动作，必须进撤销环：以前改完颜色按 Ctrl+Z，撤掉的是
   // 「放这件家具」那一步 —— 家具直接消失（同一面板里改旋转能撤、改颜色撤不回 = 不一致，bug 猎 #42）。
   // 滑块拖动中照旧合并成一步（不给 eachGesture）。
   if(it){ pushUndo('cct:'+selected); it.cct=+e.target.value; syncLightUI(it); drawFurniture(); if(three&&is3D()) sync3D(); save(); }});
-$('#pDim').addEventListener('input', e=>{ const it=state.items.find(i=>i.uid===selected);
+$('#pDim').addEventListener('input', e=>{ if(photoFrozen('改灯具')) return; const it=state.items.find(i=>i.uid===selected);
   if(it){ pushUndo('dim:'+selected); it.dim=(+e.target.value)/100; syncLightUI(it); if(three&&is3D()) sync3D(); save(); }});
-$('#pColor').addEventListener('input', e=>{ const it=state.items.find(i=>i.uid===selected); if(it){ pushUndo('color:'+selected); it.color=e.target.value; drawFurniture(); sync3D(); save(); }});
-$('#pDup').onclick=()=>{ const it=state.items.find(i=>i.uid===selected); if(it){ pushUndo('dup:'+selected, true); const n={...it,uid:uidSeq++,x:it.x+1.5,y:it.y+1.5}; state.items.push(n); selected=n.uid; drawFurniture(); save(); }};
-$('#pDel').onclick=()=>{ pushUndo('del:'+selected, true); state.items=state.items.filter(i=>i.uid!==selected); selected=null; drawFurniture(); save(); };
+$('#pColor').addEventListener('input', e=>{ if(photoFrozen('改家具')) return; const it=state.items.find(i=>i.uid===selected); if(it){ pushUndo('color:'+selected); it.color=e.target.value; drawFurniture(); sync3D(); save(); }});
+$('#pDup').onclick=()=>{ if(photoFrozen('复制家具')) return; const it=state.items.find(i=>i.uid===selected); if(it){ pushUndo('dup:'+selected, true); const n={...it,uid:uidSeq++,x:it.x+1.5,y:it.y+1.5}; state.items.push(n); selected=n.uid; drawFurniture(); save(); }};
+$('#pDel').onclick=()=>{ if(photoFrozen('删家具')) return; pushUndo('del:'+selected, true); state.items=state.items.filter(i=>i.uid!==selected); selected=null; drawFurniture(); save(); };
 
 // 自定义件尺寸口径：5cm（把手级）~ 12m（长餐桌 / 整墙柜级）。目录里最大的商品是 5m 级。
 const CF_MIN_CM = 5, CF_MAX_CM = 1200;
@@ -17775,6 +17791,9 @@ function schedule3DRebuild(){
 }
 function setView(v){
   if(v === '3d') v = 'doll';                       // 兼容旧调用
+  // 光追进行中不许换视角：相机位姿是渲染的输入（开始那一刻就冻结），切走等于让出图属于另一个取景。
+  // restoreState 传的是当前视图，不会被这条挡住。
+  if(three && three.photo && v !== state.view){ photoBusy('视角'); return; }
   state.view = v;
   const in3 = is3D(), fp = (v === 'fp');
   $('#btn2d').classList.toggle('on', v==='2d');
@@ -18075,6 +18094,7 @@ function hide3DLoading(){ const b=$('#loading3d'); if(b) b.style.display='none';
 const EYE_H = 5.35;              // 人眼高度 ≈163cm
 function setCamMode(m){
   if(!three) return;
+  if(three.photo && m !== three.camMode){ photoBusy('视角'); return; }   // 同 setView：相机位姿是光追的输入
   three.camMode=m;
   if(is3D()) state.view = m;                       // 相机档位就是视图档位
   const inFP = (m==='fp' && is3D());
@@ -18145,6 +18165,7 @@ function insideFloorPt(x,z){
 /* 街景式：双击地面走过去（保持朝向，平滑移动） */
 function walkTo(x,z){
   if(!three) return;
+  if(photoFrozen('走动')) return;
   const cam=three.cam, from=cam.position.clone(), to=new THREE.Vector3(x, EYE_H, z);
   const dist=from.distanceTo(to);
   const dur=Math.min(900, 260+dist*45);
@@ -18211,9 +18232,8 @@ function groundAt(ev){
     const it=state.items.find(i=>i.uid===hit.uid); if(!it) return;
     const g0=groundAt(ev); if(!g0) return;
     selected=hit.uid; drawFurniture(); updateProps();
-    pushUndo('drag3d:'+hit.uid);
     d3={uid:hit.uid, dx:it.x-g0.x, dy:it.y-g0.z, rot0:it.rot||0,
-        sx:ev.clientX, moved:false, undoKey:'drag3d:'+hit.uid, wasCtl:three.controls.enabled};
+        sx:ev.clientX, sy:ev.clientY, moved:false, undoKey:'drag3d:'+hit.uid, wasCtl:three.controls.enabled};
     three.controls.enabled=false;                 // 拖家具时不要转相机
     three.dragging3D=true;
     try{ canvas.setPointerCapture(ev.pointerId); }catch(_){}
@@ -18222,14 +18242,18 @@ function groundAt(ev){
   canvas.addEventListener('pointermove', ev=>{
     if(!d3) return;
     const it=state.items.find(i=>i.uid===d3.uid); if(!it) return;
+    // 点击 vs 拖动用屏幕像素阈值（AGENTS §8.2，与 2D 同一口径）。以前没有：
+    // 实测 1px 手抖就把家具挪走 1~4cm 并落盘（bug 猎 #52）。
+    if(!d3.moved && Math.hypot(ev.clientX-d3.sx, ev.clientY-d3.sy) < 5) return;
+    const gp = ev.shiftKey ? null : groundAt(ev);
+    if(!ev.shiftKey && !gp) return;
+    markDragGesture(d3, d3.undoKey);              // 先记「动之前」的状态，再改（快照必须在变异前）
     if(ev.shiftKey){                               // Shift 拖动 = 就地旋转
       it.rot = Math.round((d3.rot0 + (ev.clientX-d3.sx)*0.5)*10)/10;
     } else {
-      const p=groundAt(ev); if(!p) return;
-      it.x = Math.round((p.x+d3.dx)*100)/100;
-      it.y = Math.round((p.z+d3.dy)*100)/100;
+      it.x = Math.round((gp.x+d3.dx)*100)/100;
+      it.y = Math.round((gp.z+d3.dy)*100)/100;
     }
-    markDragGesture(d3, d3.undoKey);
     drawFurniture();                               // 内部会 sync3D（增量，约 4ms）
     ev.stopPropagation();
   }, true);
@@ -18275,6 +18299,7 @@ function groundAt(ev){
   });
   canvas.addEventListener('pointerdown', e=>{
     if(!three || three.camMode!=='fp' || !is3D()) return;
+    if(photoFrozen('转头 / 走动')) return;
     if(three.dragging3D) return;                 // 正在拖家具，不要同时转头
     drag={x:e.clientX, y:e.clientY, btn:e.button};
     try{ canvas.setPointerCapture(e.pointerId); }catch(_){}
@@ -18299,6 +18324,8 @@ function groundAt(ev){
   canvas.addEventListener('wheel', e=>{     // 滚轮=前后走，而不是拉远拉近
     if(!three || three.camMode!=='fp' || !is3D()) return;
     e.preventDefault();
+    if(photoFrozen('走动')) return;
+    e.preventDefault();
     three.cam.position.addScaledVector(fpForward(), (e.deltaY>0?-1:1)*0.55);
     three.cam.position.y=EYE_H;
     fpAim();
@@ -18309,6 +18336,7 @@ const fpKeys={};
 window.addEventListener('keydown', e=>{
   if(['INPUT','SELECT','TEXTAREA'].includes(e.target.tagName)) return;
   if(!three || three.camMode!=='fp' || !is3D()) return;
+  if(three.photo) return;                        // 光追进行中不接走动（进度条上已经写了「取消」这条路）
   const k=e.key.toLowerCase();
   if(['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright'].includes(k)){ fpKeys[k]=true; e.preventDefault(); }
 });
