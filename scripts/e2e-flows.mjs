@@ -892,6 +892,125 @@ export const FLOWS = [
   },
 
   {
+    name: 'measure-tool',
+    title: '量尺寸：标注按屏幕尺寸恒定、换户型时作废',
+    run: async (t) => {
+      /* bug 猎 轮㉔。量尺寸是「先量一下再决定」的主路径，而标注是画在 SVG 里的：
+         它的线宽与字号在绘制时除以当时的屏幕变换，所以任何改变取景的动作都可能把它放大或缩小。
+         实测（修之前）：滚轮放大 5 格后标注线宽 1.600→2.577px、字号 10→16.1px；
+         重新取景后 1.600→4.150px / 10→25.9px；整图重标定 ×2 后反而缩一半（0.876/5.474px）；
+         换户型之后旧标注还挂在图上，跨的却是另一份户型的坐标。 */
+      const measPx = () =>
+        t.eval(
+          `(()=>{const s=document.querySelector('#svg2d');
+             const k=s.getBoundingClientRect().width/s.viewBox.baseVal.width;
+             const l=document.querySelector('#meas line'), x=document.querySelector('#meas text');
+             return {n:document.querySelectorAll('#meas *').length,
+                     line:l?+l.getAttribute('stroke-width')*k:null,
+                     font:x?+x.getAttribute('font-size')*k:null,
+                     txt:x?x.textContent:'', vb:Math.round(s.viewBox.baseVal.width)};})()`
+        );
+      const plans0 = await t.eval(`PLAN_REG.plans.length`);
+
+      await t.step('开启量尺寸，沿最长的一段墙量一次');
+      if ((await stateOf(t)).view !== '2d') {
+        await t.click('#btn2d');
+        await t.waitFor(`state.view==='2d'`, 6000, '回到 2D');
+      }
+      await t.eval(`meas.list.length===0 ? null : (measClear(), null)`);
+      await t.click('#btnMeas');
+      await t.waitFor(`meas.on===true`, 6000, '量尺寸模式开启');
+      const w0 = await t.eval(
+        `(()=>{const w=effWalls().filter(s=>s.t==='w')
+           .map(s=>({id:s._id,a:[s.x1,s.y1],b:[s.x2,s.y2],L:Math.hypot(s.x2-s.x1,s.y2-s.y1)}))
+           .sort((p,q)=>q.L-p.L)[0];return {id:w.id,a:w.a,b:w.b,L:w.L};})()`
+      );
+      const pa = await t.planPoint(w0.a[0], w0.a[1]);
+      const pb = await t.planPoint(w0.b[0], w0.b[1]);
+      await t.click(pa);
+      await t.mouse('mouseMoved', pb.x, pb.y);
+      await t.click(pb);
+      await t.waitFor(`meas.list.length>=1`, 6000, '落定一条标注');
+      const m0 = await measPx();
+      t.assert(
+        'meas-annotation-drawn',
+        m0.n > 0 && m0.line > 0 && !!m0.txt,
+        `读数「${m0.txt}」· 线宽 ${m0.line.toFixed(3)}px · 字号 ${m0.font.toFixed(2)}px`
+      );
+      await t.shot('meas-on');
+
+      await t.step('滚轮放大 5 格：标注必须还是同一个屏幕尺寸');
+      for (let i = 0; i < 5; i++) await t.mouse('mouseWheel', pb.x, pb.y, { deltaX: 0, deltaY: -100 });
+      await t.waitFor(`true`, 400, '缩放处理跑完');
+      const m1 = await measPx();
+      const drift = (a, b) => (a === null || b === null ? 9 : Math.abs(b - a) / a);
+      t.assert(
+        'meas-constant-after-zoom',
+        drift(m0.line, m1.line) < 0.02 && drift(m0.font, m1.font) < 0.02,
+        `viewBox ${m0.vb} → ${m1.vb}：线宽 ${m1.line.toFixed(3)}px（基准 ${m0.line.toFixed(3)}）· 字号 ${m1.font.toFixed(2)}px（基准 ${m0.font.toFixed(2)}）`
+      );
+      // 人眼可读性下限：标注不是细到看不见、也不是粗到盖住图
+      t.assert(
+        'meas-readable-after-zoom',
+        m1.font >= 8 && m1.font <= 14 && m1.line >= 0.8 && m1.line <= 3,
+        `放大后字号 ${m1.font.toFixed(2)}px · 线宽 ${m1.line.toFixed(3)}px（可读区间 8–14px / 0.8–3px）`
+      );
+      await t.shot('meas-zoomed');
+
+      await t.step('新建一份空白户型：旧标注属于上一份几何，必须作废');
+      await ensureProTools(t);
+      await t.click('#btnPlanNew');
+      await t.waitFor(`PLAN_ID!==BUILTIN_PLAN_ID`, 8000, '切到空白户型');
+      const blankId = await t.eval(`PLAN_ID`);
+      const m2 = await measPx();
+      t.assert(
+        'meas-dropped-on-new-plan',
+        m0.n > 0 && m2.n === 0,
+        `新户型图上标注 ${m2.n} 个元素（旧的那条量的是内置户型的坐标）`
+      );
+      await t.shot('meas-blank-plan');
+
+      await t.step('切回内置户型：仍然不复活');
+      const builtinId = await t.eval(`BUILTIN_PLAN_ID`);
+      await pickPlan(t, builtinId);
+      await t.waitFor(`PLAN_ID===BUILTIN_PLAN_ID`, 8000, '切回内置');
+      const m3 = await measPx();
+      t.assert('meas-dropped-on-plan-return', m3.n === 0, `标注 ${m3.n} 个元素`);
+      const onAfterSwitch = await t.eval(`meas.on`);
+      t.assert(
+        'meas-mode-exits-on-plan-switch',
+        onAfterSwitch === false,
+        `换户型后 meas.on=${onAfterSwitch}（切户型时量尺寸模式跟着退出，不会在新户型上接着画标注）`
+      );
+
+      await t.step('收尾：退出量尺寸 + 删掉那份空白户型');
+      if (onAfterSwitch === false) {
+        // 换户型已经退出了模式：再进一次再退出，验证这个按钮是双向的
+        await t.click('#btnMeas');
+        await t.waitFor(`meas.on===true`, 6000, '再进一次量尺寸');
+      }
+      await t.click('#btnMeas');
+      await t.waitFor(`meas.on===false`, 6000, '退出量尺寸');
+      await t.eval(`fit2DToContent()`);
+      // 删除作用于「当前户型」，而内置户型不可删（按钮禁着）→ 先切回那份空白户型
+      await pickPlan(t, blankId);
+      await t.waitFor(`PLAN_ID===${JSON.stringify(blankId)}`, 8000, '切回那份空白户型');
+      await t.click('#btnPlanDel');
+      await t.waitFor(`document.querySelector('#btnPlanDel').classList.contains('arm')`, 8000, '第一次点击 = 待确认');
+      await t.click('#btnPlanDel');
+      await t.waitFor(`!PLANS.hasPlan(PLAN_REG, ${JSON.stringify(blankId)})`, 8000, '空白户型被删');
+      const end = await t.eval(
+        `({plans:PLAN_REG.plans.length, id:PLAN_ID, n:document.querySelectorAll('#meas *').length, on:meas.on})`
+      );
+      t.assert(
+        'meas-cleanup',
+        end.plans === plans0 && end.id === builtinId && end.n === 0 && end.on === false,
+        `注册表 ${end.plans} 份（原本 ${plans0}）· 当前户型=${end.id === builtinId ? '内置' : end.id} · 标注 ${end.n} · meas.on=${end.on}`
+      );
+    },
+  },
+
+  {
     name: 'overlap-feedback',
     title: '两件重叠 → 红描边；移开 → 消失',
     run: async (t) => {

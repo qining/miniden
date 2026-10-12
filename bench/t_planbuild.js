@@ -3477,6 +3477,307 @@ async function runPBTest() {
       );
     }
 
+    /* ===== 16. E19 轮㉔：按屏幕尺寸恒定的叠加层 / 量尺寸标注的归属 ===== */
+    {
+      /* 两个同族根因（探针实测）：
+         ①「按屏幕尺寸恒定」的叠加层（量尺寸标注 / 编辑手柄）在绘制时除以当时的 getScreenCTM().a，
+            而 viewBox 变化后不重画 → 滚轮放大 5 次后标注线宽 1.600px→2.577px、字号 10→16.1px；
+            fit2DToContent() 后量尺寸 1.878px / 手柄 1.89px、2.835px（基准 1.6 / 1.0 / 1.5）。
+         ②量尺寸标注跨的是几何：换户型 / 导入 / 整图重标定不把它作废或跟着搬 →
+            旧标注停在原地、读数不再对应它跨的那段。 */
+      const r24k = () => {
+        const b = svg.viewBox.baseVal;
+        return svg.getBoundingClientRect().width / b.width;
+      };
+      const r24px = (sel, attr) => {
+        const e = document.querySelector(sel);
+        return e ? parseFloat(e.getAttribute(attr)) * r24k() : null;
+      };
+      const r24vb = () => svg.viewBox.baseVal.width;
+      const r24wheel = (dy, n) => {
+        const r = svg.getBoundingClientRect();
+        for (let i = 0; i < n; i++)
+          svg.dispatchEvent(
+            new WheelEvent('wheel', {
+              clientX: r.x + r.width / 2,
+              clientY: r.y + r.height / 2,
+              deltaY: dy,
+              bubbles: true,
+              cancelable: true,
+            })
+          );
+      };
+      const r24nodes = () => document.querySelectorAll('#meas *').length;
+      const r24texts = () => [...document.querySelectorAll('#meas text')].map((x) => x.textContent).join(' | ');
+      const r24drift = (a, b) => (a === null || b === null ? 9 : Math.abs(b - a) / a);
+      const r24last = () => meas.list[meas.list.length - 1];
+      const r24len = (m) => Math.hypot(m[1][0] - m[0][0], m[1][1] - m[0][1]);
+
+      await pbReset();
+      if (meas.on) measEnd();
+      measClear();
+      fit2DToContent();
+      await tick();
+      const fp24 = floorPts();
+      const cx24 = (Math.min(...fp24.map((p) => p[0])) + Math.max(...fp24.map((p) => p[0]))) / 2;
+      const cy24 = (Math.min(...fp24.map((p) => p[1])) + Math.max(...fp24.map((p) => p[1]))) / 2;
+
+      /* 16.1 量尺寸标注：缩放 / 重新取景后必须还是同一个屏幕尺寸 */
+      measStart();
+      measClick([cx24 - 2, cy24], false);
+      measClick([cx24 + 2, cy24], false);
+      await tick();
+      const b24Line = r24px('#meas line', 'stroke-width');
+      const b24Font = r24px('#meas text', 'font-size');
+      T(
+        'pb-meas-drawn',
+        r24nodes() > 0 && !!b24Line && !!b24Font,
+        '标注 ' + r24nodes() + ' 个元素 · 线宽 ' + b24Line + 'px · 字号 ' + b24Font + 'px'
+      );
+      r24wheel(-100, 5);
+      await tick();
+      const zi24Line = r24px('#meas line', 'stroke-width');
+      const zi24Font = r24px('#meas text', 'font-size');
+      T(
+        'pb-meas-constant-after-zoom-in',
+        r24drift(b24Line, zi24Line) < 0.02 && r24drift(b24Font, zi24Font) < 0.02,
+        'viewBox ' +
+          r24vb().toFixed(0) +
+          '（基准 ' +
+          1232 +
+          '）→ 线宽 ' +
+          zi24Line.toFixed(3) +
+          'px（基准 ' +
+          b24Line.toFixed(3) +
+          '）· 字号 ' +
+          zi24Font.toFixed(3) +
+          'px（基准 ' +
+          b24Font.toFixed(3) +
+          '）'
+      );
+      r24wheel(100, 10);
+      await tick();
+      const zo24Line = r24px('#meas line', 'stroke-width');
+      const zo24Font = r24px('#meas text', 'font-size');
+      T(
+        'pb-meas-constant-after-zoom-out',
+        r24drift(b24Line, zo24Line) < 0.02 && r24drift(b24Font, zo24Font) < 0.02,
+        'viewBox ' + r24vb().toFixed(0) + ' → 线宽 ' + zo24Line.toFixed(3) + 'px · 字号 ' + zo24Font.toFixed(3) + 'px'
+      );
+
+      /* 16.2 编辑手柄：同一个处理器里 wallEdit 重画了、meas 没重画（对照组 + 真红的那条） */
+      await enterEdit();
+      const hw24 = effWalls()
+        .filter((s) => s.t === 'w')
+        .sort((a, b) => Math.hypot(b.x2 - b.x1, b.y2 - b.y1) - Math.hypot(a.x2 - a.x1, a.y2 - a.y1))[0];
+      wallEdit.sel = { kind: 'w', id: hw24._id };
+      updateWallBarFromSel();
+      drawWallEdit();
+      await tick();
+      const b24Dash = r24px('#wedit line[stroke="#3d8bfd"]', 'stroke-width');
+      const b24Sel = r24px('#wedit line[stroke="#26e0a8"]', 'stroke-width');
+      T('pb-edit-handles-drawn', !!b24Dash && !!b24Sel, '墙中心线 ' + b24Dash + 'px · 选中描边 ' + b24Sel + 'px');
+      r24wheel(-100, 5);
+      await tick();
+      const zi24Dash = r24px('#wedit line[stroke="#3d8bfd"]', 'stroke-width');
+      const zi24Sel = r24px('#wedit line[stroke="#26e0a8"]', 'stroke-width');
+      T(
+        'pb-edit-handles-constant-after-zoom',
+        r24drift(b24Dash, zi24Dash) < 0.02 && r24drift(b24Sel, zi24Sel) < 0.02,
+        '对照组：滚轮后手柄照旧恒定 中心线 ' + zi24Dash.toFixed(3) + 'px · 选中 ' + zi24Sel.toFixed(3) + 'px'
+      );
+      /* 重新取景这一条要量得确定：先缩小 10 次（viewBox 变大）并用应用自己的重画
+         （build2D 末尾就是 drawMeasure + drawWallEdit）在新缩放下重画一遍基准，
+         然后 fit2DToContent() 把 viewBox 改回去 —— 中间不 tick，不给任何定时器机会。 */
+      r24wheel(100, 10);
+      drawMeasure();
+      drawWallEdit();
+      const vb24Wide = r24vb();
+      const w24Line = r24px('#meas line', 'stroke-width');
+      const w24Font = r24px('#meas text', 'font-size');
+      const w24Dash = r24px('#wedit line[stroke="#3d8bfd"]', 'stroke-width');
+      const w24Sel = r24px('#wedit line[stroke="#26e0a8"]', 'stroke-width');
+      fit2DToContent();
+      const rf24Dash = r24px('#wedit line[stroke="#3d8bfd"]', 'stroke-width');
+      const rf24Sel = r24px('#wedit line[stroke="#26e0a8"]', 'stroke-width');
+      const rf24Line = r24px('#meas line', 'stroke-width');
+      const rf24Font = r24px('#meas text', 'font-size');
+      T(
+        'pb-overlays-constant-after-refit',
+        r24drift(w24Dash, rf24Dash) < 0.02 &&
+          r24drift(w24Sel, rf24Sel) < 0.02 &&
+          r24drift(w24Line, rf24Line) < 0.02 &&
+          r24drift(w24Font, rf24Font) < 0.02,
+        'viewBox ' +
+          vb24Wide.toFixed(0) +
+          ' → ' +
+          r24vb().toFixed(0) +
+          '：标注 ' +
+          rf24Line.toFixed(3) +
+          '/' +
+          rf24Font.toFixed(3) +
+          'px（基准 ' +
+          w24Line.toFixed(3) +
+          '/' +
+          w24Font.toFixed(3) +
+          '）· 手柄 ' +
+          rf24Dash.toFixed(3) +
+          '/' +
+          rf24Sel.toFixed(3) +
+          'px（基准 ' +
+          w24Dash.toFixed(3) +
+          '/' +
+          w24Sel.toFixed(3) +
+          '）'
+      );
+      drawMeasure();
+      drawWallEdit();
+      if (wallEdit.on) Q('#btnWallEdit').click();
+      await tick();
+
+      /* 16.3 换户型 / 导入：旧标注属于上一份几何，不该留在图上 */
+      let imp24 = null,
+        imp24Err = '';
+      try {
+        const txt = await (await fetch('../tests/fixtures/apartment-mm.dxf')).text();
+        imp24 = window.MINIDEN_GEO.importDxf(new window.DxfParser().parseSync(txt), {
+          name: 'planbuild-r24',
+        });
+      } catch (e) {
+        imp24Err = e.message;
+      }
+      if (!imp24) T('pb-meas-import', false, imp24Err);
+      else {
+        measStart();
+        measClick([cx24 - 1, cy24], false);
+        measClick([cx24 + 1, cy24], false);
+        await tick();
+        const pre24 = r24nodes();
+        applyImportedDoc(imp24.doc, imp24.info);
+        await tick();
+        fit2DToContent();
+        await tick();
+        T(
+          'pb-meas-dropped-on-import',
+          pre24 > 0 && r24nodes() === 0,
+          '导入前 ' + pre24 + ' 个元素 · 导入后 ' + r24nodes() + ' 个（旧标注量的是另一份户型的坐标）'
+        );
+
+        /* 16.4 整图重标定：标注跨的是几何 → 必须跟着搬，读数自动跟着变 */
+        await enterEdit();
+        const iw24 = effWalls()
+          .filter((s) => s.t === 'w')
+          .sort((a, b) => Math.hypot(b.x2 - b.x1, b.y2 - b.y1) - Math.hypot(a.x2 - a.x1, a.y2 - a.y1))[0];
+        const wid24 = iw24._id;
+        const L0 = Math.hypot(iw24.x2 - iw24.x1, iw24.y2 - iw24.y1);
+        wallEdit.sel = { kind: 'w', id: wid24 };
+        updateWallBarFromSel();
+        await tick();
+        measStart();
+        measClick([iw24.x1, iw24.y1], false);
+        measClick([iw24.x2, iw24.y2], false);
+        await tick();
+        const lab0 = r24texts();
+        const m0 = r24last();
+        const mL0 = r24len(m0);
+        T(
+          'pb-meas-on-wall',
+          Math.abs(mL0 - L0) < 0.02,
+          '标注跨 ' + mL0.toFixed(3) + 'ft · 墙长 ' + L0.toFixed(3) + 'ft · 读数 ' + lab0
+        );
+        Q('#wLen').value = String(Math.round(L0 * 2 * 30.48));
+        Q('#calBtn').click();
+        await tick();
+        Q('#calBtn').click();
+        await tick();
+        const g24 = entById(wid24).geom;
+        const L1 = Math.hypot(g24.x2 - g24.x1, g24.y2 - g24.y1);
+        const m1 = r24last();
+        const mL1 = r24len(m1);
+        const dEnd = Math.min(
+          Math.hypot(m1[0][0] - g24.x1, m1[0][1] - g24.y1),
+          Math.hypot(m1[0][0] - g24.x2, m1[0][1] - g24.y2)
+        );
+        T(
+          'pb-meas-follows-rescale',
+          r24nodes() > 0 && dEnd < 0.03 && Math.abs(mL1 - L1) < 0.03,
+          '×2 后墙长 ' +
+            L1.toFixed(3) +
+            'ft · 标注跨 ' +
+            mL1.toFixed(3) +
+            'ft · 端点偏差 ' +
+            dEnd.toFixed(3) +
+            'ft · 读数 ' +
+            r24texts() +
+            '（原 ' +
+            lab0 +
+            '）'
+        );
+        /* 重标定的重画序列是 geoChanged()（build2D 里重画叠加层）+ fit2DToContent()（改 viewBox）：
+           顺序反了就会把标注与手柄在屏幕上放大一整倍。 */
+        const rs24Line = r24px('#meas line', 'stroke-width');
+        const rs24Font = r24px('#meas text', 'font-size');
+        const rs24Dash = r24px('#wedit line[stroke="#3d8bfd"]', 'stroke-width');
+        T(
+          'pb-overlays-constant-after-rescale',
+          r24drift(w24Line, rs24Line) < 0.02 &&
+            r24drift(w24Font, rs24Font) < 0.02 &&
+            (rs24Dash === null || r24drift(w24Dash, rs24Dash) < 0.02),
+          '重标定后 viewBox ' +
+            r24vb().toFixed(0) +
+            '：标注 ' +
+            rs24Line.toFixed(3) +
+            '/' +
+            rs24Font.toFixed(3) +
+            'px（基准 ' +
+            w24Line.toFixed(3) +
+            '/' +
+            w24Font.toFixed(3) +
+            '）· 手柄 ' +
+            (rs24Dash === null ? '无' : rs24Dash.toFixed(3)) +
+            'px（基准 ' +
+            w24Dash.toFixed(3) +
+            '）'
+        );
+        window.dispatchEvent(
+          new KeyboardEvent('keydown', {
+            key: 'z',
+            ctrlKey: true,
+            bubbles: true,
+            cancelable: true,
+          })
+        );
+        await tick();
+        const g24b = entById(wid24).geom;
+        const L0b = Math.hypot(g24b.x2 - g24b.x1, g24b.y2 - g24b.y1);
+        const m2 = r24last();
+        const mL2 = r24len(m2);
+        T(
+          'pb-meas-restored-by-undo',
+          Math.abs(L0b - L0) < 0.05 && Math.abs(mL2 - L0) < 0.05 && r24texts() === lab0,
+          '撤销整图缩放：墙 ' + L0b.toFixed(3) + 'ft · 标注跨 ' + mL2.toFixed(3) + 'ft · 读数 ' + r24texts()
+        );
+        switchPlan(BUILTIN_PLAN_ID, true);
+        await tick();
+        T('pb-meas-dropped-on-plan-switch', r24nodes() === 0, '切回内置户型后标注 ' + r24nodes() + ' 个元素');
+      }
+      if (meas.on) measEnd();
+      measClear();
+      wallEdit.sel = null;
+      drawWallEdit();
+      await pbReset();
+      T(
+        'pb-meas-round24-clean-exit',
+        r24nodes() === 0 && PLAN_ID === BUILTIN_PLAN_ID && !DOC.imported,
+        '标注 ' +
+          r24nodes() +
+          ' · 户型 ' +
+          (PLAN_ID === BUILTIN_PLAN_ID ? '内置' : PLAN_ID) +
+          ' · imported=' +
+          DOC.imported
+      );
+    }
+
     /* ===== 收尾：页面不得有未捕获异常 ===== */
     T('pb-no-page-errors', window.__ERRS.length === 0, window.__ERRS.slice(0, 3).join(' || '));
   } catch (e) {
