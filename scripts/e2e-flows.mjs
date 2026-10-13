@@ -7,6 +7,8 @@
  *  - 每条流程自己收尾（删掉加的东西）；驱动层结束后还会真实刷新一次
  */
 
+import { readFileSync } from 'node:fs';
+
 async function planCenter(t) {
   const p = await t.eval(
     `(()=>{const P=FLOORPTS;let x1=1e9,y1=1e9,x2=-1e9,y2=-1e9;
@@ -1454,6 +1456,73 @@ export const FLOWS = [
         'pack-survives-reload',
         reloaded.packs === 1 && reloaded.all === base + 3,
         `刷新后已加载包 ${reloaded.packs} 个 · 目录 ${reloaded.all} 条（基线 ${base}）`
+      );
+
+      /* ---- Phase 2 升级路径：同 id 不是「无条件整包替换」（真实文件选择，不是 bench 里的直接调用） ---- */
+      const packV1 = JSON.parse(readFileSync(t.fixturePack[0], 'utf8'));
+      const packV2 = JSON.parse(JSON.stringify(packV1));
+      packV2.version = 2;
+      packV2.name = packV1.name + ' v2';
+      packV2.entries = packV1.entries.concat([
+        {
+          id: 'demo-st-9',
+          cat: '茶几 / 边几',
+          name: '示例 · v2 新增的小几',
+          w: 36,
+          d: 36,
+          h: 44,
+          kind: 'sideTable',
+          price: 29.0,
+          color: '#7d8a99',
+        },
+      ]);
+
+      await t.step('再导入同一份包的 v2：确认框必须说「更新」并写明版本跨度');
+      await t.setFiles('#filePack', t.tmpPack('demo-side-tables-v2.json', packV2));
+      await t.waitFor(`document.querySelector('#packModal').style.display==='flex'`, 25000, '确认弹窗出现');
+      const infoV2 = await t.eval(`document.querySelector('#packInfo').textContent.replace(/\\s+/g,' ')`);
+      t.assert(
+        'pack-upgrade-dialog-says-update',
+        /更新已加载的这份包/.test(infoV2) && /1 → 2/.test(infoV2),
+        infoV2.slice(0, 190)
+      );
+      await t.shot('pack-upgrade-modal');
+      await t.click('#packOk');
+      await t.waitFor(`catalogAll().length===${base}+4`, 15000, '目录多出第 4 条');
+      const afterV2 = await t.eval(
+        `({all: catalogAll().length, v: packDocs.get('demo-side-tables').version, has: catalogAll().some(c=>c.id==='demo-st-9'), packs: packDocs.size})`
+      );
+      t.assert(
+        'pack-upgrade-applied',
+        afterV2.all === base + 4 && afterV2.v === 2 && afterV2.has && afterV2.packs === 1,
+        `版本 ${afterV2.v} · 目录 ${base} → ${afterV2.all} 条 · 已加载包仍 ${afterV2.packs} 个（不是又加一份）`
+      );
+
+      await t.step('同版本换内容：在入口就拒（不能「先弹确认框、用户点了才说不能装」）');
+      const packSneaky = JSON.parse(JSON.stringify(packV2));
+      packSneaky.entries[0] = Object.assign({}, packSneaky.entries[0], { w: 90, d: 90, name: '偷偷换掉的尺寸' });
+      await t.setFiles('#filePack', t.tmpPack('demo-side-tables-same-version.json', packSneaky));
+      await t.waitFor(
+        `(()=>{const x=document.querySelector('#toast');return x&&/未导入/.test(x.textContent)})()`,
+        20000,
+        '出现「未导入」提示'
+      );
+      const refusedModal = await t.eval(`document.querySelector('#packModal').style.display`);
+      t.assert(
+        'pack-same-version-change-refused-at-entry-no-dialog',
+        refusedModal !== 'flex',
+        `确认弹窗 display=${refusedModal}（期望不弹：拒要在点之前就说，而不是让用户白点一次）`
+      );
+      const refused = await t.eval(
+        `({all: catalogAll().length, v: packDocs.get('demo-side-tables').version, w: (catalogAll().find(c=>c.id==='demo-st-0')||{}).w, toast: document.querySelector('#toast').textContent.replace(/\\s+/g,' ')})`
+      );
+      t.assert(
+        'pack-same-version-change-refused-keeps-old',
+        refused.all === base + 4 &&
+          refused.v === 2 &&
+          refused.w === packV1.entries[0].w &&
+          /未导入/.test(refused.toast),
+        `目录仍 ${refused.all} 条 · 版本仍 ${refused.v} · 第一条宽度仍是 ${refused.w} cm · 提示「${refused.toast.slice(0, 90)}」`
       );
 
       await t.step('移除包（两步确认）');

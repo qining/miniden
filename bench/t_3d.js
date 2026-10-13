@@ -2530,7 +2530,7 @@ async function run3DTest() {
         '编译失败 ' +
           pkBrokenErrs.length +
           ' 个（' +
-          (pkBrokenErrs[0] ? pkBrokenErrs[0].message.slice(0, 40) : '') +
+          (pkBrokenErrs[0] ? pkBrokenErrs[0].error.slice(0, 40) : '') +
           '）· 条目仍能建模 ' +
           pkBrokenBuild.meshes +
           ' mesh'
@@ -2542,7 +2542,7 @@ async function run3DTest() {
       removePackDoc('bench-pack', { persist: false });
       const pkPersistRes = addPackDoc(pkOk.pack, { persist: true });
       packDocs.clear();
-      packModelFns.clear();
+      packModelCache.setIndex(new Map());
       packEntries.length = 0;
       const pkReloaded = loadPacksFromStore();
       T(
@@ -2972,6 +2972,428 @@ async function run3DTest() {
         '确认框说「解析失败 ' + p29Claimed + ' 个」· 实际编译失败 ' + p29Actual + ' 个（投递 ' + p29ModalTries + ' 次）'
       );
       removePackDoc('bench-honest', { persist: false });
+
+      /* ================= 20. S10 Phase 2：懒编译 / 内容指纹 / 升级路径 / 两条预算 =================
+         为什么这一节必须存在：Phase 1 的包协议「对不对」有 19 节守着；Phase 2 改的是
+         什么时候付编译成本、什么时候拒加载、什么时候提醒用户 —— 全是「静默」类改动，
+         出问题的表现不是报错，是「建模悄悄退回通用造型」「包悄悄不加载」「场景悄悄变慢」。 */
+      const p30ToastText = () => {
+        const t = document.querySelector('#toast');
+        return t ? t.textContent.replace(/\s+/g, ' ') : '';
+      };
+      const p30Build = (id) => {
+        const sp = catalogAll().find((c) => c.id === id);
+        if (!sp) return 0;
+        const g = furn3D({ uid: -1, ref: id, x: 0, y: 0, rot: 0 }, sp);
+        let tri = 0;
+        g.traverse((o) => {
+          if (o.isMesh && o.geometry)
+            tri += (o.geometry.index ? o.geometry.index.count : o.geometry.attributes.position.count) / 3;
+        });
+        return Math.round(tri);
+      };
+      const p30ModelSrc = (i) => '(C)=>{ C.box(C.w, C.cm(' + (10 + i) + '), C.d, C.m.white, 0, 0, 0); }';
+      const p30Lazy = CATPACK.validatePack({
+        pack: 'bench-lazy',
+        name: '懒编译探针包',
+        version: 1,
+        entries: Array.from({ length: 30 }, (_, i) => ({
+          id: 'bench-lazy-e' + i,
+          cat: '茶几 / 边几',
+          name: '懒编译件 ' + i,
+          w: 40,
+          d: 40,
+          h: 40,
+          kind: 'sideTable',
+          price: 9,
+          model: 'bench-lazy-m' + i,
+        })),
+        models: Object.fromEntries(Array.from({ length: 30 }, (_, i) => ['bench-lazy-m' + i, p30ModelSrc(i)])),
+      });
+
+      /* 20.1 导入路径编译一次（确认框要如实报数），启动路径一律懒编译 */
+      const p30Stat0 = packModelCache.stats();
+      const p30ImpRes = addPackDoc(p30Lazy.pack, { persist: true });
+      const p30AfterImport = packModelCache.stats();
+      T(
+        'cat30-import-path-precompiles',
+        p30ImpRes.errs.length === 0 &&
+          packModelCache.residentFor('bench-lazy') === 30 &&
+          p30AfterImport.compiled === p30Stat0.compiled,
+        '导入后驻留 ' +
+          packModelCache.residentFor('bench-lazy') +
+          '/30 个模型 · 编译计数增量 ' +
+          (p30AfterImport.compiled - p30Stat0.compiled) +
+          '（编译结果直接 seed，用到不再编译）'
+      );
+      packDocs.clear();
+      packModelCache.setIndex(new Map());
+      packEntries.length = 0;
+      const p30Stat1 = packModelCache.stats();
+      const p30Loaded = loadPacksFromStore();
+      const p30AfterLoad = packModelCache.stats();
+      T(
+        'cat30-startup-load-compiles-nothing',
+        p30Loaded >= 1 &&
+          packDocs.has('bench-lazy') &&
+          catalogAll().some((c) => c.id === 'bench-lazy-e0') &&
+          p30AfterLoad.compiled === p30Stat1.compiled &&
+          packModelCache.residentFor('bench-lazy') === 0,
+        '刷新装载：包 ' +
+          p30Loaded +
+          ' 个 · 目录含包条目 · 编译计数增量 ' +
+          (p30AfterLoad.compiled - p30Stat1.compiled) +
+          '（30 个源码等着被用，驻留 ' +
+          packModelCache.residentFor('bench-lazy') +
+          '）'
+      );
+      const p30Fn1 = modelFor('bench-lazy-m0');
+      const p30Fn2 = modelFor('bench-lazy-m0');
+      const p30AfterUse = packModelCache.stats();
+      T(
+        'cat30-first-use-compiles-one',
+        typeof p30Fn1 === 'function' &&
+          p30Fn2 === p30Fn1 &&
+          p30AfterUse.compiled === p30AfterLoad.compiled + 1 &&
+          packModelCache.residentFor('bench-lazy') === 1,
+        '用到第 1 个才编译：编译计数 ' +
+          p30AfterLoad.compiled +
+          ' → ' +
+          p30AfterUse.compiled +
+          ' · 驻留 ' +
+          packModelCache.residentFor('bench-lazy') +
+          ' · 再用是同一个函数对象'
+      );
+
+      /* 20.2 坏源码只编译一次：懒编译最怕的是「每次建模都重编译一遍坏东西」 */
+      const p30Bad = CATPACK.validatePack({
+        pack: 'bench-lazy-bad',
+        name: '坏模型懒探针包',
+        version: 1,
+        entries: [
+          {
+            id: 'bench-lazy-bad-e',
+            cat: '茶几 / 边几',
+            name: '坏模型件',
+            w: 40,
+            d: 40,
+            h: 40,
+            kind: 'sideTable',
+            price: 9,
+            model: 'bench-lazy-bad-m',
+          },
+        ],
+        models: { 'bench-lazy-bad-m': '(C)=>{ this is not javascript (( ' },
+      });
+      addPackDoc(p30Bad.pack, { persist: false, lazy: true });
+      const p30BadBase = packModelCache.stats().compiled;
+      modelFor('bench-lazy-bad-m');
+      modelFor('bench-lazy-bad-m');
+      modelFor('bench-lazy-bad-m');
+      const p30BadStats = packModelCache.stats();
+      T(
+        'cat30-broken-model-compiled-once',
+        p30BadStats.compiled === p30BadBase &&
+          p30BadStats.failed === 1 &&
+          packModelCache.failuresFor('bench-lazy-bad').length === 1,
+        '取用 3 次 · 编译次数 +0 · 失败记录 ' +
+          p30BadStats.failed +
+          ' 条（' +
+          packModelCache.failuresFor('bench-lazy-bad')[0].error.slice(0, 28) +
+          '）'
+      );
+      removePackDoc('bench-lazy-bad', { persist: false });
+
+      /* 20.3 驻留上限：用到再多也不会无限涨 */
+      const p30CapCache = CATPACK.createModelCache(CATPACK.buildModelIndex([p30Lazy.pack]), { limit: 3 });
+      for (let i = 0; i < 30; i++) p30CapCache.get('bench-lazy-m' + i);
+      const p30CapStats = p30CapCache.stats();
+      T(
+        'cat30-resident-capped',
+        p30CapStats.resident === 3 && p30CapStats.evicted === 27 && p30CapCache.has('bench-lazy-m29'),
+        '用满 30 个 · 驻留 ' +
+          p30CapStats.resident +
+          '（上限 3）· 淘汰 ' +
+          p30CapStats.evicted +
+          ' · 全局上限 ' +
+          CATPACK.MAX_RESIDENT_MODELS
+      );
+
+      /* 20.4 升级路径：同 id 不是「无条件整包替换」 */
+      const p30VerPack = (version, n) =>
+        CATPACK.validatePack({
+          pack: 'bench-ver',
+          name: '版本探针包',
+          version: version,
+          entries: Array.from({ length: n }, (_, i) => ({
+            id: 'bench-ver-e' + i,
+            cat: '茶几 / 边几',
+            name: '版本 ' + version + ' 件 ' + i,
+            w: 40,
+            d: 40,
+            h: 40,
+            kind: 'sideTable',
+            price: 9,
+          })),
+          models: {},
+        });
+      addPackDoc(p30VerPack(1, 2).pack, { persist: false });
+      const p30V1Count = catalogAll().filter((c) => c.id.indexOf('bench-ver-e') === 0).length;
+      const p30SameVer = addPackDoc(p30VerPack(1, 3).pack, { persist: false });
+      const p30V1After = catalogAll().filter((c) => c.id.indexOf('bench-ver-e') === 0).length;
+      T(
+        'cat30-same-version-different-content-refused',
+        p30SameVer.decision.action === 'reject' &&
+          p30V1After === p30V1Count &&
+          packDocs.get('bench-ver').entries.length === 2,
+        '同版本不同内容 → ' +
+          p30SameVer.decision.action +
+          '：' +
+          p30SameVer.decision.reason +
+          ' · 目录仍 ' +
+          p30V1After +
+          ' 条'
+      );
+      const p30Up = addPackDoc(p30VerPack(2, 3).pack, { persist: false });
+      const p30V2Count = catalogAll().filter((c) => c.id.indexOf('bench-ver-e') === 0).length;
+      T(
+        'cat30-higher-version-updates',
+        p30Up.decision.action === 'update' && p30V2Count === 3 && packDocs.get('bench-ver').version === 2,
+        '更高版本 → ' +
+          p30Up.decision.action +
+          '（' +
+          p30Up.decision.reason +
+          '）· 目录 ' +
+          p30V1Count +
+          ' → ' +
+          p30V2Count +
+          ' 条'
+      );
+      const p30Same = addPackDoc(p30VerPack(2, 3).pack, { persist: false });
+      T(
+        'cat30-identical-reimport-is-noop',
+        p30Same.decision.action === 'same' &&
+          catalogAll().filter((c) => c.id.indexOf('bench-ver-e') === 0).length === 3,
+        '同版本同内容 → ' + p30Same.decision.action + '：' + p30Same.decision.reason
+      );
+      const p30Down = addPackDoc(p30VerPack(1, 2).pack, { persist: false });
+      T(
+        'cat30-lower-version-refused',
+        p30Down.decision.action === 'reject' && packDocs.get('bench-ver').version === 2,
+        '降级 → ' + p30Down.decision.action + '：' + p30Down.decision.reason
+      );
+
+      /* 20.5 内容指纹：导入时记下，装载时比对；对不上就拒加载，而且不删（还能救） */
+      const p30Meta = packMetaOf('bench-ver');
+      T(
+        'cat30-digest-recorded-on-import',
+        !!p30Meta && p30Meta.digest === CATPACK.packDigest(packDocs.get('bench-ver')),
+        '注册表指纹 ' + (p30Meta ? p30Meta.digest : '（无）') + ' == 包内容指纹'
+      );
+      removePackDoc('bench-ver', { persist: false });
+      const p30Tamper = p30VerPack(2, 3);
+      addPackDoc(p30Tamper.pack, { persist: true });
+      const p30Tampered = JSON.parse(JSON.stringify(p30Tamper.pack));
+      p30Tampered.entries[0].w = 999; // 存储里的内容被改过（手改文件 / 与另一个包串了键）
+      STORE.set(CATPACK.packKeyFor('bench-ver'), JSON.stringify(p30Tampered));
+      packDocs.clear();
+      packModelCache.setIndex(new Map());
+      packEntries.length = 0;
+      loadPacksFromStore();
+      reportPackDigestMismatch();
+      await wait(400);
+      const p30Mismatch = packDigestMismatch.filter((x) => x.pack === 'bench-ver');
+      const p30Toast = p30ToastText();
+      T(
+        'cat30-digest-mismatch-refuses-load',
+        p30Mismatch.length === 1 &&
+          !packDocs.has('bench-ver') &&
+          !catalogAll().some((c) => c.id === 'bench-ver-e0') &&
+          !!STORE.get(CATPACK.packKeyFor('bench-ver')) &&
+          !!packMetaOf('bench-ver'),
+        '指纹 ' +
+          (p30Mismatch[0] ? p30Mismatch[0].want + ' ≠ ' + p30Mismatch[0].got : '?') +
+          ' → 不加载；存储内容与注册表都保留（重新导入还能救）'
+      );
+      T(
+        'cat30-digest-mismatch-tells-user',
+        p30Toast.indexOf('指纹') >= 0 && p30Toast.indexOf('没有加载') >= 0,
+        '提示：' + (p30Toast.slice(0, 78) || '（没有提示）')
+      );
+      STORE.remove(CATPACK.packKeyFor('bench-ver'));
+      packRegistry = CATPACK.removePackMeta(packRegistry, 'bench-ver');
+      savePackRegistry();
+      packDigestMismatch = [];
+
+      /* 20.6 缩略图预算：缓存必须有上限（实测一张 60KB，5,000 条 = 286MB） */
+      const p30ThumbIds = [];
+      for (let i = 0; i < MAX_THUMB_CACHE + 40; i++) {
+        p30ThumbIds.push('bench-thumb-' + i);
+        _thumbStore(p30ThumbIds[i], 'data:image/png;base64,PROBE');
+      }
+      const p30Evicted = _thumbCached(p30ThumbIds[0]);
+      const p30Kept = _thumbCached(p30ThumbIds[p30ThumbIds.length - 1]);
+      for (const id of p30ThumbIds) _thumbCache.delete(id);
+      T(
+        'cat30-thumb-cache-capped',
+        _thumbCache.size === 0 && p30Evicted === undefined && p30Kept === 'data:image/png;base64,PROBE',
+        '写入 ' +
+          p30ThumbIds.length +
+          ' 张 · 最久没用过的那张已被淘汰 · 上限 ' +
+          MAX_THUMB_CACHE +
+          ' 张（实测 60KB/张 → 上限约 18MB）'
+      );
+      T(
+        'cat30-thumb-cache-bounded-after-render',
+        _thumbCache.size <= MAX_THUMB_CACHE,
+        '本 bench 渲过缩略图后缓存 ' + _thumbCache.size + ' 张 ≤ ' + MAX_THUMB_CACHE
+      );
+
+      /* 20.7 场景预算与目录规模解耦：目录多 300 条，场景一个三角形都不多 */
+      const p30SceneBefore = sceneTriangles();
+      const p30Big = CATPACK.validatePack({
+        pack: 'bench-wide',
+        name: '300 条探针包',
+        version: 1,
+        entries: Array.from({ length: 300 }, (_, i) => ({
+          id: 'bench-wide-e' + i,
+          cat: '茶几 / 边几',
+          name: '宽目录件 ' + i,
+          w: 40,
+          d: 40,
+          h: 40,
+          kind: 'sideTable',
+          price: 9,
+        })),
+        models: {},
+      });
+      addPackDoc(p30Big.pack, { persist: false });
+      const p30SceneAfter = sceneTriangles();
+      const p30WideCount = catalogAll().filter((c) => c.id.indexOf('bench-wide-e') === 0).length;
+      T(
+        'cat30-catalog-size-not-scene-load',
+        p30WideCount === 300 && p30SceneAfter === p30SceneBefore && p30SceneBefore > 0,
+        '目录 +' +
+          p30WideCount +
+          ' 条 · 场景三角形 ' +
+          p30SceneBefore.toLocaleString('en') +
+          ' → ' +
+          p30SceneAfter.toLocaleString('en') +
+          '（一件没摆就不该多）'
+      );
+      removePackDoc('bench-wide', { persist: false });
+
+      /* 20.8 超预算必须说，而且不许静默删件（1,200,000 在 headless 里造不出来 → 用 budgetOverride） */
+      const p30ItemsBefore = state.items.length;
+      const p30Over = sceneBudgetCheck(1); // 预算压到 1 个三角形：当前场景必然超
+      await wait(300);
+      const p30OverToast = p30ToastText();
+      T(
+        'cat30-scene-budget-tells-user',
+        p30Over.over && p30OverToast.indexOf('三角形') >= 0 && p30OverToast.indexOf('预算') >= 0,
+        '场景 ' +
+          p30Over.tri.toLocaleString('en') +
+          ' 三角形 vs 预算 ' +
+          p30Over.budget +
+          ' → 提示：' +
+          p30OverToast.slice(0, 70)
+      );
+      T(
+        'cat30-scene-budget-drops-nothing',
+        state.items.length === p30ItemsBefore && three && three.furnMap && three.furnMap.size === p30ItemsBefore,
+        '超预算后布局仍 ' +
+          state.items.length +
+          ' 件 · 3D 场景仍 ' +
+          (three && three.furnMap ? three.furnMap.size : 0) +
+          ' 组（只提醒，不删件）'
+      );
+      const p30Back = sceneBudgetCheck(); // 真实预算：应当回到预算内并重置「只说一次」
+      T(
+        'cat30-scene-budget-resets-under-limit',
+        !p30Back.over && p30Back.budget === MAX_SCENE_TRI,
+        '真实预算 ' +
+          MAX_SCENE_TRI.toLocaleString('en') +
+          ' · 当前 ' +
+          p30Back.tri.toLocaleString('en') +
+          ' → 不提醒（下次再超还会提醒）'
+      );
+
+      /* 20.9 包建模的单件三角形预算只能在用户机器上实测：实测到了就要如实列出 */
+      const p30Heavy = CATPACK.validatePack({
+        pack: 'bench-heavy',
+        name: '重建模探针包',
+        version: 1,
+        entries: [
+          {
+            id: 'bench-heavy-h',
+            cat: '茶几 / 边几',
+            name: '超重件',
+            w: 40,
+            d: 40,
+            h: 40,
+            kind: 'sideTable',
+            price: 9,
+            model: 'bench-heavy-m',
+          },
+          {
+            id: 'bench-heavy-l',
+            cat: '茶几 / 边几',
+            name: '轻件',
+            w: 40,
+            d: 40,
+            h: 40,
+            kind: 'sideTable',
+            price: 9,
+            model: 'bench-light-m',
+          },
+        ],
+        models: {
+          'bench-heavy-m':
+            '(C)=>{ const m = new C.THREE.Mesh(new C.THREE.PlaneGeometry(0.4, 0.4, 200, 101)); C.g.add(m); }',
+          'bench-light-m': '(C)=>{ C.box(C.w, 0.4, C.d, C.m.white, 0, 0, 0); }',
+        },
+      });
+      addPackDoc(p30Heavy.pack, { persist: false });
+      const p30HeavyTri = p30Build('bench-heavy-h');
+      const p30LightTri = p30Build('bench-heavy-l');
+      const p30TriOver = packModelTriOver();
+      T(
+        'cat30-pack-model-tri-accounted',
+        p30TriOver.some((x) => x.model === 'bench-heavy-m') &&
+          !p30TriOver.some((x) => x.model === 'bench-light-m') &&
+          p30HeavyTri > MAX_ITEM_TRI &&
+          p30LightTri < MAX_ITEM_TRI &&
+          (packModelTri.get('bench-heavy-m') || 0) === p30HeavyTri,
+        '实测超单件预算（' +
+          MAX_ITEM_TRI.toLocaleString('en') +
+          '）：' +
+          p30TriOver.map((x) => x.model + ' ' + x.tri.toLocaleString('en')).join(' · ') +
+          ' · 轻件 ' +
+          p30LightTri +
+          ' 不在名单里（记账 ' +
+          (packModelTri.get('bench-light-m') || 0) +
+          '）'
+      );
+      removePackDoc('bench-heavy', { persist: false });
+      packModelTri.delete('bench-heavy-m');
+      packModelTri.delete('bench-light-m');
+
+      removePackDoc('bench-lazy', { persist: true });
+      T(
+        'cat30-round30-clean-exit',
+        packDocs.size === 0 &&
+          packDigestMismatch.length === 0 &&
+          packModelCache.residentFor('bench-lazy') === 0 &&
+          !packModelTri.has('bench-heavy-m') &&
+          !packModelTri.has('bench-light-m') &&
+          packModelTriOver().length === 0,
+        '探针包清空 · 该包驻留 ' +
+          packModelCache.residentFor('bench-lazy') +
+          ' · 指纹不一致 ' +
+          packDigestMismatch.length +
+          ' · 超预算包建模名单 ' +
+          packModelTriOver().length
+      );
 
       /* 19.12 收尾干净：户型回到原来那份，目录回到基线，不留探针包 / 自定义条目 / 未捕获异常 */
       if (PLAN_ID !== p29Plan) switchPlan(p29Plan, true);

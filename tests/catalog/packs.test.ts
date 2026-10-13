@@ -23,6 +23,10 @@ import {
   removePackMeta,
   packMetaFor,
   packKeyFor,
+  packDigest,
+  packUpdateDecision,
+  contentDigest,
+  PACK_SCHEMA,
   PACKS_KEY,
   MAX_PACK_ENTRIES,
   MAX_PACK_MODELS,
@@ -30,6 +34,7 @@ import {
   MAX_PACK_MODELS_BYTES,
   MAX_PACKS,
 } from '../../src/catalog/packs';
+import type { PackMeta, ParsedPack } from '../../src/catalog/packs';
 
 const good = () => ({
   id: 'demo-0',
@@ -383,5 +388,137 @@ describe('包注册表（存盘的元数据）', () => {
       packs: [{ pack: 'a', entries: -5, models: 1e9, version: -3, addedAt: -9 }],
     });
     expect(r.packs[0]).toMatchObject({ entries: 0, models: MAX_PACK_MODELS, version: 1, addedAt: 0 });
+  });
+
+  it('packMetaFor 带内容指纹（v2 注册表的来源核验字段）', () => {
+    const m = packMetaFor({
+      pack: 'a',
+      name: 'A',
+      version: 1,
+      entries: [{ id: 'x', cat: 'c', name: 'n', w: 1, d: 1, h: 1, kind: 'box' }],
+      models: { m1: '(C)=>{}' },
+    });
+    expect(m.digest).toMatch(/^[0-9a-f]{16}$/);
+  });
+});
+
+/* ---------------- Phase 2：内容指纹 + 包升级路径 ----------------
+   指纹不是防伪，它拓住的是「存储里的内容与导入时不一致」与「同 id 被悄悄换内容」。
+   升级路径拓住的是「同版本不同内容悄悄替掉用户正在用的那份」与「默默降级」。 */
+describe('Phase 2 内容指纹', () => {
+  const base = () => ({
+    pack: 'p1',
+    name: 'P',
+    version: 1,
+    entries: [{ id: 'x', cat: 'c', name: 'n', w: 1, d: 1, h: 1, kind: 'box' }],
+    models: { m1: '(C)=>{}' },
+  });
+
+  it('同一内容 → 同一指纹；改一个字段 → 指纹变', () => {
+    expect(packDigest(base())).toBe(packDigest(base()));
+    const b2 = base();
+    b2.entries[0].w = 2;
+    expect(packDigest(b2)).not.toBe(packDigest(base()));
+    const b3 = base();
+    b3.models.m1 = '(C)=>{;}';
+    expect(packDigest(b3)).not.toBe(packDigest(base()));
+    const b4 = base();
+    b4.version = 2;
+    expect(packDigest(b4)).not.toBe(packDigest(base()));
+  });
+
+  it('对象键顺序不影响指纹（规范化 JSON 排序）', () => {
+    const a = contentDigest({ x: 1, y: { b: 2, a: 3 } });
+    const b = contentDigest({ y: { a: 3, b: 2 }, x: 1 });
+    expect(a).toBe(b);
+  });
+
+  it('指纹是 16 位十六进制且可被注册表接受', () => {
+    const d = packDigest(base());
+    expect(d).toMatch(/^[0-9a-f]{16}$/);
+    const r = normalizeRegistry({
+      v: PACK_SCHEMA,
+      packs: [{ pack: 'p1', name: 'P', version: 1, entries: 1, models: 1, addedAt: 0, digest: d }],
+    });
+    expect(r.packs[0].digest).toBe(d);
+  });
+
+  it('注册表 v1（没有指纹字段）→ digest:null，不是「伪造一个」', () => {
+    const r = normalizeRegistry({
+      v: 1,
+      packs: [{ pack: 'p1', name: 'P', version: 1, entries: 1, models: 1, addedAt: 0 }],
+    });
+    expect(r.packs[0].digest).toBeNull();
+    expect(r.v).toBe(PACK_SCHEMA); // 读旧版即升级到当前 schema
+  });
+
+  it('存盘被改坏的指纹（不是 16 位十六进制）→ null，不当真', () => {
+    for (const bad of ['deadbeef', 'ZZZZZZZZZZZZZZZZ', 1234567890123456, null, '']) {
+      const r = normalizeRegistry({ packs: [{ pack: 'p1', version: 1, digest: bad }] });
+      expect(r.packs[0].digest).toBeNull();
+    }
+  });
+});
+
+describe('Phase 2 包升级路径', () => {
+  const meta = (over: Partial<PackMeta>) => ({
+    pack: 'p1',
+    name: 'P',
+    version: 1,
+    entries: 1,
+    models: 1,
+    addedAt: 0,
+    digest: null,
+    ...over,
+  });
+  const next = (over: Partial<ParsedPack>) => ({ pack: 'p1', name: 'P', version: 1, entries: [], models: {}, ...over });
+
+  it('没加载过 → add', () => {
+    expect(packUpdateDecision(null, next({})).action).toBe('add');
+  });
+
+  it('更高版本 → update（理由里写清版本跨度）', () => {
+    const d = packUpdateDecision(meta({ version: 1 }), next({ version: 2 }));
+    expect(d.action).toBe('update');
+    expect(d.reason).toContain('1 → 2');
+  });
+
+  it('更低版本 → 拒，并给出下一步（先移除）', () => {
+    const d = packUpdateDecision(meta({ version: 5 }), next({ version: 3 }));
+    expect(d.action).toBe('reject');
+    expect(d.reason).toContain('移除');
+  });
+
+  it('同版本 + 同指纹 → same（不重复替换）', () => {
+    const p = {
+      pack: 'p1',
+      name: 'P',
+      version: 1,
+      entries: [{ id: 'x', cat: 'c', name: 'n', w: 1, d: 1, h: 1, kind: 'box' }],
+      models: { m1: '(C)=>{}' },
+    };
+    const d = packUpdateDecision(meta({ version: 1, digest: packDigest(p) }), p);
+    expect(d.action).toBe('same');
+  });
+
+  it('同版本 + 不同指纹 → 拒：改内容必须提高 version', () => {
+    const p = {
+      pack: 'p1',
+      name: 'P',
+      version: 1,
+      entries: [{ id: 'x', cat: 'c', name: 'n', w: 1, d: 1, h: 1, kind: 'box' }],
+      models: { m1: '(C)=>{}' },
+    };
+    const other = { ...p, models: { m1: '(C)=>{;}' } };
+    const d = packUpdateDecision(meta({ version: 1, digest: packDigest(p) }), other);
+    expect(d.action).toBe('reject');
+    expect(d.reason).toContain('version');
+    expect(d.reason).toContain('2');
+  });
+
+  it('旧记录没有指纹（指纹功能之前导入的）→ 允许替换并补指纹', () => {
+    const d = packUpdateDecision(meta({ version: 1, digest: null }), next({ version: 1 }));
+    expect(d.action).toBe('update');
+    expect(d.reason).toContain('指纹');
   });
 });

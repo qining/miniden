@@ -503,6 +503,14 @@ async function runEntry(entry) {
     /** 真实导入用的目录包（仓库自带的示例包，无个人数据） */
     fixturePack: [join(root, 'examples', 'packs', 'demo-side-tables.json')],
     fixtureLayout: [join(root, 'examples', 'layouts', 'demo-layout.json')],
+    /** 写一份临时包文件并返回路径：「第二次导入」类场景（升级 / 同版本换内容）需要真实的文件选择 */
+    tmpPack(name, obj) {
+      const dir = join(root, 'work', 'e2e-tmp');
+      mkdirSync(dir, { recursive: true });
+      const p = join(dir, name);
+      writeFileSync(p, JSON.stringify(obj, null, 2));
+      return [p];
+    },
   };
 
   /* ---------- 跑流程 ---------- */
