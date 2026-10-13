@@ -1524,6 +1524,7 @@ export const FLOWS = [
           /未导入/.test(refused.toast),
         `目录仍 ${refused.all} 条 · 版本仍 ${refused.v} · 第一条宽度仍是 ${refused.w} cm · 提示「${refused.toast.slice(0, 90)}」`
       );
+      await t.shot('pack-refused-toast');
 
       await t.step('移除包（两步确认）');
       await t.eval(`document.querySelector('#packSel').value='demo-side-tables'`);
