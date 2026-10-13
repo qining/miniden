@@ -29,7 +29,7 @@
 
 import { duplicateIds, validateEntry, type CatalogEntry, type CatalogIssue } from './schema';
 
-export const PACK_SCHEMA = 1;
+export const PACK_SCHEMA = 2; // v2：注册表元数据带内容指纹（Phase 2 来源核验）
 export const PACKS_KEY = 'planner_packs_v1';
 export const packKeyFor = (id: string): string => 'planner_pack:' + id;
 
@@ -49,6 +49,8 @@ export interface PackMeta {
   entries: number;
   models: number;
   addedAt: number;
+  /** Phase 2 来源核验：导入时记下的内容指纹；null = 指纹功能之前导入的，没有记录 */
+  digest?: string | null;
 }
 
 export interface PackRegistry {
@@ -236,6 +238,91 @@ export function mergeCatalog(base: readonly CatalogEntry[], packs: readonly Pars
   return { entries, conflicts };
 }
 
+/* ---------------- 内容指纹（Phase 2 来源核验） ----------------
+   干什么用：导入时记一份「这份包的内容」的指纹，之后每次装载都重算比对。
+   拓住的是：存储里的包内容被改过 / 注册表元数据与包内容串了包 /
+   同一个 id 被悄悄换成另一份内容。
+   不干什么：这不是签名、不是防伪。指纹与内容同机同存，
+   能拓住「误改与串包」，拓不住「故意篡改」。UI 里必须按这个口径说。
+   算法：规范化 JSON（对象键排序）+ 两路 FNV-1a 32 位拼成 16 位十六进制。
+   依赖：无（不依赖 crypto.subtle，file:// 下也能算），可单测。 */
+
+export function canonicalJson(v: unknown): string {
+  if (v === null || v === undefined) return 'null';
+  const t = typeof v;
+  if (t === 'number') return Number.isFinite(v as number) ? JSON.stringify(v) : 'null';
+  if (t === 'string' || t === 'boolean') return JSON.stringify(v);
+  if (Array.isArray(v)) return '[' + v.map(canonicalJson).join(',') + ']';
+  if (t === 'object') {
+    const o = v as Record<string, unknown>;
+    const keys = Object.keys(o).sort();
+    return (
+      '{' +
+      keys.map((k) => JSON.stringify(k) + ':' + (o[k] === undefined ? 'null' : canonicalJson(o[k]))).join(',') +
+      '}'
+    );
+  }
+  return 'null';
+}
+
+const FNV_PRIME = 0x01000193;
+function fnv32(str: string, seed: number): number {
+  let h = seed >>> 0;
+  for (let i = 0; i < str.length; i++) {
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, FNV_PRIME) >>> 0;
+  }
+  return h >>> 0;
+}
+
+/** 内容的指纹（16 位十六进制）。同一内容 + 同一版本 → 永远同一个指纹。 */
+export function contentDigest(v: unknown): string {
+  const s = canonicalJson(v);
+  const a = fnv32(s, 0x811c9dc5);
+  const b = fnv32(s + '\u0001', (0x01000193 ^ s.length) >>> 0);
+  return a.toString(16).padStart(8, '0') + b.toString(16).padStart(8, '0');
+}
+
+export const DIGEST_RE = /^[0-9a-f]{16}$/;
+
+export const packDigest = (p: ParsedPack): string =>
+  contentDigest({ pack: p.pack, version: p.version, name: p.name, entries: p.entries, models: p.models });
+
+/* ---------------- 包升级路径（Phase 2） ----------------
+   规则（写进 catalog-extension.md §11）：
+     · 同 id + 更高 version → 更新（整包替换，如实报「版本 A → B」）
+     · 同 id + 同 version + 同指纹 → 同一份，不重复导入
+     · 同 id + 同 version + 不同指纹 → 拒：改内容就必须提高 version
+       （否则「同版本不同内容」会悄悄替掉用户正在用的那份）
+     · 同 id + 更低 version → 拒：降级得先移除，不能默默降级
+     · 旧记录没有指纹（指纹功能之前导入的）→ 允许替换，并补上指纹 */
+
+export interface PackDecision {
+  action: 'add' | 'update' | 'same' | 'reject';
+  reason: string;
+}
+
+export function packUpdateDecision(old: PackMeta | null, next: ParsedPack): PackDecision {
+  if (!old) return { action: 'add', reason: '' };
+  if (next.version > old.version) return { action: 'update', reason: `版本 ${old.version} → ${next.version}` };
+  if (next.version < old.version)
+    return {
+      action: 'reject',
+      reason: `已加载的是版本 ${old.version}，这份是版本 ${next.version}：要换旧版请先移除当前这份`,
+    };
+  if (!old.digest)
+    return {
+      action: 'update',
+      reason: `同版本（${old.version}）：旧记录没有内容指纹（指纹功能之前导入的），按新文件替换并补上指纹`,
+    };
+  if (old.digest === packDigest(next))
+    return { action: 'same', reason: `内容与已加载的这份完全相同（版本 ${old.version}）` };
+  return {
+    action: 'reject',
+    reason: `同名同版本（版本 ${old.version}）但内容不同：改内容请把 version 提高到 ${old.version + 1} 以上再导入`,
+  };
+}
+
 /* ---------------- 注册表（存的是元数据；包内容另存一个键） ---------------- */
 
 function readMeta(v: unknown): PackMeta | null {
@@ -251,6 +338,8 @@ function readMeta(v: unknown): PackMeta | null {
     entries: num(m.entries, MAX_PACK_ENTRIES),
     models: num(m.models, MAX_PACK_MODELS),
     addedAt: isNum(m.addedAt) && m.addedAt >= 0 ? Math.floor(m.addedAt) : 0,
+    // v1 注册表没有这个字段 → null = 「没有指纹记录」，UI 里得如实说
+    digest: isStr(m.digest) && DIGEST_RE.test(m.digest) ? m.digest : null,
   };
 }
 
@@ -290,4 +379,5 @@ export const packMetaFor = (p: ParsedPack): PackMeta => ({
   entries: p.entries.length,
   models: Object.keys(p.models).length,
   addedAt: 0,
+  digest: packDigest(p),
 });

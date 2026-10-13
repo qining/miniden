@@ -12,8 +12,9 @@
 
    主脚本消费方式（app.html）：
      · 目录 = [...CATALOG, ...packEntries, ...state.customCat]（catalogAll()）
-     · 建模 = MODELS[key] || packModels.get(key) || kind 通用回退
-     · 注册表 planner_packs_v1 存元数据，包内容存 planner_pack:<packId>
+     · 建模 = MODELS[key] || packModelCache.get(key) || kind 通用回退
+       （Phase 2：包模型懒编译 + LRU 驻留，见 models.ts）
+     · 注册表 planner_packs_v1 存元数据（v2 带内容指纹），包内容存 planner_pack:<packId>
    build.mjs 每次构建校验本块与最新编译逐字节一致。
 
    纯度：不 import three / document（R7）——包里的模型代码由调用方编译执行，
@@ -22,10 +23,12 @@
 
 import * as schema from './schema';
 import * as packs from './packs';
+import * as models from './models';
 
 const g = globalThis as Record<string, unknown>;
 
 (g as { MINIDEN_CATALOG?: unknown }).MINIDEN_CATALOG = {
   ...schema,
   ...packs,
+  ...models,
 };

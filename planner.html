@@ -630,7 +630,7 @@
 /* VENDORED —— 由 scripts/build-catalog.mjs 从 src/catalog/ 编译生成，勿手改。
    src/ 是唯一事实来源（单测 + tsc strict）；改 src/catalog/ 后跑 `npm run catalog:build`。
    build.mjs 校验本块与最新编译输出逐字节一致。 */
-"use strict";(()=>{var K=Object.defineProperty;var I=(r,t)=>{for(var i in t)K(r,i,{get:t[i],enumerable:!0})};var P={};I(P,{BUILTIN_LIGHT_KINDS:()=>O,ENTRY_MAX_CM:()=>H,ENTRY_MAX_PRICE:()=>X,ENTRY_MIN_CM:()=>Y,ENTRY_SCHEMA:()=>L,KNOWN_KINDS:()=>$,KNOWN_WOODS:()=>T,duplicateIds:()=>w,validateEntry:()=>M});var L=1,Y=1,H=1200,X=1e5,$=["accentConsole","armchair","balanceBike","ballPit","bed","bedMetal","bookcase","cart","ceilingLight","chair","climber","clothesRail","coatRack","coffeeTable","crib","desk","deskSitStand","downlight","dresser","easel","goal","lamp","magTiles","nightstand","officeChair","pendant","pikler","playCouch","playKitchen","playMat","playset","recliner","rideOn","rocking","rug","sandTable","scooter","shelf","shoeCab","sideTable","sofa","sofaL","sportsZone","stool","swivelChair","tableDrawer","tableFold","tableRect","tableRound","trampoline","tubChair","tvBench","vanityLight","wagon","walker","wobble","xylophone"],T=["pine","beech","birch","oak","walnut"],O=["downlight","ceilingLight","vanityLight","pendant"],x=new Set(["id","cat","name","w","d","h","kind","model","price","priceCA","caNA","caVar","color","color2","seatH","wood","dimmable","url","note","cct","lum","glassShelf","spShelves","noCal","sourcePack","noPrice","seat","col2"]),S=/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/,j=/^[a-z][A-Za-z0-9]{0,31}$/,z=/^#[0-9a-fA-F]{3,8}$/,u=r=>typeof r=="string",_=r=>typeof r=="number"&&Number.isFinite(r);function M(r,t){let i=[];if(!r||typeof r!="object"||Array.isArray(r))return{issues:[{level:"error",where:t||"?",field:"",message:"\u6761\u76EE\u5FC5\u987B\u662F\u5BF9\u8C61"}],ok:!1};let e=Object.assign({},r),n=u(e.id)&&e.id?e.id:t||"?",o=(s,l,p)=>i.push({level:s,where:n,field:l,message:p});e.col2!==void 0&&(e.color2===void 0?(e.color2=e.col2,o("warning","col2","col2 \u662F\u65E7\u522B\u540D\uFF08\u5185\u7F6E\u76EE\u5F55\u66FE\u8BEF\u7528\u8FC7\uFF09\uFF0C\u5DF2\u6309 color2 \u5904\u7406 \u2014\u2014 \u8BF7\u6539\u5199 color2")):o("warning","col2","\u540C\u65F6\u7ED9\u4E86 col2 \u4E0E color2\uFF1A\u6309 color2 \u5904\u7406"),delete e.col2),!u(e.id)||!e.id?o("error","id","\u7F3A\u5C11 id"):S.test(e.id)||o("error","id",`id \u53EA\u80FD\u7528\u5B57\u6BCD/\u6570\u5B57/._-\uFF0C\u4E14\u4E0D\u8D85\u8FC7 64 \u5B57\u7B26\uFF08\u5F53\u524D "${e.id}"\uFF09`),!u(e.cat)||!e.cat.trim()?o("error","cat","\u7F3A\u5C11\u5206\u7C7B\uFF08cat\uFF09"):e.cat.length>60&&o("error","cat","\u5206\u7C7B\u540D\u8FC7\u957F\uFF08>60 \u5B57\u7B26\uFF09"),!u(e.name)||!e.name.trim()?o("error","name","\u7F3A\u5C11\u540D\u79F0\uFF08name\uFF09"):e.name.length>140&&o("error","name","\u540D\u79F0\u8FC7\u957F\uFF08>140 \u5B57\u7B26\uFF09");let c=["w","d","h"];for(let s of c){let l=e[s];_(l)?(l<1||l>1200)&&o("error",s,`${s}=${l}cm \u8D85\u51FA 1\u20131200cm \u7684\u5408\u7406\u8303\u56F4`):o("error",s,`${s} \u5FC5\u987B\u662F\u6570\u5B57\uFF08cm\uFF09`)}!u(e.kind)||!e.kind?o("error","kind","\u7F3A\u5C11 kind\uFF08\u51B3\u5B9A 2D \u56FE\u4F8B / \u6750\u8D28 / \u901A\u7528\u56DE\u9000\u5EFA\u6A21\uFF09"):j.test(e.kind)?$.includes(e.kind)||o("warning","kind",`\u964C\u751F\u7684 kind "${e.kind}"\uFF1A\u80FD\u653E\u80FD\u641C\uFF0C\u4F46\u5EFA\u6A21\u4F1A\u8D70\u901A\u7528\u56DE\u9000\u30012D \u56FE\u4F8B\u662F\u901A\u7528\u77E9\u5F62`):o("error","kind",`kind \u53EA\u80FD\u7528\u5B57\u6BCD\u5F00\u5934\u7684 [A-Za-z0-9]\uFF08\u5F53\u524D "${e.kind}"\uFF09`),e.model!==void 0&&(!u(e.model)||!S.test(e.model))&&o("error","model","model \u5FC5\u987B\u662F\u5408\u6CD5\u7684\u6A21\u578B\u540D");for(let s of["price","priceCA"]){let l=e[s];l!==void 0&&(!_(l)||l<0||l>1e5)&&o("error",s,`${s} \u5FC5\u987B\u662F 0\u2013100000 \u7684\u6570\u5B57`)}e.caNA!==void 0&&typeof e.caNA!="boolean"&&o("error","caNA","caNA \u5FC5\u987B\u662F\u5E03\u5C14"),e.caVar!==void 0&&typeof e.caVar!="boolean"&&!(u(e.caVar)&&e.caVar.length<=240)&&o("error","caVar","caVar \u5FC5\u987B\u662F\u5E03\u5C14\uFF0C\u6216 \u2264240 \u5B57\u7B26\u7684\u8BF4\u660E\u6587\u672C"),e.noPrice!==void 0&&e.noPrice!==!0&&o("error","noPrice","noPrice \u53EA\u7528\u6765\u663E\u5F0F\u58F0\u660E\u300C\u6CA1\u6709\u72EC\u7ACB\u552E\u4EF7\u300D\uFF0C\u5199 true \u6216\u4E0D\u5199"),e.price===void 0&&e.priceCA===void 0&&e.caNA!==!0&&e.noPrice!==!0&&!O.includes(String(e.kind))&&o("warning","price","\u6CA1\u6709\u4EFB\u4F55\u4EF7\u683C\uFF1A\u754C\u9762\u4F1A\u663E\u793A\u4E3A\u7A7A\uFF08\u56FA\u5B9A\u706F\u5177\u672C\u6765\u5C31\u8BE5\u6CA1\u6709\u4EF7\u683C\uFF0C\u5176\u5B83\u6761\u76EE\u901A\u5E38\u662F\u6F0F\u91C7\u4E86\uFF09");for(let s of["color","color2"]){let l=e[s];l!==void 0&&(!u(l)||!z.test(l))&&o("error",s,`${s} \u5FC5\u987B\u662F #hex\uFF08\u5982 "#D4C4A8"\uFF09`)}e.wood!==void 0&&!T.includes(String(e.wood))&&o("warning","wood",`\u964C\u751F\u7684 wood "${String(e.wood)}"\uFF1A\u4F1A\u9000\u56DE\u9ED8\u8BA4\u6728\u7EB9`),e.seatH!==void 0&&(!_(e.seatH)||e.seatH<1||e.seatH>120)&&o("error","seatH","seatH \u5FC5\u987B\u5728 1\u2013120cm"),e.dimmable!==void 0&&typeof e.dimmable!="boolean"&&o("error","dimmable","dimmable \u5FC5\u987B\u662F\u5E03\u5C14"),e.url!==void 0&&(!u(e.url)||e.url.length>300?o("error","url","url \u5FC5\u987B\u662F \u2264300 \u5B57\u7B26\u7684\u6587\u672C"):/^https?:\/\//.test(e.url)||o("error","url","url \u5FC5\u987B\u4EE5 http:// \u6216 https:// \u5F00\u5934")),e.note!==void 0&&(!u(e.note)||e.note.length>400)&&o("error","note","note \u5FC5\u987B\u662F \u2264400 \u5B57\u7B26\u7684\u6587\u672C");for(let s of Object.keys(e))!x.has(s)&&s!=="sourcePack"&&o("warning",s,`\u672A\u77E5\u5B57\u6BB5 "${s}"\uFF08\u4F1A\u88AB\u4FDD\u7559\u4F46\u4E0D\u6D88\u8D39\uFF09`);if(i.some(s=>s.level==="error"))return{issues:i,ok:!1};let m={id:String(e.id),cat:String(e.cat).trim(),name:String(e.name).trim(),w:Number(e.w),d:Number(e.d),h:Number(e.h),kind:String(e.kind)};for(let s of["model","price","priceCA","caNA","caVar","color","color2","seatH","wood","dimmable","url","note","cct","lum","glassShelf","spShelves","noCal","noPrice","seat"])e[s]!==void 0&&(m[s]=e[s]);for(let s of Object.keys(e))x.has(s)||(m[s]=e[s]);return{entry:m,issues:i,ok:!0}}function w(r){let t=new Set,i=new Set;for(let e of r)t.has(e.id)&&i.add(e.id),t.add(e.id);return Array.from(i)}var R={};I(R,{MAX_MODEL_SRC:()=>E,MAX_PACKS:()=>N,MAX_PACK_ENTRIES:()=>A,MAX_PACK_MODELS:()=>b,MAX_PACK_MODELS_BYTES:()=>v,PACKS_KEY:()=>V,PACK_SCHEMA:()=>h,compileModel:()=>W,mergeCatalog:()=>G,normalizeRegistry:()=>U,packKeyFor:()=>Z,packMetaFor:()=>ne,removePackMeta:()=>ee,serializeRegistry:()=>q,upsertPackMeta:()=>Q,validatePack:()=>B});var h=1,V="planner_packs_v1",Z=r=>"planner_pack:"+r,A=2e3,b=500,E=6e4,v=4e5,N=32,D=/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/,F=/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/,f=r=>typeof r=="string",y=r=>typeof r=="number"&&Number.isFinite(r);function B(r){let t=[],i=[],e=(a,g)=>t.push({level:"error",where:"?",field:a,message:g});if(!r||typeof r!="object"||Array.isArray(r))return e("","\u76EE\u5F55\u5305\u5FC5\u987B\u662F\u4E00\u4E2A JSON \u5BF9\u8C61"),{issues:t,entryIssues:i,ok:!1};let n=r,o=f(n.pack)&&n.pack?n.pack:"?",c=(a,g,d)=>t.push({level:a,where:o,field:g,message:d});!f(n.pack)||!n.pack?e("pack","\u7F3A\u5C11\u5305 id\uFF08pack\uFF09"):D.test(n.pack)?n.pack==="builtin"&&e("pack",'\u5305 id \u4E0D\u80FD\u53EB "builtin"\uFF08\u90A3\u662F\u5185\u7F6E\u76EE\u5F55\u7684\u547D\u540D\u7A7A\u95F4\uFF09'):e("pack",`\u5305 id \u53EA\u80FD\u7528\u5B57\u6BCD/\u6570\u5B57/._-\uFF0C\u4E14\u4E0D\u8D85\u8FC7 64 \u5B57\u7B26\uFF08\u5F53\u524D "${n.pack}"\uFF09`);let m=1;n.version!==void 0&&(!y(n.version)||!Number.isInteger(n.version)||n.version<1?e("version","version \u5FC5\u987B\u662F \u22651 \u7684\u6574\u6570"):m=n.version);let s=f(n.pack)?n.pack:"\u672A\u547D\u540D\u76EE\u5F55\u5305";n.name!==void 0&&(!f(n.name)||!n.name.trim()||n.name.length>80?e("name","name \u5FC5\u987B\u662F 1\u201380 \u5B57\u7B26\u7684\u6587\u672C"):s=n.name.trim()),Array.isArray(n.entries)?n.entries.length===0?e("entries","entries \u662F\u7A7A\u7684\uFF1A\u8FD9\u4E2A\u5305\u6CA1\u6709\u4EFB\u4F55\u6761\u76EE"):n.entries.length>A&&e("entries",`entries \u8D85\u8FC7 ${A} \u6761\u4E0A\u9650\uFF08\u5F53\u524D ${n.entries.length}\uFF09`):e("entries","\u7F3A\u5C11 entries\uFF08\u6761\u76EE\u6570\u7EC4\uFF09");let l={};if(n.models!==void 0)if(!n.models||typeof n.models!="object"||Array.isArray(n.models))e("models","models \u5FC5\u987B\u662F {\u540D\u5B57: \u51FD\u6570\u6E90\u7801\u5B57\u7B26\u4E32} \u5BF9\u8C61");else{let a=Object.keys(n.models);a.length>b&&e("models",`models \u8D85\u8FC7 ${b} \u4E2A\u4E0A\u9650\uFF08\u5F53\u524D ${a.length}\uFF09`);let g=0;for(let d of a){let k=n.models[d];if(!F.test(d)){c("error",`models.${d}`,"\u6A21\u578B\u540D\u53EA\u80FD\u7528\u5B57\u6BCD/\u6570\u5B57/._-\uFF0C\u4E14\u4E0D\u8D85\u8FC7 64 \u5B57\u7B26");continue}if(!f(k)){c("error",`models.${d}`,'\u6A21\u578B\u5FC5\u987B\u662F\u51FD\u6570\u6E90\u7801\u5B57\u7B26\u4E32\uFF08\u5982 "(C)=>{ \u2026 }"\uFF09');continue}if(k.length>E){c("error",`models.${d}`,`\u5355\u4E2A\u6A21\u578B\u6E90\u7801\u8D85\u8FC7 ${E} \u5B57\u7B26`);continue}g+=k.length,l[d]=k}g>v&&e("models",`\u6574\u5305\u6A21\u578B\u6E90\u7801\u8D85\u8FC7 ${v} \u5B57\u7B26\u4E0A\u9650\uFF08\u5F53\u524D ${g}\uFF09`)}for(let a of Object.keys(n))a!=="pack"&&a!=="name"&&a!=="version"&&a!=="entries"&&a!=="models"&&a!=="homepage"&&a!=="note"&&c("warning",a,`\u672A\u77E5\u5B57\u6BB5 "${a}"\uFF08\u4F1A\u88AB\u5FFD\u7565\uFF09`);n.homepage!==void 0&&(!f(n.homepage)||!/^https?:\/\//.test(n.homepage)||n.homepage.length>300)&&c("error","homepage","homepage \u5FC5\u987B\u662F http(s) \u94FE\u63A5\uFF08\u2264300 \u5B57\u7B26\uFF09"),n.note!==void 0&&(!f(n.note)||n.note.length>600)&&c("error","note","note \u5FC5\u987B\u662F \u2264600 \u5B57\u7B26\u7684\u6587\u672C");let p=[];if(Array.isArray(n.entries)){for(let d of n.entries){let k=M(d);i.push(...k.issues),k.ok&&k.entry&&p.push({...k.entry,sourcePack:o})}for(let d of w(p))t.push({level:"error",where:o,field:"entries",message:`\u5305\u5185 id \u91CD\u590D\uFF1A"${d}"\uFF08\u540E\u4E00\u6761\u88AB\u4E22\u5F03\uFF09`});let a=new Set,g=p.filter(d=>a.has(d.id)?!1:(a.add(d.id),!0));p.length=0,p.push(...g)}if(t.some(a=>a.level==="error"))return{issues:t,entryIssues:i,ok:!1};if(p.length===0)return{issues:t,entryIssues:i,ok:!1};let C={pack:String(n.pack),name:s,version:m,entries:p,models:l};return f(n.homepage)&&(C.homepage=n.homepage),f(n.note)&&(C.note=n.note),{pack:C,issues:t,entryIssues:i,ok:!0}}function W(r){try{let t=new Function('"use strict";return ('+r+");")();return typeof t!="function"?{error:"\u6E90\u7801\u6C42\u503C\u7ED3\u679C\u4E0D\u662F\u51FD\u6570"}:{fn:t}}catch(t){return{error:(t instanceof Error?t.message:"")||"\u7F16\u8BD1\u5931\u8D25"}}}function G(r,t){let i=[],e=[],n=new Set;for(let o of r)n.has(o.id)||(n.add(o.id),i.push(o));for(let o of t)for(let c of o.entries){if(n.has(c.id)){e.push({id:c.id,pack:o.pack,reason:"\u4E0E\u5DF2\u52A0\u8F7D\u7684\u6761\u76EE\u540C id\uFF08\u5185\u7F6E\u76EE\u5F55 / \u5148\u52A0\u8F7D\u7684\u5305\u8D62\uFF09"});continue}n.add(c.id),i.push({...c,sourcePack:o.pack})}return{entries:i,conflicts:e}}function J(r){if(!r||typeof r!="object"||Array.isArray(r))return null;let t=r;if(!f(t.pack)||!D.test(t.pack))return null;let i=f(t.name)&&t.name&&t.name.length<=80?t.name:t.pack,e=(n,o)=>y(n)&&n>=0?Math.min(Math.floor(n),o):0;return{pack:t.pack,name:i,version:y(t.version)&&t.version>=1?Math.floor(t.version):1,entries:e(t.entries,A),models:e(t.models,b),addedAt:y(t.addedAt)&&t.addedAt>=0?Math.floor(t.addedAt):0}}function U(r){let t=[];if(r&&typeof r=="object"&&!Array.isArray(r)){let i=r;if(Array.isArray(i.packs)){let e=new Map;for(let n of i.packs){let o=J(n);o&&e.set(o.pack,o)}t.push(...Array.from(e.values()))}}return{v:h,packs:t.slice(0,N)}}var q=r=>JSON.stringify({v:h,packs:r.packs});function Q(r,t,i){let e={...t,addedAt:t.addedAt||i},o=r.packs.some(c=>c.pack===e.pack)?r.packs.map(c=>c.pack===e.pack?e:c):[...r.packs,e];return{v:h,packs:o.slice(0,N)}}function ee(r,t){return{v:h,packs:r.packs.filter(i=>i.pack!==t)}}var ne=r=>({pack:r.pack,name:r.name,version:r.version,entries:r.entries.length,models:Object.keys(r.models).length,addedAt:0});var re=globalThis;re.MINIDEN_CATALOG={...P,...R};})();
+"use strict";(()=>{var V=Object.defineProperty;var v=(n,t)=>{for(var s in t)V(n,s,{get:t[s],enumerable:!0})};var E={};v(E,{BUILTIN_LIGHT_KINDS:()=>K,ENTRY_MAX_CM:()=>B,ENTRY_MAX_PRICE:()=>G,ENTRY_MIN_CM:()=>J,ENTRY_SCHEMA:()=>Z,KNOWN_KINDS:()=>j,KNOWN_WOODS:()=>L,duplicateIds:()=>_,validateEntry:()=>x});var Z=1,J=1,B=1200,G=1e5,j=["accentConsole","armchair","balanceBike","ballPit","bed","bedMetal","bookcase","cart","ceilingLight","chair","climber","clothesRail","coatRack","coffeeTable","crib","desk","deskSitStand","downlight","dresser","easel","goal","lamp","magTiles","nightstand","officeChair","pendant","pikler","playCouch","playKitchen","playMat","playset","recliner","rideOn","rocking","rug","sandTable","scooter","shelf","shoeCab","sideTable","sofa","sofaL","sportsZone","stool","swivelChair","tableDrawer","tableFold","tableRect","tableRound","trampoline","tubChair","tvBench","vanityLight","wagon","walker","wobble","xylophone"],L=["pine","beech","birch","oak","walnut"],K=["downlight","ceilingLight","vanityLight","pendant"],D=new Set(["id","cat","name","w","d","h","kind","model","price","priceCA","caNA","caVar","color","color2","seatH","wood","dimmable","url","note","cct","lum","glassShelf","spShelves","noCal","sourcePack","noPrice","seat","col2"]),T=/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/,W=/^[a-z][A-Za-z0-9]{0,31}$/,U=/^#[0-9a-fA-F]{3,8}$/,k=n=>typeof n=="string",w=n=>typeof n=="number"&&Number.isFinite(n);function x(n,t){let s=[];if(!n||typeof n!="object"||Array.isArray(n))return{issues:[{level:"error",where:t||"?",field:"",message:"\u6761\u76EE\u5FC5\u987B\u662F\u5BF9\u8C61"}],ok:!1};let e=Object.assign({},n),r=k(e.id)&&e.id?e.id:t||"?",o=(a,f,g)=>s.push({level:a,where:r,field:f,message:g});e.col2!==void 0&&(e.color2===void 0?(e.color2=e.col2,o("warning","col2","col2 \u662F\u65E7\u522B\u540D\uFF08\u5185\u7F6E\u76EE\u5F55\u66FE\u8BEF\u7528\u8FC7\uFF09\uFF0C\u5DF2\u6309 color2 \u5904\u7406 \u2014\u2014 \u8BF7\u6539\u5199 color2")):o("warning","col2","\u540C\u65F6\u7ED9\u4E86 col2 \u4E0E color2\uFF1A\u6309 color2 \u5904\u7406"),delete e.col2),!k(e.id)||!e.id?o("error","id","\u7F3A\u5C11 id"):T.test(e.id)||o("error","id",`id \u53EA\u80FD\u7528\u5B57\u6BCD/\u6570\u5B57/._-\uFF0C\u4E14\u4E0D\u8D85\u8FC7 64 \u5B57\u7B26\uFF08\u5F53\u524D "${e.id}"\uFF09`),!k(e.cat)||!e.cat.trim()?o("error","cat","\u7F3A\u5C11\u5206\u7C7B\uFF08cat\uFF09"):e.cat.length>60&&o("error","cat","\u5206\u7C7B\u540D\u8FC7\u957F\uFF08>60 \u5B57\u7B26\uFF09"),!k(e.name)||!e.name.trim()?o("error","name","\u7F3A\u5C11\u540D\u79F0\uFF08name\uFF09"):e.name.length>140&&o("error","name","\u540D\u79F0\u8FC7\u957F\uFF08>140 \u5B57\u7B26\uFF09");let c=["w","d","h"];for(let a of c){let f=e[a];w(f)?(f<1||f>1200)&&o("error",a,`${a}=${f}cm \u8D85\u51FA 1\u20131200cm \u7684\u5408\u7406\u8303\u56F4`):o("error",a,`${a} \u5FC5\u987B\u662F\u6570\u5B57\uFF08cm\uFF09`)}!k(e.kind)||!e.kind?o("error","kind","\u7F3A\u5C11 kind\uFF08\u51B3\u5B9A 2D \u56FE\u4F8B / \u6750\u8D28 / \u901A\u7528\u56DE\u9000\u5EFA\u6A21\uFF09"):W.test(e.kind)?j.includes(e.kind)||o("warning","kind",`\u964C\u751F\u7684 kind "${e.kind}"\uFF1A\u80FD\u653E\u80FD\u641C\uFF0C\u4F46\u5EFA\u6A21\u4F1A\u8D70\u901A\u7528\u56DE\u9000\u30012D \u56FE\u4F8B\u662F\u901A\u7528\u77E9\u5F62`):o("error","kind",`kind \u53EA\u80FD\u7528\u5B57\u6BCD\u5F00\u5934\u7684 [A-Za-z0-9]\uFF08\u5F53\u524D "${e.kind}"\uFF09`),e.model!==void 0&&(!k(e.model)||!T.test(e.model))&&o("error","model","model \u5FC5\u987B\u662F\u5408\u6CD5\u7684\u6A21\u578B\u540D");for(let a of["price","priceCA"]){let f=e[a];f!==void 0&&(!w(f)||f<0||f>1e5)&&o("error",a,`${a} \u5FC5\u987B\u662F 0\u2013100000 \u7684\u6570\u5B57`)}e.caNA!==void 0&&typeof e.caNA!="boolean"&&o("error","caNA","caNA \u5FC5\u987B\u662F\u5E03\u5C14"),e.caVar!==void 0&&typeof e.caVar!="boolean"&&!(k(e.caVar)&&e.caVar.length<=240)&&o("error","caVar","caVar \u5FC5\u987B\u662F\u5E03\u5C14\uFF0C\u6216 \u2264240 \u5B57\u7B26\u7684\u8BF4\u660E\u6587\u672C"),e.noPrice!==void 0&&e.noPrice!==!0&&o("error","noPrice","noPrice \u53EA\u7528\u6765\u663E\u5F0F\u58F0\u660E\u300C\u6CA1\u6709\u72EC\u7ACB\u552E\u4EF7\u300D\uFF0C\u5199 true \u6216\u4E0D\u5199"),e.price===void 0&&e.priceCA===void 0&&e.caNA!==!0&&e.noPrice!==!0&&!K.includes(String(e.kind))&&o("warning","price","\u6CA1\u6709\u4EFB\u4F55\u4EF7\u683C\uFF1A\u754C\u9762\u4F1A\u663E\u793A\u4E3A\u7A7A\uFF08\u56FA\u5B9A\u706F\u5177\u672C\u6765\u5C31\u8BE5\u6CA1\u6709\u4EF7\u683C\uFF0C\u5176\u5B83\u6761\u76EE\u901A\u5E38\u662F\u6F0F\u91C7\u4E86\uFF09");for(let a of["color","color2"]){let f=e[a];f!==void 0&&(!k(f)||!U.test(f))&&o("error",a,`${a} \u5FC5\u987B\u662F #hex\uFF08\u5982 "#D4C4A8"\uFF09`)}e.wood!==void 0&&!L.includes(String(e.wood))&&o("warning","wood",`\u964C\u751F\u7684 wood "${String(e.wood)}"\uFF1A\u4F1A\u9000\u56DE\u9ED8\u8BA4\u6728\u7EB9`),e.seatH!==void 0&&(!w(e.seatH)||e.seatH<1||e.seatH>120)&&o("error","seatH","seatH \u5FC5\u987B\u5728 1\u2013120cm"),e.dimmable!==void 0&&typeof e.dimmable!="boolean"&&o("error","dimmable","dimmable \u5FC5\u987B\u662F\u5E03\u5C14"),e.url!==void 0&&(!k(e.url)||e.url.length>300?o("error","url","url \u5FC5\u987B\u662F \u2264300 \u5B57\u7B26\u7684\u6587\u672C"):/^https?:\/\//.test(e.url)||o("error","url","url \u5FC5\u987B\u4EE5 http:// \u6216 https:// \u5F00\u5934")),e.note!==void 0&&(!k(e.note)||e.note.length>400)&&o("error","note","note \u5FC5\u987B\u662F \u2264400 \u5B57\u7B26\u7684\u6587\u672C");for(let a of Object.keys(e))!D.has(a)&&a!=="sourcePack"&&o("warning",a,`\u672A\u77E5\u5B57\u6BB5 "${a}"\uFF08\u4F1A\u88AB\u4FDD\u7559\u4F46\u4E0D\u6D88\u8D39\uFF09`);if(s.some(a=>a.level==="error"))return{issues:s,ok:!1};let m={id:String(e.id),cat:String(e.cat).trim(),name:String(e.name).trim(),w:Number(e.w),d:Number(e.d),h:Number(e.h),kind:String(e.kind)};for(let a of["model","price","priceCA","caNA","caVar","color","color2","seatH","wood","dimmable","url","note","cct","lum","glassShelf","spShelves","noCal","noPrice","seat"])e[a]!==void 0&&(m[a]=e[a]);for(let a of Object.keys(e))D.has(a)||(m[a]=e[a]);return{entry:m,issues:s,ok:!0}}function _(n){let t=new Set,s=new Set;for(let e of n)t.has(e.id)&&s.add(e.id),t.add(e.id);return Array.from(s)}var $={};v($,{DIGEST_RE:()=>X,MAX_MODEL_SRC:()=>N,MAX_PACKS:()=>S,MAX_PACK_ENTRIES:()=>A,MAX_PACK_MODELS:()=>M,MAX_PACK_MODELS_BYTES:()=>I,PACKS_KEY:()=>q,PACK_SCHEMA:()=>y,canonicalJson:()=>C,compileModel:()=>P,contentDigest:()=>Y,mergeCatalog:()=>re,normalizeRegistry:()=>ie,packDigest:()=>R,packKeyFor:()=>Q,packMetaFor:()=>le,packUpdateDecision:()=>oe,removePackMeta:()=>de,serializeRegistry:()=>ae,upsertPackMeta:()=>ce,validatePack:()=>ne});var y=2,q="planner_packs_v1",Q=n=>"planner_pack:"+n,A=2e3,M=500,N=6e4,I=4e5,S=32,F=/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/,ee=/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/,p=n=>typeof n=="string",b=n=>typeof n=="number"&&Number.isFinite(n);function ne(n){let t=[],s=[],e=(i,d)=>t.push({level:"error",where:"?",field:i,message:d});if(!n||typeof n!="object"||Array.isArray(n))return e("","\u76EE\u5F55\u5305\u5FC5\u987B\u662F\u4E00\u4E2A JSON \u5BF9\u8C61"),{issues:t,entryIssues:s,ok:!1};let r=n,o=p(r.pack)&&r.pack?r.pack:"?",c=(i,d,u)=>t.push({level:i,where:o,field:d,message:u});!p(r.pack)||!r.pack?e("pack","\u7F3A\u5C11\u5305 id\uFF08pack\uFF09"):F.test(r.pack)?r.pack==="builtin"&&e("pack",'\u5305 id \u4E0D\u80FD\u53EB "builtin"\uFF08\u90A3\u662F\u5185\u7F6E\u76EE\u5F55\u7684\u547D\u540D\u7A7A\u95F4\uFF09'):e("pack",`\u5305 id \u53EA\u80FD\u7528\u5B57\u6BCD/\u6570\u5B57/._-\uFF0C\u4E14\u4E0D\u8D85\u8FC7 64 \u5B57\u7B26\uFF08\u5F53\u524D "${r.pack}"\uFF09`);let m=1;r.version!==void 0&&(!b(r.version)||!Number.isInteger(r.version)||r.version<1?e("version","version \u5FC5\u987B\u662F \u22651 \u7684\u6574\u6570"):m=r.version);let a=p(r.pack)?r.pack:"\u672A\u547D\u540D\u76EE\u5F55\u5305";r.name!==void 0&&(!p(r.name)||!r.name.trim()||r.name.length>80?e("name","name \u5FC5\u987B\u662F 1\u201380 \u5B57\u7B26\u7684\u6587\u672C"):a=r.name.trim()),Array.isArray(r.entries)?r.entries.length===0?e("entries","entries \u662F\u7A7A\u7684\uFF1A\u8FD9\u4E2A\u5305\u6CA1\u6709\u4EFB\u4F55\u6761\u76EE"):r.entries.length>A&&e("entries",`entries \u8D85\u8FC7 ${A} \u6761\u4E0A\u9650\uFF08\u5F53\u524D ${r.entries.length}\uFF09`):e("entries","\u7F3A\u5C11 entries\uFF08\u6761\u76EE\u6570\u7EC4\uFF09");let f={};if(r.models!==void 0)if(!r.models||typeof r.models!="object"||Array.isArray(r.models))e("models","models \u5FC5\u987B\u662F {\u540D\u5B57: \u51FD\u6570\u6E90\u7801\u5B57\u7B26\u4E32} \u5BF9\u8C61");else{let i=Object.keys(r.models);i.length>M&&e("models",`models \u8D85\u8FC7 ${M} \u4E2A\u4E0A\u9650\uFF08\u5F53\u524D ${i.length}\uFF09`);let d=0;for(let u of i){let h=r.models[u];if(!ee.test(u)){c("error",`models.${u}`,"\u6A21\u578B\u540D\u53EA\u80FD\u7528\u5B57\u6BCD/\u6570\u5B57/._-\uFF0C\u4E14\u4E0D\u8D85\u8FC7 64 \u5B57\u7B26");continue}if(!p(h)){c("error",`models.${u}`,'\u6A21\u578B\u5FC5\u987B\u662F\u51FD\u6570\u6E90\u7801\u5B57\u7B26\u4E32\uFF08\u5982 "(C)=>{ \u2026 }"\uFF09');continue}if(h.length>N){c("error",`models.${u}`,`\u5355\u4E2A\u6A21\u578B\u6E90\u7801\u8D85\u8FC7 ${N} \u5B57\u7B26`);continue}d+=h.length,f[u]=h}d>I&&e("models",`\u6574\u5305\u6A21\u578B\u6E90\u7801\u8D85\u8FC7 ${I} \u5B57\u7B26\u4E0A\u9650\uFF08\u5F53\u524D ${d}\uFF09`)}for(let i of Object.keys(r))i!=="pack"&&i!=="name"&&i!=="version"&&i!=="entries"&&i!=="models"&&i!=="homepage"&&i!=="note"&&c("warning",i,`\u672A\u77E5\u5B57\u6BB5 "${i}"\uFF08\u4F1A\u88AB\u5FFD\u7565\uFF09`);r.homepage!==void 0&&(!p(r.homepage)||!/^https?:\/\//.test(r.homepage)||r.homepage.length>300)&&c("error","homepage","homepage \u5FC5\u987B\u662F http(s) \u94FE\u63A5\uFF08\u2264300 \u5B57\u7B26\uFF09"),r.note!==void 0&&(!p(r.note)||r.note.length>600)&&c("error","note","note \u5FC5\u987B\u662F \u2264600 \u5B57\u7B26\u7684\u6587\u672C");let g=[];if(Array.isArray(r.entries)){for(let u of r.entries){let h=x(u);s.push(...h.issues),h.ok&&h.entry&&g.push({...h.entry,sourcePack:o})}for(let u of _(g))t.push({level:"error",where:o,field:"entries",message:`\u5305\u5185 id \u91CD\u590D\uFF1A"${u}"\uFF08\u540E\u4E00\u6761\u88AB\u4E22\u5F03\uFF09`});let i=new Set,d=g.filter(u=>i.has(u.id)?!1:(i.add(u.id),!0));g.length=0,g.push(...d)}if(t.some(i=>i.level==="error"))return{issues:t,entryIssues:s,ok:!1};if(g.length===0)return{issues:t,entryIssues:s,ok:!1};let l={pack:String(r.pack),name:a,version:m,entries:g,models:f};return p(r.homepage)&&(l.homepage=r.homepage),p(r.note)&&(l.note=r.note),{pack:l,issues:t,entryIssues:s,ok:!0}}function P(n){try{let t=new Function('"use strict";return ('+n+");")();return typeof t!="function"?{error:"\u6E90\u7801\u6C42\u503C\u7ED3\u679C\u4E0D\u662F\u51FD\u6570"}:{fn:t}}catch(t){return{error:(t instanceof Error?t.message:"")||"\u7F16\u8BD1\u5931\u8D25"}}}function re(n,t){let s=[],e=[],r=new Set;for(let o of n)r.has(o.id)||(r.add(o.id),s.push(o));for(let o of t)for(let c of o.entries){if(r.has(c.id)){e.push({id:c.id,pack:o.pack,reason:"\u4E0E\u5DF2\u52A0\u8F7D\u7684\u6761\u76EE\u540C id\uFF08\u5185\u7F6E\u76EE\u5F55 / \u5148\u52A0\u8F7D\u7684\u5305\u8D62\uFF09"});continue}r.add(c.id),s.push({...c,sourcePack:o.pack})}return{entries:s,conflicts:e}}function C(n){if(n==null)return"null";let t=typeof n;if(t==="number")return Number.isFinite(n)?JSON.stringify(n):"null";if(t==="string"||t==="boolean")return JSON.stringify(n);if(Array.isArray(n))return"["+n.map(C).join(",")+"]";if(t==="object"){let s=n;return"{"+Object.keys(s).sort().map(r=>JSON.stringify(r)+":"+(s[r]===void 0?"null":C(s[r]))).join(",")+"}"}return"null"}var te=16777619;function z(n,t){let s=t>>>0;for(let e=0;e<n.length;e++)s^=n.charCodeAt(e),s=Math.imul(s,te)>>>0;return s>>>0}function Y(n){let t=C(n),s=z(t,2166136261),e=z(t+"",(16777619^t.length)>>>0);return s.toString(16).padStart(8,"0")+e.toString(16).padStart(8,"0")}var X=/^[0-9a-f]{16}$/,R=n=>Y({pack:n.pack,version:n.version,name:n.name,entries:n.entries,models:n.models});function oe(n,t){return n?t.version>n.version?{action:"update",reason:`\u7248\u672C ${n.version} \u2192 ${t.version}`}:t.version<n.version?{action:"reject",reason:`\u5DF2\u52A0\u8F7D\u7684\u662F\u7248\u672C ${n.version}\uFF0C\u8FD9\u4EFD\u662F\u7248\u672C ${t.version}\uFF1A\u8981\u6362\u65E7\u7248\u8BF7\u5148\u79FB\u9664\u5F53\u524D\u8FD9\u4EFD`}:n.digest?n.digest===R(t)?{action:"same",reason:`\u5185\u5BB9\u4E0E\u5DF2\u52A0\u8F7D\u7684\u8FD9\u4EFD\u5B8C\u5168\u76F8\u540C\uFF08\u7248\u672C ${n.version}\uFF09`}:{action:"reject",reason:`\u540C\u540D\u540C\u7248\u672C\uFF08\u7248\u672C ${n.version}\uFF09\u4F46\u5185\u5BB9\u4E0D\u540C\uFF1A\u6539\u5185\u5BB9\u8BF7\u628A version \u63D0\u9AD8\u5230 ${n.version+1} \u4EE5\u4E0A\u518D\u5BFC\u5165`}:{action:"update",reason:`\u540C\u7248\u672C\uFF08${n.version}\uFF09\uFF1A\u65E7\u8BB0\u5F55\u6CA1\u6709\u5185\u5BB9\u6307\u7EB9\uFF08\u6307\u7EB9\u529F\u80FD\u4E4B\u524D\u5BFC\u5165\u7684\uFF09\uFF0C\u6309\u65B0\u6587\u4EF6\u66FF\u6362\u5E76\u8865\u4E0A\u6307\u7EB9`}:{action:"add",reason:""}}function se(n){if(!n||typeof n!="object"||Array.isArray(n))return null;let t=n;if(!p(t.pack)||!F.test(t.pack))return null;let s=p(t.name)&&t.name&&t.name.length<=80?t.name:t.pack,e=(r,o)=>b(r)&&r>=0?Math.min(Math.floor(r),o):0;return{pack:t.pack,name:s,version:b(t.version)&&t.version>=1?Math.floor(t.version):1,entries:e(t.entries,A),models:e(t.models,M),addedAt:b(t.addedAt)&&t.addedAt>=0?Math.floor(t.addedAt):0,digest:p(t.digest)&&X.test(t.digest)?t.digest:null}}function ie(n){let t=[];if(n&&typeof n=="object"&&!Array.isArray(n)){let s=n;if(Array.isArray(s.packs)){let e=new Map;for(let r of s.packs){let o=se(r);o&&e.set(o.pack,o)}t.push(...Array.from(e.values()))}}return{v:y,packs:t.slice(0,S)}}var ae=n=>JSON.stringify({v:y,packs:n.packs});function ce(n,t,s){let e={...t,addedAt:t.addedAt||s},o=n.packs.some(c=>c.pack===e.pack)?n.packs.map(c=>c.pack===e.pack?e:c):[...n.packs,e];return{v:y,packs:o.slice(0,S)}}function de(n,t){return{v:y,packs:n.packs.filter(s=>s.pack!==t)}}var le=n=>({pack:n.pack,name:n.name,version:n.version,entries:n.entries.length,models:Object.keys(n.models).length,addedAt:0,digest:R(n)});var O={};v(O,{MAX_RESIDENT_MODELS:()=>H,buildModelIndex:()=>ue,createModelCache:()=>fe,precompilePack:()=>ge});var H=400;function ue(n){let t=new Map;for(let s of n)for(let[e,r]of Object.entries(s.models))t.has(e)||t.set(e,{pack:s.pack,src:r});return t}function fe(n,t){let s=Math.max(1,t?.limit??H),e=n,r=new Map,o=new Map,c=new Map,m=0,a=0,f=0,g=(l,i,d)=>{for(r.delete(l),r.set(l,i),d!==void 0&&o.set(l,d);r.size>s;){let u=r.keys().next().value;if(u===void 0||u===l)break;r.delete(u),o.delete(u),f++}};return{get(l){let i=r.get(l);if(i!==void 0)return g(l,i),a++,i;if(c.has(l))return null;let d=e.get(l);if(!d)return null;let u=P(d.src);return u.error||!u.fn?(c.set(l,u.error||"\u7F16\u8BD1\u5931\u8D25"),null):(m++,g(l,u.fn,d.src),u.fn)},has:l=>r.has(l),setIndex(l){e=l;for(let i of Array.from(r.keys()))e.get(i)?.src!==o.get(i)&&(r.delete(i),o.delete(i));for(let i of Array.from(c.keys()))e.has(i)||c.delete(i)},dropPack(l){let i=0;for(let d of Array.from(r.keys()))e.get(d)?.pack===l&&(r.delete(d),o.delete(d),i++);for(let d of Array.from(c.keys()))e.get(d)?.pack===l&&(c.delete(d),i++);return i},seed(l,i){c.delete(l);let d=e.get(l);g(l,i,d?d.src:"")},stats:()=>({resident:r.size,compiled:m,reused:a,evicted:f,failed:c.size}),failuresFor(l){let i=[];for(let[d,u]of c)e.get(d)?.pack===l&&i.push({model:d,error:u});return i},residentFor(l){let i=0;for(let d of r.keys())e.get(d)?.pack===l&&i++;return i}}}function ge(n,t){let s=[],e=0;for(let[r,o]of Object.entries(n.models)){let c=P(o);if(c.error||!c.fn){s.push({model:r,error:c.error||"\u7F16\u8BD1\u5931\u8D25"});continue}e++,t.seed(r,c.fn)}return{ok:e,errors:s}}var pe=globalThis;pe.MINIDEN_CATALOG={...E,...$,...O};})();
 
 </script><!-- /miniden-catalog -->
 <script id="miniden-storage">
@@ -3071,7 +3071,13 @@ const CATPACK = window.MINIDEN_CATALOG;
 const PACKS_KEY = CATPACK.PACKS_KEY;   // 注册表键（必须在这里声明：STORE.warm 在 ~1141 行就要用它）
 let packRegistry = { v: 1, packs: [] };   // 存盘的元数据
 const packDocs = new Map();              // packId → 解析后的包（条目 + 模型源码）
-const packModelFns = new Map();          // modelKey → 已编译的模型函数
+/* Phase 2（2026-10-13）：包模型不再「启动即全部编译常驻」。
+   实测（本轮探针 + Node 同引擎）：协议上限 32 包 × 500 模型 = 16,000 个模型函数 / 10.4MB 源码，
+   逐条编译共 122ms —— 编译本身不是铁颈，「为用户一件都没用过的模型付内存」才是。
+   所以：索引只存源码，函数用到才编译（懒），驻留超上限按 LRU 淘汰，编译失败只记一次。 */
+let packModelIndex = CATPACK.buildModelIndex([]);   // modelKey → {pack, src}
+let packModelCache = CATPACK.createModelCache(packModelIndex);
+let packDigestMismatch = [];         // 注册表指纹与存储内容不一致的包（如实报告，不加载）
 let packEntries = [];                    // 合并后的包条目（带 sourcePack）
 let packConflicts = [];                  // 最近一次合并跳过的同 id 条目
 /* 目录的唯一取用口径（内置 + 包 + 自定义）。包没加载时与旧写法完全等价。
@@ -3096,8 +3102,8 @@ function catalogAll(){
   catalogIdConflicts = conflicts;
   return out;
 }
-/* 建模解析链：内置 MODELS 优先，其次包里的模型，都没有就走 kind 通用回退 */
-function modelFor(key){ return MODELS[key] || packModelFns.get(key) || null; }
+/* 建模解析链：内置 MODELS 优先，其次包里的模型（用到才编译），都没有就走 kind 通用回退 */
+function modelFor(key){ return MODELS[key] || packModelCache.get(key) || null; }
 
 /* ---------- 预设布局 ---------- */
 const mid = (a,b)=>[(a[0]+b[0])/2,(a[1]+b[1])/2];
@@ -3258,20 +3264,15 @@ function readPackRegistry(){
   return CATPACK.normalizeRegistry(raw);
 }
 function savePackRegistry(){ try{ STORE.set(PACKS_KEY, CATPACK.serializeRegistry(packRegistry)); }catch(e){} }
-/* 合并口径：内置赢（mergeCatalog），这里只取它追加的那一段 */
+/* 合并口径：内置赢（mergeCatalog），这里只取它追加的那一段。
+   同时重建模型源码索引（懒编译的「源码在哪」表）。 */
 function rebuildPackCatalog(){
-  const r = CATPACK.mergeCatalog(CATALOG, [...packDocs.values()]);
+  const docs = [...packDocs.values()];
+  const r = CATPACK.mergeCatalog(CATALOG, docs);
   packEntries = r.entries.slice(Math.min(CATALOG.length, r.entries.length));
   packConflicts = r.conflicts;
-}
-function compilePackModels(p){
-  const errs = [];
-  for(const [key, src] of Object.entries(p.models)){
-    const c = CATPACK.compileModel(src);
-    if(c.error) errs.push({ model:key, message:c.error });
-    else packModelFns.set(key, c.fn);        // 内置同名模在 modelFor() 里赢（见 packShadowedModels）
-  }
-  return errs;
+  packModelIndex = CATPACK.buildModelIndex(docs);
+  packModelCache.setIndex(packModelIndex);
 }
 /* 被内置顶掉的模型名（内置赢）。为什么不在加载时算：MODELS 在文件更靠后才声明，
    启动期的包加载（loadPacksFromStore 在 ~1290 行）会撞 TDZ ReferenceError（§5.1 的坑）。
@@ -3282,7 +3283,7 @@ function packShadowedModels(){
     if(MODELS[key]) out.push({ model:key, pack:p.pack, reason:'内置已有同名模型（内置赢）' });
   return out;
 }
-function dropPackModels(p){ for(const key of Object.keys(p.models)) packModelFns.delete(key); }
+function dropPackModels(p){ packModelCache.dropPack(p.pack); }
 /* 上限是硬边界。注册表存不下第 33 个包时绝不能「内存里装上、注册表里悄悄丢掉」：
    那样它这一会话能用、刷新就无声消失，而写进去的包内容键再也没人引用（删不掉、也加载不回来）。
    拒收并说清原因，比静默丢包诚实。 */
@@ -3290,26 +3291,48 @@ function packLimitHit(p){
   if(packDocs.has(p.pack)) return false;                                  // 同包重装不占新名额
   return packRegistry.packs.length >= CATPACK.MAX_PACKS;
 }
+function packMetaOf(id){ return packRegistry.packs.find((m) => m.pack === id) || null; }
+/* 一个包的建模现状（Phase 2 懒编译后必须能如实回答「编译了几个」）：
+   总数 / 当前驻留 / 已知编译失败 / 实测超单件三角形预算。 */
+function packModelReport(id){
+  const doc = packDocs.get(id);
+  const keys = doc ? Object.keys(doc.models) : [];
+  const triOver = keys.filter((k) => (packModelTri.get(k) || 0) > MAX_ITEM_TRI)
+                      .map((k) => ({ model: k, tri: packModelTri.get(k) }))
+                      .sort((a, b) => b.tri - a.tri);
+  return { total: keys.length, resident: packModelCache.residentFor(id),
+           failures: packModelCache.failuresFor(id), triOver };
+}
 function addPackDoc(p, opts){
   const persist = !opts || opts.persist !== false;
+  /* 懒编译口径：启动装载（从存档里读出来的包）一律 lazy；
+     导入路径不 lazy —— 确认框里那句「解析失败 N 个」必须是真的（轮㉙ 的断言），
+     而且用户刚导入的包接下来大概率要用，编译好的直接 seed 进缓存。 */
+  const lazy = !!(opts && opts.lazy);
   /* 护栏：这里只接受 validatePack 产出的 ParsedPack。传错形状以前会在 compilePackModels 里
      Object.entries(undefined) 抛 TypeError；若它发生在启动路径上就会把整个脚本块带崩（页面全白，
      与 §5.1 的 TDZ 实例同一种症状）。 */
   if(!p || typeof p !== 'object' || !Array.isArray(p.entries) || !p.models || typeof p.models !== 'object'){
     console.warn('addPackDoc：传入的不是校验过的目录包（需要 entries 数组 + models 对象），已忽略');
-    return { errs: [], limit: false };
+    return { errs: [], limit: false, decision: null };
   }
-  if(packLimitHit(p)) return { errs: [], limit: true };
-  if(packDocs.has(p.pack)) dropPackModels(packDocs.get(p.pack));   // 同包重装（新版本）：先清旧模型
+  if(packLimitHit(p)) return { errs: [], limit: true, decision: null };
+  /* 升级路径（Phase 2）：同 id 不是「无条件整包替换」。同版本不同内容会悄悄替掉
+     用户正在用的那份；降级同理。判据在 CATPACK.packUpdateDecision（可单测）。 */
+  const decision = (opts && opts.decision) || CATPACK.packUpdateDecision(packMetaOf(p.pack), p);
+  if(decision.action === 'reject' || decision.action === 'same')
+    return { errs: [], limit: false, decision };
+  packModelCache.dropPack(p.pack);            // 旧版本的编译产物（可能已是不同内容）一律先清
+  if(packDocs.has(p.pack)) dropPackModels(packDocs.get(p.pack));
   packDocs.set(p.pack, p);
-  const errs = compilePackModels(p);
-  rebuildPackCatalog();
+  rebuildPackCatalog();                        // 索引先重建，precompile / 懒编译才找得到源码
+  const errs = lazy ? [] : CATPACK.precompilePack(p, packModelCache).errors;
   packRegistry = CATPACK.upsertPackMeta(packRegistry, CATPACK.packMetaFor(p), Date.now());
   if(persist){
     try{ STORE.set(CATPACK.packKeyFor(p.pack), JSON.stringify(p)); }catch(e){}
     savePackRegistry();
   }
-  return { errs, limit: false };
+  return { errs, limit: false, decision };
 }
 function removePackDoc(id, opts){
   const p = packDocs.get(id); if(!p) return false;
@@ -3321,14 +3344,37 @@ function removePackDoc(id, opts){
 }
 function loadPacksFromStore(){
   packRegistry = readPackRegistry();
+  packDigestMismatch = [];
   for(const m of packRegistry.packs){
     let raw=null; try{ raw = JSON.parse(STORE.get(CATPACK.packKeyFor(m.pack)) || 'null'); }catch(e){ raw=null; }
     if(raw === null) continue;                    // 元数据在、内容还没读到：不猜，等主存补水
     const r = CATPACK.validatePack(raw);
     if(!r.ok || !r.pack) continue;                // 存下来的包坏了：不加载也不删（bug 猎 #27 同一条红线）
-    addPackDoc(r.pack, { persist:false });
+    /* 来源核验：注册表里记的是「导入那一刻的内容指纹」。
+       对不上 = 存储里的这份内容与导入时不同（被改过 / 与另一个包串了键）。
+       不加载、不删，如实告诉用户 —— 同「读不到 ≠ 不存在」那条红线。 */
+    const now = CATPACK.packDigest(r.pack);
+    if(m.digest && m.digest !== now){
+      packDigestMismatch.push({ pack:m.pack, name:m.name, want:m.digest, got:now });
+      continue;
+    }
+    addPackDoc(r.pack, {
+      persist: false,
+      lazy: true,
+      /* 升级判据不能用在装载路径上：注册表里那份元数据就是本份包的记录，
+         走 packUpdateDecision 会得到「same → 不重复替换」，包就永远加载不上（实测：
+         loaded=1 · packDocs 里没有 · 也没有指纹不一致记录）。装载只问「存下来的这份能不能用」。 */
+      decision: { action: 'load', reason: '从存档装载' },
+    });
   }
   return packRegistry.packs.length;
+}
+/* 指纹对不上就不加载，但必须说出来（零反馈 = 设计缺陷，R10）。
+   toast 在文件更靠后，它要用的 DOM / 常量那时还没初始化 → 推到下一个宏任务再说。 */
+function reportPackDigestMismatch(){
+  if(!packDigestMismatch.length) return;
+  const n = packDigestMismatch.length, first = packDigestMismatch[0];
+  setTimeout(()=>toast(`目录包「${first.name}」${n>1?`等 ${n} 个`:''}的内容与导入时记录的不一致（内容指纹对不上）：这份没有加载。详情在「工具 ⌄」→「目录包」；要恢复请重新导入那个包文件`, 10000), 0);
 }
 /* 写门禁（bug 猎 #28 同一条红线）：主存还在读注册表时写注册表，
    会把「还没读到」的那几份包元数据当成「没有」写掉。
@@ -3352,6 +3398,7 @@ function watchPackStore(){
   });
 }
 loadPacksFromStore();
+reportPackDigestMismatch();
 watchPackStore();
 let legacyOwned = true;   // 旧单桶存档是否属于当前户型（loadDoc 里判定）
 function save(){
@@ -16883,6 +16930,64 @@ function ensureTextured(root){
   return root;
 }
 
+/* =====================================================================
+   Phase 2（2026-10-13）：场景预算与目录规模解耦
+
+   为什么要解耦：目录条目数不是场景负载。5,000 条目录只是「能选」，
+   真正吃 GPU 的是摆进场景的那些三角形。Phase 1 的 bench 只有一条全局单件上限
+   （catalog-tri-max 40,000/件），它防的是「某件建模失控」，不防「场景被顶爆」；
+   而目录越大越容易有一件超，把前者带成假红线。
+
+   实测（本轮探针）：内置户型 32 件 = 215,573 三角形（静态 18,643 + 家具 196,930）；
+   内置目录里最重的单件 raskog-0 = 39,404（已在 40,000 上限边上）。
+
+   两条预算各自成立：
+     · MAX_ITEM_TRI —— 单件上限（目录层：包模型首次建模就实测并记账）
+     · MAX_SCENE_TRI —— 场景上限（摆件层：超了如实告诉用户，不静默删件、不静默降级）
+   ===================================================================== */
+const MAX_ITEM_TRI = 40000;
+const MAX_SCENE_TRI = 1200000;
+const packModelTri = new Map();          // modelKey → 首次建模实测的三角形数（只量一次）
+/* 三角形数必须区分索引几何与非索引几何：BoxGeometry 是索引的（24 顶点 / 36 索引 = 12 三角形），
+   按 position.count/3 数会得到 8 —— 系统性少数 1/3，预算就永远是假的。 */
+function triCount(root){
+  let t = 0;
+  root.traverse(o=>{
+    if(!o.isMesh || !o.geometry || !o.geometry.attributes.position) return;
+    const g = o.geometry;
+    t += (g.index ? g.index.count : g.attributes.position.count) / 3;
+  });
+  return t;
+}
+/* 包模型超单件上限的名单（如实报告用）。内置建模由 bench 的 catalog-tri-max 守；
+   包建模在用户机器上、跑之前没人看过——它只能在使用时实测。 */
+function packModelTriOver(){
+  const out = [];
+  for(const [key, tri] of packModelTri) if(tri > MAX_ITEM_TRI) out.push({ model:key, tri });
+  return out.sort((a,b)=>b.tri - a.tri);
+}
+function sceneTriangles(){
+  if(!three) return 0;
+  let t = 0;
+  if(three.staticGroup) t += triCount(three.staticGroup);
+  if(three.furnGroup) t += triCount(three.furnGroup);
+  return t;
+}
+/* 超预算只说一次（拖一件东西不应该每次都被提醒）；回到预算内就重置，下次再超还会说。
+   budgetOverride 是为了可测：1,200,000 三角形在 headless 里造不出来（同 §5.5 把
+   ptPickGrid 纯函数化的同一条理由：测不到的东西就等于没有守门）。 */
+let _sceneOverWarned = false;
+function sceneBudgetCheck(budgetOverride){
+  const budget = typeof budgetOverride === 'number' && budgetOverride > 0 ? budgetOverride : MAX_SCENE_TRI;
+  const tri = sceneTriangles();
+  if(tri <= budget){ _sceneOverWarned = false; return { tri, budget, over: false }; }
+  if(!_sceneOverWarned){
+    _sceneOverWarned = true;
+    setTimeout(()=>toast(`场景 ${tri.toLocaleString('en')} 三角形，超出预算 ${budget.toLocaleString('en')}：3D 与光追会明显变慢。删几件重件（最重的在「已摆放」列表里），或先只摆要看的那几件`, 9000), 0);
+  }
+  return { tri, budget, over: true };
+}
+
 function furn3D(it, spec){
   const wf=cm2ft(spec.w), df=cm2ft(spec.d), hf=cm2ft(spec.h);
   const col = new THREE.Color(itemColor(it));
@@ -16926,6 +17031,9 @@ function furn3D(it, spec){
       _model(modelCtx(g, spec, col, col2, matlib, it));
       ensureTextured(g);
       mergeByMaterial(g);
+      /* 包建模的三角形预算只能在用户机器上、第一次用到时实测（没人预先看过它）。
+         每个模型只量一次；超单件上限的进 packModelTriOver()，在「目录包」列表里如实列出。 */
+      if(spec.sourcePack && !packModelTri.has(modelKey)) packModelTri.set(modelKey, triCount(g));
       g.position.set(it.x, 0, it.y);
       g.rotation.y = -(it.rot||0)*Math.PI/180;
       return g;
@@ -17455,6 +17563,7 @@ function sync3D(){
   }
   if(changed) applyLightMode();                        // 只有增删/换件才需要重算照明
   requestShadowUpdate();
+  if(changed) sceneBudgetCheck();                      // 场景预算：只在几何真变了时量（纯移动不量）
 }
 function sync3Dfull(){                                 // 强制全量重建（材质方案整体变化时用）
   if(!three) return;
@@ -17511,9 +17620,31 @@ function thumbGL(){
   }catch(e){ _thumbDead = true; console.warn('缩略图渲染器不可用:', e.message); }
   return _thumbGL;
 }
+/* Phase 2（2026-10-13）：缩略图缓存必须有上限。
+   实测（本轮探针，320×240 PNG data URL）：平均 60,066B / 张。
+   280 条目录 = 16.8MB（今天看不出来），5,000 条 = 286MB —— 而 Phase 1 的缓存是个没人清的 Map。
+   所以：LRU 上限 MAX_THUMB_CACHE 张，超了淘汰最久没用过的。
+   淘汰只是「不再缓存」，已经画到卡片上的图不会消失（它写在卡片样式里）；
+   代价是「淘汰后又被看到」的那张要重渲一遍（实测 500 个模型重编译 4ms，重渲一张缩略图同量级）。 */
+const MAX_THUMB_CACHE = 300;
 const _thumbCache = new Map();
+function _thumbCached(id){
+  if(!_thumbCache.has(id)) return undefined;
+  const url = _thumbCache.get(id);
+  _thumbCache.delete(id); _thumbCache.set(id, url);      // LRU：读到就算「刚用过」
+  return url;
+}
+function _thumbStore(id, url){
+  _thumbCache.delete(id); _thumbCache.set(id, url);
+  while(_thumbCache.size > MAX_THUMB_CACHE){
+    const oldest = _thumbCache.keys().next().value;
+    if(oldest === id) break;
+    _thumbCache.delete(oldest);
+  }
+}
 function furnThumb(spec){
-  if(_thumbCache.has(spec.id)) return _thumbCache.get(spec.id);
+  const hit = _thumbCached(spec.id);
+  if(hit !== undefined) return hit;
   let url = null;
   const G = thumbGL();
   if(G){
@@ -17591,12 +17722,27 @@ function furnThumb(spec){
     }catch(e){ url = null; }
     if(g){ G.scene.remove(g); try{ disposeOwned(g); }catch(e){} }
   }
-  _thumbCache.set(spec.id, url);
+  _thumbStore(spec.id, url);
   return url;
 }
-/* 渲染排队：每帧最多占用十几毫秒，滚动时不掉帧 */
+/* 渲染排队：每帧最多占用十几毫秒，滚动时不掉帧。
+   Phase 2：队列按「离可视区多远」排，近的优先——5,000 张卡片时先进队的不一定是用户正在看的那张
+   （IntersectionObserver 的回调顺序取决于布局顺序，不是用户视线）。 */
 const _thumbQ = [];
 let _thumbBusy = false;
+function _thumbPriority(){
+  if(_thumbQ.length < 8) return;
+  const box = $('#catList'); if(!box) return;
+  const cr = box.getBoundingClientRect();
+  const cy = cr.top + cr.height / 2;
+  const dist = (it)=>{
+    const r = it[0].isConnected ? it[0].getBoundingClientRect() : null;
+    if(!r || r.width < 1) return 1e9;
+    const d = Math.abs(r.top + r.height / 2 - cy);
+    return d <= cr.height / 2 ? 0 : d;                  // 已经在可视区里 → 同等优先
+  };
+  _thumbQ.sort((a,b)=>dist(a) - dist(b));
+}
 function _thumbFallback(el, spec){ el.style.backgroundImage=''; el.style.backgroundColor = spec.color || '#7d848e'; }
 function _thumbApply(el, spec, url){
   if(url){ el.style.backgroundImage = 'url('+url+')'; el.style.backgroundColor = '#12151a'; el.classList.add('has'); }
@@ -17614,12 +17760,13 @@ function queueThumb(el, spec){
     im.src = spec.img;
     return;
   }
-  if(_thumbCache.has(spec.id)){ _thumbApply(el, spec, _thumbCache.get(spec.id)); return; }
+  if(_thumbCached(spec.id) !== undefined){ _thumbApply(el, spec, _thumbCache.get(spec.id)); return; }
   _thumbQ.push([el, spec]);
   if(!_thumbBusy){ _thumbBusy = true; setTimeout(_runThumbs, 0); }
 }
 function _runThumbs(){
   const t0 = performance.now();
+  _thumbPriority();
   while(_thumbQ.length && performance.now()-t0 < 16){
     const [el, spec] = _thumbQ.shift();
     if(!el.isConnected) continue;
@@ -19183,11 +19330,22 @@ function showPackConfirm(p, issues, entryIssues, fname){
   let h = `<div class="dxfRow">文件：<b>${escHtml(fname || '')}</b></div>`;
   h += `<div class="dxfRow">包：<b>${escHtml(p.name)}</b>（id ${escHtml(p.pack)}，版本 ${p.version}）</div>`;
   h += `<div class="dxfRow">条目：<b>${p.entries.length}</b> 条可用${errN?`，另有 <b>${errN}</b> 条未通过校验（逐条拒收，不连坐其余条目）`:''}</div>`;
-  h += `<div class="dxfRow">建模代码：${modelKeys.length ? `<b>${modelKeys.length}</b> 个（解析失败 ${packCompileErrors.length} 个）` : '无 → 条目走 kind 通用回退建模'}</div>`;
+  h += `<div class="dxfRow">建模代码：${modelKeys.length ? `<b>${modelKeys.length}</b> 个（解析失败 ${packCompileErrors.length} 个）` : '无 → 条目走 kind 通用回退建模'}${modelKeys.length ? `，用到哪个就编译哪个（驻留上限 ${CATPACK.MAX_RESIDENT_MODELS} 个）` : ''}</div>`;
+  h += `<div class="dxfRow">内容指纹：<b>${escHtml(CATPACK.packDigest(p))}</b>（导入时记下，以后每次装载都比对：存下来的内容与导入时不一致就会被拒加载）</div>`;
+  h += `<div class="dxfRow">单件三角形预算 ${MAX_ITEM_TRI.toLocaleString('en')}：包里的建模代码要等第一次用到才量得到（它跑在你本机）。超预算的模型会在「工具 ⌄」→「目录包」里列出；场景预算 ${MAX_SCENE_TRI.toLocaleString('en')}，超了会提你。</div>`;
   const shadow = packShadowedModels().filter(s=>s.pack===p.pack);
   if(shadow.length) h += `<div class="dxfRow">其中 ${shadow.length} 个模型名内置已有：内置赢，包里的同名模型不会被用</div>`;
   const same = packDocs.get(p.pack);
-  if(same) h += `<div class="dxfRow">同名包已加载（${same.entries.length} 条 / ${Object.keys(same.models).length} 模型）：导入会整包替换它</div>`;
+  const dec = CATPACK.packUpdateDecision(packMetaOf(p.pack), p);
+  if(dec.action === 'update')
+    h += `<div class="dxfRow"><b>更新已加载的这份包</b>：${escHtml(dec.reason)}（条目 ${same ? same.entries.length : 0} → ${p.entries.length}，建模代码 ${same ? Object.keys(same.models).length : 0} → ${modelKeys.length}）</div>`;
+  /* 拒 / 不变更要在点之前就说：确认框里写着「会整包替换」、按下去却什也不发生，
+     就是 R10 里的零反馈。 */
+  else if(dec.action === 'reject')
+    h += `<div class="dxfWarn"><b>这份不会被导入</b>：${escHtml(dec.reason)}</div>`;
+  else if(dec.action === 'same')
+    h += `<div class="dxfRow">已加载的就是这一份（内容指纹相同）：导入不会改变任何东西</div>`;
+  else if(same) h += `<div class="dxfRow">同名包已加载（${same.entries.length} 条 / ${Object.keys(same.models).length} 模型）：导入会整包替换它</div>`;
   const merged = CATPACK.mergeCatalog(CATALOG, [...packDocs.values(), p]);
   const clash = merged.conflicts.filter(c=>c.pack===p.pack);
   if(clash.length) h += `<div class="dxfRow">${clash.length} 条与内置目录 / 已加载的包同 id：会被跳过（内置赢）</div>`;
@@ -19215,6 +19373,7 @@ function commitPendingPack(){
   if(packWriteBlocked()){ toast('浏览器主存还在读目录包列表，稍几秒再试'); return null; }
   const res = addPackDoc(p);
   if(res.limit){ toast(`已经加载了 ${packRegistry.packs.length} 个目录包（上限 ${CATPACK.MAX_PACKS}）：先移除一个再导入`, 8000); return null; }
+  if(res.decision && res.decision.action === 'reject'){ toast('目录包未导入：' + res.decision.reason, 9000); return null; }
   packCompileErrors = res.errs;
   packSelectUI();
   revealCatalogEntries(p.entries.map(e=>e.id));   // 刚导入的条目不许藏在收起的分组里（零反馈 = 设计缺陷）
@@ -19222,7 +19381,8 @@ function commitPendingPack(){
   if(three && is3D()) sync3D();
   const bad = packCompileErrors.length;
   const rejected = _packEntryIssues.filter(i=>i.level==='error').length;
-  toast(`目录包「${p.name}」已加载：${p.entries.length} 条` +
+  const upd = res.decision && res.decision.action === 'update' ? '已更新（' + res.decision.reason + '）' : '已加载';
+  toast(`目录包「${p.name}」${upd}：${p.entries.length} 条` +
         (rejected?`，${rejected} 条未通过校验被拒收`:'') +
         (bad?`，${bad} 个模型编译失败（那些条目退回通用建模）`:''));
   return p;
@@ -19262,7 +19422,22 @@ function packSelectUI(){
     sel.disabled = false;
     for(const m of list){
       const o = document.createElement('option'); o.value = m.pack;
-      o.textContent = `${m.name}（${m.entries} 条${m.models?` / ${m.models} 模型`:''}）`;
+      /* 版本与指纹状态直接写在选项里：用户选一个包准备移除时，得能看到它是哪一版、
+         内容指纹有没有对上（对不上的包根本不会被加载，不能让他以为它在用）。 */
+      const dig = m.digest ? '指纹 ✓' : '无指纹记录';
+      o.textContent = `${m.name}（${m.entries} 条${m.models?` / ${m.models} 模型`:''} · v${m.version} · ${dig}）`;
+      const mm = packDigestMismatch.find(x=>x.pack===m.pack);
+      o.title = mm ? `内容与导入时不一致（期望 ${mm.want}，实际 ${mm.got}）：这份没被加载` :
+        `版本 ${m.version} · 指纹 ${m.digest || '未记录（指纹功能之前导入的）'}`;
+      if(mm) o.textContent += ' ⚠内容不一致';
+      else {
+        const rep = packModelReport(m.pack);
+        if(rep.total) o.title += ` · 建模代码 ${rep.resident}/${rep.total} 已编译驻留（用到才编译）` +
+          (rep.failures.length ? ` · ${rep.failures.length} 个编译失败` : '') +
+          (rep.triOver.length ? ` · ${rep.triOver.length} 个超单件三角形预算（最重 ${rep.triOver[0].tri.toLocaleString('en')}）` : '');
+        if(rep.failures.length) o.textContent += ` ⚠${rep.failures.length} 个建模代码编译失败`;
+        if(rep.triOver.length) o.textContent += ` ⚠${rep.triOver.length} 个建模超预算`;
+      }
       sel.appendChild(o);
     }
   }
@@ -19284,6 +19459,11 @@ $('#filePack').addEventListener('change', ev=>{
       toast(`已经加载了 ${packRegistry.packs.length} 个目录包（上限 ${CATPACK.MAX_PACKS}）：先移除一个再导入`, 8000);
       return;
     }
+    /* 升级路径在入口就判（与上限同一条红线）：不能「先弹确认框、用户点了才说不能装」。
+       同版本不同内容 / 降级都是拒，并把下一步告诉用户。 */
+    const dec = CATPACK.packUpdateDecision(packMetaOf(r.pack.pack), r.pack);
+    if(dec.action === 'reject'){ toast('目录包未导入：' + dec.reason, 9000); return; }
+    if(dec.action === 'same'){ toast(`目录包「${r.pack.name}」已经加载了（版本 ${r.pack.version}，内容与这份完全相同）：没改动任何东西`, 8000); return; }
     _packPending = r.pack; _packEntryIssues = r.entryIssues; packCompileErrors = [];
     for(const [key, src] of Object.entries(r.pack.models))
       if(CATPACK.compileModel(src).error) packCompileErrors.push({ model:key });
@@ -19403,6 +19583,7 @@ STORE.onHydrate((keys)=>{
      否则刷新后「已加载的目录包」会空、摆着的包家具会退回通用建模。 */
   if(keys.indexOf(PACKS_KEY)>=0 || keys.some(k=>String(k).indexOf('planner_pack:')===0)){
     loadPacksFromStore(); packSelectUI(); buildCatalog($('#catSearch') ? $('#catSearch').value : '');
+    reportPackDigestMismatch();
     if(three && is3D()) sync3D();
   }
   if(keys.indexOf(DOC_KEY)>=0){ DOC = loadDoc(); applyPlanChrome(); }
