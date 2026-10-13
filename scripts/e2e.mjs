@@ -502,6 +502,7 @@ async function runEntry(entry) {
     fixtureDxf: [join(root, 'tests', 'fixtures', 'apartment-mm.dxf')],
     /** 真实导入用的目录包（仓库自带的示例包，无个人数据） */
     fixturePack: [join(root, 'examples', 'packs', 'demo-side-tables.json')],
+    fixtureLayout: [join(root, 'examples', 'layouts', 'demo-layout.json')],
   };
 
   /* ---------- 跑流程 ---------- */

@@ -1,0 +1,7 @@
+{
+  "items": [
+    { "uid": 1, "ref": "colin-0", "x": 10, "y": 10, "rot": 0 },
+    { "uid": 2, "ref": "micke", "x": 14, "y": 10, "rot": 90 }
+  ],
+  "customCat": []
+}

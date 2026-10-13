@@ -1482,6 +1482,50 @@ export const FLOWS = [
       );
       await t.shot('pack-removed-ghost');
 
+      await t.step('移除提示必须与它真正做了什么一致（幽灵件是灰色占位，不是「不显示」）');
+      const rmToast = await t.eval(
+        `(()=>{const x=document.querySelector('#toast');return x?x.textContent.replace(/\\s+/g,' '):''})()`
+      );
+      t.assert(
+        'pack-remove-toast-matches-behaviour',
+        /灰色占位/.test(rmToast) && !/不再显示/.test(rmToast) && /1 件/.test(rmToast),
+        `「${rmToast.slice(0, 130)}」`
+      );
+
+      await t.step('幽灵件必须在采购清单里露出来（图上有、清单里没有 = 说不清）');
+      /* 清单是可滚动容器：rect 非零不等于「在容器里看得见」（§8.4 第一层探针要算容器）。
+         先滚到位再量，并且断它落在容器的可见区间内。 */
+      const ghostRow = await t.eval(
+        `(()=>{const rows=[...document.querySelectorAll('#plRows .plRow')].filter(r=>/目录里没有这件/.test(r.textContent));` +
+          `if(!rows.length)return null;const r=rows[0];r.scrollIntoView({block:'center'});` +
+          `const b=r.getBoundingClientRect(),box=document.querySelector('#plRows').getBoundingClientRect();` +
+          `return {rows:rows.length,w:Math.round(b.width),h:Math.round(b.height),` +
+          `inside:b.top>=box.top-1&&b.bottom<=box.bottom+1};})()`
+      );
+      t.assert(
+        'pack-ghost-row-in-placed-list',
+        !!ghostRow && ghostRow.rows >= 1 && ghostRow.w >= 8 && ghostRow.h >= 8 && ghostRow.inside === true,
+        ghostRow
+          ? `清单里的幽灵行 ${ghostRow.rows} 行 · ${ghostRow.w}×${ghostRow.h}px · 在滚动容器可见区间内=${ghostRow.inside}`
+          : '采购清单里找不到那件'
+      );
+      await t.shot('pack-ghost-row');
+
+      await t.step('从清单里把它删掉（那里就是它的归属）');
+      await t.eval(
+        `(()=>{const r=[...document.querySelectorAll('#plRows .plRow')].filter(x=>/目录里没有这件/.test(x.textContent))[0];` +
+          `if(r)r.querySelector('.x').click();})()`
+      );
+      await t.waitFor(`state.items.length===${items0}`, 8000, '从清单里删掉了那件');
+      const listAfter = await t.eval(
+        `({items: state.items.length, ghostRows: [...document.querySelectorAll('#plRows .plRow')].filter(r=>/目录里没有这件/.test(r.textContent)).length})`
+      );
+      t.assert(
+        'pack-ghost-row-deletable',
+        listAfter.items === items0 && listAfter.ghostRows === 0,
+        `布局 ${items0} 件 · 清单幽灵行 ${listAfter.ghostRows}`
+      );
+
       await t.step('收尾：把那件从图里撤掉，目录回到基线');
       await t.eval(
         `(()=>{state.items=state.items.filter(i=>i.ref!=='demo-st-1');selected=null;` +
@@ -1493,6 +1537,75 @@ export const FLOWS = [
         'pack-cleanup',
         clean.all === base && clean.packs === 0 && clean.items === items0,
         `目录 ${clean.all} 条 · 包 ${clean.packs} 个 · 布局 ${clean.items} 件`
+      );
+    },
+  },
+
+  {
+    name: 'layout-import',
+    title: '导入布局：整体替换必须说出「几件变成几件」，坏文件不许静默清空，撤销能找回',
+    run: async (t) => {
+      /* 轮㉙：导入布局原先一个字的反馈都没有（34 件 → 0 件，界面只是安静地变空）。
+         替换本身可以撤销，但「发生了替换」必须说出来（R10：零反馈 = 设计缺陷）。 */
+      const before = await t.eval(
+        `({items: state.items.length, totals: document.querySelector('#totals').textContent.replace(/\\s+/g,' ')})`
+      );
+
+      await t.step('「工具 ⌄」里点「导入布局」并选一份两份家具的文件');
+      await t.click('#btnMore');
+      await t.click('#btnLoadJson');
+      await t.setFiles('#fileJson', t.fixtureLayout);
+      await t.waitFor(
+        `(()=>{const x=document.querySelector('#toast');return x&&/已导入布局/.test(x.textContent)})()`,
+        20000,
+        '出现「已导入布局」提示'
+      );
+      const toast1 = await t.eval(`document.querySelector('#toast').textContent.replace(/\\s+/g,' ')`);
+      const after = await t.eval(
+        `({items: state.items.length, shapes: document.querySelectorAll('#furn [data-uid]').length,
+           totals: document.querySelector('#totals').textContent.replace(/\\s+/g,' ')})`
+      );
+      t.assert(
+        'layout-import-tells-what-it-did',
+        after.items === 2 &&
+          after.shapes === 2 &&
+          new RegExp('家具 ' + before.items + ' 件 → 2 件').test(toast1) &&
+          /撤销/.test(toast1),
+        `布局 ${before.items} → ${after.items} 件 · 2D 图例 ${after.shapes} 个 · 「${toast1.slice(0, 110)}」`
+      );
+      await t.shot('layout-imported');
+
+      await t.step('Ctrl+Z：原来那几件回来');
+      await t.key('z', 'KeyZ', 90, 2);
+      await t.waitFor(`state.items.length===${before.items}`, 8000, '撤销回到导入前');
+      const undone = await t.eval(`state.items.length`);
+      t.assert('layout-import-undoable', undone === before.items, `撤销后布局 ${undone} 件（期望 ${before.items}）`);
+
+      await t.step('坏文件（没有 items 数组）不许静默清空布局');
+      await t.eval(
+        `(()=>{const dt=new DataTransfer();dt.items.add(new File(['{"nope":1}'],'坏文件.json',{type:'application/json'}));` +
+          `const f=document.querySelector('#fileJson');f.files=dt.files;f.dispatchEvent(new Event('change',{bubbles:true}));})()`
+      );
+      await t.waitFor(
+        `(()=>{const x=document.querySelector('#toast');return x&&/没有改动任何东西/.test(x.textContent)})()`,
+        12000,
+        '出现「没有改动任何东西」提示'
+      );
+      const kept = await t.eval(
+        `({items: state.items.length, toast: document.querySelector('#toast').textContent.replace(/\\s+/g,' ')})`
+      );
+      t.assert(
+        'layout-import-malformed-rejected',
+        kept.items === before.items && /没有改动任何东西/.test(kept.toast),
+        `布局保持 ${kept.items} 件 · 「${kept.toast.slice(0, 80)}」`
+      );
+
+      await t.step('收尾：布局回到导入前的样子');
+      const clean = await t.eval(`({items: state.items.length, custom: state.customCat.length})`);
+      t.assert(
+        'layout-import-cleanup',
+        clean.items === before.items && clean.custom === 0,
+        `布局 ${clean.items} 件 · 自定义目录 ${clean.custom} 条`
       );
     },
   },

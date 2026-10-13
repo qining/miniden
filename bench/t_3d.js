@@ -2355,7 +2355,7 @@ async function run3DTest() {
       /* 关 5：导入 → 目录真的多出来了，卡片在界面上看得见（几何 + 遮挡两层探针，§8.4） */
       /* 走的是界面导入真正用的那两个函数（addPackDoc + revealCatalogEntries）；
          确认框那一段（选文件 → 确认 → 提交）由 E2E 的 catalog-pack 流程用真实文件选择覆盖。 */
-      const pkErrs = addPackDoc(pkOk.pack, { persist: false });
+      const pkRes = addPackDoc(pkOk.pack, { persist: false });
       revealCatalogEntries(pkOk.pack.entries.map((e) => e.id));
       await wait(300);
       const pkTotal = catalogAll().length;
@@ -2369,7 +2369,8 @@ async function run3DTest() {
       const pkTag = pkCard ? !!pkCard.querySelector('.packTag') : false;
       T(
         'cat-pack-add-applies',
-        pkErrs.length === 0 &&
+        pkRes.errs.length === 0 &&
+          !pkRes.limit &&
           pkTotal === baseN + 2 &&
           !!pkCard &&
           !!pkRect &&
@@ -2479,7 +2480,7 @@ async function run3DTest() {
           models: { [shadowKey]: '(C)=>{ C.g.add(new C.THREE.Mesh(new C.THREE.BoxGeometry(1,1,1))); }' },
         })
       );
-      addPackDoc(pkShadow.pack, { persist: false });
+      const pkShadowRes = addPackDoc(pkShadow.pack, { persist: false });
       const shadowWin = modelFor(shadowKey) === MODELS[shadowKey];
       const entryWin =
         catalogAll().filter((c) => c.id === clashId).length === 1 &&
@@ -2487,7 +2488,7 @@ async function run3DTest() {
       const shadowListed = packShadowedModels().some((s) => s.pack === 'bench-shadow' && s.model === shadowKey);
       T(
         'cat-pack-builtin-wins',
-        shadowWin && entryWin && shadowListed,
+        shadowWin && entryWin && shadowListed && !pkShadowRes.limit,
         '模型 ' +
           shadowKey +
           ' 内置赢 ' +
@@ -2520,7 +2521,8 @@ async function run3DTest() {
           models: { 'bench-oops': '(C)=>{ this is not javascript' },
         })
       );
-      const pkBrokenErrs = addPackDoc(pkBroken.pack, { persist: false });
+      const pkBrokenRes = addPackDoc(pkBroken.pack, { persist: false });
+      const pkBrokenErrs = pkBrokenRes.errs;
       const pkBrokenBuild = pkFill('bench-brk');
       T(
         'cat-pack-model-compile-fallback',
@@ -2538,14 +2540,14 @@ async function run3DTest() {
       /* 关 10：包跟着文件走（S13 同一条理由：localStorage 不是长期存放）——
          存盘 → 清空内存 → 从注册表读回来 */
       removePackDoc('bench-pack', { persist: false });
-      const pkPersist = addPackDoc(pkOk.pack, { persist: true });
+      const pkPersistRes = addPackDoc(pkOk.pack, { persist: true });
       packDocs.clear();
       packModelFns.clear();
       packEntries.length = 0;
       const pkReloaded = loadPacksFromStore();
       T(
         'cat-pack-survives-reload',
-        pkPersist.length === 0 &&
+        pkPersistRes.errs.length === 0 &&
           packDocs.has('bench-pack') &&
           catalogAll().length === baseN + 2 &&
           modelFor('bench-tray') !== null,
@@ -2645,6 +2647,316 @@ async function run3DTest() {
           catalogAll().length === baseN &&
           packShadowedModels().length === 0,
         '包 ' + packDocs.size + ' · 包条目 ' + packEntries.length + ' · 目录 ' + catalogAll().length
+      );
+    }
+
+    /* ================= 轮㉙：包协议的消费端（跨户型 / 上限 / id 唯一 / 幽灵件归属） =================
+       轮㉘ 把协议本身（校验、合并、幽灵件）建起来了；这一轮查的是「协议被谁消费」：
+       包是这台浏览器的，家具是每份户型的 —— 移除一个包同时影响所有户型里的件。 */
+    {
+      const p29Plan = PLAN_ID;
+      const p29Base = catalogAll().length;
+      const p29Toast = () => {
+        const t = document.querySelector('#toast');
+        return t ? t.textContent : '';
+      };
+      const p29Pack = (id, n, models) =>
+        CATPACK.validatePack({
+          pack: id,
+          name: '探针包 ' + id,
+          version: 1,
+          entries: Array.from({ length: n }, (_, i) => ({
+            id: id + '-e' + i,
+            cat: '茶几 / 边几',
+            name: id + ' 件 ' + i,
+            w: 40,
+            d: 40,
+            h: 40,
+            kind: 'sideTable',
+            price: 9,
+          })),
+          models: models || {},
+        });
+
+      /* 19.1 受影响件数必须跨户型统计（只数当前户型会把 3 件说成 2 件） */
+      const p29Multi = p29Pack('bench-multi', 1);
+      addPackDoc(p29Multi.pack, { persist: false });
+      addItem('bench-multi-e0');
+      addItem('bench-multi-e0');
+      const p29Cur = packPlacedAcross('bench-multi').cur;
+      const p29Blank = createBlankPlan();
+      await wait(300);
+      addItem('bench-multi-e0');
+      /* bench 页里 save 是空操作（测试台不许写存档），所以「另一份户型的存档」按真实格式直接写进门面：
+         读的那一段（STORE.get + JSON.parse + 按 ref 计数）走的还是真代码。 */
+      STORE.set(
+        PLANS.itemsKeyFor(p29Plan),
+        JSON.stringify({
+          geo: GEO_VERSION,
+          items: [
+            { uid: 9501, ref: 'bench-multi-e0', x: 1, y: 1, rot: 0 },
+            { uid: 9502, ref: 'bench-multi-e0', x: 2, y: 2, rot: 0 },
+          ],
+          customCat: [],
+          unit: 'cm',
+        })
+      );
+      const p29Across = packPlacedAcross('bench-multi');
+      T(
+        'cat29-pack-placed-counts-all-plans',
+        p29Cur === 2 && p29Across.cur === 1 && p29Across.other === 2 && p29Across.plans === 1 && p29Across.total === 3,
+        '当前户型 ' +
+          p29Across.cur +
+          ' 件 · 其它户型 ' +
+          p29Across.other +
+          ' 件（' +
+          p29Across.plans +
+          ' 份）· 合计 ' +
+          p29Across.total +
+          ' · 切换前 ' +
+          p29Cur +
+          ' 件 · 户型 ' +
+          PLAN_REG.plans.length +
+          ' 份 · 旧存档 ' +
+          (STORE.get(PLANS.itemsKeyFor(p29Plan)) || 'null').length +
+          'B · 存档写入门禁 ' +
+          planArchiveUnknown.size
+      );
+
+      /* 19.2 移除提示必须说清它真正做了什么：幽灵件是「显示成灰色占位」，不是「不显示」 */
+      const p29RmToast = removeLoadedPack('bench-multi') ? p29Toast() : '';
+      T(
+        'cat29-remove-toast-covers-all-plans',
+        /当前户型 1 件/.test(p29RmToast) &&
+          /另外 1 份户型里 2 件/.test(p29RmToast) &&
+          /灰色占位/.test(p29RmToast) &&
+          !/不再显示/.test(p29RmToast),
+        '「' + p29RmToast.replace(/\s+/g, ' ').slice(0, 96) + '」'
+      );
+
+      /* 19.3 幽灵件在合计文案与已放置清单里都必须有归属（图上有、清单里没有 = 说不清） */
+      const p29TotalsBlank = (document.querySelector('#totals') || {}).textContent || '';
+      const p29RowsBlank = [...document.querySelectorAll('#plRows .plRow')];
+      const p29GhostRowsBlank = p29RowsBlank.filter((r) => /目录里没有这件/.test(r.textContent)).length;
+      T(
+        'cat29-ghost-in-totals-and-list',
+        /目录里没有（不计价）/.test(p29TotalsBlank) &&
+          p29GhostRowsBlank === state.items.length &&
+          p29GhostRowsBlank === 1,
+        '合计「' +
+          p29TotalsBlank.replace(/\s+/g, ' ').slice(-44) +
+          '」· 幽灵行 ' +
+          p29GhostRowsBlank +
+          '/ 布局 ' +
+          state.items.length +
+          ' 件'
+      );
+
+      /* 19.4 回到原户型：幽灵件同样可见、可从清单里删掉 */
+      switchPlan(p29Plan, true);
+      await wait(300);
+      const p29Rows = [...document.querySelectorAll('#plRows .plRow')];
+      const p29GhostRows = p29Rows.filter((r) => /目录里没有这件/.test(r.textContent));
+      const p29BeforeDel = state.items.length;
+      if (p29GhostRows[0]) p29GhostRows[0].querySelector('.x').click();
+      await wait(200);
+      T(
+        'cat29-ghost-deletable-from-list',
+        p29GhostRows.length === 2 && state.items.length === p29BeforeDel - 1,
+        '幽灵行 ' + p29GhostRows.length + ' 件 · 清单里删掉一件 → 布局 ' + p29BeforeDel + ' → ' + state.items.length
+      );
+
+      /* 19.5 上限必须拒收并说明，不能「内存里装上、注册表里悄悄丢掉」 */
+      for (let i = 0; i < CATPACK.MAX_PACKS; i++) addPackDoc(p29Pack('bench-full-' + i, 1).pack, { persist: false });
+      const p29Over = p29Pack('bench-over', 1);
+      const p29DocsBefore = packDocs.size;
+      const p29OverRes = addPackDoc(p29Over.pack, { persist: true });
+      const p29OverBlob = STORE.get(CATPACK.packKeyFor('bench-over'));
+      T(
+        'cat29-pack-limit-refused',
+        p29OverRes.limit === true &&
+          !packDocs.has('bench-over') &&
+          packDocs.size === p29DocsBefore &&
+          packRegistry.packs.length === CATPACK.MAX_PACKS &&
+          p29OverBlob === null,
+        '注册表 ' +
+          packRegistry.packs.length +
+          '/' +
+          CATPACK.MAX_PACKS +
+          ' · 第 ' +
+          (CATPACK.MAX_PACKS + 1) +
+          ' 个拒收 limit=' +
+          p29OverRes.limit +
+          ' · 存档写了吗 ' +
+          (p29OverBlob === null ? '没有' : '写了')
+      );
+
+      /* 19.6 不许有「只在内存里、注册表里没有」的幽灵包（刷新就消失、存档键没人引用） */
+      const p29Phantom = [...packDocs.keys()].filter((k) => !packRegistry.packs.some((m) => m.pack === k));
+      T(
+        'cat29-no-phantom-packs',
+        p29Phantom.length === 0 && packDocs.size === packRegistry.packs.length,
+        '内存 ' + packDocs.size + ' · 注册表 ' + packRegistry.packs.length + ' · 幽灵包 ' + p29Phantom.length
+      );
+      for (const k of [...packDocs.keys()]) removePackDoc(k, { persist: false });
+
+      /* 19.7 id 是查找键：目录里同 id 的后来者必须被跳过并记下来（否则自制件会被解析成别人的商品） */
+      const p29ClashId = CATALOG[0].id;
+      state.customCat.push({
+        id: p29ClashId,
+        cat: '茶几 / 边几',
+        name: '撞 id 的自制件',
+        w: 90,
+        d: 30,
+        h: 45,
+        kind: 'sideTable',
+      });
+      const p29DupCount = catalogAll().filter((c) => c.id === p29ClashId).length;
+      const p29Winner = (catalogAll().find((c) => c.id === p29ClashId) || {}).name;
+      const p29Conflict = catalogIdConflicts.filter((c) => c.id === p29ClashId)[0];
+      state.customCat.pop();
+      catalogAll();
+      T(
+        'cat29-catalog-ids-unique',
+        p29DupCount === 1 &&
+          p29Winner === CATALOG[0].name &&
+          !!p29Conflict &&
+          /自定义条目/.test(p29Conflict.loser) &&
+          catalogIdConflicts.length === 0,
+        '同 id 卡片 ' +
+          p29DupCount +
+          ' 张 · 赢家「' +
+          p29Winner +
+          '」· 冲突记录 ' +
+          (p29Conflict ? p29Conflict.loser : '无')
+      );
+
+      /* 19.8 导入布局撞 id：拒收这份文件，而不是把用户的自制件渲染成另一件商品 */
+      const p29ItemsBefore = state.items.length;
+      const p29Import = async (obj) => {
+        const p29BeforeToast = p29Toast();
+        const dt = new DataTransfer();
+        dt.items.add(new File([JSON.stringify(obj)], '家具布局.json', { type: 'application/json' }));
+        const fi = document.querySelector('#fileJson');
+        fi.files = dt.files;
+        fi.dispatchEvent(new Event('change', { bubbles: true }));
+        for (let i = 0; i < 40 && p29Toast() === p29BeforeToast; i++) await wait(100);
+      };
+      await p29Import({
+        items: [{ uid: 9001, ref: p29ClashId, x: 1, y: 2, rot: 0 }],
+        customCat: [
+          { id: p29ClashId, cat: '茶几 / 边几', name: '文件里的自制件', w: 90, d: 30, h: 45, kind: 'sideTable' },
+        ],
+      });
+      T(
+        'cat29-import-layout-id-clash-refused',
+        state.items.length === p29ItemsBefore && /同 id/.test(p29Toast()),
+        '布局 ' +
+          p29ItemsBefore +
+          ' → ' +
+          state.items.length +
+          ' 件 · 「' +
+          p29Toast().replace(/\s+/g, ' ').slice(0, 60) +
+          '」'
+      );
+
+      /* 19.9 导入布局是整体替换：必须说出「几件变成几件」并给出找回办法（原来一个字的反馈都没有） */
+      const p29BeforeN = state.items.length;
+      await p29Import({
+        items: [
+          { uid: 9101, ref: p29ClashId, x: 1, y: 2, rot: 0 },
+          { uid: 9102, ref: p29ClashId, x: 3, y: 4, rot: 0 },
+        ],
+        customCat: [],
+      });
+      const p29ImportToast = p29Toast();
+      T(
+        'cat29-import-layout-tells-what-it-did',
+        state.items.length === 2 &&
+          new RegExp('家具 ' + p29BeforeN + ' 件 → 2 件').test(p29ImportToast) &&
+          /撤销/.test(p29ImportToast),
+        '布局 ' +
+          p29BeforeN +
+          ' → ' +
+          state.items.length +
+          ' 件 · 「' +
+          p29ImportToast.replace(/\s+/g, ' ').slice(0, 70) +
+          '」'
+      );
+
+      /* 19.10 坏文件不许静默清空布局（原先 items 缺失 → state.items = [] 且没有任何说明） */
+      const p29KeepN = state.items.length;
+      await p29Import({ notItems: true });
+      T(
+        'cat29-import-layout-malformed-rejected',
+        state.items.length === p29KeepN && /没有改动任何东西/.test(p29Toast()),
+        '布局保持 ' + state.items.length + ' 件 · 「' + p29Toast().replace(/\s+/g, ' ').slice(0, 40) + '」'
+      );
+
+      /* 19.11 确认框里那句「解析失败 N 个」必须是真的（走真实文件选择路径，不是手工塞 _packPending） */
+      const p29Honest = {
+        pack: 'bench-honest',
+        name: '诚实计数包',
+        version: 1,
+        entries: [
+          { id: 'bench-h-e0', cat: '茶几 / 边几', name: '诚实件', w: 40, d: 40, h: 40, kind: 'sideTable', price: 9 },
+        ],
+        models: { 'bench-h': '(C)=>{ this is not javascript' },
+      };
+      const dt2 = new DataTransfer();
+      dt2.items.add(new File([JSON.stringify(p29Honest)], 'broken.json', { type: 'application/json' }));
+      const fp29 = document.querySelector('#filePack');
+      fp29.files = dt2.files;
+      fp29.dispatchEvent(new Event('change', { bubbles: true }));
+      for (let i = 0; i < 30 && document.querySelector('#packModal').style.display !== 'flex'; i++) await wait(100);
+      const p29Info = document.querySelector('#packInfo').textContent;
+      const p29Claimed = Number((p29Info.match(/解析失败 (\d+) 个/) || [])[1]);
+      document.querySelector('#packOk').click();
+      await wait(300);
+      const p29Actual = packCompileErrors.length;
+      T(
+        'cat29-confirm-dialog-compile-count-honest',
+        p29Claimed === 1 && p29Actual === 1,
+        '确认框说「解析失败 ' + p29Claimed + ' 个」· 实际编译失败 ' + p29Actual + ' 个'
+      );
+      removePackDoc('bench-honest', { persist: false });
+
+      /* 19.12 收尾干净：户型回到原来那份，目录回到基线，不留探针包 / 自定义条目 / 未捕获异常 */
+      if (PLAN_ID !== p29Plan) switchPlan(p29Plan, true);
+      await wait(250);
+      if (packDocs.size === 0 && PLANS.planById(PLAN_REG, p29Blank)) {
+        switchPlan(p29Blank, true);
+        await wait(250);
+        deleteCurrentPlan();
+        deleteCurrentPlan();
+        await wait(300);
+      }
+      if (PLAN_ID !== p29Plan) switchPlan(p29Plan, true);
+      await wait(250);
+      try {
+        STORE.remove(PLANS.itemsKeyFor(p29Blank));
+        STORE.remove(PLANS.docKeyFor(p29Blank));
+        STORE.remove(PLANS.itemsKeyFor(p29Plan));
+      } catch (e) {}
+      buildCatalog('');
+      refresh();
+      await wait(200);
+      T(
+        'cat29-clean-exit',
+        packDocs.size === 0 &&
+          packEntries.length === 0 &&
+          catalogAll().length === p29Base &&
+          state.customCat.length === 0 &&
+          PLAN_ID === p29Plan &&
+          window.__E3.length === 0,
+        '户型 ' +
+          PLAN_ID +
+          ' · 包 ' +
+          packDocs.size +
+          ' · 目录 ' +
+          catalogAll().length +
+          ' · 未捕获异常 ' +
+          window.__E3.length
       );
     }
 
