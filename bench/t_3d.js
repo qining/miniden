@@ -2833,21 +2833,44 @@ async function run3DTest() {
 
       /* 19.8 导入布局撞 id：拒收这份文件，而不是把用户的自制件渲染成另一件商品 */
       const p29ItemsBefore = state.items.length;
-      const p29Import = async (obj) => {
-        const p29BeforeToast = p29Toast();
-        const dt = new DataTransfer();
-        dt.items.add(new File([JSON.stringify(obj)], '家具布局.json', { type: 'application/json' }));
-        const fi = document.querySelector('#fileJson');
-        fi.files = dt.files;
-        fi.dispatchEvent(new Event('change', { bubbles: true }));
-        for (let i = 0; i < 40 && p29Toast() === p29BeforeToast; i++) await wait(100);
+      /* 真实入口（真 <input type=file> + change 事件）走的是 f.text()：真实 I/O。
+         --virtual-time-budget 下虚拟时间跑得比真实 I/O 快，所以「等 40×100ms」在慢机器上
+         可能真实时间还没读到文件（CI 的 dist 变体实测就是这样：提示停在上一条）。
+         三件事：① 自己先把这份文件读一遍（把真实 I/O 预热）；② 等「期望的那条提示」
+         而不是「提示变过」；③ 没等到就重投一次（最多 3 次，只重试这个瞬态特征）。 */
+      const p29Feed = async (sel, obj, name, expectRe) => {
+        const payload = JSON.stringify(obj);
+        let attempts = 0;
+        for (let tryN = 0; tryN < 3; tryN++) {
+          attempts++;
+          const before = p29Toast();
+          const file = new File([payload], name, { type: 'application/json' });
+          try {
+            await file.text();
+          } catch (e) {}
+          const dt = new DataTransfer();
+          dt.items.add(file);
+          const inp = document.querySelector(sel);
+          inp.files = dt.files;
+          inp.dispatchEvent(new Event('change', { bubbles: true }));
+          for (let i = 0; i < 40; i++) {
+            const now = p29Toast();
+            if (now !== before && expectRe.test(now)) return attempts;
+            await wait(100);
+          }
+        }
+        return attempts;
       };
-      await p29Import({
-        items: [{ uid: 9001, ref: p29ClashId, x: 1, y: 2, rot: 0 }],
-        customCat: [
-          { id: p29ClashId, cat: '茶几 / 边几', name: '文件里的自制件', w: 90, d: 30, h: 45, kind: 'sideTable' },
-        ],
-      });
+      const p29Import = async (obj, expectRe) => p29Feed('#fileJson', obj, '家具布局.json', expectRe);
+      const p29TriesClash = await p29Import(
+        {
+          items: [{ uid: 9001, ref: p29ClashId, x: 1, y: 2, rot: 0 }],
+          customCat: [
+            { id: p29ClashId, cat: '茶几 / 边几', name: '文件里的自制件', w: 90, d: 30, h: 45, kind: 'sideTable' },
+          ],
+        },
+        /同 id/
+      );
       T(
         'cat29-import-layout-id-clash-refused',
         state.items.length === p29ItemsBefore && /同 id/.test(p29Toast()),
@@ -2855,20 +2878,25 @@ async function run3DTest() {
           p29ItemsBefore +
           ' → ' +
           state.items.length +
-          ' 件 · 「' +
+          ' 件（投递 ' +
+          p29TriesClash +
+          ' 次）· 「' +
           p29Toast().replace(/\s+/g, ' ').slice(0, 60) +
           '」'
       );
 
       /* 19.9 导入布局是整体替换：必须说出「几件变成几件」并给出找回办法（原来一个字的反馈都没有） */
       const p29BeforeN = state.items.length;
-      await p29Import({
-        items: [
-          { uid: 9101, ref: p29ClashId, x: 1, y: 2, rot: 0 },
-          { uid: 9102, ref: p29ClashId, x: 3, y: 4, rot: 0 },
-        ],
-        customCat: [],
-      });
+      const p29TriesOk = await p29Import(
+        {
+          items: [
+            { uid: 9101, ref: p29ClashId, x: 1, y: 2, rot: 0 },
+            { uid: 9102, ref: p29ClashId, x: 3, y: 4, rot: 0 },
+          ],
+          customCat: [],
+        },
+        /已导入布局/
+      );
       const p29ImportToast = p29Toast();
       T(
         'cat29-import-layout-tells-what-it-did',
@@ -2879,18 +2907,26 @@ async function run3DTest() {
           p29BeforeN +
           ' → ' +
           state.items.length +
-          ' 件 · 「' +
+          ' 件（投递 ' +
+          p29TriesOk +
+          ' 次）· 「' +
           p29ImportToast.replace(/\s+/g, ' ').slice(0, 70) +
           '」'
       );
 
       /* 19.10 坏文件不许静默清空布局（原先 items 缺失 → state.items = [] 且没有任何说明） */
       const p29KeepN = state.items.length;
-      await p29Import({ notItems: true });
+      const p29TriesBad = await p29Import({ notItems: true }, /没有改动任何东西/);
       T(
         'cat29-import-layout-malformed-rejected',
         state.items.length === p29KeepN && /没有改动任何东西/.test(p29Toast()),
-        '布局保持 ' + state.items.length + ' 件 · 「' + p29Toast().replace(/\s+/g, ' ').slice(0, 40) + '」'
+        '布局保持 ' +
+          state.items.length +
+          ' 件（投递 ' +
+          p29TriesBad +
+          ' 次）· 「' +
+          p29Toast().replace(/\s+/g, ' ').slice(0, 40) +
+          '」'
       );
 
       /* 19.11 确认框里那句「解析失败 N 个」必须是真的（走真实文件选择路径，不是手工塞 _packPending） */
@@ -2903,12 +2939,28 @@ async function run3DTest() {
         ],
         models: { 'bench-h': '(C)=>{ this is not javascript' },
       };
-      const dt2 = new DataTransfer();
-      dt2.items.add(new File([JSON.stringify(p29Honest)], 'broken.json', { type: 'application/json' }));
-      const fp29 = document.querySelector('#filePack');
-      fp29.files = dt2.files;
-      fp29.dispatchEvent(new Event('change', { bubbles: true }));
-      for (let i = 0; i < 30 && document.querySelector('#packModal').style.display !== 'flex'; i++) await wait(100);
+      let p29ModalTries = 0;
+      for (let tryN = 0; tryN < 3; tryN++) {
+        p29ModalTries++;
+        const packFile = new File([JSON.stringify(p29Honest)], 'broken.json', { type: 'application/json' });
+        try {
+          await packFile.text();
+        } catch (e) {}
+        const dt2 = new DataTransfer();
+        dt2.items.add(packFile);
+        const fp29 = document.querySelector('#filePack');
+        fp29.files = dt2.files;
+        fp29.dispatchEvent(new Event('change', { bubbles: true }));
+        let opened = false;
+        for (let i = 0; i < 30; i++) {
+          if (document.querySelector('#packModal').style.display === 'flex') {
+            opened = true;
+            break;
+          }
+          await wait(100);
+        }
+        if (opened) break;
+      }
       const p29Info = document.querySelector('#packInfo').textContent;
       const p29Claimed = Number((p29Info.match(/解析失败 (\d+) 个/) || [])[1]);
       document.querySelector('#packOk').click();
@@ -2917,7 +2969,7 @@ async function run3DTest() {
       T(
         'cat29-confirm-dialog-compile-count-honest',
         p29Claimed === 1 && p29Actual === 1,
-        '确认框说「解析失败 ' + p29Claimed + ' 个」· 实际编译失败 ' + p29Actual + ' 个'
+        '确认框说「解析失败 ' + p29Claimed + ' 个」· 实际编译失败 ' + p29Actual + ' 个（投递 ' + p29ModalTries + ' 次）'
       );
       removePackDoc('bench-honest', { persist: false });
 
