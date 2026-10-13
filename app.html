@@ -1080,8 +1080,28 @@ const packDocs = new Map();              // packId → 解析后的包（条目 
 const packModelFns = new Map();          // modelKey → 已编译的模型函数
 let packEntries = [];                    // 合并后的包条目（带 sourcePack）
 let packConflicts = [];                  // 最近一次合并跳过的同 id 条目
-/* 目录的唯一取用口径（内置 + 包 + 自定义）。包没加载时与旧写法完全等价。 */
-function catalogAll(){ return packEntries.length ? [...CATALOG, ...packEntries, ...state.customCat] : [...CATALOG, ...state.customCat]; }
+/* 目录的唯一取用口径（内置 + 包 + 自定义）。包没加载时与旧写法完全等价。
+   id 是查找键（itemSpec 靠它、缩略图缓存靠 data-thumb 它），所以在一个户型的目录里它必须唯一：
+   三个来源拼起来时同 id 的后来者被跳过并记下来（bug 猎 轮㉙：撞 id 会让用户自制的 90×30 边几
+   被解析成包里的 42×42 托盘桌，目录里还会出现两张 data-thumb 相同的卡片 → 缩略图串图）。 */
+let catalogIdConflicts = [];
+function catalogAll(){
+  const out = []; const seen = new Set(); const conflicts = [];
+  for(const c of CATALOG) if(!seen.has(c.id)){ seen.add(c.id); out.push(c); }
+  for(const c of packEntries){
+    if(seen.has(c.id)){ conflicts.push({ id:c.id, loser:c.sourcePack || '目录包', winner:'内置目录' }); continue; }
+    seen.add(c.id); out.push(c);
+  }
+  for(const c of state.customCat){
+    if(seen.has(c.id)){
+      conflicts.push({ id:c.id, loser:'这份户型的自定义条目', winner: packEntries.some(p=>p.id===c.id) ? '目录包' : '内置目录' });
+      continue;
+    }
+    seen.add(c.id); out.push(c);
+  }
+  catalogIdConflicts = conflicts;
+  return out;
+}
 /* 建模解析链：内置 MODELS 优先，其次包里的模型，都没有就走 kind 通用回退 */
 function modelFor(key){ return MODELS[key] || packModelFns.get(key) || null; }
 
@@ -1269,8 +1289,23 @@ function packShadowedModels(){
   return out;
 }
 function dropPackModels(p){ for(const key of Object.keys(p.models)) packModelFns.delete(key); }
+/* 上限是硬边界。注册表存不下第 33 个包时绝不能「内存里装上、注册表里悄悄丢掉」：
+   那样它这一会话能用、刷新就无声消失，而写进去的包内容键再也没人引用（删不掉、也加载不回来）。
+   拒收并说清原因，比静默丢包诚实。 */
+function packLimitHit(p){
+  if(packDocs.has(p.pack)) return false;                                  // 同包重装不占新名额
+  return packRegistry.packs.length >= CATPACK.MAX_PACKS;
+}
 function addPackDoc(p, opts){
   const persist = !opts || opts.persist !== false;
+  /* 护栏：这里只接受 validatePack 产出的 ParsedPack。传错形状以前会在 compilePackModels 里
+     Object.entries(undefined) 抛 TypeError；若它发生在启动路径上就会把整个脚本块带崩（页面全白，
+     与 §5.1 的 TDZ 实例同一种症状）。 */
+  if(!p || typeof p !== 'object' || !Array.isArray(p.entries) || !p.models || typeof p.models !== 'object'){
+    console.warn('addPackDoc：传入的不是校验过的目录包（需要 entries 数组 + models 对象），已忽略');
+    return { errs: [], limit: false };
+  }
+  if(packLimitHit(p)) return { errs: [], limit: true };
   if(packDocs.has(p.pack)) dropPackModels(packDocs.get(p.pack));   // 同包重装（新版本）：先清旧模型
   packDocs.set(p.pack, p);
   const errs = compilePackModels(p);
@@ -1280,7 +1315,7 @@ function addPackDoc(p, opts){
     try{ STORE.set(CATPACK.packKeyFor(p.pack), JSON.stringify(p)); }catch(e){}
     savePackRegistry();
   }
-  return errs;
+  return { errs, limit: false };
 }
 function removePackDoc(id, opts){
   const p = packDocs.get(id); if(!p) return false;
@@ -15750,9 +15785,9 @@ function addItem(refId){
 }
 function updateTotals(){
   const cur = curNow();
-  let sum=0, buy=0, fixed=0, approx=0, unknown=0, na=0, variant=0;
+  let sum=0, buy=0, fixed=0, approx=0, unknown=0, na=0, variant=0, ghost=0;
   for(const it of state.items){
-    const s=itemSpec(it); if(!s) continue;
+    const s=itemSpec(it); if(!s){ ghost++; continue; }   // 目录里没有这件：不进采购数、不计价，但必须在尾巴里说明
     if(isBuiltIn(s)){ fixed++; continue; }
     buy++;
     const p=priceOf(s, cur);
@@ -15766,21 +15801,22 @@ function updateTotals(){
   if(na)      tail.push(`${na} 件加拿大无售`);
   if(unknown) tail.push(`${unknown} 件无价`);
   if(fixed)   tail.push(`${fixed} 件固定灯具不计价`);
+  if(ghost)   tail.push(`${ghost} 件目录里没有（不计价）`);
   $('#totals').innerHTML = `采购 ${buy} 件 · 合计约 <b>${approx?'≈':''}${fmtMoney(sum, cur)}</b>` +
     (tail.length ? ` <span class="muted" style="font-size:11px">（${tail.join('、')}）</span>` : '');
 }
 function updatePlacedList(){
   const el2 = $('#plRows'); el2.innerHTML='';
-  const buy = [], fixed = [];
+  const buy = [], fixed = [], ghost = [];
   for(const it of state.items){
-    const s=itemSpec(it); if(!s) continue;
+    const s=itemSpec(it); if(!s){ ghost.push(it); continue; }
     (isBuiltIn(s) ? fixed : buy).push([it, s]);
   }
   $('#plCount').textContent = buy.length;
-  const mkRow = (it, s, showPrice)=>{
+  const mkRow = (it, s, showPrice, label)=>{
     const row=document.createElement('div'); row.className='plRow'+(it.uid===selected?' sel':'');
     const p = showPrice ? fmtPrice(s) : '';
-    row.innerHTML=`<div class="dot" style="background:${itemColor(it)}"></div><span>${s.name}</span>`+
+    row.innerHTML=`<div class="dot" style="background:${itemColor(it)}"></div><span>${label || s.name}</span>`+
       (p?`<span class="plPrice">${p}</span>`:'')+`<span class="x" title="删除">✕</span>`;
     row.onclick=(e)=>{ if(e.target.classList.contains('x')){ pushUndo('listDel:'+it.uid, true); state.items=state.items.filter(i=>i.uid!==it.uid); if(selected===it.uid)selected=null; drawFurniture(); save(); }
       else { selected=it.uid; drawFurniture(); } };
@@ -15793,6 +15829,14 @@ function updatePlacedList(){
     h.textContent=`固定灯具 ${fixed.length} 件 · 公寓自带，不计价`;
     el2.appendChild(h);
     for(const [it, s] of fixed) mkRow(it, s, false);
+  }
+  /* 幽灵件也要在这份清单里露出来：它在图上占着位置，用户得能从这里选中它 / 删掉它，
+     而不是「图上有、清单里没有」（轮㉙） */
+  if(ghost.length){
+    const h=document.createElement('div'); h.className='plFixedHead';
+    h.textContent=`目录里没有这件 ${ghost.length} 件 · 仍在布局里，不计价`;
+    el2.appendChild(h);
+    for(const it of ghost) mkRow(it, null, false, '目录里没有这件（仍在布局里）');
   }
 }
 // 旋转口径：mod 360 且永远非负。输入框 / 滑块 / +90° / [ ] 微调必须同一个口径，
@@ -17006,9 +17050,39 @@ $('#btnSaveJson').onclick=()=>{
 $('#btnLoadJson').onclick=()=>$('#fileJson').click();
 $('#fileJson').addEventListener('change', ev=>{
   const f=ev.target.files[0]; if(!f) return;
-  f.text().then(t=>{ try{ const s=JSON.parse(t); pushUndo('loadLayout', true); state.items=s.items||[]; state.customCat=s.customCat||[];
-    uidSeq=Math.max(0,...state.items.map(i=>i.uid),0)+1; selected=null; buildCatalog(); refresh(); save(); }
-    catch(e){ toast('文件格式错误'); } });
+  f.text().then(t=>{
+    /* 导入布局是「整体替换这份户型的家具」：原先它一个字的反馈都没有（34 件 → 0 件，
+       界面只是安静地变空）。替换本身可以撤销，但「发生了替换」必须说出来（R10：零反馈 = 设计缺陷）。 */
+    let s = null;
+    try{ s = JSON.parse(t); }catch(e){ toast('文件格式错误：不是有效 JSON'); ev.target.value=''; return; }
+    if(!s || typeof s !== 'object' || !Array.isArray(s.items)){
+      toast('这份文件里没有 items 数组，没有改动任何东西', 7000); ev.target.value=''; return;
+    }
+    const bad = s.items.filter(it => !it || typeof it.uid !== 'number' || typeof it.x !== 'number' || typeof it.y !== 'number');
+    if(bad.length){
+      toast(`这份布局里有 ${bad.length} 件缺 uid / x / y，没有改动任何东西`, 7000); ev.target.value=''; return;
+    }
+    const customIn = Array.isArray(s.customCat) ? s.customCat : [];
+    /* id 是查找键：撞了目录里已有的 id 就没法分辨「这件到底是用户自制的还是目录里的商品」。
+       拒收这份文件，而不是把用户的自制件渲染成另一件商品（轮㉙）。 */
+    const taken = new Set([...CATALOG, ...packEntries].map(c=>c.id));
+    const clash = customIn.filter(c=>c && taken.has(c.id)).map(c=>c.id);
+    if(clash.length){
+      toast(`这份布局里的 ${clash.length} 个自定义条目与目录同 id（${clash.slice(0,4).join('、')}${clash.length>4?'…':''}）：id 是查找键，撞了就没法分辨哪件是哪件。先移除相关目录包，或改掉文件里的 id。`, 9000);
+      ev.target.value=''; return;
+    }
+    const before = state.items.length, beforeCustom = state.customCat.length;
+    pushUndo('loadLayout', true);
+    state.items = s.items; state.customCat = customIn;
+    uidSeq = Math.max(0, ...state.items.map(i=>i.uid), 0) + 1;
+    selected = null; buildCatalog(); refresh(); save();
+    /* 「可撤销」这句话不能说成条件句：pushUndo 在「环顶已等于当前状态」时会跳过（死步防护），
+       那时撤销照样把布局退回导入前（弹的就是那一格）。原来那 0 件没什么可「找回」，
+       但「这次导入撤得掉」是真话，两种情形都要说。 */
+    toast(`已导入布局：家具 ${before} 件 → ${state.items.length} 件` +
+      (beforeCustom !== state.customCat.length ? `，自定义目录 ${beforeCustom} 条 → ${state.customCat.length} 条` : '') +
+      (before ? `（按「撤销」可找回原来那 ${before} 件）` : '（按「撤销」可以撤掉这次导入）'), 8000);
+  }).catch(e=>{ toast('读文件失败：' + e.message); });
   ev.target.value='';
 });
 /* ---------- S11：户型文档导出 / 导入（换机器或换浏览器带走编辑） ----------
@@ -17088,11 +17162,26 @@ function validatePackJSON(text){
   catch(e){ return { pack:null, issues:[{ level:'error', where:'file', field:'', message:'不是有效 JSON：' + e.message }] }; }
   return CATPACK.validatePack(raw);
 }
-function packPlacedCount(packId){
-  const p = packDocs.get(packId); if(!p) return 0;
+/* 包是「这台浏览器的目录扩展」，家具是「这份户型的」：移除一个包同时影响所有户型里的件。
+   只数当前户型会把「有几件受影响」说少（bug 猎 轮㉙：当前户型 2 件、另一份户型 3 件，
+   确认提示与移除后的 toast 都只报 2 件）。 */
+function packPlacedAcross(packId){
+  const p = packDocs.get(packId); if(!p) return { total:0, cur:0, other:0, plans:0 };
   const ids = new Set(p.entries.map(e=>e.id));
-  return state.items.filter(it=>it.ref && ids.has(it.ref)).length;
+  const count = (items) => items.filter(it => it && it.ref && ids.has(it.ref)).length;
+  const cur = count(state.items);
+  let other = 0, plans = 0;
+  for(const m of PLAN_REG.plans){
+    if(m.id === PLAN_ID) continue;
+    let raw = null;
+    try{ raw = JSON.parse(STORE.get(PLANS.itemsKeyFor(m.id)) || 'null'); }catch(e){ continue; }
+    if(!raw || !Array.isArray(raw.items)) continue;
+    const n = count(raw.items);
+    if(n){ other += n; plans++; }
+  }
+  return { total: cur + other, cur, other, plans };
 }
+function packPlacedCount(packId){ return packPlacedAcross(packId).total; }
 function showPackConfirm(p, issues, entryIssues, fname){
   const errN = entryIssues.filter(i=>i.level==='error').length;
   const warn = issues.filter(i=>i.level==='warning').concat(entryIssues.filter(i=>i.level==='warning'));
@@ -17130,7 +17219,9 @@ function commitPendingPack(){
   if(!_packPending) return null;
   const p = _packPending; _packPending = null;
   if(packWriteBlocked()){ toast('浏览器主存还在读目录包列表，稍几秒再试'); return null; }
-  packCompileErrors = addPackDoc(p);
+  const res = addPackDoc(p);
+  if(res.limit){ toast(`已经加载了 ${packRegistry.packs.length} 个目录包（上限 ${CATPACK.MAX_PACKS}）：先移除一个再导入`, 8000); return null; }
+  packCompileErrors = res.errs;
   packSelectUI();
   revealCatalogEntries(p.entries.map(e=>e.id));   // 刚导入的条目不许藏在收起的分组里（零反馈 = 设计缺陷）
   refresh();
@@ -17157,11 +17248,13 @@ function revealCatalogEntries(ids){
   observeThumbs($('#catList'));
 }
 function removeLoadedPack(id){
-  const placed = packPlacedCount(id);
+  const placed = packPlacedAcross(id);
   if(!removePackDoc(id)) return false;
   packSelectUI(); buildCatalog($('#catSearch').value || ''); refresh();
   if(three && is3D()) sync3D();
-  toast(`目录包「${id}」已移除${placed?`：布局里 ${placed} 件用的条目已不在目录里（它们仍在布局里，但不再显示与计价）`:''}`);
+  /* 措辞必须与它真正做了什么一致（轮㉗ 同一条红线）：幽灵件是「显示成灰色占位」，不是「不显示」 */
+  const where = placed.plans ? `（当前户型 ${placed.cur} 件，另外 ${placed.plans} 份户型里 ${placed.other} 件）` : `（当前户型 ${placed.cur} 件）`;
+  toast(`目录包「${id}」已移除${placed.total ? `：${placed.total} 件用的条目已不在目录里${where} —— 它们仍在布局里，图上显示成灰色占位，只是不再计价` : ''}`, 8000);
   return true;
 }
 function packSelectUI(){
@@ -17193,6 +17286,10 @@ $('#filePack').addEventListener('change', ev=>{
       toast('目录包未通过校验：' + (e0 ? (e0.field ? e0.field + ' — ' : '') + e0.message : '未知错误'));
       return;
     }
+    if(packLimitHit(r.pack)){
+      toast(`已经加载了 ${packRegistry.packs.length} 个目录包（上限 ${CATPACK.MAX_PACKS}）：先移除一个再导入`, 8000);
+      return;
+    }
     _packPending = r.pack; _packEntryIssues = r.entryIssues; packCompileErrors = [];
     for(const [key, src] of Object.entries(r.pack.models))
       if(CATPACK.compileModel(src).error) packCompileErrors.push({ model:key });
@@ -17210,8 +17307,8 @@ $('#btnPackRemove').onclick=()=>{
   if(_packRemoveArm !== id){
     _packRemoveArm = id;
     const btn = $('#btnPackRemove'); btn.classList.add('arm');
-    const placed = packPlacedCount(id);
-    toast(`再点一次「移除包」确认：移除「${id}」${placed?`，布局里有 ${placed} 件用的是它`:''}`, 6000);
+    const placed = packPlacedAcross(id);
+    toast(`再点一次「移除包」确认：移除「${id}」${placed.total ? `，布局里有 ${placed.total} 件用的是它` + (placed.plans ? `（含另外 ${placed.plans} 份户型里的 ${placed.other} 件）` : '') : ''}`, 6000);
     return;
   }
   _packRemoveArm = '';
