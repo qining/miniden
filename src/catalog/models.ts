@@ -61,8 +61,10 @@ export interface ModelCache {
   setIndex(next: ModelIndex): void;
   /** 移除某个包的全部驻留模型，返回移除数 */
   dropPack(packId: string): number;
-  /** 把已编译好的函数放进缓存（导入路径用，避免用第一次再编译） */
-  seed(key: string, fn: (C: unknown) => void): void;
+  /** 把已编译好的函数放进缓存（导入路径用，避免用第一次再编译）。
+   *  src = 它是从哪份源码编译来的：索引里这个名字指向的不是这份源码就不放（返回 false）——
+   *  同名模型归先到的包（轮㉚），索引还没换到这份包时（确认框点了取消）也一样。 */
+  seed(key: string, fn: (C: unknown) => void, src: string): boolean;
   stats(): ModelCacheStats;
   /** 某个包已知的编译失败（如实报告用） */
   failuresFor(packId: string): Array<{ model: string; error: string }>;
@@ -143,10 +145,14 @@ export function createModelCache(index0: ModelIndex, opts?: { limit?: number }):
       }
       return n;
     },
-    seed(key: string, fn: (C: unknown) => void) {
+    seed(key: string, fn: (C: unknown) => void, src: string) {
+      /* 以前这里拿索引里的源码当 srcOf：同名模型归先到的包 pa 时，预编译 pb 会把 pb 的函数
+         记成「pa 那份源码编译的」→ setIndex 不淘汰 → pa 的家具从此用 pb 的造型，
+         而 dropPack(pb) 按索引归属找不到它，移除 pb 也清不掉（E19 轮㉚）。 */
+      if (index.get(key)?.src !== src) return false;
       failures.delete(key);
-      const entry = index.get(key);
-      touch(key, fn, entry ? entry.src : '');
+      touch(key, fn, src);
+      return true;
     },
     stats: () => ({ resident: resident.size, compiled, reused, evicted, failed: failures.size }),
     failuresFor(packId: string) {
@@ -179,8 +185,8 @@ export function precompilePack(
       errors.push({ model: key, error: c.error || '编译失败' });
       continue;
     }
-    ok++;
-    cache.seed(key, c.fn);
+    ok++; // 编译成功就算数（确认框的数字）；进不进缓存由索引归属决定
+    cache.seed(key, c.fn, src);
   }
   return { ok, errors };
 }
