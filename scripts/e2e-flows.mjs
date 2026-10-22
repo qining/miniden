@@ -670,6 +670,129 @@ export const FLOWS = [
   },
 
   {
+    name: 'outlet-tool',
+    title: '电源插座：插座工具 → 悬停看预览 → 点墙放一个 → 改类型 / 离地高 → 沿墙拖 → 真实刷新还在 → Delete',
+    run: async (t) => {
+      const n0 = await t.eval('(DOC.outlets||[]).length');
+      await t.step('进入编辑墙体 → 插座');
+      await t.click('#btnWallEdit');
+      await t.waitFor(`wallEdit.on`, 5000, 'wallEdit.on');
+      await t.click('#wtoolSeg button[data-t="outlet"]');
+      await t.waitFor(`wallEdit.tool==='outlet'`, 5000, 'tool=outlet');
+      t.assert(
+        'outlet-ctl-visible',
+        await t.eval(`getComputedStyle(document.querySelector('#outletCtl')).visibility==='visible'`),
+        '#outletCtl 可见（类型 / 联数 / 离地）'
+      );
+
+      /* 选一条够长的实墙，在它「地板那一侧」墙皮外 0.25ft 处点；附近不能有洁具 / 门 / 台面（否则点到的是它们）。
+         选点策略，不是断言。 */
+      const spot = await t.eval(
+        `(()=>{const ok=(x,y)=>!DOC.fixtures.some(f=>x>f.x1-1&&x<f.x2+1&&y>f.y1-1&&y<f.y2+1) &&` +
+          `!effDoors().some(d=>Math.hypot((d.x1+d.x2)/2-x,(d.y1+d.y2)/2-y)<3) && !effRuns().length;` +
+          `const cands=[];for(const w of effWalls()){if(w.t!=='w')continue;const L=Math.hypot(w.x2-w.x1,w.y2-w.y1);if(L<6)continue;` +
+          `const u=[(w.x2-w.x1)/L,(w.y2-w.y1)/L];const half=(w.wd!=null?w.wd:6.5)/S/2;` +
+          `for(const sd of [1,-1]){const n=[-u[1]*sd,u[0]*sd];const mx=(w.x1+w.x2)/2,my=(w.y1+w.y2)/2;` +
+          `const p=[mx+n[0]*(half+0.25),my+n[1]*(half+0.25)];` +
+          `if(insideFloorPt(mx+n[0]*1.5,my+n[1]*1.5)&&ok(p[0],p[1]))cands.push({p,u,L,id:w._id});}}` +
+          `cands.sort((a,b)=>b.L-a.L);return cands[0]||null;})()`
+      );
+      t.assert('outlet-wall-found', !!spot, spot ? `墙 ${spot.id} · ${spot.L.toFixed(1)}ft` : '户型里没有合适的实墙');
+      if (!spot) {
+        await t.click('#wDone');
+        return;
+      }
+      const at = await t.planPoint(spot.p[0], spot.p[1]);
+      await t.step('鼠标停在墙边：先看见虚线预览');
+      await t.mouse('mouseMoved', at.x, at.y);
+      await t.waitFor(`document.querySelectorAll('#svg2d .olPreview').length===1`, 5000, '出现预览');
+      await t.shot('outlet-preview');
+      await t.step('点下去：贴在这一侧的墙皮上');
+      await t.click(at);
+      await t.waitFor(`(DOC.outlets||[]).length===${n0 + 1}`, 8000, '插座数 +1');
+      const o = await t.eval(
+        `(()=>{const o=DOC.outlets[DOC.outlets.length-1];return {id:o.id,host:o.host,hostId:o.hostId,h:o.h,x:o.x,y:o.y,at:o.at};})()`
+      );
+      t.assert(
+        'outlet-placed-on-wall',
+        o.host === 'wall' && o.hostId === spot.id && Math.abs(o.h * 30.48 - 30) < 1,
+        `挂在 ${o.hostId} · 离地 ${Math.round(o.h * 30.48)}cm`
+      );
+      const msg = await t.eval(`document.querySelector('#wMsg').textContent`);
+      t.assert('outlet-told', /已放普通插座/.test(msg), msg.slice(0, 40));
+      /* 人眼可见性三层探针：几何（rect 有宽度）+ 遮挡（图例中心最上层是它的命中区）+ 截图 */
+      const vis = await t.eval(
+        `(()=>{const g=document.querySelector('#svg2d [data-outlet="${o.id}"].outletSym');if(!g)return null;` +
+          `const r=g.getBoundingClientRect();const c=g.querySelector('circle').getBoundingClientRect();` +
+          `const e=document.elementFromPoint(c.x+c.width/2,c.y+c.height/2);` +
+          `return {w:r.width,top:e&&e.dataset?e.dataset.outlet:null};})()`
+      );
+      t.assert(
+        'outlet-visible',
+        !!vis && vis.w > 4 && vis.top === o.id,
+        vis ? `图例 ${vis.w.toFixed(1)}px 宽 · 中心最上层 = ${vis.top}` : '图上没有'
+      );
+      await t.shot('outlet-placed');
+
+      await t.step('改成防水 GFCI、离地 45cm（真实键入 + 回车）');
+      await t.eval(
+        `(()=>{const s=document.querySelector('#olKind');s.value='gfci';s.dispatchEvent(new Event('change',{bubbles:true}));})()`
+      );
+      await t.type('#olH', '45');
+      await t.key('Enter', 'Enter', 13);
+      await t.waitFor(`Math.round(DOC.outlets.find(x=>x.id==='${o.id}').h*30.48)===45`, 5000, '离地 45cm');
+      const o2 = await t.eval(`(()=>{const x=DOC.outlets.find(q=>q.id==='${o.id}');return {kind:x.kind,h:x.h};})()`);
+      t.assert(
+        'outlet-edited',
+        o2.kind === 'gfci' && Math.round(o2.h * 30.48) === 45,
+        `${o2.kind} · ${Math.round(o2.h * 30.48)}cm`
+      );
+
+      await t.step('沿墙拖 2ft');
+      const c0 = await t.eval(
+        `(()=>{const c=document.querySelector('#svg2d .olHit[data-outlet="${o.id}"]').getBoundingClientRect();return {x:c.x+c.width/2,y:c.y+c.height/2};})()`
+      );
+      const ppf = await t.eval(`pxPerFt()`);
+      await t.drag(c0, { x: c0.x + spot.u[0] * 2 * ppf, y: c0.y + spot.u[1] * 2 * ppf });
+      const o3 = await t.eval(
+        `(()=>{const x=DOC.outlets.find(q=>q.id==='${o.id}');return {at:x.at,hostId:x.hostId};})()`
+      );
+      t.assert(
+        'outlet-dragged-along-wall',
+        o3.hostId === spot.id && Math.abs(Math.abs(o3.at - o.at) - 2) < 0.35,
+        `沿墙 ${(o3.at - o.at).toFixed(2)}ft · 仍挂在 ${o3.hostId}`
+      );
+
+      await t.step('真实刷新：插座还在（类型 / 高度 / 位置都在）');
+      await t.reload();
+      await t.waitForReady();
+      const o4 = await t.eval(
+        `(()=>{const x=(DOC.outlets||[]).find(q=>q.id==='${o.id}');return x?{kind:x.kind,h:x.h,at:x.at}:null;})()`
+      );
+      t.assert(
+        'outlet-survives-reload',
+        !!o4 && o4.kind === 'gfci' && Math.round(o4.h * 30.48) === 45 && Math.abs(o4.at - o3.at) < 1e-6,
+        o4
+          ? `${o4.kind} · ${Math.round(o4.h * 30.48)}cm · at 放下 ${o.at.toFixed(2)} → 拖后 ${o3.at.toFixed(2)} → 刷新后 ${o4.at.toFixed(2)}`
+          : '刷新后没了'
+      );
+
+      await t.step('选中 → Delete');
+      await t.click('#btnWallEdit');
+      await t.waitFor(`wallEdit.on`, 5000, 'wallEdit.on');
+      const c1 = await t.eval(
+        `(()=>{const c=document.querySelector('#svg2d .olHit[data-outlet="${o.id}"]').getBoundingClientRect();return {x:c.x+c.width/2,y:c.y+c.height/2};})()`
+      );
+      await t.click(c1);
+      await t.waitFor(`wallEdit.sel && wallEdit.sel.kind==='outlet'`, 6000, '选中插座');
+      await t.key('Delete', 'Delete', 46);
+      await t.waitFor(`(DOC.outlets||[]).length===${n0}`, 8000, '插座数复位');
+      t.assert('outlet-deleted', (await t.eval('(DOC.outlets||[]).length')) === n0, `回到 ${n0} 个`);
+      await t.click('#wDone');
+    },
+  },
+
+  {
     name: 'undo-redo',
     title: '撤销 / 重做：误删的洁具、画错的墙都能退回去（真实键盘）',
     run: async (t) => {

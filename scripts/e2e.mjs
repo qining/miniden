@@ -460,7 +460,11 @@ async function runEntry(entry) {
         nativeVirtualKeyCode: vk,
         ...(mods ? { modifiers: mods } : {}),
       };
-      await cdp('Input.dispatchKeyEvent', { type: 'keyDown', ...base });
+      /* 真实键盘的回车 keyDown 带 text "\r"（会产生 keypress）；不带的话 Blink 不会在回车时给
+         文本 / 数字框补发 change —— 驱动发的是一个真键盘发不出来的回车（S14 实测：探针页
+         无 text → change 0 次，带 text → 1 次）。 */
+      const text = key === 'Enter' && !mods ? { text: '\r', unmodifiedText: '\r' } : {};
+      await cdp('Input.dispatchKeyEvent', { type: 'keyDown', ...base, ...text });
       await cdp('Input.dispatchKeyEvent', { type: 'keyUp', ...base });
       if (SPEED) await sleep(120);
     },

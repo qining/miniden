@@ -1658,6 +1658,20 @@ async function runPBTest() {
           const bar = Q('#wallbar');
           const over = bar.scrollWidth - bar.clientWidth;
           T('pb-bar-no-overflow', over <= 1, 'scrollWidth=' + bar.scrollWidth + ' clientWidth=' + bar.clientWidth);
+          /* 不溢出 ≠ 没被压扁：flex 子元素会先自己收缩、把字折行，scrollWidth 照样不超（S14 实测：
+             加第 7 个工具后 1700 宽时按钮高 30 → 48px，「选择/调整」读成竖排）。判据 = 每个看得见的按钮都是单行。 */
+          const btns = Array.from(bar.querySelectorAll('button')).filter((b) => b.offsetParent);
+          const tall = btns.filter((b) => b.getBoundingClientRect().height > 34).map((b) => b.textContent.trim());
+          T(
+            'pb-bar-buttons-single-line',
+            btns.length >= 10 && tall.length === 0,
+            btns.length +
+              ' 个按钮 · 折行的：' +
+              (tall.length ? tall.join('、') : '无') +
+              ' · 工具条高 ' +
+              Math.round(bar.getBoundingClientRect().height) +
+              'px'
+          );
           const m = Q('#wMsg'),
             mr = m.getBoundingClientRect();
           const hint = Q('#hint');
@@ -4106,6 +4120,413 @@ async function runPBTest() {
           PLAN_REG.plans.length +
           ' · userWalls=' +
           userCounts().w
+      );
+    }
+
+    /* ===== 19. S14 电源插座：墙面 / 台面挡水墙 / 中岛正面 / 台柜 —— 放、改、拖、跟着宿主走、删、3D ===== */
+    {
+      /* 用户 2026-10-22 的需求。断言口径：插座的位置是「相对宿主」的事实（at / side / dh），
+         坐标是派生缓存 —— 所以每条断言都从宿主的几何独立量回去（墙皮距离 = 画出来的半厚、
+         高度 = 台面高 + 15cm），不照抄实现公式。在一份新建的空白户型里自己画一间房，
+         plan-independent。 */
+      await enterEdit();
+      await pbReset();
+      const ol0Plans = PLAN_REG.plans.length;
+      Q('#btnPlanNew').click();
+      await tick();
+      const olPlan = PLAN_ID;
+      const oFp = floorPts();
+      const oXs = oFp.map((p) => p[0]),
+        oYs = oFp.map((p) => p[1]);
+      const OX0 = Math.min.apply(null, oXs) + 1,
+        OX1 = Math.max.apply(null, oXs) - 1,
+        OY0 = Math.min.apply(null, oYs) + 1,
+        OY1 = Math.max.apply(null, oYs) - 1;
+      const oWd = cmToWd(12);
+      const wN = pushUserWall(OX0, OY0, OX1, OY0, 'w', oWd); // 北墙（房间在它的 +y 一侧）
+      pushUserWall(OX1, OY0, OX1, OY1, 'w', oWd);
+      pushUserWall(OX1, OY1, OX0, OY1, 'w', oWd);
+      const wW = pushUserWall(OX0, OY1, OX0, OY0, 'w', oWd); // 西墙
+      geoChanged();
+      fit2DToContent();
+      drawWallEdit();
+      await tick();
+      const segOf = (id) => effWalls().find((s) => s._id === id);
+      const sN = segOf(wN.id);
+      const halfN = pbDrawnThick(sN) / 2;
+      const olN = () => (DOC.outlets || []).length;
+      const ring = () => undoRing.length;
+      const msg = () => (Q('#wMsg') || {}).textContent || '';
+      const faceDist = (o, s) => distSeg(o.x, o.y, s);
+
+      await setTool('outlet');
+      T(
+        'pb-ol-tool-visible',
+        wallEdit.tool === 'outlet' && vis('#outletCtl') === 'visible' && /点墙附近/.test(msg()),
+        'tool=' + wallEdit.tool + ' outletCtl=' + vis('#outletCtl') + ' · ' + msg().slice(0, 30)
+      );
+
+      /* 19.1 放之前先看见：鼠标停在墙附近有虚线预览，停在房间正中没有 */
+      const midX = (OX0 + OX1) / 2;
+      const [pvx, pvy] = SPT(midX, OY0 + halfN + 0.25);
+      fire('pointermove', pvx, pvy, { buttons: 0 });
+      await tick();
+      const pvNear = pbSvg.querySelectorAll('.olPreview').length;
+      const [pcx, pcy] = SPT(midX, (OY0 + OY1) / 2);
+      fire('pointermove', pcx, pcy, { buttons: 0 });
+      await tick();
+      const pvFar = pbSvg.querySelectorAll('.olPreview').length;
+      T('pb-ol-preview', pvNear === 1 && pvFar === 0, '墙边预览 ' + pvNear + ' 个 · 房间正中 ' + pvFar + ' 个');
+
+      /* 19.2 点墙附近 → 贴在点击那一侧的墙皮上，离地 30cm，一步撤销 */
+      const r0 = ring(),
+        n0 = olN();
+      await tap(midX, OY0 + halfN + 0.25);
+      const oA = (DOC.outlets || [])[n0];
+      const ny = oA ? Math.sin((oA.rot * Math.PI) / 180) : 0;
+      T(
+        'pb-ol-wall-place',
+        olN() === n0 + 1 &&
+          !!oA &&
+          oA.host === 'wall' &&
+          oA.hostId === wN.id &&
+          Math.abs(faceDist(oA, sN) - halfN) < 0.002 &&
+          oA.y > OY0 &&
+          ny > 0.99 &&
+          Math.abs(oA.h * 30.48 - 30) < 0.6 &&
+          ring() === r0 + 1,
+        oA
+          ? '离墙轴 ' +
+              faceDist(oA, sN).toFixed(3) +
+              'ft（画出来的半厚 ' +
+              halfN.toFixed(3) +
+              '）· 朝向 ' +
+              oA.rot +
+              '° · 离地 ' +
+              Math.round(oA.h * 30.48) +
+              'cm · 撤销环 +' +
+              (ring() - r0)
+          : '没放上'
+      );
+      T(
+        'pb-ol-selected-and-told',
+        !!wallEdit.sel && wallEdit.sel.kind === 'outlet' && /插座/.test(msg()) && /离地 30cm/.test(msg()),
+        '#wMsg=' + msg().slice(0, 40)
+      );
+      const g2d = oA && pbSvg.querySelector('[data-outlet="' + oA.id + '"].outletSym');
+      T(
+        'pb-ol-2d-symbol',
+        !!g2d && g2d.querySelectorAll('circle').length === 1 && g2d.getBoundingClientRect().width > 3,
+        g2d
+          ? '图例 ' +
+              g2d.querySelectorAll('circle').length +
+              ' 个圆 · ' +
+              g2d.getBoundingClientRect().width.toFixed(1) +
+              'px 宽'
+          : '没画'
+      );
+
+      /* 19.3 墙的另一侧 → 另一面墙皮（朝向反过来） */
+      wallEdit.sel = null;
+      await tap(midX + 1, OY0 - halfN - 0.25);
+      const oB = (DOC.outlets || [])[n0 + 1];
+      T(
+        'pb-ol-wall-other-side',
+        !!oB && oB.hostId === wN.id && oB.y < OY0 && Math.abs(((oB.rot - oA.rot + 360) % 360) - 180) < 1,
+        oB ? '朝向 ' + oA.rot + '° / ' + oB.rot + '°' : '没放上'
+      );
+      DOC.outlets = (DOC.outlets || []).filter((o) => o !== oB);
+      geoChanged();
+
+      /* 19.4 空地上点 → 拒放并说清为什么（不悬在空中） */
+      wallEdit.sel = null;
+      const n1 = olN(),
+        r1 = ring();
+      await tap(midX, (OY0 + OY1) / 2);
+      T(
+        'pb-ol-free-rejected',
+        olN() === n1 && ring() === r1 && /要挂在墙面/.test(msg()) && Q('#wMsg').classList.contains('err'),
+        '#wMsg=' + msg().slice(0, 36)
+      );
+
+      /* 19.5 选中后改类型 / 联数 / 离地高：各占一步；非法高度拒收且不动 */
+      wallEdit.sel = { kind: 'outlet', id: oA.id };
+      updateWallBarFromSel();
+      const r2 = ring();
+      Q('#olKind').value = 'gfci';
+      Q('#olKind').dispatchEvent(new Event('change'));
+      Q('#olN').value = '2';
+      Q('#olN').dispatchEvent(new Event('change'));
+      Q('#olH').value = '45';
+      Q('#olH').dispatchEvent(new Event('change'));
+      await tick();
+      const g2d2 = pbSvg.querySelector('[data-outlet="' + oA.id + '"].outletSym');
+      T(
+        'pb-ol-edit-props',
+        oA.kind === 'gfci' &&
+          oA.n === 2 &&
+          Math.abs(oA.h * 30.48 - 45) < 0.6 &&
+          ring() === r2 + 3 &&
+          !!g2d2 &&
+          g2d2.querySelectorAll('circle').length === 2 &&
+          /G/.test(g2d2.textContent),
+        'kind=' + oA.kind + ' n=' + oA.n + ' h=' + Math.round(oA.h * 30.48) + 'cm · 撤销环 +' + (ring() - r2)
+      );
+      const r3 = ring();
+      Q('#olH').value = '999';
+      Q('#olH').dispatchEvent(new Event('change'));
+      await tick();
+      T(
+        'pb-ol-height-rejected',
+        Math.abs(oA.h * 30.48 - 45) < 0.6 && ring() === r3 && /离地高要在/.test(msg()),
+        'h=' + Math.round(oA.h * 30.48) + 'cm · ' + msg().slice(0, 30)
+      );
+      Q('#olH').value = '45';
+      Q('#olH').dispatchEvent(new Event('change'));
+      T('pb-ol-same-height-no-dead-step', ring() === r3, '重打同一个数：撤销环 ' + r3 + ' → ' + ring());
+
+      /* 19.6 拖 = 沿墙滑动：仍贴同一面墙皮，一次拖动一步撤销 */
+      const ax0 = oA.x,
+        r4 = ring();
+      const sc = outletSymbolCenters(oA).cs;
+      const [hx, hy] = SPT((sc[0][0] + sc[1][0]) / 2, (sc[0][1] + sc[1][1]) / 2);
+      await dragBy(hx, hy, 1.5 * pxPerFtNow(), 0);
+      T(
+        'pb-ol-drag-along-wall',
+        oA.hostId === wN.id &&
+          Math.abs(oA.x - ax0 - 1.5) < 0.2 &&
+          Math.abs(faceDist(oA, sN) - halfN) < 0.02 &&
+          ring() === r4 + 1,
+        '沿墙 ' +
+          (oA.x - ax0).toFixed(2) +
+          'ft（拖 1.5ft）· 离墙轴 ' +
+          faceDist(oA, sN).toFixed(3) +
+          ' · 撤销环 +' +
+          (ring() - r4)
+      );
+
+      /* 19.7 台面：靠墙那条 → 挡水墙上（台面高 + 15cm）；改台面高，插座跟着走 */
+      const runY = OY1 - halfN; // path = 南墙内皮
+      const rn = pushUserRun(
+        [
+          [OX1 - 6, runY],
+          [OX1 - 1, runY],
+        ],
+        60 / 30.48,
+        90 / 30.48
+      );
+      geoChanged();
+      drawWallEdit();
+      await tick();
+      const rnN = runNormal(5, 0, OX1 - 6, runY);
+      wallEdit.sel = null;
+      await setTool('outlet');
+      await tap(OX1 - 3.5, runY + rnN[1] * 0.9);
+      const oR = (DOC.outlets || []).find((o) => o.hostId === rn.id);
+      T(
+        'pb-ol-run-backsplash',
+        !!oR && oR.side === 0 && Math.abs(oR.h - (rn.topH + 15 / 30.48)) < 0.02 && Math.abs(oR.y - runY) < 0.03,
+        oR
+          ? '离地 ' +
+              Math.round(oR.h * 30.48) +
+              'cm（台面 90 + 15）· 离 path ' +
+              Math.abs(oR.y - runY).toFixed(3) +
+              'ft'
+          : '没挂上台面'
+      );
+      wallEdit.sel = { kind: 'run', id: rn.id };
+      updateWallBarFromSel();
+      Q('#runTopH').value = '100';
+      Q('#runTopH').dispatchEvent(new Event('change'));
+      await tick();
+      T(
+        'pb-ol-follows-run-height',
+        !!oR && Math.abs(oR.h * 30.48 - 115) < 0.8,
+        oR ? '台面 90 → 100cm：插座 ' + Math.round(oR.h * 30.48) + 'cm（应 115）' : '-'
+      );
+
+      /* 19.8 中岛（背后没有墙）→ 柜体正面，低于台面 */
+      const isY = (OY0 + OY1) / 2;
+      const isl = pushUserRun(
+        [
+          [midX - 2, isY],
+          [midX + 2, isY],
+        ],
+        60 / 30.48,
+        90 / 30.48
+      );
+      geoChanged();
+      drawWallEdit();
+      await tick();
+      const isN = runNormal(4, 0, midX - 2, isY);
+      wallEdit.sel = null;
+      await tap(midX, isY + isN[1] * 1.5);
+      const oI = (DOC.outlets || []).find((o) => o.hostId === isl.id);
+      const frontD = oI ? (oI.x - (midX - 2)) * isN[0] + (oI.y - isY) * isN[1] : -1;
+      T(
+        'pb-ol-island-front',
+        !!oI && oI.side === 1 && oI.h < isl.topH && Math.abs(frontD - isl.depth) < 0.03,
+        oI
+          ? '离 path ' +
+              frontD.toFixed(3) +
+              'ft（柜深 ' +
+              isl.depth.toFixed(3) +
+              '）· 离地 ' +
+              Math.round(oI.h * 30.48) +
+              'cm'
+          : '没挂上中岛'
+      );
+
+      /* 19.9 台柜：挂在靠墙那条边（就在墙皮上），离地 = 台柜台面 + 15cm；拖台柜，插座跟着走 */
+      const sW = segOf(wW.id);
+      const cs = fixtureWallSnap(OX0 + 0.3, (OY0 + OY1) / 2 - 1, 'counter');
+      const cnt = pushUserFixture('counter', cs.cx, cs.cy, cs.rot);
+      geoChanged();
+      drawWallEdit();
+      await tick();
+      wallEdit.sel = null;
+      await setTool('outlet');
+      await tap((cnt.x1 + cnt.x2) / 2, (cnt.y1 + cnt.y2) / 2);
+      const oF = (DOC.outlets || []).find((o) => o.hostId === cnt.id);
+      const fWall = oF ? faceDist(oF, sW) - pbDrawnThick(sW) / 2 : 99;
+      T(
+        'pb-ol-counter',
+        !!oF && oF.host === 'fx' && Math.abs(fWall) < 0.03 && Math.abs(oF.h * 30.48 - (2.59 * 30.48 + 15)) < 0.8,
+        oF ? '离西墙皮 ' + fWall.toFixed(3) + 'ft · 离地 ' + Math.round(oF.h * 30.48) + 'cm' : '没挂上台柜'
+      );
+      const fy0 = oF ? oF.y : 0,
+        cy0 = (cnt.y1 + cnt.y2) / 2;
+      await setTool('select');
+      const [ccx, ccy] = SPT((cnt.x1 + cnt.x2) / 2 + 0.3, (cnt.y1 + cnt.y2) / 2 + 0.3);
+      await dragBy(ccx, ccy, 0, 1.0 * pxPerFtNow());
+      const cdy = (cnt.y1 + cnt.y2) / 2 - cy0;
+      T(
+        'pb-ol-follows-counter',
+        !!oF && cdy > 0.5 && Math.abs(oF.y - fy0 - cdy) < 0.03,
+        '台柜挪 ' + cdy.toFixed(2) + 'ft · 插座挪 ' + (oF ? (oF.y - fy0).toFixed(2) : '?') + 'ft'
+      );
+
+      /* 19.10 删宿主 → 上面的插座一起删、说出来、一步撤销回来 */
+      wallEdit.sel = { kind: 'fx', id: cnt.id };
+      updateWallBarFromSel();
+      const nF = olN(),
+        r5 = ring();
+      key('Delete');
+      await tick();
+      const gone = !DOC.fixtures.some((f) => f.id === cnt.id) && !(DOC.outlets || []).some((o) => o.hostId === cnt.id);
+      T(
+        'pb-ol-host-delete-cascades',
+        gone && olN() === nF - 1 && /连同上面的 1 个插座/.test(msg()) && ring() === r5 + 1,
+        '台柜与插座都删了=' + gone + ' · ' + msg()
+      );
+      undoStep();
+      await tick();
+      T(
+        'pb-ol-host-delete-undo',
+        DOC.fixtures.some((f) => f.id === cnt.id) && (DOC.outlets || []).some((o) => o.hostId === cnt.id),
+        '撤销一步：台柜与插座都回来'
+      );
+
+      /* 19.11 删插座本身 */
+      wallEdit.sel = { kind: 'outlet', id: oA.id };
+      const nD = olN();
+      key('Delete');
+      await tick();
+      T(
+        'pb-ol-delete',
+        olN() === nD - 1 && !(DOC.outlets || []).some((o) => o.id === oA.id) && /已删除插座/.test(msg()),
+        msg()
+      );
+      undoStep();
+      await tick();
+      const oAr = (DOC.outlets || []).find((o) => o.id === oA.id);
+
+      /* 19.12 整图重标定 ×2：墙变长变厚，插座仍贴墙皮、沿墙位置按比例走，高度不变 */
+      const atA = oAr ? oAr.at : 0,
+        hA = oAr ? oAr.h : 0;
+      pushUndo('pb-ol-rescale', true);
+      rescaleDocPlan(2);
+      geoChanged();
+      await tick();
+      const sN2 = segOf(wN.id);
+      const oA3 = (DOC.outlets || []).find((o) => o.id === oA.id);
+      T(
+        'pb-ol-rescale-follows',
+        !!oA3 &&
+          Math.abs(oA3.at - atA * 2) < 0.03 &&
+          Math.abs(faceDist(oA3, sN2) - pbDrawnThick(sN2) / 2) < 0.03 &&
+          Math.abs(oA3.h - hA) < 1e-6,
+        oA3
+          ? 'at ' +
+              atA.toFixed(2) +
+              ' → ' +
+              oA3.at.toFixed(2) +
+              ' · 离墙轴 ' +
+              faceDist(oA3, sN2).toFixed(3) +
+              '（半厚 ' +
+              (pbDrawnThick(sN2) / 2).toFixed(3) +
+              '）· 高 ' +
+              Math.round(oA3.h * 30.48) +
+              'cm'
+          : '-'
+      );
+      undoStep();
+      await tick();
+
+      /* 19.13 文档往返：插座通过 schema 校验、导出 JSON 读回来逐字段相同 */
+      const vErr = SCHEMA.Project.validate(DOC);
+      const rt = JSON.parse(JSON.stringify(DOC.outlets));
+      T(
+        'pb-ol-doc-roundtrip',
+        vErr.length === 0 && JSON.stringify(rt) === JSON.stringify(DOC.outlets) && olN() >= 3,
+        'validate 错误 ' + vErr.length + ' · 插座 ' + olN() + ' 个'
+      );
+
+      /* 19.14 3D：面板真的在墙上（水平射线先打到面板，比打到墙皮近 0.6cm） */
+      const oW = (DOC.outlets || []).find((o) => o.id === oA.id);
+      setView('3d');
+      await wait3D();
+      three.staticGroup.updateMatrixWorld(true);
+      const rayAt = (x, y, h) => {
+        const rc = new THREE.Raycaster();
+        const n = [Math.cos((oW.rot * Math.PI) / 180), Math.sin((oW.rot * Math.PI) / 180)];
+        rc.set(new THREE.Vector3(x + n[0] * 1, h, y + n[1] * 1), new THREE.Vector3(-n[0], 0, -n[1]));
+        const hs = rc.intersectObjects(three.staticGroup.children, true);
+        return hs.length ? hs[0].distance : null;
+      };
+      const dPlate = oW ? rayAt(oW.x, oW.y, oW.h) : null,
+        dWall = oW ? rayAt(oW.x, oW.y, oW.h + 1.2) : null;
+      T(
+        'pb-ol-in-3d',
+        dPlate != null &&
+          dWall != null &&
+          Math.abs(dWall - 1) < 0.01 &&
+          dWall - dPlate > 0.012 &&
+          dWall - dPlate < 0.05,
+        '射线：面板 ' +
+          (dPlate != null ? dPlate.toFixed(3) : '无') +
+          'ft · 上方墙皮 ' +
+          (dWall != null ? dWall.toFixed(3) : '无') +
+          'ft'
+      );
+      setView('2d');
+      await tick();
+
+      /* 收尾：删掉这份户型，回到内置户型 */
+      await enterEdit();
+      Q('#btnPlanDel').click();
+      await tick();
+      Q('#btnPlanDel').click();
+      await tick();
+      T(
+        'pb-ol-clean-exit',
+        PLAN_ID !== olPlan && PLAN_REG.plans.length === ol0Plans && !(DOC.outlets || []).length,
+        '户型 ' +
+          (PLAN_ID === BUILTIN_PLAN_ID ? '内置' : PLAN_ID) +
+          ' · plans ' +
+          ol0Plans +
+          '→' +
+          PLAN_REG.plans.length
       );
     }
 

@@ -586,3 +586,131 @@ describe('checkGeoms —— 几何字段形状（bug 猎 #10）', () => {
     expect(checkGeoms(d).map((e) => e.path)).toContain('solids[0].geom');
   });
 });
+
+/* =====================================================================
+   S14：电源插座（挂在墙面 / 台面挡水墙 / 台柜上的点状实体）
+   ===================================================================== */
+describe('outlet 实体（S14）', () => {
+  const good = () => {
+    const d = blankDoc('插座');
+    d.outlets = [
+      {
+        id: 'ol01',
+        x: 3.2,
+        y: 0.15,
+        rot: 90,
+        h: 1,
+        kind: 'std',
+        n: 2,
+        host: 'wall',
+        hostId: 'w01',
+        at: 3.2,
+        side: 1,
+        src: 'user',
+      },
+      {
+        id: 'ol02',
+        x: 5,
+        y: 2,
+        rot: 270,
+        h: 3.45,
+        kind: 'gfci',
+        host: 'run',
+        hostId: 'rn01',
+        at: 3,
+        side: 0,
+        dh: 0.5,
+        src: 'user',
+      },
+      {
+        id: 'ol03',
+        x: 7,
+        y: 2,
+        rot: 0,
+        h: 2.9,
+        kind: 'usb',
+        n: 1,
+        host: 'fx',
+        hostId: 'f01',
+        at: 0.2,
+        side: 2,
+        dh: 0.5,
+        src: 'user',
+      },
+    ];
+    return d;
+  };
+
+  it('合法插座通过校验且 JSON 往返逐字段相等', () => {
+    const d = good();
+    expect(validate(d)).toEqual([]);
+    const round = JSON.parse(JSON.stringify(d)) as ProjectDoc;
+    expect(validate(round)).toEqual([]);
+    expect(round).toEqual(d);
+  });
+
+  it('outlets 是纯增量可选字段（旧文档没有也合法，且不进 required）', () => {
+    const s = projectSchema() as Record<string, any>;
+    expect(s.properties.outlets).toBeTruthy();
+    expect(s.definitions.outlet).toBeTruthy();
+    expect(s.required).not.toContain('outlets');
+    const d = blankDoc();
+    expect(d.outlets).toBeUndefined();
+    expect(validate(d)).toEqual([]);
+  });
+
+  it('坐标 / 朝向不是数被拒', () => {
+    const d = good();
+    (d.outlets![0] as any).x = 'a';
+    (d.outlets![0] as any).rot = null;
+    const errs = validate(d);
+    expect(errs.some((e) => e.path === 'outlets[0].x')).toBe(true);
+    expect(errs.some((e) => e.path === 'outlets[0].rot')).toBe(true);
+  });
+
+  it('离地高度必须在 (0, 12ft]：负数 / 0 / 穿出天花都拒', () => {
+    for (const h of [0, -1, 13, NaN]) {
+      const d = good();
+      d.outlets![0].h = h;
+      expect(validate(d).some((e) => e.path === 'outlets[0].h')).toBe(true);
+    }
+  });
+
+  it('类型 / 联数 / 宿主非法被拒（消费端按它们分支，未知值会渲成隐形件）', () => {
+    const d = good();
+    (d.outlets![0] as any).kind = 'tesla';
+    (d.outlets![1] as any).n = 4;
+    (d.outlets![2] as any).host = 'ceiling';
+    const errs = validate(d);
+    expect(errs.some((e) => e.path === 'outlets[0].kind')).toBe(true);
+    expect(errs.some((e) => e.path === 'outlets[1].n')).toBe(true);
+    expect(errs.some((e) => e.path === 'outlets[2].host')).toBe(true);
+  });
+
+  it('宿主相对位置非法被拒（at 负数 / side 越界 / dh 不是数）', () => {
+    const d = good();
+    d.outlets![0].at = -1;
+    d.outlets![1].side = 7;
+    (d.outlets![2] as any).dh = 'x';
+    const errs = validate(d);
+    expect(errs.some((e) => e.path === 'outlets[0].at')).toBe(true);
+    expect(errs.some((e) => e.path === 'outlets[1].side')).toBe(true);
+    expect(errs.some((e) => e.path === 'outlets[2].dh')).toBe(true);
+  });
+
+  it('重复 id 被拒', () => {
+    const d = good();
+    d.outlets![1].id = 'ol01';
+    expect(validate(d).some((e) => e.path === 'outlets[1].id')).toBe(true);
+  });
+
+  it('outlets 不进 docToLegacy 投影（投影键集冻结）', () => {
+    expect(Object.keys(docToLegacy(good()))).toEqual(['walls', 'fixed', 'doors']);
+  });
+
+  it('nextId 给插座用 ol 前缀', () => {
+    const d = good();
+    expect(nextId(d, 'outlet')).toBe('ol04');
+    expect(nextId(blankDoc(), 'outlet')).toBe('ol01');
+  });
+});
