@@ -123,7 +123,7 @@ E26：PLAN_ID = 内置户型 ? PLAN_FP : 新生成的 'p…'
     走 STORE.lsGet / lsRemove；采用前 docMatchesPlan() 逐坐标核对，且只在内置户型下查
 ```
 
-**门面的六条红线**（`tests/storage/store.test.ts` 22 条 + `store-warm.test.ts` 10 条 +
+**门面的七条红线**（`tests/storage/store.test.ts` 22 条 + `store-warm.test.ts` 10 条 + `store-ahead.test.ts` 5 条 +
 `plans.test.ts` 30+ 条守着）：
 
 1. **同步读**：`warm()` 未完成前 `get()` 直接读 localStorage —— 与旧行为逐字节一致，
@@ -143,6 +143,12 @@ E26：PLAN_ID = 内置户型 ? PLAN_FP : 新生成的 'p…'
    闸门只在主存真的是 IndexedDB 时生效（主存就是 localStorage 时 `get()` 直读那份存放），
    且不靠时间超时（虚拟时间冻结 `performance.now()`）。实测过的破坏：切一次户型把 1.7MB 存档
    写成 5.2KB 的内置通用户型，而且再也回不来（`storage-probe` 阶段 2 先红后绿）。
+7. **「主存为准」只在主存不落后时成立**（S14 期间 E2E 钓出，#70）：写主存有 200ms 防抖，`pagehide` 时才 flush，
+   而卸载期间发起的 IDB 事务常常来不及提交。刷新后 `warm()` 看到「LS 新、主存旧」，旧口径按「主存为准」
+   用旧值把 LS 的新值盖掉 —— 改完马上刷新，最后那一下就没了（E2E `outlet-tool` 约三次一回：拖动后 at 8.86，
+   刷新后变回拖动前的 6.85）。现在每个键「LS 领先主存」这件事同步记在 LS（`planner_store_ls_ahead`）：
+   `set` / `remove` 时记，主存写成功**且写进去的就是当前最新值**时划掉；warm 时被记着的键以 LS 为准并回灌主存
+   （删除同样记，否则删掉的东西会从主存里复活）。太大没镜像进 LS 的值不记（LS 里没有它，让 LS 赢等于删掉它）。
 
 **目录是 app 数据，摆法才是用户数据**：280 条目录（商品/尺寸/价格/模型代码）在 `app.html` 里，
 与 localStorage 无关；localStorage 里只有「哪件商品摆在哪个坐标」。
@@ -357,6 +363,10 @@ dist(generic) 三份。新工具或新家具换个户型就坏 → 立刻红。
     三角形数必须按索引口径（`(index ? index.count : position.count)/3`）：
     `BoxGeometry` 24 顶点 / 36 索引 = 12 三角形，读成 8 就是「单件 / 场景 / 包建模记账」三条预算全部失真，
     而填充率类断言抓不到它（它按包围盒，不按三角形）。
+22. **挂在别的实体上的东西存「相对宿主」，坐标只是派生缓存（S14 电源插座）** ——
+    `outlets[]` 的事实来源是 `host`/`hostId` + `at` + `side` + `dh`，`(x,y,rot,h)` 由 `syncOutlets()` 在
+    `build2D` / `buildStatic3D` 入口派生。宿主被拖 / 改高 / 整图重标定时挂件自己跟着走，不需要在每条变更路径上
+    写一遍跟随；宿主被删时挂件一起删（同一步撤销、提示里说出来）。新加任何「挂件」类实体照这个口径。
 
 
 ---
