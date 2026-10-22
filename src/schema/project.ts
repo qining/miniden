@@ -135,6 +135,34 @@ export interface Run {
   userIndex?: number;
 }
 
+/* S14：电源插座 —— 挂在墙面 / 台面挡水墙 / 台柜上的点状实体（用户放置，无内置）。
+   位置的事实来源是「相对宿主」：host/hostId + at（沿宿主的距离，ft）+ side（哪一面）+ dh（离宿主台面的高）。
+   (x, y, rot, h) 是由宿主派生出来的缓存（安装面上的那一点 / 面板正面朝向 0=+x 90=+y / 中心离地高），
+   宿主找不到时（导入的文档宿主 id 对不上）就用缓存，插座留在原地。
+   这样拖台柜、改台面高、整图重标定时插座自己跟着走（不用每条路径各写一遍跟随）。
+   side：墙 = ±1（哪一面墙皮）；台面 = 0 挡水墙 / 1 柜体正面（中岛）；台柜 = 0..3（局部 -y/+x/+y/-x 边）。
+   纯增量可选字段：不进 docToLegacy 投影。 */
+export type OutletKind = 'std' | 'usb' | 'gfci';
+export const OUTLET_KINDS: OutletKind[] = ['std', 'usb', 'gfci'];
+export type OutletHost = 'wall' | 'run' | 'fx';
+const OUTLET_HOSTS: OutletHost[] = ['wall', 'run', 'fx'];
+export const OUTLET_MAX_H = 12; // ft：比任何天花都高就是笔误（ceilingH 缺省 8.8ft）
+export interface Outlet {
+  id: string;
+  x: number;
+  y: number; // ft
+  rot: number; // 度：面板正面朝向
+  h: number; // ft：面板中心离地高
+  kind: OutletKind;
+  n?: number; // 联数 1..3（缺省 1）
+  host?: OutletHost;
+  hostId?: string;
+  at?: number; // ft：沿宿主（墙段 / 台面 path / 台柜那条边）的距离
+  side?: number; // 见上
+  dh?: number; // ft：台面 / 台柜宿主时离台面的高（h = 台面高 + dh）
+  src?: 'user';
+}
+
 export interface EnvState {
   preset: string; // 环境预设（R3：seattle-city / …）
   mode: 'day' | 'night';
@@ -199,6 +227,7 @@ export interface ProjectDoc {
   rooms: Room[];
   fixtures: Fixture[];
   runs?: Run[]; // S12：台面/柜体 run（纯增量可选字段，不进投影）
+  outlets?: Outlet[]; // S14：电源插座（纯增量可选字段，不进投影）
   env: EnvState;
   baseImage?: BaseImage; // S7：用户底图（可选）
   floorOutline?: Pt[][]; // S11：地板轮廓（ft 多边形，导出/导入往返用）。纯增量可选字段，不进 docToLegacy 投影
@@ -218,11 +247,12 @@ const ID_PREFIX: Record<string, string> = {
   room: 'r',
   fixture: 'f',
   run: 'rn',
+  outlet: 'ol',
 };
 
 /** 下一个未占用的稳定 id（w01, w02, …）。 */
 export function nextId(
-  doc: Pick<ProjectDoc, 'walls' | 'windows' | 'doors' | 'solids' | 'rooms' | 'fixtures' | 'runs'>,
+  doc: Pick<ProjectDoc, 'walls' | 'windows' | 'doors' | 'solids' | 'rooms' | 'fixtures' | 'runs' | 'outlets'>,
   kind: keyof typeof ID_PREFIX
 ): string {
   const p = ID_PREFIX[kind];
@@ -239,7 +269,9 @@ export function nextId(
               ? doc.rooms
               : kind === 'fixture'
                 ? doc.fixtures
-                : doc.runs) ?? [];
+                : kind === 'outlet'
+                  ? doc.outlets
+                  : doc.runs) ?? [];
   let n = list.length + 1;
   const used = new Set(list.map((e) => e.id));
   while (used.has(`${p}${String(n).padStart(2, '0')}`)) n++;
@@ -358,6 +390,29 @@ export function validate(doc: unknown): ValidationError[] {
             fail(`runs[${i}].modules[${j}].w`, 'w 必须是正数（ft）');
         });
       }
+    });
+  }
+
+  // 电源插座（S14）：消费端按 kind / host 分支，未知值会渲成隐形件 → 在入口拒
+  if (d.outlets !== undefined) checkEntities(d.outlets, 'outlets', []);
+  if (Array.isArray(d.outlets)) {
+    (d.outlets as Array<Record<string, unknown>>).forEach((e, i) => {
+      if (typeof e !== 'object' || e === null) return;
+      for (const k of ['x', 'y', 'rot']) if (!isNum(e[k])) fail(`outlets[${i}].${k}`, `${k} 必须是数`);
+      if (!isNum(e.h) || (e.h as number) <= 0 || (e.h as number) > OUTLET_MAX_H)
+        fail(`outlets[${i}].h`, `h 必须是 (0, ${OUTLET_MAX_H}] ft 的离地高度`);
+      if (OUTLET_KINDS.indexOf(e.kind as OutletKind) < 0) fail(`outlets[${i}].kind`, `非法插座类型: ${String(e.kind)}`);
+      if (e.n !== undefined && (!Number.isInteger(e.n) || (e.n as number) < 1 || (e.n as number) > 3))
+        fail(`outlets[${i}].n`, '联数必须是 1–3 的整数');
+      if (e.host !== undefined && OUTLET_HOSTS.indexOf(e.host as OutletHost) < 0)
+        fail(`outlets[${i}].host`, `非法宿主: ${String(e.host)}`);
+      if (e.hostId !== undefined && !isStr(e.hostId)) fail(`outlets[${i}].hostId`, 'hostId 必须是字符串');
+      if (e.at !== undefined && (!isNum(e.at) || (e.at as number) < 0))
+        fail(`outlets[${i}].at`, 'at 必须是 ≥0 的数（ft）');
+      if (e.side !== undefined && (!Number.isInteger(e.side) || (e.side as number) < -1 || (e.side as number) > 3))
+        fail(`outlets[${i}].side`, 'side 必须是 -1..3 的整数');
+      if (e.dh !== undefined && (!isNum(e.dh) || Math.abs(e.dh as number) > OUTLET_MAX_H))
+        fail(`outlets[${i}].dh`, `dh 必须是 |dh| ≤ ${OUTLET_MAX_H} 的数（ft）`);
     });
   }
 
@@ -628,6 +683,7 @@ export function projectSchema(): object {
       rooms: { type: 'array', items: { $ref: '#/definitions/room' } },
       fixtures: { type: 'array', items: { $ref: '#/definitions/fixture' } },
       runs: { type: 'array', items: { $ref: '#/definitions/run' } },
+      outlets: { type: 'array', items: { $ref: '#/definitions/outlet' } },
       env: {
         type: 'object',
         required: ['preset', 'mode'],
@@ -889,6 +945,25 @@ export function projectSchema(): object {
           },
           src: { enum: ['builtin', 'user'] },
           userIndex: { type: 'integer' },
+        },
+      },
+      outlet: {
+        type: 'object',
+        required: ['id', 'x', 'y', 'rot', 'h', 'kind'],
+        properties: {
+          id: { type: 'string' },
+          x: { type: 'number' },
+          y: { type: 'number' },
+          rot: { type: 'number' },
+          h: { type: 'number', exclusiveMinimum: 0, maximum: OUTLET_MAX_H },
+          kind: { enum: OUTLET_KINDS },
+          n: { type: 'integer', minimum: 1, maximum: 3 },
+          host: { enum: OUTLET_HOSTS },
+          hostId: { type: 'string' },
+          at: { type: 'number', minimum: 0 },
+          side: { type: 'integer', minimum: -1, maximum: 3 },
+          dh: { type: 'number', minimum: -OUTLET_MAX_H, maximum: OUTLET_MAX_H },
+          src: { enum: ['user'] },
         },
       },
     },

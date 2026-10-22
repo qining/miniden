@@ -60,7 +60,11 @@
     background:var(--panel2); color:var(--text); border:1px solid var(--line);
     border-radius:6px; padding:6px 8px; font-size:13px; outline:none;
   }
-  #wallbar{display:flex; align-items:center; gap:10px; padding:6px 14px; background:var(--bar-bg); border-bottom:1px solid var(--bar-line); flex-wrap:nowrap; overflow:hidden; height:34px;}
+  /* 放不下就整组换到第二行，绝不压扁（S14 实测：加第 7 个工具后 1700 宽时按钮被压成两行字、1500 宽压成三行，
+     「选择/调整」读成竖排的「择/调」；而以前的 scrollWidth 断言是绿的 —— flex 子元素先自己收缩、不溢出） */
+  #wallbar{display:flex; align-items:center; gap:6px 10px; padding:6px 14px; background:var(--bar-bg); border-bottom:1px solid var(--bar-line); flex-wrap:wrap; overflow:hidden; min-height:34px; box-sizing:border-box;}
+  #wallbar > *{flex-shrink:0;}
+  #wallbar button, #wallbar .wlbl{white-space:nowrap;}
   #wallbar .wlbl{color:var(--muted); font-size:12px;}
   #wallbar #wThick{width:52px; background:var(--field-bg); color:var(--fg); border:1px solid var(--field-line); border-radius:6px; padding:2px 4px;}
   #wallbar #wLen{width:56px; background:var(--field-bg); color:var(--fg); border:1px solid var(--field-line); border-radius:6px; padding:2px 4px;}
@@ -403,6 +407,7 @@
     <button data-t="door">加门</button>
     <button data-t="fx" title="放置洁具（点击放置；台柜/镜子贴墙；选中后可拖、旋转、删除）">洁具</button>
     <button data-t="run" title="画台面/柜体（沿墙点一条折线，再点末点结束；选中后可拖、改深度/台面高、放模块、删除）">台面</button>
+    <button data-t="outlet" title="放电源插座（点墙附近 = 贴墙面；点台面 / 台柜 = 挂在它靠墙那一侧；选中后可沿宿主拖、改类型 / 联数 / 离地高、删除）">插座</button>
   </div>
   <div id="ctxSlot">
   <span id="doorCtl">
@@ -425,6 +430,11 @@
       <option value="shower">淋浴</option><option value="mirror">镜子</option>
     </select>
     <label class="wlbl">旋转 <input id="fxRot" type="number" min="0" max="359" step="1" value="0"> °</label>
+  </span>
+  <span id="outletCtl">
+    <select id="olKind" title="插座类型"><option value="std">普通</option><option value="usb">带 USB</option><option value="gfci">防水 GFCI</option></select>
+    <select id="olN" title="联数（并排几个）"><option value="1">1 联</option><option value="2">2 联</option><option value="3">3 联</option></select>
+    <label class="wlbl">离地 <input id="olH" type="number" min="5" max="240" step="1" placeholder="自动"> cm</label>
   </span>
   <span id="runCtl">
     <label class="wlbl">深 <input id="runDepth" type="number" min="15" max="120" step="1" value="60"> cm</label>
@@ -637,14 +647,14 @@
 /* VENDORED —— 由 scripts/build-storage.mjs 从 src/storage/ 编译生成，勿手改。
    src/ 是唯一事实来源（单测 + tsc strict）；改 src/storage/ 后跑 `npm run storage:build`。
    build.mjs 校验本块与最新编译输出逐字节一致。 */
-"use strict";(()=>{var U=Object.defineProperty;var Z=(n,e)=>{for(var t in e)U(n,t,{get:e[t],enumerable:!0})};var $="miniden-planner",G="miniden_kv",nn="planner_store_degraded";function en(n){if(!n||typeof n.getItem!="function")return null;try{n.setItem("__miniden_probe","1"),n.removeItem("__miniden_probe")}catch{return null}return{name:"localStorage",read:async e=>{let t={};for(let i of e)try{let r=n.getItem(i);typeof r=="string"&&(t[i]=r)}catch{}return t},write:async(e,t)=>{try{return n.setItem(e,t),!0}catch{return!1}},remove:async e=>{try{return n.removeItem(e),!0}catch{return!1}}}}function tn(n){return new Promise(e=>{let t=null;try{t=n()}catch{e(void 0);return}if(!t){e(void 0);return}t.onsuccess=()=>e(t.result),t.onerror=()=>e(void 0)})}function W(n){return new Promise(e=>{let t=null;try{t=n()}catch{e(!1);return}if(!t){e(!1);return}t.onsuccess=()=>e(!0),t.onerror=()=>e(!1)})}function rn(n,e=G){let t=i=>{if(!n.transaction)return null;let r;try{r=n.transaction(e,i)}catch{return null}if(!r||typeof r.objectStore!="function")return null;try{return r.objectStore(e)}catch{return null}};return{name:"indexedDB",read:async i=>{let r={};for(let o of i){let d=t("readonly");if(!d)break;let l=await tn(()=>d.get(o));typeof l=="string"&&(r[o]=l)}return r},write:async(i,r)=>{let o=t("readwrite");return o?W(()=>o.put(r,i)):!1},remove:async i=>{let r=t("readwrite");return r?W(()=>r.delete(i)):!1}}}function H(n=$,e=1,t=G){let r=globalThis.indexedDB;if(!r||typeof r.open!="function")return Promise.resolve(null);let o=r.open.bind(r);return new Promise(d=>{let l;try{l=o(n,e)}catch{d(null);return}if(!l){d(null);return}l.onupgradeneeded=()=>{let u=l.result;if(u&&typeof u.createObjectStore=="function")try{u.createObjectStore(t)}catch{}},l.onsuccess=()=>{let u=l.result;if(!u||typeof u.transaction!="function"){d(null);return}d(rn(u,t))},l.onerror=()=>d(null),l.onblocked=()=>d(null)})}function z(n){let e=n.mirrorLimit??15e5,t=n.debounceMs??200,i=n.degradedFlag??nn,r=n.ls??null,o=new Map,d=new Map,l=new Set,u=new Set,k=new Set(n.warmKeys??[]),O=[],M=new Set,f={migrated:0,conflicts:0,idbWrites:0,idbFails:0,lsMirrors:0,lsFails:0,skippedMirror:0,hydrated:0},S=null,D=null,b=!1,N=Promise.resolve({migrated:0,conflicts:0,idbWrites:0,idbFails:0,lsMirrors:0,lsFails:0,skippedMirror:0,hydrated:0}),B=new Set,P=null,w=s=>{if(!r)return null;try{let a=r.getItem(s);return typeof a=="string"?a:null}catch{return null}},R=(s,a)=>{if(!r)return!1;try{return r.setItem(s,a),!0}catch{return!1}},F=()=>{b=!0,R(i,"1")},Y=()=>{if(b){b=!1;try{r?.removeItem(i)}catch{}}};function q(){if(t<=0){A();return}if(P!==null)return;let s=globalThis;if(typeof s.setTimeout!="function"){A();return}P=s.setTimeout(()=>{P=null,A()},t)}async function C(){return S||(D||(D=Promise.resolve(n.idb??null).then(s=>S=s??null)),D)}function j(s){for(let a of s??[])k.add(a);return N=N.then(()=>Q()),N}async function Q(){let s=Array.from(k).filter(c=>!B.has(c));if(!s.length)return{...f};let a=await C(),I=a?await a.read(s):{},m={};for(let c of s){let g=w(c);g!==null&&(m[c]=g)}b=w(i)==="1";let h=!1,_=[];for(let c of s){let g=I[c],y=m[c];if(u.has(c))continue;g!==void 0&&!b?(o.set(c,g),y!==void 0&&y!==g&&(f.conflicts++,g.length<=e&&R(c,g))):y!==void 0?(o.set(c,y),a&&(g===void 0?f.migrated++:g!==y&&f.conflicts++,await a.write(c,y)||(F(),h=!0))):g!==void 0&&o.set(c,g);let V=o.get(c);V!==void 0&&V!==y&&(M.add(c),_.push(c),f.hydrated++)}for(let c of s)B.add(c);if(b&&(h?R(i,"1"):Y()),_.length)for(let c of O)c(_);return{...f}}async function A(){if(P!==null){let m=globalThis;typeof m.clearTimeout=="function"&&m.clearTimeout(P),P=null}let s=await C(),a=Array.from(d.entries()),I=Array.from(l);if(d.clear(),l.clear(),!s)return{...f};for(let[m,h]of a)await s.write(m,h)?f.idbWrites++:(f.idbFails++,F());for(let m of I)await s.remove(m)?f.idbWrites++:(f.idbFails++,F());return{...f}}return{warm:j,warming(s){return s.some(a=>k.has(a)&&!B.has(a))},ready:()=>j(),get(s){return o.has(s)?o.get(s)??null:w(s)},set(s,a){o.set(s,a),u.add(s),d.set(s,a),l.delete(s),a.length<=e?R(s,a)?f.lsMirrors++:f.lsFails++:f.skippedMirror++,q()},remove(s){o.set(s,null),u.add(s),d.delete(s),l.add(s);try{r?.removeItem(s)}catch{}q()},has(s){return o.has(s)?o.get(s)!==null:w(s)!==null},lsGet:w,lsRemove(s){try{r?.removeItem(s)}catch{}},flush:A,onHydrate(s){O.push(s),M.size&&s(Array.from(M))},stats:()=>({...f}),degraded:()=>b,backend:()=>S?S.name:en(r)?"localStorage":"none"}}var T={};Z(T,{MAX_PLANS:()=>an,PLANS_KEY:()=>sn,PLANS_SCHEMA:()=>on,docKeyFor:()=>ln,hasPlan:()=>K,itemsKeyFor:()=>un,newPlanId:()=>wn,normalizeRegistry:()=>mn,planById:()=>L,removePlan:()=>Pn,renamePlan:()=>Sn,serializeRegistry:()=>pn,setActive:()=>kn,sortedPlans:()=>hn,touchPlan:()=>yn,trimRegistry:()=>E,upsertPlan:()=>bn});var sn="planner_plans_v1",on=1,an=24,ln=n=>"planner_doc_v1:"+n,un=n=>"planner_v1:"+n,v=n=>typeof n=="string"&&n.length>0&&n.length<=64,x=n=>typeof n=="string"&&n.length>0&&n.length<=120,cn=n=>n==="builtin"||n==="imported"||n==="blank",X=n=>typeof n=="number"&&Number.isFinite(n);function dn(n){if(!n||typeof n!="object"||Array.isArray(n))return;let e=n,t=i=>typeof i=="number"&&Number.isFinite(i)&&i>=0?Math.floor(i):0;return{walls:t(e.walls),doors:t(e.doors),fixtures:t(e.fixtures),items:t(e.items)}}function fn(n){if(!n||typeof n!="object"||Array.isArray(n))return null;let e=n;if(!v(e.id)||!x(e.name)||!cn(e.origin))return null;let t=X(e.createdAt)?e.createdAt:0,i={id:e.id,name:e.name,origin:e.origin,createdAt:t,updatedAt:X(e.updatedAt)?e.updatedAt:t},r=dn(e.counts);return r&&(i.counts=r),i}function gn(n,e,t){return!v(e)||n.plans.some(i=>i.id===e)?n:{...n,plans:[{id:e,name:t,origin:"builtin",createdAt:0,updatedAt:0},...n.plans]}}function mn(n,e,t="\u5185\u7F6E\u6237\u578B"){let i=[],r="";if(n&&typeof n=="object"&&!Array.isArray(n)){let u=n;Array.isArray(u.plans)&&(i=u.plans.map(fn).filter(k=>k!==null)),v(u.active)&&(r=u.active)}let o=new Map;for(let u of i)o.set(u.id,u);i=Array.from(o.values());let l=gn({v:1,active:r,plans:i},e,t);return l.plans.some(u=>u.id===l.active)||(l.active=v(e)?e:l.plans[0]?.id??""),E(l)}function E(n){if(n.plans.length<=24)return n;let e=new Set([n.active]);for(let r of n.plans)r.origin==="builtin"&&e.add(r.id);let t=n.plans.filter(r=>!e.has(r.id)).sort((r,o)=>r.updatedAt-o.updatedAt),i=new Set(t.slice(0,n.plans.length-24).map(r=>r.id));return{...n,plans:n.plans.filter(r=>!i.has(r.id))}}function pn(n){return JSON.stringify({v:1,active:n.active,plans:n.plans})}function L(n,e){return n.plans.find(t=>t.id===e)??null}function K(n,e){return n.plans.some(t=>t.id===e)}function bn(n,e){if(!v(e.id)||!x(e.name))return n;let t=L(n,e.id),i={id:e.id,name:e.name,origin:t?t.origin:e.origin,createdAt:t?t.createdAt:e.now,updatedAt:e.now};e.counts&&(i.counts=e.counts);let r=t?n.plans.map(o=>o.id===e.id?i:o):[...n.plans,i];return E({...n,active:e.id,plans:r})}function yn(n,e,t){let i=L(n,e);if(!i)return n;let r={...i};return t.now!==void 0&&(r.updatedAt=t.now),t.counts&&(r.counts=t.counts),t.name!==void 0&&x(t.name)&&(r.name=t.name),{...n,plans:n.plans.map(o=>o.id===e?r:o)}}function kn(n,e){return K(n,e)?{...n,active:e}:n}function Pn(n,e){let t=L(n,e);if(!t||t.origin==="builtin"||n.plans.length<=1)return null;let i=n.plans.filter(o=>o.id!==e),r=n.active;if(r===e){let o=i.find(d=>d.origin==="builtin")||i[0];r=o?o.id:""}return{...n,active:r,plans:i}}function Sn(n,e,t){return!K(n,e)||!x(t)?null:{...n,plans:n.plans.map(i=>i.id===e?{...i,name:t}:i)}}function wn(n,e){let t=Math.floor(e()*1e9).toString(36);return"p"+n.toString(36)+t}function hn(n){return[...n.plans].sort((e,t)=>e.origin==="builtin"&&t.origin!=="builtin"?-1:t.origin==="builtin"&&e.origin!=="builtin"?1:t.updatedAt-e.updatedAt)}var p=globalThis,vn=p.localStorage&&typeof p.localStorage.getItem=="function"?p.localStorage:null,J=z({idb:H(),ls:vn});p.MINIDEN_STORE=J;p.MINIDEN_PLANS=T;if(typeof p.addEventListener=="function"){let n=p.addEventListener,e=()=>{try{J.flush()}catch{}};n("pagehide",e),n("visibilitychange",()=>{let t=p.document;t&&t.visibilityState==="hidden"&&e()})}})();
+"use strict";(()=>{var tn=Object.defineProperty;var rn=(n,e)=>{for(var t in e)tn(n,t,{get:e[t],enumerable:!0})};var sn="miniden-planner",J="miniden_kv",on="planner_store_degraded",O="planner_store_ls_ahead";function an(n){if(!n||typeof n.getItem!="function")return null;try{n.setItem("__miniden_probe","1"),n.removeItem("__miniden_probe")}catch{return null}return{name:"localStorage",read:async e=>{let t={};for(let s of e)try{let r=n.getItem(s);typeof r=="string"&&(t[s]=r)}catch{}return t},write:async(e,t)=>{try{return n.setItem(e,t),!0}catch{return!1}},remove:async e=>{try{return n.removeItem(e),!0}catch{return!1}}}}function ln(n){return new Promise(e=>{let t=null;try{t=n()}catch{e(void 0);return}if(!t){e(void 0);return}t.onsuccess=()=>e(t.result),t.onerror=()=>e(void 0)})}function z(n){return new Promise(e=>{let t=null;try{t=n()}catch{e(!1);return}if(!t){e(!1);return}t.onsuccess=()=>e(!0),t.onerror=()=>e(!1)})}function un(n,e=J){let t=s=>{if(!n.transaction)return null;let r;try{r=n.transaction(e,s)}catch{return null}if(!r||typeof r.objectStore!="function")return null;try{return r.objectStore(e)}catch{return null}};return{name:"indexedDB",read:async s=>{let r={};for(let o of s){let d=t("readonly");if(!d)break;let c=await ln(()=>d.get(o));typeof c=="string"&&(r[o]=c)}return r},write:async(s,r)=>{let o=t("readwrite");return o?z(()=>o.put(r,s)):!1},remove:async s=>{let r=t("readwrite");return r?z(()=>r.delete(s)):!1}}}function X(n=sn,e=1,t=J){let r=globalThis.indexedDB;if(!r||typeof r.open!="function")return Promise.resolve(null);let o=r.open.bind(r);return new Promise(d=>{let c;try{c=o(n,e)}catch{d(null);return}if(!c){d(null);return}c.onupgradeneeded=()=>{let u=c.result;if(u&&typeof u.createObjectStore=="function")try{u.createObjectStore(t)}catch{}},c.onsuccess=()=>{let u=c.result;if(!u||typeof u.transaction!="function"){d(null);return}d(un(u,t))},c.onerror=()=>d(null),c.onblocked=()=>d(null)})}function Y(n){let e=n.mirrorLimit??15e5,t=n.debounceMs??200,s=n.degradedFlag??on,r=n.ls??null,o=new Map,d=new Map,c=new Set,u=new Set,w=new Set(n.warmKeys??[]),j=[],B=new Set,f={migrated:0,conflicts:0,idbWrites:0,idbFails:0,lsMirrors:0,lsFails:0,skippedMirror:0,hydrated:0},A=null,E=null,b=!1,F=Promise.resolve({migrated:0,conflicts:0,idbWrites:0,idbFails:0,lsMirrors:0,lsFails:0,skippedMirror:0,hydrated:0}),K=new Set,h=null,v=i=>{if(!r)return null;try{let a=r.getItem(i);return typeof a=="string"?a:null}catch{return null}},_=(i,a)=>{if(!r)return!1;try{return r.setItem(i,a),!0}catch{return!1}},k=new Set;try{let i=JSON.parse(v(O)||"[]");if(Array.isArray(i))for(let a of i)typeof a=="string"&&k.add(a)}catch{}let Z=()=>{if(r)try{k.size?r.setItem(O,JSON.stringify(Array.from(k))):r.removeItem(O)}catch{}},P=(i,a)=>{a!==k.has(i)&&(a?k.add(i):k.delete(i),Z())},I=()=>{b=!0,_(s,"1")},$=()=>{if(b){b=!1;try{r?.removeItem(s)}catch{}}};function V(){if(t<=0){x();return}if(h!==null)return;let i=globalThis;if(typeof i.setTimeout!="function"){x();return}h=i.setTimeout(()=>{h=null,x()},t)}async function H(){return A||(E||(E=Promise.resolve(n.idb??null).then(i=>A=i??null)),E)}function W(i){for(let a of i??[])w.add(a);return F=F.then(()=>nn()),F}async function nn(){let i=Array.from(w).filter(l=>!K.has(l));if(!i.length)return{...f};let a=await H(),L=a?await a.read(i):{},g={};for(let l of i){let m=v(l);m!==null&&(g[l]=m)}b=v(s)==="1";let S=!1,M=[];for(let l of i){let m=L[l],p=g[l];if(k.has(l)&&!u.has(l)){m!==p&&f.conflicts++,o.set(l,p===void 0?null:p),a&&((p===void 0?await a.remove(l):await a.write(l,p))?P(l,!1):(I(),S=!0));continue}if(u.has(l))continue;m!==void 0&&!b?(o.set(l,m),p!==void 0&&p!==m&&(f.conflicts++,m.length<=e&&_(l,m))):p!==void 0?(o.set(l,p),a&&(m===void 0?f.migrated++:m!==p&&f.conflicts++,await a.write(l,p)||(I(),S=!0))):m!==void 0&&o.set(l,m);let G=o.get(l);G!==void 0&&G!==p&&(B.add(l),M.push(l),f.hydrated++)}for(let l of i)K.add(l);if(b&&(S?_(s,"1"):$()),M.length)for(let l of j)l(M);return{...f}}async function x(){if(h!==null){let g=globalThis;typeof g.clearTimeout=="function"&&g.clearTimeout(h),h=null}let i=await H(),a=Array.from(d.entries()),L=Array.from(c);if(d.clear(),c.clear(),!i)return{...f};for(let[g,S]of a)await i.write(g,S)?(f.idbWrites++,o.get(g)===S&&!d.has(g)&&P(g,!1)):(f.idbFails++,I());for(let g of L)await i.remove(g)?(f.idbWrites++,o.get(g)===null&&!d.has(g)&&P(g,!1)):(f.idbFails++,I());return{...f}}return{warm:W,warming(i){return i.some(a=>w.has(a)&&!K.has(a))},ready:()=>W(),get(i){return o.has(i)?o.get(i)??null:v(i)},set(i,a){o.set(i,a),u.add(i),d.set(i,a),c.delete(i),a.length<=e?_(i,a)?(f.lsMirrors++,P(i,!0)):(f.lsFails++,P(i,!1)):(f.skippedMirror++,P(i,!1)),V()},remove(i){o.set(i,null),u.add(i),d.delete(i),c.add(i);try{r?.removeItem(i),P(i,!0)}catch{}V()},has(i){return o.has(i)?o.get(i)!==null:v(i)!==null},lsGet:v,lsRemove(i){try{r?.removeItem(i)}catch{}},flush:x,onHydrate(i){j.push(i),B.size&&i(Array.from(B))},stats:()=>({...f}),degraded:()=>b,backend:()=>A?A.name:an(r)?"localStorage":"none"}}var C={};rn(C,{MAX_PLANS:()=>fn,PLANS_KEY:()=>cn,PLANS_SCHEMA:()=>dn,docKeyFor:()=>gn,hasPlan:()=>q,itemsKeyFor:()=>mn,newPlanId:()=>_n,normalizeRegistry:()=>Pn,planById:()=>D,removePlan:()=>An,renamePlan:()=>Rn,serializeRegistry:()=>Sn,setActive:()=>vn,sortedPlans:()=>In,touchPlan:()=>hn,trimRegistry:()=>T,upsertPlan:()=>wn});var cn="planner_plans_v1",dn=1,fn=24,gn=n=>"planner_doc_v1:"+n,mn=n=>"planner_v1:"+n,R=n=>typeof n=="string"&&n.length>0&&n.length<=64,N=n=>typeof n=="string"&&n.length>0&&n.length<=120,pn=n=>n==="builtin"||n==="imported"||n==="blank",Q=n=>typeof n=="number"&&Number.isFinite(n);function yn(n){if(!n||typeof n!="object"||Array.isArray(n))return;let e=n,t=s=>typeof s=="number"&&Number.isFinite(s)&&s>=0?Math.floor(s):0;return{walls:t(e.walls),doors:t(e.doors),fixtures:t(e.fixtures),items:t(e.items)}}function bn(n){if(!n||typeof n!="object"||Array.isArray(n))return null;let e=n;if(!R(e.id)||!N(e.name)||!pn(e.origin))return null;let t=Q(e.createdAt)?e.createdAt:0,s={id:e.id,name:e.name,origin:e.origin,createdAt:t,updatedAt:Q(e.updatedAt)?e.updatedAt:t},r=yn(e.counts);return r&&(s.counts=r),s}function kn(n,e,t){return!R(e)||n.plans.some(s=>s.id===e)?n:{...n,plans:[{id:e,name:t,origin:"builtin",createdAt:0,updatedAt:0},...n.plans]}}function Pn(n,e,t="\u5185\u7F6E\u6237\u578B"){let s=[],r="";if(n&&typeof n=="object"&&!Array.isArray(n)){let u=n;Array.isArray(u.plans)&&(s=u.plans.map(bn).filter(w=>w!==null)),R(u.active)&&(r=u.active)}let o=new Map;for(let u of s)o.set(u.id,u);s=Array.from(o.values());let c=kn({v:1,active:r,plans:s},e,t);return c.plans.some(u=>u.id===c.active)||(c.active=R(e)?e:c.plans[0]?.id??""),T(c)}function T(n){if(n.plans.length<=24)return n;let e=new Set([n.active]);for(let r of n.plans)r.origin==="builtin"&&e.add(r.id);let t=n.plans.filter(r=>!e.has(r.id)).sort((r,o)=>r.updatedAt-o.updatedAt),s=new Set(t.slice(0,n.plans.length-24).map(r=>r.id));return{...n,plans:n.plans.filter(r=>!s.has(r.id))}}function Sn(n){return JSON.stringify({v:1,active:n.active,plans:n.plans})}function D(n,e){return n.plans.find(t=>t.id===e)??null}function q(n,e){return n.plans.some(t=>t.id===e)}function wn(n,e){if(!R(e.id)||!N(e.name))return n;let t=D(n,e.id),s={id:e.id,name:e.name,origin:t?t.origin:e.origin,createdAt:t?t.createdAt:e.now,updatedAt:e.now};e.counts&&(s.counts=e.counts);let r=t?n.plans.map(o=>o.id===e.id?s:o):[...n.plans,s];return T({...n,active:e.id,plans:r})}function hn(n,e,t){let s=D(n,e);if(!s)return n;let r={...s};return t.now!==void 0&&(r.updatedAt=t.now),t.counts&&(r.counts=t.counts),t.name!==void 0&&N(t.name)&&(r.name=t.name),{...n,plans:n.plans.map(o=>o.id===e?r:o)}}function vn(n,e){return q(n,e)?{...n,active:e}:n}function An(n,e){let t=D(n,e);if(!t||t.origin==="builtin"||n.plans.length<=1)return null;let s=n.plans.filter(o=>o.id!==e),r=n.active;if(r===e){let o=s.find(d=>d.origin==="builtin")||s[0];r=o?o.id:""}return{...n,active:r,plans:s}}function Rn(n,e,t){return!q(n,e)||!N(t)?null:{...n,plans:n.plans.map(s=>s.id===e?{...s,name:t}:s)}}function _n(n,e){let t=Math.floor(e()*1e9).toString(36);return"p"+n.toString(36)+t}function In(n){return[...n.plans].sort((e,t)=>e.origin==="builtin"&&t.origin!=="builtin"?-1:t.origin==="builtin"&&e.origin!=="builtin"?1:t.updatedAt-e.updatedAt)}var y=globalThis,xn=y.localStorage&&typeof y.localStorage.getItem=="function"?y.localStorage:null,U=Y({idb:X(),ls:xn});y.MINIDEN_STORE=U;y.MINIDEN_PLANS=C;if(typeof y.addEventListener=="function"){let n=y.addEventListener,e=()=>{try{U.flush()}catch{}};n("pagehide",e),n("visibilitychange",()=>{let t=y.document;t&&t.visibilityState==="hidden"&&e()})}})();
 
 </script><!-- /miniden-storage -->
 <script id="miniden-schema">
 /* VENDORED —— 由 scripts/build-schema.mjs 从 src/schema/ 编译生成，勿手改。
    src/ 是唯一事实来源（31 单测 + tsc strict）；改 src/schema/ 后跑 `npm run schema:build`。
    build.mjs 校验本块与最新编译输出逐字节一致。 */
-"use strict";(()=>{var K=Object.defineProperty;var D=(n,l)=>{for(var e in l)K(n,e,{get:l[e],enumerable:!0})};var F={};D(F,{arcFrom3Points:()=>V,arcLen:()=>X,arcPoint:()=>L,arcSweep:()=>v,dist:()=>P,expand:()=>_,fullCircle:()=>z,polyArea:()=>B,segLen:()=>j});function L(n,l){let e=l*Math.PI/180;return[n.cx+n.r*Math.cos(e),n.cy+n.r*Math.sin(e)]}function v(n){let l=n.a1-n.a0;return n.dir>0?l<=0&&(l+=360):l>=0&&(l-=360),l}function X(n){return Math.abs(v(n))/360*2*Math.PI*n.r}function j(n){return Math.hypot(n.x2-n.x1,n.y2-n.y1)}function P(n,l){return Math.hypot(n[0]-l[0],n[1]-l[1])}function _(n,l={}){let e=l.chordTol??.01;if(n.t==="seg")return P([n.x1,n.y1],[n.x2,n.y2])<1e-9?[]:[[[n.x1,n.y1],[n.x2,n.y2]]];if(n.t==="poly"){let t=n.pts.length>=2?n.pts:[],m=[];for(let s=0;s<t.length;s++){let i=t[s],o=t[(s+1)%t.length];P(i,o)<1e-9||m.push([i,o])}return m}if(n.r<1e-9)return[];let a=v(n),p=Math.abs(a);if(p<1e-9)return[[L(n,n.a0),L(n,n.a0)]];let g;if(l.segments!=null)g=Math.max(2,Math.round(l.segments));else{let t=e>=n.r?180:2*Math.acos(1-e/n.r)*180/Math.PI;g=Math.max(2,Math.ceil(p/t))}let c=[],y=L(n,n.a0);for(let t=1;t<=g;t++){let m=n.a0+a/g*t,s=L(n,m);c.push([y,s]),y=s}return c}function B(n){let l=0;for(let e=0;e<n.length;e++){let[a,p]=n[e],[g,c]=n[(e+1)%n.length];l+=a*c-g*p}return l/2}function V(n,l,e){let a=n[0],p=n[1],g=l[0],c=l[1],y=e[0],t=e[1],m=2*(a*(c-t)+g*(t-p)+y*(p-c));if(Math.abs(m)<1e-12)return null;let s=((a*a+p*p)*(c-t)+(g*g+c*c)*(t-p)+(y*y+t*t)*(p-c))/m,i=((a*a+p*p)*(y-g)+(g*g+c*c)*(a-y)+(y*y+t*t)*(g-a))/m,o=Math.hypot(a-s,p-i),u=S=>Math.atan2(S[1]-i,S[0]-s)*180/Math.PI,r=u(n),d=u(e),f=u(l),x=(g-a)*(t-p)-(c-p)*(y-a)>=0?1:-1,h;if(x>0)for(h=d-r;h<=0;)h+=360;else for(h=d-r;h>=0;)h-=360;let w=S=>{let $;if(S>0){for($=f-r;$<0;)$+=360;for(;$>=360;)$-=360;return $<=S+1e-9}for($=r-f;$<0;)$+=360;for(;$>=360;)$-=360;return $<=-S+1e-9};if(w(h))return{arc:{t:"arc",cx:s,cy:i,r:o,a0:r,a1:r+h,dir:x},dir:x};let N=h>0?h-360:h+360;return w(N)?{arc:{t:"arc",cx:s,cy:i,r:o,a0:r,a1:r+N,dir:-x},dir:-x}:null}function z(n,l,e){return{t:"arc",cx:n,cy:l,r:e,a0:0,a1:360,dir:1}}var T={};D(T,{FIXTURE_TYPES:()=>R,blankDoc:()=>G,checkGeoms:()=>Z,nextId:()=>E,projectSchema:()=>ee,validate:()=>Q});var R=["counter","basin","toilet","tub","shower","mirror"],Y=["sink","cooktop","fridge","dishwasher","open"],J={wall:"w",window:"n",door:"d",solid:"s",room:"r",fixture:"f",run:"rn"};function E(n,l){let e=J[l],a=(l==="wall"?n.walls:l==="window"?n.windows:l==="door"?n.doors:l==="solid"?n.solids:l==="room"?n.rooms:l==="fixture"?n.fixtures:n.runs)??[],p=a.length+1,g=new Set(a.map(c=>c.id));for(;g.has(`${e}${String(p).padStart(2,"0")}`);)p++;return`${e}${String(p).padStart(2,"0")}`}function G(n="\u672A\u547D\u540D\u6237\u578B"){return{schema:1,name:n,units:"cm",ceilingH:8.8,northRotation:0,walls:[],windows:[],doors:[],solids:[],patio:null,rooms:[],fixtures:[],runs:[],env:{preset:"seattle-city",mode:"day"},hidden:{walls:[],windows:[],doors:[],solids:[]}}}function b(n){return typeof n=="number"&&Number.isFinite(n)}function k(n){return typeof n=="string"}function Q(n){let l=[],e=(t,m)=>l.push({path:t,message:m});if(typeof n!="object"||n===null)return e("doc","\u4E0D\u662F\u5BF9\u8C61"),l;let a=n;a.schema!==1&&e("schema",`\u5FC5\u987B\u662F 1\uFF0C\u5B9E\u9645 ${String(a.schema)}`),k(a.name)||e("name","\u5FC5\u987B\u662F\u5B57\u7B26\u4E32"),a.units!=="ft"&&a.units!=="cm"&&e("units","\u5FC5\u987B\u662F ft|cm"),(!b(a.ceilingH)||a.ceilingH<=0)&&e("ceilingH","\u5FC5\u987B\u662F\u6B63\u6570\uFF08ft\uFF09"),b(a.northRotation)||e("northRotation","\u5FC5\u987B\u662F\u6570\uFF08\u5EA6\uFF09");let p=(t,m,s)=>{if(!Array.isArray(t)){e(m,"\u5FC5\u987B\u662F\u6570\u7EC4");return}for(let i=0;i<t.length;i++){let o=t[i];if(typeof o!="object"||o===null){e(`${m}[${i}]`,"\u4E0D\u662F\u5BF9\u8C61");continue}if(!k(o.id)||!o.id){e(`${m}[${i}].id`,"id \u5FC5\u987B\u662F\u975E\u7A7A\u5B57\u7B26\u4E32");continue}s.includes(o.id)&&e(`${m}[${i}].id`,`\u91CD\u590D id ${o.id}`),s.push(o.id),o.geom&&typeof o.geom!="object"&&e(`${m}[${i}].geom`,"geom \u5FC5\u987B\u662F\u539F\u8BED\u5BF9\u8C61")}},g=[];p(a.walls,"walls",g),p(a.windows,"windows",[]),p(a.doors,"doors",[]),p(a.solids,"solids",[]),p(a.rooms,"rooms",[]),p(a.fixtures,"fixtures",[]),a.runs!==void 0&&p(a.runs,"runs",[]),Array.isArray(a.runs)&&a.runs.forEach((t,m)=>{let s=t.path;!Array.isArray(s)||s.length<2?e(`runs[${m}].path`,"path \u5FC5\u987B\u662F \u22652 \u4E2A [x, y]\uFF08ft\uFF09"):s.forEach((i,o)=>{(!Array.isArray(i)||i.length!==2||!b(i[0])||!b(i[1]))&&e(`runs[${m}].path[${o}]`,"\u5FC5\u987B\u662F [x, y]\uFF08ft\uFF09")});for(let i of["depth","topH","h"])t[i]!==void 0&&(!b(t[i])||t[i]<=0)&&e(`runs[${m}].${i}`,`${i} \u5FC5\u987B\u662F\u6B63\u6570\uFF08ft\uFF09`);if(t.depth!==void 0&&t.depth>4&&e(`runs[${m}].depth`,`depth \u8D85\u8FC7\u5408\u7406\u67DC\u4F53\u6DF1\u5EA6\uFF08${t.depth} ft\uFF09`),t.topH!==void 0&&t.topH>8&&e(`runs[${m}].topH`,`topH \u8D85\u8FC7\u5408\u7406\u53F0\u9762\u9AD8\uFF08${t.topH} ft\uFF09`),t.modules!==void 0){if(!Array.isArray(t.modules)){e(`runs[${m}].modules`,"\u5FC5\u987B\u662F\u6570\u7EC4");return}t.modules.forEach((i,o)=>{if(typeof i!="object"||i===null){e(`runs[${m}].modules[${o}]`,"\u4E0D\u662F\u5BF9\u8C61");return}(!b(i.at)||i.at<0)&&e(`runs[${m}].modules[${o}].at`,"at \u5FC5\u987B\u662F \u22650 \u7684\u6570\uFF08\u6CBF path \u7684 ft\uFF09"),Y.indexOf(i.type)<0&&e(`runs[${m}].modules[${o}].type`,`type \u975E\u6CD5: ${String(i.type)}`),i.w!==void 0&&(!b(i.w)||i.w<=0)&&e(`runs[${m}].modules[${o}].w`,"w \u5FC5\u987B\u662F\u6B63\u6570\uFF08ft\uFF09")})}}),Array.isArray(a.fixtures)&&a.fixtures.forEach((t,m)=>{R.indexOf(t.t)<0&&e(`fixtures[${m}].t`,`\u975E\u6CD5\u6D01\u5177\u7C7B\u578B: ${String(t.t)}`);for(let s of["x1","y1","x2","y2"])t[s]!==void 0&&!b(t[s])&&e(`fixtures[${m}].${s}`,`${s} \u5FC5\u987B\u662F\u6570\uFF08ft\uFF09`);t.rot!==void 0&&!b(t.rot)&&e(`fixtures[${m}].rot`,"rot \u5FC5\u987B\u662F\u6570\uFF08\u5EA6\uFF09")});for(let[t,m]of[["windows",a.windows],["doors",a.doors]])Array.isArray(m)&&m.forEach((s,i)=>{let o=s;if(o.wallId!=null&&!k(o.wallId)&&e(`${t}[${i}].wallId`,"wallId \u5FC5\u987B\u662F id \u5B57\u7B26\u4E32"),o.wallId&&!g.includes(o.wallId)&&e(`${t}[${i}].wallId`,`\u5F15\u7528\u4E0D\u5B58\u5728\u7684\u5899 ${String(o.wallId)}`),(!b(o.pos)||o.pos<0||o.pos>1)&&e(`${t}[${i}].pos`,"pos \u5FC5\u987B\u5728 0..1"),(!b(o.width)||o.width<=0)&&e(`${t}[${i}].width`,"width \u5FC5\u987B\u662F\u6B63\u6570"),t==="windows"){(!b(o.sill)||o.sill<0)&&e(`windows[${i}].sill`,"sill \u5FC5\u987B \u22650"),(!b(o.head)||o.head<0)&&e(`windows[${i}].head`,"head \u5FC5\u987B \u22650"),b(o.sill)&&b(o.head)&&o.sill>=o.head&&e(`windows[${i}]`,"sill \u5FC5\u987B < head");let u=o.style;u!=="fixed"&&u!=="slide"&&u!=="casement"&&u!=="awning"&&e(`windows[${i}].style`,`style \u975E\u6CD5: ${String(u)}`),o.glass!=null&&(!b(o.glass)||o.glass<0||o.glass>1)&&e(`windows[${i}].glass`,"glass \u5FC5\u987B\u5728 0..1")}else{let u=o.kind;u!=="swing"&&u!=="double"&&u!=="slide"&&u!=="bifold"&&e(`doors[${i}].kind`,`kind \u975E\u6CD5: ${String(u)}`)}});if(a.patio!=null){let t=a.patio;(typeof t.geom!="object"||t.geom===null)&&e("patio.geom","geom \u5FC5\u987B\u662F\u539F\u8BED\u5BF9\u8C61")}let c=a.env;if(typeof c!="object"||c===null?e("env","env \u5FC5\u987B\u662F\u5BF9\u8C61"):(k(c.preset)||e("env.preset","\u5FC5\u987B\u662F\u5B57\u7B26\u4E32"),c.mode!=="day"&&c.mode!=="night"&&e("env.mode","\u5FC5\u987B\u662F day|night")),a.baseImage!=null){let t=a.baseImage;typeof t!="object"||t===null?e("baseImage","\u5FC5\u987B\u662F\u5BF9\u8C61"):((typeof t.data!="string"||t.data.length<22)&&e("baseImage.data","\u5FC5\u987B\u662F dataURL \u5B57\u7B26\u4E32"),(!b(t.w)||t.w<8)&&e("baseImage.w","\u5FC5\u987B\u662F \u22658 \u7684\u50CF\u7D20\u5BBD"),(!b(t.h)||t.h<8)&&e("baseImage.h","\u5FC5\u987B\u662F \u22658 \u7684\u50CF\u7D20\u9AD8"),(!b(t.mPerPx)||t.mPerPx<=0)&&e("baseImage.mPerPx","\u5FC5\u987B\u662F\u6B63\u6570\uFF08\u7C73/\u50CF\u7D20\uFF09"),b(t.ox)||e("baseImage.ox","\u5FC5\u987B\u662F\u6570\uFF08ft\uFF09"),b(t.oy)||e("baseImage.oy","\u5FC5\u987B\u662F\u6570\uFF08ft\uFF09"),t.rot!==void 0&&t.rot!==0&&t.rot!==90&&t.rot!==180&&t.rot!==270&&e("baseImage.rot","\u5FC5\u987B\u662F 0|90|180|270"))}if(a.floorOutline!==void 0&&(Array.isArray(a.floorOutline)?(a.floorOutline.length<3&&e("floorOutline","\u81F3\u5C11 3 \u4E2A\u70B9"),a.floorOutline.forEach((t,m)=>{(!Array.isArray(t)||t.length!==2||!b(t[0])||!b(t[1]))&&e(`floorOutline[${m}]`,"\u5FC5\u987B\u662F [x, y]\uFF08ft\uFF09")})):e("floorOutline","\u5FC5\u987B\u662F\u70B9\u6570\u7EC4")),a.plan!==void 0)if(typeof a.plan!="object"||a.plan===null||Array.isArray(a.plan))e("plan","\u5FC5\u987B\u662F\u5BF9\u8C61");else{let t=a.plan;for(let i of["roomSummary","refPhoto"])t[i]!==void 0&&!k(t[i])&&e(`plan.${i}`,"\u5FC5\u987B\u662F\u5B57\u7B26\u4E32");if(t.calib!==void 0){let i=t.calib;typeof i!="object"||i===null?e("plan.calib","\u5FC5\u987B\u662F\u5BF9\u8C61"):(k(i.img)||e("plan.calib.img","\u5FC5\u987B\u662F\u5B57\u7B26\u4E32\uFF08\u56FE\u7EB8\u5E95\u56FE\u8DEF\u5F84\uFF09"),(!b(i.w)||i.w<=0)&&e("plan.calib.w","\u5FC5\u987B\u662F\u6B63\u6570\uFF08\u56FE\u7EB8 px\uFF09"),(!b(i.h)||i.h<=0)&&e("plan.calib.h","\u5FC5\u987B\u662F\u6B63\u6570\uFF08\u56FE\u7EB8 px\uFF09"))}let m=(i,o)=>{(!Array.isArray(i)||i.length!==2||i.some(u=>!b(u)))&&e(o,"\u5FC5\u987B\u662F [x, y]\uFF08\u56FE\u7EB8 px\uFF09")},s=(i,o,u)=>{if(!Array.isArray(i)){e(o,"\u5FC5\u987B\u662F\u70B9\u6570\u7EC4");return}i.forEach((r,d)=>{(!Array.isArray(r)||u&&r.length!==u||r.some(f=>!b(f)))&&e(`${o}[${d}]`,u?`\u5FC5\u987B\u662F [${Array(u).fill("x").join(", ")}]\uFF08\u56FE\u7EB8 px\uFF09`:"\u5FC5\u987B\u662F\u6570\u5B57\u70B9")})};if(t.windowBand!==void 0&&s(t.windowBand,"plan.windowBand",2),t.patioPatch!==void 0&&s(t.patioPatch,"plan.patioPatch",2),t.islLabel!==void 0){let i=t.islLabel;typeof i!="object"||i===null?e("plan.islLabel","\u5FC5\u987B\u662F\u5BF9\u8C61"):(m(i.p,"plan.islLabel.p"),b(i.w)||e("plan.islLabel.w","\u5FC5\u987B\u662F\u6570"),b(i.d)||e("plan.islLabel.d","\u5FC5\u987B\u662F\u6570"),k(i.calib)||e("plan.islLabel.calib","\u5FC5\u987B\u662F\u5B57\u7B26\u4E32"))}if(t.isl!==void 0){let i=t.isl;if(typeof i!="object"||i===null)e("plan.isl","\u5FC5\u987B\u662F\u5BF9\u8C61");else for(let o of["a","b","e","cp2","d"])m(i[o],`plan.isl.${o}`)}t.inner!==void 0&&(Array.isArray(t.inner)?t.inner.forEach((i,o)=>{let u=i;if(typeof u!="object"||u===null){e(`plan.inner[${o}]`,"\u4E0D\u662F\u5BF9\u8C61");return}for(let r of["x1","y1","x2","y2"])b(u[r])||e(`plan.inner[${o}].${r}`,"\u5FC5\u987B\u662F\u6570\uFF08\u56FE\u7EB8 px\uFF09");u.wd!==void 0&&!b(u.wd)&&e(`plan.inner[${o}].wd`,"\u5FC5\u987B\u662F\u6570")}):e("plan.inner","\u5FC5\u987B\u662F\u6570\u7EC4")),t.kitchen!==void 0&&(Array.isArray(t.kitchen)?t.kitchen.forEach((i,o)=>{let u=i;if(typeof u!="object"||u===null){e(`plan.kitchen[${o}]`,"\u4E0D\u662F\u5BF9\u8C61");return}["cab","top","steel","chrome","seam","black"].indexOf(u.m)<0&&e(`plan.kitchen[${o}].m`,`\u6750\u8D28\u6863\u975E\u6CD5: ${String(u.m)}`),!u.box&&!u.cyl&&e(`plan.kitchen[${o}]`,"\u5FC5\u987B\u6709 box \u6216 cyl"),u.box&&!(Array.isArray(u.box)&&u.box.length===3&&u.box.every(r=>b(r)))&&e(`plan.kitchen[${o}].box`,"\u5FC5\u987B\u662F [w, h, d]\uFF08ft\uFF09"),u.cyl&&!(Array.isArray(u.cyl)&&u.cyl.length===2&&u.cyl.every(r=>b(r)))&&e(`plan.kitchen[${o}].cyl`,"\u5FC5\u987B\u662F [r, len]\uFF08ft\uFF09"),u.seg!==void 0&&(!b(u.seg)||u.seg<3)&&e(`plan.kitchen[${o}].seg`,"\u5FC5\u987B\u662F \u22653 \u7684\u7EC6\u5206"),Array.isArray(u.p)&&u.p.length===3&&u.p.every(r=>b(r))||e(`plan.kitchen[${o}].p`,"\u5FC5\u987B\u662F [x, y, z]\uFF08ft\uFF09")}):e("plan.kitchen","\u5FC5\u987B\u662F\u6570\u7EC4"))}let y=a.hidden;if(typeof y!="object"||y===null)e("hidden","hidden \u5FC5\u987B\u662F\u5BF9\u8C61");else for(let t of["walls","windows","doors","solids"])(!Array.isArray(y[t])||!y[t].every(k))&&e(`hidden.${t}`,"\u5FC5\u987B\u662F id \u5B57\u7B26\u4E32\u6570\u7EC4");return l}function Z(n){let l=[],e=(c,y)=>l.push({path:c,message:y});if(typeof n!="object"||n===null)return e("doc","\u4E0D\u662F\u5BF9\u8C61"),l;let a=n,p=c=>typeof c=="number"&&Number.isFinite(c),g=(c,y)=>{if(typeof c!="object"||c===null)return e(y,"geom \u5FC5\u987B\u662F\u539F\u8BED\u5BF9\u8C61");let t=c;if(t.t==="seg")for(let m of["x1","y1","x2","y2"])p(t[m])||e(`${y}.${m}`,`${m} \u5FC5\u987B\u662F\u6709\u9650\u6570\uFF08ft\uFF09`);else if(t.t==="arc"){for(let m of["cx","cy","a0","a1"])p(t[m])||e(`${y}.${m}`,`${m} \u5FC5\u987B\u662F\u6709\u9650\u6570`);(!p(t.r)||t.r<=0)&&e(`${y}.r`,"r \u5FC5\u987B\u662F\u6B63\u6570\uFF08ft\uFF09"),t.dir!==1&&t.dir!==-1&&e(`${y}.dir`,"dir \u5FC5\u987B\u662F 1 \u6216 \u22121")}else if(t.t==="poly"){let m=t.pts;if(!Array.isArray(m)||m.length<2)return e(`${y}.pts`,"pts \u5FC5\u987B\u662F \u22652 \u4E2A [x, y]");m.forEach((s,i)=>{(!Array.isArray(s)||s.length!==2||!p(s[0])||!p(s[1]))&&e(`${y}.pts[${i}]`,"\u5FC5\u987B\u662F [x, y]\uFF08ft\uFF09")})}else e(`${y}.t`,`geom.t \u5FC5\u987B\u662F seg|arc|poly\uFF0C\u5B9E\u9645 ${String(t.t)}`)};for(let c of["walls","windows","doors","solids"]){let y=a[c];Array.isArray(y)&&y.forEach((t,m)=>{if(typeof t!="object"||t===null)return;let s=t;if(s.geom===void 0)return e(`${c}[${m}].geom`,"geom \u5FC5\u586B");g(s.geom,`${c}[${m}].geom`),c==="doors"&&s.gapGeom!==void 0&&g(s.gapGeom,`doors[${m}].gapGeom`)})}if(a.patio!=null&&typeof a.patio=="object"){let c=a.patio;c.geom!==void 0&&g(c.geom,"patio.geom")}return l}function ee(){return{$schema:"http://json-schema.org/draft-07/schema#",title:"MiniDen Project (schema v1)",type:"object",required:["schema","name","units","ceilingH","northRotation","walls","windows","doors","solids","rooms","fixtures","env","hidden"],properties:{schema:{const:1},name:{type:"string"},units:{enum:["ft","cm"]},ceilingH:{type:"number",exclusiveMinimum:0},northRotation:{type:"number"},sc:{type:"number",exclusiveMinimum:0},dataV:{type:"number",minimum:1},walls:{type:"array",items:{$ref:"#/definitions/wall"}},windows:{type:"array",items:{$ref:"#/definitions/window"}},doors:{type:"array",items:{$ref:"#/definitions/door"}},solids:{type:"array",items:{$ref:"#/definitions/solid"}},patio:{oneOf:[{type:"null"},{type:"object",required:["geom"],properties:{geom:{$ref:"#/definitions/geom"}}}]},rooms:{type:"array",items:{$ref:"#/definitions/room"}},fixtures:{type:"array",items:{$ref:"#/definitions/fixture"}},runs:{type:"array",items:{$ref:"#/definitions/run"}},env:{type:"object",required:["preset","mode"],properties:{preset:{type:"string"},mode:{enum:["day","night"]}}},floorOutline:{type:"array",minItems:3,items:{type:"array",minItems:2,maxItems:2,items:{type:"number"}}},plan:{type:"object",properties:{roomSummary:{type:"string"},refPhoto:{type:"string"},calib:{type:"object",required:["img","w","h"],properties:{img:{type:"string"},w:{type:"number",exclusiveMinimum:0},h:{type:"number",exclusiveMinimum:0}}},windowBand:{type:"array",items:{type:"array",minItems:2,maxItems:2,items:{type:"number"}}},patioPatch:{type:"array",minItems:3,items:{type:"array",minItems:2,maxItems:2,items:{type:"number"}}},islLabel:{type:"object",required:["p","w","d","calib"],properties:{p:{type:"array",minItems:2,maxItems:2,items:{type:"number"}},w:{type:"number"},d:{type:"number"},calib:{type:"string"}}},isl:{type:"object",required:["a","b","e","cp2","d"],properties:{a:{type:"array",minItems:2,maxItems:2,items:{type:"number"}},b:{type:"array",minItems:2,maxItems:2,items:{type:"number"}},e:{type:"array",minItems:2,maxItems:2,items:{type:"number"}},cp2:{type:"array",minItems:2,maxItems:2,items:{type:"number"}},d:{type:"array",minItems:2,maxItems:2,items:{type:"number"}}}},kitchen:{type:"array",items:{type:"object",required:["m","p"],properties:{m:{enum:["cab","top","steel","chrome","seam","black"]},box:{type:"array",minItems:3,maxItems:3,items:{type:"number"}},cyl:{type:"array",minItems:2,maxItems:2,items:{type:"number"}},seg:{type:"integer",minimum:3},p:{type:"array",minItems:3,maxItems:3,items:{type:"number"}},rz:{enum:[90]},sh:{type:"boolean"},rc:{type:"boolean"}}}},inner:{type:"array",items:{type:"object",required:["x1","y1","x2","y2"],properties:{x1:{type:"number"},y1:{type:"number"},x2:{type:"number"},y2:{type:"number"},wd:{type:"number"}}}}}},baseImage:{type:"object",required:["data","w","h","mPerPx","ox","oy"],properties:{data:{type:"string"},w:{type:"integer",minimum:8},h:{type:"integer",minimum:8},mPerPx:{type:"number",exclusiveMinimum:0},ox:{type:"number"},oy:{type:"number"},rot:{enum:[0,90,180,270]}}},hidden:{type:"object",properties:{walls:{type:"array",items:{type:"string"}},windows:{type:"array",items:{type:"string"}},doors:{type:"array",items:{type:"string"}},solids:{type:"array",items:{type:"string"}}}}},definitions:{geom:{oneOf:[{type:"object",required:["t","x1","y1","x2","y2"],properties:{t:{const:"seg"},x1:{type:"number"},y1:{type:"number"},x2:{type:"number"},y2:{type:"number"}}},{type:"object",required:["t","cx","cy","r","a0","a1","dir"],properties:{t:{const:"arc"},cx:{type:"number"},cy:{type:"number"},r:{type:"number",exclusiveMinimum:0},a0:{type:"number"},a1:{type:"number"},dir:{enum:[1,-1]}}},{type:"object",required:["t","pts"],properties:{t:{const:"poly"},pts:{type:"array",minItems:3,items:{type:"array",minItems:2,maxItems:2,items:{type:"number"}}}}}]},wall:{type:"object",required:["id","kind","geom"],properties:{id:{type:"string"},kind:{enum:["wall","thin","opening","passage"]},geom:{$ref:"#/definitions/geom"},thick:{type:"number",exclusiveMinimum:0}}},window:{type:"object",required:["id","geom","pos","width","sill","head","style","frame","glass"],properties:{id:{type:"string"},geom:{$ref:"#/definitions/geom"},wallId:{type:["string","null"]},pos:{type:"number",minimum:0,maximum:1},width:{type:"number",exclusiveMinimum:0},sill:{type:"number",minimum:0},head:{type:"number",minimum:0},style:{enum:["fixed","slide","casement","awning"]},fullHeight:{type:"boolean"},frame:{type:"string"},glass:{type:"number",minimum:0,maximum:1},steel:{type:"boolean"}}},door:{type:"object",required:["id","geom","pos","width","kind"],properties:{id:{type:"string"},geom:{$ref:"#/definitions/geom"},gapGeom:{$ref:"#/definitions/geom"},wallId:{type:["string","null"]},pos:{type:"number",minimum:0,maximum:1},width:{type:"number",exclusiveMinimum:0},kind:{enum:["swing","double","slide","bifold"]},hinge:{enum:[0,1]},side:{enum:[1,-1]},dark:{type:"boolean"}}},solid:{type:"object",required:["id","geom","fill"],properties:{id:{type:"string"},name:{type:"string"},geom:{$ref:"#/definitions/geom"},fill:{type:"string"},noCal:{type:"boolean"},column:{type:"boolean"}}},room:{type:"object",required:["id","label","pos"],properties:{id:{type:"string"},label:{type:"string"},pos:{type:"array",minItems:2,maxItems:2,items:{type:"number"}},wd:{type:"number"},dp:{type:"number"},d:{type:"string"},rot:{type:"number"},small:{type:"boolean"}}},fixture:{type:"object",required:["id","t","x1","y1","x2","y2"],properties:{id:{type:"string"},t:{enum:["counter","basin","toilet","tub","shower","mirror"]},x1:{type:"number"},y1:{type:"number"},x2:{type:"number"},y2:{type:"number"},dir:{type:"string"},fa:{type:"string"},open:{type:"string"},rot:{type:"number"}}},run:{type:"object",required:["id","path","depth","topH"],properties:{id:{type:"string"},path:{type:"array",minItems:2,items:{type:"array",minItems:2,maxItems:2,items:{type:"number"}}},depth:{type:"number",exclusiveMinimum:0},topH:{type:"number",exclusiveMinimum:0},h:{type:"number",exclusiveMinimum:0},modules:{type:"array",items:{type:"object",required:["at","type"],properties:{at:{type:"number",minimum:0},type:{enum:["sink","cooktop","fridge","dishwasher","open"]},w:{type:"number",exclusiveMinimum:0}}}},src:{enum:["builtin","user"]},userIndex:{type:"integer"}}}}}}var H={};D(H,{EMPTY_USERGEO:()=>C,docToLegacy:()=>ae,migrateLegacyToV1:()=>oe});var q=22,C={walls:[],polys:[],doors:[],hiddenW:[],hiddenP:[],hiddenD:[],ovW:{},ovP:{},ovD:{}},U=1/.3048,ne=.67,te=2.25,M=.05,re="#1c2528",ie=.18,A=n=>({t:"seg",x1:n.x1,y1:n.y1,x2:n.x2,y2:n.y2}),W=(n,l)=>l?Object.assign({},n,l):{...n};function oe(n,l=C){let e=n.sc,a=G("\u672A\u547D\u540D\u6237\u578B");a.sc=e;let{walls:p,windows:g,doors:c,solids:y,rooms:t,fixtures:m}=a,s=new Map;for(let r=0;r<n.walls.length;r++){let d=n.walls[r];d.t==="d"&&s.set(r,W(d,l.ovW[r]))}let i=r=>{for(let[d,f]of s){let I=[[f.x1,f.y1],[f.x2,f.y2]],x=[[r.x1,r.y1],[r.x2,r.y2]];if(P(I[0],x[0])<M&&P(I[1],x[1])<M||P(I[0],x[1])<M&&P(I[1],x[0])<M)return{seg:f,index:d}}return null},o=(r,d,f,I,x)=>{let h=!!r.fc,w=r.slider?"slide":"fixed";return{id:f==="builtin"?`n${d+1}`:E({walls:p,windows:g,doors:c,solids:y,rooms:t,fixtures:m},"window"),geom:A(r),wallId:null,pos:.5,width:j(A(r)),sill:h?0:ne*U,head:h?a.ceilingH:te*U,style:w,fullHeight:h,frame:r.steel?"#2b2f36":re,glass:ie,steel:r.steel||void 0,src:f,chainIndex:f==="builtin"?d:void 0,userIndex:x,thick:r.wd!=null?r.wd/I:void 0,wdPx:r.wd??void 0}};for(let r=0;r<n.walls.length;r++){let d=W(n.walls[r],l.ovW[r]);d.t==="w"||d.t==="i"?p.push({id:`w${r+1}`,kind:d.t==="i"?"thin":"wall",geom:A(d),thick:d.wd!=null?d.wd/e:void 0,wdPx:d.wd??void 0,src:"builtin",chainIndex:r}):d.t==="g"?g.push(o(d,r,"builtin",e)):p.push({id:`w${r+1}`,kind:d.t==="d"?"opening":"passage",geom:A(d),thick:d.wd!=null?d.wd/e:void 0,wdPx:d.wd??void 0,src:"builtin",chainIndex:r})}l.walls.forEach((r,d)=>{let f=r;f.t==="g"?g.push(o(f,d,"user",e,d)):p.push({id:E(a,"wall"),kind:f.t==="i"?"thin":f.t==="d"?"opening":f.t==="o"?"passage":"wall",geom:A(f),thick:f.wd!=null?f.wd/e:void 0,wdPx:f.wd??void 0,src:"user",userIndex:d})});let u=(r,d,f,I)=>{let x=f==="builtin"?i(r):null,h=["swing","double","slide","bifold"].includes(r.kind)?r.kind:"swing";return{id:f==="builtin"?`d${d+1}`:E(a,"door"),geom:A(r),gapGeom:x?A(x.seg):void 0,wallId:x?`w${x.index+1}`:null,pos:.5,width:j(A(x?x.seg:r)),kind:h,hinge:r.hinge===0||r.hinge===1?r.hinge:0,side:r.side===1||r.side===-1?r.side:1,dark:r.wood||void 0,src:f,chainIndex:f==="builtin"?d:void 0,userIndex:I}};for(let r=0;r<n.doors.length;r++){let d=W(n.doors[r],l.ovD[r]);c.push(u(d,r,"builtin"))}l.doors.forEach((r,d)=>c.push(u(r,d,"user",d)));for(let r=0;r<n.fixed.length;r++){let d=n.fixed[r],f=l.ovP[r],I=w=>Array.isArray(w)?w:w&&typeof w=="object"&&Array.isArray(w.poly)?w.poly:null,x=f?f.poly??null:null,h=(x&&I(x))??I(d.poly)??d.poly;y.push({id:`s${r+1}`,name:d.name||void 0,geom:{t:"poly",pts:h.map(w=>[w[0],w[1]])},fill:d.fill,noCal:d.noCal||void 0,column:d.name==="\u67F1"?!0:void 0,ovWrapped:x||I(d.poly)!==d.poly?!0:void 0,src:"builtin",chainIndex:r})}return l.polys.forEach((r,d)=>y.push({id:E(a,"solid"),name:r.name||void 0,geom:{t:"poly",pts:r.pts.map(f=>[f[0],f[1]])},fill:"#0c0d0f",src:"user",chainIndex:d,userIndex:d})),Array.isArray(n.patio)&&n.patio.length>=3&&(a.patio={geom:{t:"poly",pts:n.patio.map(r=>[r[0],r[1]])}}),n.labels.forEach((r,d)=>t.push({id:`r${d+1}`,label:r.t,pos:[r.p[0],r.p[1]],wd:r.wd,dp:r.dp,d:r.d||void 0,rot:r.rot,small:r.small||void 0,chainIndex:d})),n.fx.forEach((r,d)=>m.push({id:`f${d+1}`,t:R.includes(r.t)?r.t:"counter",x1:r.x1/e,y1:r.y1/e,x2:r.x2/e,y2:r.y2/e,dir:r.dir,fa:r.fa,open:r.open,chainIndex:d})),l.hiddenW.forEach(r=>{let d=n.walls[r];d&&(d.t==="g"?a.hidden.windows.push(`n${r+1}`):a.hidden.walls.push(`w${r+1}`))}),l.hiddenP.forEach(r=>{n.fixed[r]&&a.hidden.solids.push(`s${r+1}`)}),l.hiddenD.forEach(r=>{n.doors[r]&&a.hidden.doors.push(`d${r+1}`)}),a}var O=n=>{if(n.t==="seg")return{t:"seg",x1:n.x1,y1:n.y1,x2:n.x2,y2:n.y2};throw new Error("docToLegacy: legacy \u6295\u5F71\u53EA\u652F\u6301 seg\uFF08arc/poly \u7531\u6D88\u8D39\u7AEF expand\uFF0CS3 \u8D77\uFF09")},se=n=>{if(n.t==="poly")return n.pts.map(l=>[l[0],l[1]]);if(n.t==="arc"){let l=_(n);if(!l.length)return[];let e=[l[0][0]];for(let[,a]of l)e.push(a);return e}return[]};function ae(n){let l=[],e=new Set(n.hidden.walls),a=new Set(n.hidden.windows),p=new Set(n.hidden.doors),g=new Set(n.hidden.solids),c=[...n.walls,...n.windows];c.sort((s,i)=>{let o=s.src==="builtin"?0:1,u=i.src==="builtin"?0:1,r=s.src==="builtin"?s.chainIndex??0:s.userIndex??0,d=i.src==="builtin"?i.chainIndex??0:i.userIndex??0;return o-u||r-d});for(let s of c)if(!("kind"in s)){let o=s;if(a.has(o.id))continue;let u=O(o.geom);l.push({x1:u.x1,y1:u.y1,x2:u.x2,y2:u.y2,t:"g",...o.fullHeight?{fc:!0}:{},...o.style==="slide"?{slider:!0}:{},...o.steel?{steel:!0}:{},...o.thick!=null?{wd:o.wdPx??o.thick*q}:{},_src:o.src==="user"?"u":"b",_i:o.chainIndex??o.userIndex,_id:o.id})}else{let o=s;if(e.has(o.id))continue;let u=O(o.geom);l.push({x1:u.x1,y1:u.y1,x2:u.x2,y2:u.y2,t:o.kind==="thin"?"i":o.kind==="opening"?"d":o.kind==="passage"?"o":"w",...o.thick!=null?{wd:o.wdPx??o.thick*q}:{},_src:o.src==="user"?"u":"b",_i:o.chainIndex??o.userIndex,_id:o.id})}let y=[],t=(s,i)=>{let o=s.src==="builtin"?s.chainIndex??0:Number.MAX_SAFE_INTEGER,u=i.src==="builtin"?i.chainIndex??0:Number.MAX_SAFE_INTEGER;return o-u};[...n.solids].sort(t).forEach(s=>{if(g.has(s.id))return;let i=se(s.geom);y.push({name:s.src==="user"?"":s.name||"",poly:s.ovWrapped?{poly:i}:i,fill:s.fill,...s.noCal?{noCal:s.noCal}:{},_src:s.src==="user"?"u":"b",_i:s.chainIndex??s.userIndex,_id:s.id})});let m=[];return[...n.doors].sort((s,i)=>{let o=s.src==="builtin"?s.chainIndex??0:Number.MAX_SAFE_INTEGER,u=i.src==="builtin"?i.chainIndex??0:Number.MAX_SAFE_INTEGER;return o-u}).forEach(s=>{if(p.has(s.id))return;let i=O(s.geom);m.push({x1:i.x1,y1:i.y1,x2:i.x2,y2:i.y2,kind:s.kind,hinge:s.hinge??0,side:s.side??1,wood:!!s.dark,_src:s.src==="user"?"u":"b",_i:s.chainIndex??s.userIndex,_id:s.id})}),{walls:l,fixed:y,doors:m}}globalThis.MINIDEN={Primitives:F,Project:T,Migrate:H};})();
+"use strict";(()=>{var B=Object.defineProperty;var R=(t,l)=>{for(var n in l)B(t,n,{get:l[n],enumerable:!0})};var D={};R(D,{arcFrom3Points:()=>Y,arcLen:()=>V,arcPoint:()=>L,arcSweep:()=>T,dist:()=>k,expand:()=>O,fullCircle:()=>J,polyArea:()=>z,segLen:()=>_});function L(t,l){let n=l*Math.PI/180;return[t.cx+t.r*Math.cos(n),t.cy+t.r*Math.sin(n)]}function T(t){let l=t.a1-t.a0;return t.dir>0?l<=0&&(l+=360):l>=0&&(l-=360),l}function V(t){return Math.abs(T(t))/360*2*Math.PI*t.r}function _(t){return Math.hypot(t.x2-t.x1,t.y2-t.y1)}function k(t,l){return Math.hypot(t[0]-l[0],t[1]-l[1])}function O(t,l={}){let n=l.chordTol??.01;if(t.t==="seg")return k([t.x1,t.y1],[t.x2,t.y2])<1e-9?[]:[[[t.x1,t.y1],[t.x2,t.y2]]];if(t.t==="poly"){let e=t.pts.length>=2?t.pts:[],u=[];for(let s=0;s<e.length;s++){let i=e[s],o=e[(s+1)%e.length];k(i,o)<1e-9||u.push([i,o])}return u}if(t.r<1e-9)return[];let a=T(t),c=Math.abs(a);if(c<1e-9)return[[L(t,t.a0),L(t,t.a0)]];let g;if(l.segments!=null)g=Math.max(2,Math.round(l.segments));else{let e=n>=t.r?180:2*Math.acos(1-n/t.r)*180/Math.PI;g=Math.max(2,Math.ceil(c/e))}let p=[],f=L(t,t.a0);for(let e=1;e<=g;e++){let u=t.a0+a/g*e,s=L(t,u);p.push([f,s]),f=s}return p}function z(t){let l=0;for(let n=0;n<t.length;n++){let[a,c]=t[n],[g,p]=t[(n+1)%t.length];l+=a*p-g*c}return l/2}function Y(t,l,n){let a=t[0],c=t[1],g=l[0],p=l[1],f=n[0],e=n[1],u=2*(a*(p-e)+g*(e-c)+f*(c-p));if(Math.abs(u)<1e-12)return null;let s=((a*a+c*c)*(p-e)+(g*g+p*p)*(e-c)+(f*f+e*e)*(c-p))/u,i=((a*a+c*c)*(f-g)+(g*g+p*p)*(a-f)+(f*f+e*e)*(g-a))/u,o=Math.hypot(a-s,c-i),d=S=>Math.atan2(S[1]-i,S[0]-s)*180/Math.PI,r=d(t),m=d(n),b=d(l),h=(g-a)*(e-c)-(p-c)*(f-a)>=0?1:-1,x;if(h>0)for(x=m-r;x<=0;)x+=360;else for(x=m-r;x>=0;)x-=360;let w=S=>{let I;if(S>0){for(I=b-r;I<0;)I+=360;for(;I>=360;)I-=360;return I<=S+1e-9}for(I=r-b;I<0;)I+=360;for(;I>=360;)I-=360;return I<=-S+1e-9};if(w(x))return{arc:{t:"arc",cx:s,cy:i,r:o,a0:r,a1:r+x,dir:h},dir:h};let N=x>0?x-360:x+360;return w(N)?{arc:{t:"arc",cx:s,cy:i,r:o,a0:r,a1:r+N,dir:-h},dir:-h}:null}function J(t,l,n){return{t:"arc",cx:t,cy:l,r:n,a0:0,a1:360,dir:1}}var F={};R(F,{FIXTURE_TYPES:()=>M,OUTLET_KINDS:()=>v,OUTLET_MAX_H:()=>Z,blankDoc:()=>H,checkGeoms:()=>te,nextId:()=>E,projectSchema:()=>re,validate:()=>ne});var M=["counter","basin","toilet","tub","shower","mirror"],Q=["sink","cooktop","fridge","dishwasher","open"],v=["std","usb","gfci"],X=["wall","run","fx"],Z=12,ee={wall:"w",window:"n",door:"d",solid:"s",room:"r",fixture:"f",run:"rn",outlet:"ol"};function E(t,l){let n=ee[l],a=(l==="wall"?t.walls:l==="window"?t.windows:l==="door"?t.doors:l==="solid"?t.solids:l==="room"?t.rooms:l==="fixture"?t.fixtures:l==="outlet"?t.outlets:t.runs)??[],c=a.length+1,g=new Set(a.map(p=>p.id));for(;g.has(`${n}${String(c).padStart(2,"0")}`);)c++;return`${n}${String(c).padStart(2,"0")}`}function H(t="\u672A\u547D\u540D\u6237\u578B"){return{schema:1,name:t,units:"cm",ceilingH:8.8,northRotation:0,walls:[],windows:[],doors:[],solids:[],patio:null,rooms:[],fixtures:[],runs:[],env:{preset:"seattle-city",mode:"day"},hidden:{walls:[],windows:[],doors:[],solids:[]}}}function y(t){return typeof t=="number"&&Number.isFinite(t)}function P(t){return typeof t=="string"}function ne(t){let l=[],n=(e,u)=>l.push({path:e,message:u});if(typeof t!="object"||t===null)return n("doc","\u4E0D\u662F\u5BF9\u8C61"),l;let a=t;a.schema!==1&&n("schema",`\u5FC5\u987B\u662F 1\uFF0C\u5B9E\u9645 ${String(a.schema)}`),P(a.name)||n("name","\u5FC5\u987B\u662F\u5B57\u7B26\u4E32"),a.units!=="ft"&&a.units!=="cm"&&n("units","\u5FC5\u987B\u662F ft|cm"),(!y(a.ceilingH)||a.ceilingH<=0)&&n("ceilingH","\u5FC5\u987B\u662F\u6B63\u6570\uFF08ft\uFF09"),y(a.northRotation)||n("northRotation","\u5FC5\u987B\u662F\u6570\uFF08\u5EA6\uFF09");let c=(e,u,s)=>{if(!Array.isArray(e)){n(u,"\u5FC5\u987B\u662F\u6570\u7EC4");return}for(let i=0;i<e.length;i++){let o=e[i];if(typeof o!="object"||o===null){n(`${u}[${i}]`,"\u4E0D\u662F\u5BF9\u8C61");continue}if(!P(o.id)||!o.id){n(`${u}[${i}].id`,"id \u5FC5\u987B\u662F\u975E\u7A7A\u5B57\u7B26\u4E32");continue}s.includes(o.id)&&n(`${u}[${i}].id`,`\u91CD\u590D id ${o.id}`),s.push(o.id),o.geom&&typeof o.geom!="object"&&n(`${u}[${i}].geom`,"geom \u5FC5\u987B\u662F\u539F\u8BED\u5BF9\u8C61")}},g=[];c(a.walls,"walls",g),c(a.windows,"windows",[]),c(a.doors,"doors",[]),c(a.solids,"solids",[]),c(a.rooms,"rooms",[]),c(a.fixtures,"fixtures",[]),a.runs!==void 0&&c(a.runs,"runs",[]),Array.isArray(a.runs)&&a.runs.forEach((e,u)=>{let s=e.path;!Array.isArray(s)||s.length<2?n(`runs[${u}].path`,"path \u5FC5\u987B\u662F \u22652 \u4E2A [x, y]\uFF08ft\uFF09"):s.forEach((i,o)=>{(!Array.isArray(i)||i.length!==2||!y(i[0])||!y(i[1]))&&n(`runs[${u}].path[${o}]`,"\u5FC5\u987B\u662F [x, y]\uFF08ft\uFF09")});for(let i of["depth","topH","h"])e[i]!==void 0&&(!y(e[i])||e[i]<=0)&&n(`runs[${u}].${i}`,`${i} \u5FC5\u987B\u662F\u6B63\u6570\uFF08ft\uFF09`);if(e.depth!==void 0&&e.depth>4&&n(`runs[${u}].depth`,`depth \u8D85\u8FC7\u5408\u7406\u67DC\u4F53\u6DF1\u5EA6\uFF08${e.depth} ft\uFF09`),e.topH!==void 0&&e.topH>8&&n(`runs[${u}].topH`,`topH \u8D85\u8FC7\u5408\u7406\u53F0\u9762\u9AD8\uFF08${e.topH} ft\uFF09`),e.modules!==void 0){if(!Array.isArray(e.modules)){n(`runs[${u}].modules`,"\u5FC5\u987B\u662F\u6570\u7EC4");return}e.modules.forEach((i,o)=>{if(typeof i!="object"||i===null){n(`runs[${u}].modules[${o}]`,"\u4E0D\u662F\u5BF9\u8C61");return}(!y(i.at)||i.at<0)&&n(`runs[${u}].modules[${o}].at`,"at \u5FC5\u987B\u662F \u22650 \u7684\u6570\uFF08\u6CBF path \u7684 ft\uFF09"),Q.indexOf(i.type)<0&&n(`runs[${u}].modules[${o}].type`,`type \u975E\u6CD5: ${String(i.type)}`),i.w!==void 0&&(!y(i.w)||i.w<=0)&&n(`runs[${u}].modules[${o}].w`,"w \u5FC5\u987B\u662F\u6B63\u6570\uFF08ft\uFF09")})}}),a.outlets!==void 0&&c(a.outlets,"outlets",[]),Array.isArray(a.outlets)&&a.outlets.forEach((e,u)=>{if(!(typeof e!="object"||e===null)){for(let s of["x","y","rot"])y(e[s])||n(`outlets[${u}].${s}`,`${s} \u5FC5\u987B\u662F\u6570`);(!y(e.h)||e.h<=0||e.h>12)&&n(`outlets[${u}].h`,"h \u5FC5\u987B\u662F (0, 12] ft \u7684\u79BB\u5730\u9AD8\u5EA6"),v.indexOf(e.kind)<0&&n(`outlets[${u}].kind`,`\u975E\u6CD5\u63D2\u5EA7\u7C7B\u578B: ${String(e.kind)}`),e.n!==void 0&&(!Number.isInteger(e.n)||e.n<1||e.n>3)&&n(`outlets[${u}].n`,"\u8054\u6570\u5FC5\u987B\u662F 1\u20133 \u7684\u6574\u6570"),e.host!==void 0&&X.indexOf(e.host)<0&&n(`outlets[${u}].host`,`\u975E\u6CD5\u5BBF\u4E3B: ${String(e.host)}`),e.hostId!==void 0&&!P(e.hostId)&&n(`outlets[${u}].hostId`,"hostId \u5FC5\u987B\u662F\u5B57\u7B26\u4E32"),e.at!==void 0&&(!y(e.at)||e.at<0)&&n(`outlets[${u}].at`,"at \u5FC5\u987B\u662F \u22650 \u7684\u6570\uFF08ft\uFF09"),e.side!==void 0&&(!Number.isInteger(e.side)||e.side<-1||e.side>3)&&n(`outlets[${u}].side`,"side \u5FC5\u987B\u662F -1..3 \u7684\u6574\u6570"),e.dh!==void 0&&(!y(e.dh)||Math.abs(e.dh)>12)&&n(`outlets[${u}].dh`,"dh \u5FC5\u987B\u662F |dh| \u2264 12 \u7684\u6570\uFF08ft\uFF09")}}),Array.isArray(a.fixtures)&&a.fixtures.forEach((e,u)=>{M.indexOf(e.t)<0&&n(`fixtures[${u}].t`,`\u975E\u6CD5\u6D01\u5177\u7C7B\u578B: ${String(e.t)}`);for(let s of["x1","y1","x2","y2"])e[s]!==void 0&&!y(e[s])&&n(`fixtures[${u}].${s}`,`${s} \u5FC5\u987B\u662F\u6570\uFF08ft\uFF09`);e.rot!==void 0&&!y(e.rot)&&n(`fixtures[${u}].rot`,"rot \u5FC5\u987B\u662F\u6570\uFF08\u5EA6\uFF09")});for(let[e,u]of[["windows",a.windows],["doors",a.doors]])Array.isArray(u)&&u.forEach((s,i)=>{let o=s;if(o.wallId!=null&&!P(o.wallId)&&n(`${e}[${i}].wallId`,"wallId \u5FC5\u987B\u662F id \u5B57\u7B26\u4E32"),o.wallId&&!g.includes(o.wallId)&&n(`${e}[${i}].wallId`,`\u5F15\u7528\u4E0D\u5B58\u5728\u7684\u5899 ${String(o.wallId)}`),(!y(o.pos)||o.pos<0||o.pos>1)&&n(`${e}[${i}].pos`,"pos \u5FC5\u987B\u5728 0..1"),(!y(o.width)||o.width<=0)&&n(`${e}[${i}].width`,"width \u5FC5\u987B\u662F\u6B63\u6570"),e==="windows"){(!y(o.sill)||o.sill<0)&&n(`windows[${i}].sill`,"sill \u5FC5\u987B \u22650"),(!y(o.head)||o.head<0)&&n(`windows[${i}].head`,"head \u5FC5\u987B \u22650"),y(o.sill)&&y(o.head)&&o.sill>=o.head&&n(`windows[${i}]`,"sill \u5FC5\u987B < head");let d=o.style;d!=="fixed"&&d!=="slide"&&d!=="casement"&&d!=="awning"&&n(`windows[${i}].style`,`style \u975E\u6CD5: ${String(d)}`),o.glass!=null&&(!y(o.glass)||o.glass<0||o.glass>1)&&n(`windows[${i}].glass`,"glass \u5FC5\u987B\u5728 0..1")}else{let d=o.kind;d!=="swing"&&d!=="double"&&d!=="slide"&&d!=="bifold"&&n(`doors[${i}].kind`,`kind \u975E\u6CD5: ${String(d)}`)}});if(a.patio!=null){let e=a.patio;(typeof e.geom!="object"||e.geom===null)&&n("patio.geom","geom \u5FC5\u987B\u662F\u539F\u8BED\u5BF9\u8C61")}let p=a.env;if(typeof p!="object"||p===null?n("env","env \u5FC5\u987B\u662F\u5BF9\u8C61"):(P(p.preset)||n("env.preset","\u5FC5\u987B\u662F\u5B57\u7B26\u4E32"),p.mode!=="day"&&p.mode!=="night"&&n("env.mode","\u5FC5\u987B\u662F day|night")),a.baseImage!=null){let e=a.baseImage;typeof e!="object"||e===null?n("baseImage","\u5FC5\u987B\u662F\u5BF9\u8C61"):((typeof e.data!="string"||e.data.length<22)&&n("baseImage.data","\u5FC5\u987B\u662F dataURL \u5B57\u7B26\u4E32"),(!y(e.w)||e.w<8)&&n("baseImage.w","\u5FC5\u987B\u662F \u22658 \u7684\u50CF\u7D20\u5BBD"),(!y(e.h)||e.h<8)&&n("baseImage.h","\u5FC5\u987B\u662F \u22658 \u7684\u50CF\u7D20\u9AD8"),(!y(e.mPerPx)||e.mPerPx<=0)&&n("baseImage.mPerPx","\u5FC5\u987B\u662F\u6B63\u6570\uFF08\u7C73/\u50CF\u7D20\uFF09"),y(e.ox)||n("baseImage.ox","\u5FC5\u987B\u662F\u6570\uFF08ft\uFF09"),y(e.oy)||n("baseImage.oy","\u5FC5\u987B\u662F\u6570\uFF08ft\uFF09"),e.rot!==void 0&&e.rot!==0&&e.rot!==90&&e.rot!==180&&e.rot!==270&&n("baseImage.rot","\u5FC5\u987B\u662F 0|90|180|270"))}if(a.floorOutline!==void 0&&(Array.isArray(a.floorOutline)?(a.floorOutline.length<3&&n("floorOutline","\u81F3\u5C11 3 \u4E2A\u70B9"),a.floorOutline.forEach((e,u)=>{(!Array.isArray(e)||e.length!==2||!y(e[0])||!y(e[1]))&&n(`floorOutline[${u}]`,"\u5FC5\u987B\u662F [x, y]\uFF08ft\uFF09")})):n("floorOutline","\u5FC5\u987B\u662F\u70B9\u6570\u7EC4")),a.plan!==void 0)if(typeof a.plan!="object"||a.plan===null||Array.isArray(a.plan))n("plan","\u5FC5\u987B\u662F\u5BF9\u8C61");else{let e=a.plan;for(let i of["roomSummary","refPhoto"])e[i]!==void 0&&!P(e[i])&&n(`plan.${i}`,"\u5FC5\u987B\u662F\u5B57\u7B26\u4E32");if(e.calib!==void 0){let i=e.calib;typeof i!="object"||i===null?n("plan.calib","\u5FC5\u987B\u662F\u5BF9\u8C61"):(P(i.img)||n("plan.calib.img","\u5FC5\u987B\u662F\u5B57\u7B26\u4E32\uFF08\u56FE\u7EB8\u5E95\u56FE\u8DEF\u5F84\uFF09"),(!y(i.w)||i.w<=0)&&n("plan.calib.w","\u5FC5\u987B\u662F\u6B63\u6570\uFF08\u56FE\u7EB8 px\uFF09"),(!y(i.h)||i.h<=0)&&n("plan.calib.h","\u5FC5\u987B\u662F\u6B63\u6570\uFF08\u56FE\u7EB8 px\uFF09"))}let u=(i,o)=>{(!Array.isArray(i)||i.length!==2||i.some(d=>!y(d)))&&n(o,"\u5FC5\u987B\u662F [x, y]\uFF08\u56FE\u7EB8 px\uFF09")},s=(i,o,d)=>{if(!Array.isArray(i)){n(o,"\u5FC5\u987B\u662F\u70B9\u6570\u7EC4");return}i.forEach((r,m)=>{(!Array.isArray(r)||d&&r.length!==d||r.some(b=>!y(b)))&&n(`${o}[${m}]`,d?`\u5FC5\u987B\u662F [${Array(d).fill("x").join(", ")}]\uFF08\u56FE\u7EB8 px\uFF09`:"\u5FC5\u987B\u662F\u6570\u5B57\u70B9")})};if(e.windowBand!==void 0&&s(e.windowBand,"plan.windowBand",2),e.patioPatch!==void 0&&s(e.patioPatch,"plan.patioPatch",2),e.islLabel!==void 0){let i=e.islLabel;typeof i!="object"||i===null?n("plan.islLabel","\u5FC5\u987B\u662F\u5BF9\u8C61"):(u(i.p,"plan.islLabel.p"),y(i.w)||n("plan.islLabel.w","\u5FC5\u987B\u662F\u6570"),y(i.d)||n("plan.islLabel.d","\u5FC5\u987B\u662F\u6570"),P(i.calib)||n("plan.islLabel.calib","\u5FC5\u987B\u662F\u5B57\u7B26\u4E32"))}if(e.isl!==void 0){let i=e.isl;if(typeof i!="object"||i===null)n("plan.isl","\u5FC5\u987B\u662F\u5BF9\u8C61");else for(let o of["a","b","e","cp2","d"])u(i[o],`plan.isl.${o}`)}e.inner!==void 0&&(Array.isArray(e.inner)?e.inner.forEach((i,o)=>{let d=i;if(typeof d!="object"||d===null){n(`plan.inner[${o}]`,"\u4E0D\u662F\u5BF9\u8C61");return}for(let r of["x1","y1","x2","y2"])y(d[r])||n(`plan.inner[${o}].${r}`,"\u5FC5\u987B\u662F\u6570\uFF08\u56FE\u7EB8 px\uFF09");d.wd!==void 0&&!y(d.wd)&&n(`plan.inner[${o}].wd`,"\u5FC5\u987B\u662F\u6570")}):n("plan.inner","\u5FC5\u987B\u662F\u6570\u7EC4")),e.kitchen!==void 0&&(Array.isArray(e.kitchen)?e.kitchen.forEach((i,o)=>{let d=i;if(typeof d!="object"||d===null){n(`plan.kitchen[${o}]`,"\u4E0D\u662F\u5BF9\u8C61");return}["cab","top","steel","chrome","seam","black"].indexOf(d.m)<0&&n(`plan.kitchen[${o}].m`,`\u6750\u8D28\u6863\u975E\u6CD5: ${String(d.m)}`),!d.box&&!d.cyl&&n(`plan.kitchen[${o}]`,"\u5FC5\u987B\u6709 box \u6216 cyl"),d.box&&!(Array.isArray(d.box)&&d.box.length===3&&d.box.every(r=>y(r)))&&n(`plan.kitchen[${o}].box`,"\u5FC5\u987B\u662F [w, h, d]\uFF08ft\uFF09"),d.cyl&&!(Array.isArray(d.cyl)&&d.cyl.length===2&&d.cyl.every(r=>y(r)))&&n(`plan.kitchen[${o}].cyl`,"\u5FC5\u987B\u662F [r, len]\uFF08ft\uFF09"),d.seg!==void 0&&(!y(d.seg)||d.seg<3)&&n(`plan.kitchen[${o}].seg`,"\u5FC5\u987B\u662F \u22653 \u7684\u7EC6\u5206"),Array.isArray(d.p)&&d.p.length===3&&d.p.every(r=>y(r))||n(`plan.kitchen[${o}].p`,"\u5FC5\u987B\u662F [x, y, z]\uFF08ft\uFF09")}):n("plan.kitchen","\u5FC5\u987B\u662F\u6570\u7EC4"))}let f=a.hidden;if(typeof f!="object"||f===null)n("hidden","hidden \u5FC5\u987B\u662F\u5BF9\u8C61");else for(let e of["walls","windows","doors","solids"])(!Array.isArray(f[e])||!f[e].every(P))&&n(`hidden.${e}`,"\u5FC5\u987B\u662F id \u5B57\u7B26\u4E32\u6570\u7EC4");return l}function te(t){let l=[],n=(p,f)=>l.push({path:p,message:f});if(typeof t!="object"||t===null)return n("doc","\u4E0D\u662F\u5BF9\u8C61"),l;let a=t,c=p=>typeof p=="number"&&Number.isFinite(p),g=(p,f)=>{if(typeof p!="object"||p===null)return n(f,"geom \u5FC5\u987B\u662F\u539F\u8BED\u5BF9\u8C61");let e=p;if(e.t==="seg")for(let u of["x1","y1","x2","y2"])c(e[u])||n(`${f}.${u}`,`${u} \u5FC5\u987B\u662F\u6709\u9650\u6570\uFF08ft\uFF09`);else if(e.t==="arc"){for(let u of["cx","cy","a0","a1"])c(e[u])||n(`${f}.${u}`,`${u} \u5FC5\u987B\u662F\u6709\u9650\u6570`);(!c(e.r)||e.r<=0)&&n(`${f}.r`,"r \u5FC5\u987B\u662F\u6B63\u6570\uFF08ft\uFF09"),e.dir!==1&&e.dir!==-1&&n(`${f}.dir`,"dir \u5FC5\u987B\u662F 1 \u6216 \u22121")}else if(e.t==="poly"){let u=e.pts;if(!Array.isArray(u)||u.length<2)return n(`${f}.pts`,"pts \u5FC5\u987B\u662F \u22652 \u4E2A [x, y]");u.forEach((s,i)=>{(!Array.isArray(s)||s.length!==2||!c(s[0])||!c(s[1]))&&n(`${f}.pts[${i}]`,"\u5FC5\u987B\u662F [x, y]\uFF08ft\uFF09")})}else n(`${f}.t`,`geom.t \u5FC5\u987B\u662F seg|arc|poly\uFF0C\u5B9E\u9645 ${String(e.t)}`)};for(let p of["walls","windows","doors","solids"]){let f=a[p];Array.isArray(f)&&f.forEach((e,u)=>{if(typeof e!="object"||e===null)return;let s=e;if(s.geom===void 0)return n(`${p}[${u}].geom`,"geom \u5FC5\u586B");g(s.geom,`${p}[${u}].geom`),p==="doors"&&s.gapGeom!==void 0&&g(s.gapGeom,`doors[${u}].gapGeom`)})}if(a.patio!=null&&typeof a.patio=="object"){let p=a.patio;p.geom!==void 0&&g(p.geom,"patio.geom")}return l}function re(){return{$schema:"http://json-schema.org/draft-07/schema#",title:"MiniDen Project (schema v1)",type:"object",required:["schema","name","units","ceilingH","northRotation","walls","windows","doors","solids","rooms","fixtures","env","hidden"],properties:{schema:{const:1},name:{type:"string"},units:{enum:["ft","cm"]},ceilingH:{type:"number",exclusiveMinimum:0},northRotation:{type:"number"},sc:{type:"number",exclusiveMinimum:0},dataV:{type:"number",minimum:1},walls:{type:"array",items:{$ref:"#/definitions/wall"}},windows:{type:"array",items:{$ref:"#/definitions/window"}},doors:{type:"array",items:{$ref:"#/definitions/door"}},solids:{type:"array",items:{$ref:"#/definitions/solid"}},patio:{oneOf:[{type:"null"},{type:"object",required:["geom"],properties:{geom:{$ref:"#/definitions/geom"}}}]},rooms:{type:"array",items:{$ref:"#/definitions/room"}},fixtures:{type:"array",items:{$ref:"#/definitions/fixture"}},runs:{type:"array",items:{$ref:"#/definitions/run"}},outlets:{type:"array",items:{$ref:"#/definitions/outlet"}},env:{type:"object",required:["preset","mode"],properties:{preset:{type:"string"},mode:{enum:["day","night"]}}},floorOutline:{type:"array",minItems:3,items:{type:"array",minItems:2,maxItems:2,items:{type:"number"}}},plan:{type:"object",properties:{roomSummary:{type:"string"},refPhoto:{type:"string"},calib:{type:"object",required:["img","w","h"],properties:{img:{type:"string"},w:{type:"number",exclusiveMinimum:0},h:{type:"number",exclusiveMinimum:0}}},windowBand:{type:"array",items:{type:"array",minItems:2,maxItems:2,items:{type:"number"}}},patioPatch:{type:"array",minItems:3,items:{type:"array",minItems:2,maxItems:2,items:{type:"number"}}},islLabel:{type:"object",required:["p","w","d","calib"],properties:{p:{type:"array",minItems:2,maxItems:2,items:{type:"number"}},w:{type:"number"},d:{type:"number"},calib:{type:"string"}}},isl:{type:"object",required:["a","b","e","cp2","d"],properties:{a:{type:"array",minItems:2,maxItems:2,items:{type:"number"}},b:{type:"array",minItems:2,maxItems:2,items:{type:"number"}},e:{type:"array",minItems:2,maxItems:2,items:{type:"number"}},cp2:{type:"array",minItems:2,maxItems:2,items:{type:"number"}},d:{type:"array",minItems:2,maxItems:2,items:{type:"number"}}}},kitchen:{type:"array",items:{type:"object",required:["m","p"],properties:{m:{enum:["cab","top","steel","chrome","seam","black"]},box:{type:"array",minItems:3,maxItems:3,items:{type:"number"}},cyl:{type:"array",minItems:2,maxItems:2,items:{type:"number"}},seg:{type:"integer",minimum:3},p:{type:"array",minItems:3,maxItems:3,items:{type:"number"}},rz:{enum:[90]},sh:{type:"boolean"},rc:{type:"boolean"}}}},inner:{type:"array",items:{type:"object",required:["x1","y1","x2","y2"],properties:{x1:{type:"number"},y1:{type:"number"},x2:{type:"number"},y2:{type:"number"},wd:{type:"number"}}}}}},baseImage:{type:"object",required:["data","w","h","mPerPx","ox","oy"],properties:{data:{type:"string"},w:{type:"integer",minimum:8},h:{type:"integer",minimum:8},mPerPx:{type:"number",exclusiveMinimum:0},ox:{type:"number"},oy:{type:"number"},rot:{enum:[0,90,180,270]}}},hidden:{type:"object",properties:{walls:{type:"array",items:{type:"string"}},windows:{type:"array",items:{type:"string"}},doors:{type:"array",items:{type:"string"}},solids:{type:"array",items:{type:"string"}}}}},definitions:{geom:{oneOf:[{type:"object",required:["t","x1","y1","x2","y2"],properties:{t:{const:"seg"},x1:{type:"number"},y1:{type:"number"},x2:{type:"number"},y2:{type:"number"}}},{type:"object",required:["t","cx","cy","r","a0","a1","dir"],properties:{t:{const:"arc"},cx:{type:"number"},cy:{type:"number"},r:{type:"number",exclusiveMinimum:0},a0:{type:"number"},a1:{type:"number"},dir:{enum:[1,-1]}}},{type:"object",required:["t","pts"],properties:{t:{const:"poly"},pts:{type:"array",minItems:3,items:{type:"array",minItems:2,maxItems:2,items:{type:"number"}}}}}]},wall:{type:"object",required:["id","kind","geom"],properties:{id:{type:"string"},kind:{enum:["wall","thin","opening","passage"]},geom:{$ref:"#/definitions/geom"},thick:{type:"number",exclusiveMinimum:0}}},window:{type:"object",required:["id","geom","pos","width","sill","head","style","frame","glass"],properties:{id:{type:"string"},geom:{$ref:"#/definitions/geom"},wallId:{type:["string","null"]},pos:{type:"number",minimum:0,maximum:1},width:{type:"number",exclusiveMinimum:0},sill:{type:"number",minimum:0},head:{type:"number",minimum:0},style:{enum:["fixed","slide","casement","awning"]},fullHeight:{type:"boolean"},frame:{type:"string"},glass:{type:"number",minimum:0,maximum:1},steel:{type:"boolean"}}},door:{type:"object",required:["id","geom","pos","width","kind"],properties:{id:{type:"string"},geom:{$ref:"#/definitions/geom"},gapGeom:{$ref:"#/definitions/geom"},wallId:{type:["string","null"]},pos:{type:"number",minimum:0,maximum:1},width:{type:"number",exclusiveMinimum:0},kind:{enum:["swing","double","slide","bifold"]},hinge:{enum:[0,1]},side:{enum:[1,-1]},dark:{type:"boolean"}}},solid:{type:"object",required:["id","geom","fill"],properties:{id:{type:"string"},name:{type:"string"},geom:{$ref:"#/definitions/geom"},fill:{type:"string"},noCal:{type:"boolean"},column:{type:"boolean"}}},room:{type:"object",required:["id","label","pos"],properties:{id:{type:"string"},label:{type:"string"},pos:{type:"array",minItems:2,maxItems:2,items:{type:"number"}},wd:{type:"number"},dp:{type:"number"},d:{type:"string"},rot:{type:"number"},small:{type:"boolean"}}},fixture:{type:"object",required:["id","t","x1","y1","x2","y2"],properties:{id:{type:"string"},t:{enum:["counter","basin","toilet","tub","shower","mirror"]},x1:{type:"number"},y1:{type:"number"},x2:{type:"number"},y2:{type:"number"},dir:{type:"string"},fa:{type:"string"},open:{type:"string"},rot:{type:"number"}}},run:{type:"object",required:["id","path","depth","topH"],properties:{id:{type:"string"},path:{type:"array",minItems:2,items:{type:"array",minItems:2,maxItems:2,items:{type:"number"}}},depth:{type:"number",exclusiveMinimum:0},topH:{type:"number",exclusiveMinimum:0},h:{type:"number",exclusiveMinimum:0},modules:{type:"array",items:{type:"object",required:["at","type"],properties:{at:{type:"number",minimum:0},type:{enum:["sink","cooktop","fridge","dishwasher","open"]},w:{type:"number",exclusiveMinimum:0}}}},src:{enum:["builtin","user"]},userIndex:{type:"integer"}}},outlet:{type:"object",required:["id","x","y","rot","h","kind"],properties:{id:{type:"string"},x:{type:"number"},y:{type:"number"},rot:{type:"number"},h:{type:"number",exclusiveMinimum:0,maximum:12},kind:{enum:v},n:{type:"integer",minimum:1,maximum:3},host:{enum:X},hostId:{type:"string"},at:{type:"number",minimum:0},side:{type:"integer",minimum:-1,maximum:3},dh:{type:"number",minimum:-12,maximum:12},src:{enum:["user"]}}}}}}var U={};R(U,{EMPTY_USERGEO:()=>C,docToLegacy:()=>de,migrateLegacyToV1:()=>ue});var q=22,C={walls:[],polys:[],doors:[],hiddenW:[],hiddenP:[],hiddenD:[],ovW:{},ovP:{},ovD:{}},K=1/.3048,ie=.67,oe=2.25,j=.05,se="#1c2528",ae=.18,A=t=>({t:"seg",x1:t.x1,y1:t.y1,x2:t.x2,y2:t.y2}),G=(t,l)=>l?Object.assign({},t,l):{...t};function ue(t,l=C){let n=t.sc,a=H("\u672A\u547D\u540D\u6237\u578B");a.sc=n;let{walls:c,windows:g,doors:p,solids:f,rooms:e,fixtures:u}=a,s=new Map;for(let r=0;r<t.walls.length;r++){let m=t.walls[r];m.t==="d"&&s.set(r,G(m,l.ovW[r]))}let i=r=>{for(let[m,b]of s){let $=[[b.x1,b.y1],[b.x2,b.y2]],h=[[r.x1,r.y1],[r.x2,r.y2]];if(k($[0],h[0])<j&&k($[1],h[1])<j||k($[0],h[1])<j&&k($[1],h[0])<j)return{seg:b,index:m}}return null},o=(r,m,b,$,h)=>{let x=!!r.fc,w=r.slider?"slide":"fixed";return{id:b==="builtin"?`n${m+1}`:E({walls:c,windows:g,doors:p,solids:f,rooms:e,fixtures:u},"window"),geom:A(r),wallId:null,pos:.5,width:_(A(r)),sill:x?0:ie*K,head:x?a.ceilingH:oe*K,style:w,fullHeight:x,frame:r.steel?"#2b2f36":se,glass:ae,steel:r.steel||void 0,src:b,chainIndex:b==="builtin"?m:void 0,userIndex:h,thick:r.wd!=null?r.wd/$:void 0,wdPx:r.wd??void 0}};for(let r=0;r<t.walls.length;r++){let m=G(t.walls[r],l.ovW[r]);m.t==="w"||m.t==="i"?c.push({id:`w${r+1}`,kind:m.t==="i"?"thin":"wall",geom:A(m),thick:m.wd!=null?m.wd/n:void 0,wdPx:m.wd??void 0,src:"builtin",chainIndex:r}):m.t==="g"?g.push(o(m,r,"builtin",n)):c.push({id:`w${r+1}`,kind:m.t==="d"?"opening":"passage",geom:A(m),thick:m.wd!=null?m.wd/n:void 0,wdPx:m.wd??void 0,src:"builtin",chainIndex:r})}l.walls.forEach((r,m)=>{let b=r;b.t==="g"?g.push(o(b,m,"user",n,m)):c.push({id:E(a,"wall"),kind:b.t==="i"?"thin":b.t==="d"?"opening":b.t==="o"?"passage":"wall",geom:A(b),thick:b.wd!=null?b.wd/n:void 0,wdPx:b.wd??void 0,src:"user",userIndex:m})});let d=(r,m,b,$)=>{let h=b==="builtin"?i(r):null,x=["swing","double","slide","bifold"].includes(r.kind)?r.kind:"swing";return{id:b==="builtin"?`d${m+1}`:E(a,"door"),geom:A(r),gapGeom:h?A(h.seg):void 0,wallId:h?`w${h.index+1}`:null,pos:.5,width:_(A(h?h.seg:r)),kind:x,hinge:r.hinge===0||r.hinge===1?r.hinge:0,side:r.side===1||r.side===-1?r.side:1,dark:r.wood||void 0,src:b,chainIndex:b==="builtin"?m:void 0,userIndex:$}};for(let r=0;r<t.doors.length;r++){let m=G(t.doors[r],l.ovD[r]);p.push(d(m,r,"builtin"))}l.doors.forEach((r,m)=>p.push(d(r,m,"user",m)));for(let r=0;r<t.fixed.length;r++){let m=t.fixed[r],b=l.ovP[r],$=w=>Array.isArray(w)?w:w&&typeof w=="object"&&Array.isArray(w.poly)?w.poly:null,h=b?b.poly??null:null,x=(h&&$(h))??$(m.poly)??m.poly;f.push({id:`s${r+1}`,name:m.name||void 0,geom:{t:"poly",pts:x.map(w=>[w[0],w[1]])},fill:m.fill,noCal:m.noCal||void 0,column:m.name==="\u67F1"?!0:void 0,ovWrapped:h||$(m.poly)!==m.poly?!0:void 0,src:"builtin",chainIndex:r})}return l.polys.forEach((r,m)=>f.push({id:E(a,"solid"),name:r.name||void 0,geom:{t:"poly",pts:r.pts.map(b=>[b[0],b[1]])},fill:"#0c0d0f",src:"user",chainIndex:m,userIndex:m})),Array.isArray(t.patio)&&t.patio.length>=3&&(a.patio={geom:{t:"poly",pts:t.patio.map(r=>[r[0],r[1]])}}),t.labels.forEach((r,m)=>e.push({id:`r${m+1}`,label:r.t,pos:[r.p[0],r.p[1]],wd:r.wd,dp:r.dp,d:r.d||void 0,rot:r.rot,small:r.small||void 0,chainIndex:m})),t.fx.forEach((r,m)=>u.push({id:`f${m+1}`,t:M.includes(r.t)?r.t:"counter",x1:r.x1/n,y1:r.y1/n,x2:r.x2/n,y2:r.y2/n,dir:r.dir,fa:r.fa,open:r.open,chainIndex:m})),l.hiddenW.forEach(r=>{let m=t.walls[r];m&&(m.t==="g"?a.hidden.windows.push(`n${r+1}`):a.hidden.walls.push(`w${r+1}`))}),l.hiddenP.forEach(r=>{t.fixed[r]&&a.hidden.solids.push(`s${r+1}`)}),l.hiddenD.forEach(r=>{t.doors[r]&&a.hidden.doors.push(`d${r+1}`)}),a}var W=t=>{if(t.t==="seg")return{t:"seg",x1:t.x1,y1:t.y1,x2:t.x2,y2:t.y2};throw new Error("docToLegacy: legacy \u6295\u5F71\u53EA\u652F\u6301 seg\uFF08arc/poly \u7531\u6D88\u8D39\u7AEF expand\uFF0CS3 \u8D77\uFF09")},le=t=>{if(t.t==="poly")return t.pts.map(l=>[l[0],l[1]]);if(t.t==="arc"){let l=O(t);if(!l.length)return[];let n=[l[0][0]];for(let[,a]of l)n.push(a);return n}return[]};function de(t){let l=[],n=new Set(t.hidden.walls),a=new Set(t.hidden.windows),c=new Set(t.hidden.doors),g=new Set(t.hidden.solids),p=[...t.walls,...t.windows];p.sort((s,i)=>{let o=s.src==="builtin"?0:1,d=i.src==="builtin"?0:1,r=s.src==="builtin"?s.chainIndex??0:s.userIndex??0,m=i.src==="builtin"?i.chainIndex??0:i.userIndex??0;return o-d||r-m});for(let s of p)if(!("kind"in s)){let o=s;if(a.has(o.id))continue;let d=W(o.geom);l.push({x1:d.x1,y1:d.y1,x2:d.x2,y2:d.y2,t:"g",...o.fullHeight?{fc:!0}:{},...o.style==="slide"?{slider:!0}:{},...o.steel?{steel:!0}:{},...o.thick!=null?{wd:o.wdPx??o.thick*q}:{},_src:o.src==="user"?"u":"b",_i:o.chainIndex??o.userIndex,_id:o.id})}else{let o=s;if(n.has(o.id))continue;let d=W(o.geom);l.push({x1:d.x1,y1:d.y1,x2:d.x2,y2:d.y2,t:o.kind==="thin"?"i":o.kind==="opening"?"d":o.kind==="passage"?"o":"w",...o.thick!=null?{wd:o.wdPx??o.thick*q}:{},_src:o.src==="user"?"u":"b",_i:o.chainIndex??o.userIndex,_id:o.id})}let f=[],e=(s,i)=>{let o=s.src==="builtin"?s.chainIndex??0:Number.MAX_SAFE_INTEGER,d=i.src==="builtin"?i.chainIndex??0:Number.MAX_SAFE_INTEGER;return o-d};[...t.solids].sort(e).forEach(s=>{if(g.has(s.id))return;let i=le(s.geom);f.push({name:s.src==="user"?"":s.name||"",poly:s.ovWrapped?{poly:i}:i,fill:s.fill,...s.noCal?{noCal:s.noCal}:{},_src:s.src==="user"?"u":"b",_i:s.chainIndex??s.userIndex,_id:s.id})});let u=[];return[...t.doors].sort((s,i)=>{let o=s.src==="builtin"?s.chainIndex??0:Number.MAX_SAFE_INTEGER,d=i.src==="builtin"?i.chainIndex??0:Number.MAX_SAFE_INTEGER;return o-d}).forEach(s=>{if(c.has(s.id))return;let i=W(s.geom);u.push({x1:i.x1,y1:i.y1,x2:i.x2,y2:i.y2,kind:s.kind,hinge:s.hinge??0,side:s.side??1,wood:!!s.dark,_src:s.src==="user"?"u":"b",_i:s.chainIndex??s.userIndex,_id:s.id})}),{walls:l,fixed:f,doors:u}}globalThis.MINIDEN={Primitives:D,Project:F,Migrate:U};})();
 
 </script><!-- /miniden-schema -->
 <script id="miniden-geo">
@@ -1630,12 +1640,14 @@ function resetUndoRings(){ undoRing.length=0; redoRing.length=0; lastGesture=nul
    以前只有 switchPlan 做了这件事，「新建空白户型」漏了 —— 同一条判据必须一次写全。 */
 function invalidateEditLayer(){
   wallEdit.sel=null; wallEdit.drawPts=[]; wallEdit.hover=null; wallEdit.dEndSel=null; drag=null;
+  wallEdit.olPreview=null; wallEdit.olPrevKey='';
 }
 /* 选中指向的实体还在当前这份文档里吗（隐藏的内置实体算不在：用户看不见它） */
 function selAlive(s){
   if(!s) return false;
   if(s.kind==='fx') return DOC.fixtures.some(x=>x.id===s.id);
   if(s.kind==='run') return (DOC.runs||[]).some(x=>x.id===s.id);
+  if(s.kind==='outlet') return effOutlets().some(x=>x.id===s.id);
   const e=entById(s.id); if(!e) return false;
   const hid = s.kind==='door'? DOC.hidden.doors
             : s.kind==='p'? DOC.hidden.solids
@@ -2117,6 +2129,40 @@ function drawFixtures(root){
     }
   }
 }
+/* S14：电源插座的 2D 图例（建筑电气平面图惯例：贴墙面的圆 + 两道平行短线 = 双孔插座；
+   联数 = 并排几个圆；GFCI 加一个「G」、USB 加一个「U」）。图例按真实尺寸画（跟着平面图缩放，
+   不做「按屏幕尺寸恒定」——那类叠加层必须在每次取景变化时重画，轮㉔ 踩过）。
+   CALIB 不画（新视觉元素不进校准视图，§1.1）。 */
+const OUTLET_R=0.17;        // ft：图例圆半径（≈5cm，比实物面板大一点，图上才看得见）
+function outletSymbolCenters(o){
+  const r=(o.rot||0)*Math.PI/180, n=[Math.cos(r), Math.sin(r)], u=[-n[1], n[0]];
+  const k=o.n||1, gap=OUTLET_R*2.2, off=OUTLET_R+0.04;
+  const out=[];
+  for(let i=0;i<k;i++){ const a=(i-(k-1)/2)*gap; out.push([o.x+n[0]*off+u[0]*a, o.y+n[1]*off+u[1]*a]); }
+  return { cs:out, n, u };
+}
+function drawOutlets(root){
+  const COL='#e6b44c';
+  for(const o of effOutlets()){
+    const g=el('g',{'data-outlet':o.id, class:'outletSym'},root);
+    const { cs, n, u }=outletSymbolCenters(o);
+    // 引线：从墙面到第一个圆（读图的人要能看出它挂在哪面墙上）
+    el('line',{x1:o.x*S, y1:o.y*S, x2:(o.x+n[0]*0.04)*S, y2:(o.y+n[1]*0.04)*S, stroke:COL, 'stroke-width':1.1},g);
+    for(const c of cs){
+      el('circle',{cx:c[0]*S, cy:c[1]*S, r:OUTLET_R*S, fill:'#1b1f25', stroke:COL, 'stroke-width':1.1},g);
+      for(const s of [-0.35, 0.35]){   // 两道与墙面平行的短线
+        const a=[c[0]+n[0]*s*OUTLET_R-u[0]*OUTLET_R*0.55, c[1]+n[1]*s*OUTLET_R-u[1]*OUTLET_R*0.55];
+        const b=[c[0]+n[0]*s*OUTLET_R+u[0]*OUTLET_R*0.55, c[1]+n[1]*s*OUTLET_R+u[1]*OUTLET_R*0.55];
+        el('line',{x1:a[0]*S, y1:a[1]*S, x2:b[0]*S, y2:b[1]*S, stroke:COL, 'stroke-width':0.9},g);
+      }
+    }
+    if(o.kind!=='std'){
+      const last=cs[cs.length-1], p=[last[0]+n[0]*OUTLET_R*1.9, last[1]+n[1]*OUTLET_R*1.9];
+      const t=el('text',{x:p[0]*S, y:p[1]*S+2.2, 'font-size':6.5, 'text-anchor':'middle', fill:COL, 'font-weight':600},g);
+      t.textContent = o.kind==='gfci' ? 'G' : 'U';
+    }
+  }
+}
 /* S12：台面/柜体 run 的 2D 图例（柜体带 + 前沿线 + 模块符号）。
    CALIB 不画（新视觉元素不进校准视图，§1.1）。 */
 function drawRuns(root){
@@ -2476,6 +2522,7 @@ function build2D(){
   }
   if(!CALIB) drawFixtures(root);
   if(!CALIB) drawRuns(root);
+  if(!CALIB){ syncOutlets(); drawOutlets(root); }   // S14：插座位置从宿主派生（拖台柜 / 改台面高后自己跟着走）
   // 钢框窗（S12）：黑钢梁位置（黑方块示意）——来自 plan.windowBand 或窗实体的 steel 标志
   if(!CALIB){
     for(const BD of steelBands()){
@@ -3144,6 +3191,7 @@ window.addEventListener('keydown', ev=>{
       if(drag && drag.mode==='pMove'){ if(drag.pts) drag.pts.forEach((q,i)=>{ q[0]=drag.orig[i][0]; q[1]=drag.orig[i][1]; }); drag=null; build2D(); return; }
       if(drag && (drag.mode==='dMove'||drag.mode==='dEnd')){ drag.link.rollback(); drag=null; build2D(); return; }
       if(drag && drag.mode==='fxMove'){ const f=selFixture(); if(f) Object.assign(f, drag.o); drag=null; build2D(); return; }
+      if(drag && drag.mode==='olMove'){ const o=selOutlet(); if(o){ for(const k of Object.keys(drag.o)){ if(drag.o[k]===undefined) delete o[k]; else o[k]=drag.o[k]; } } drag=null; build2D(); return; }
       if(wallEdit.drawPts.length){ wallEdit.drawPts=[]; wallEdit.hover=null; drawWallEdit(); }
       else { wallEdit.sel=null; drawWallEdit(); updateWallBarFromSel(); }
       return;
@@ -3158,6 +3206,18 @@ window.addEventListener('keydown', ev=>{
         if(seg){ pushUndo('nudge:'+wallEdit.sel.id); const dx=(ev.key==='ArrowLeft'?-1:ev.key==='ArrowRight'?1:0)*stepFt;
           const dy=(ev.key==='ArrowUp'?-1:ev.key==='ArrowDown'?1:0)*stepFt;
           seg.x1+=dx; seg.x2+=dx; seg.y1+=dy; seg.y2+=dy; geoChanged(); ev.preventDefault(); return; }
+      } else if(wallEdit.sel.kind==='outlet'){
+        const o=selOutlet();
+        if(o){ // 方向键 = 沿宿主滑动（插座不能离开它挂的那一面）：屏幕方向投影到安装面的切向
+          const r=(o.rot||0)*Math.PI/180, u=[-Math.sin(r), Math.cos(r)];
+          const d=[(ev.key==='ArrowLeft'?-1:ev.key==='ArrowRight'?1:0), (ev.key==='ArrowUp'?-1:ev.key==='ArrowDown'?1:0)];
+          const along=(d[0]*u[0]+d[1]*u[1])*stepFt;
+          if(Math.abs(along)>1e-6){
+            const p=outletPose(o)||o, probe=Object.assign({}, o);
+            if(moveOutletTo(probe, p.x+u[0]*along-Math.cos(r)*0.01, p.y+u[1]*along-Math.sin(r)*0.01) && probe.hostId===o.hostId){
+              pushUndo('nudge:'+o.id); Object.assign(o, probe); geoChanged(); }
+          }
+          ev.preventDefault(); return; }
       } else if(wallEdit.sel.kind==='fx'){
         const f=selFixture();
         if(f){ pushUndo('nudge:'+wallEdit.sel.id); const dx=(ev.key==='ArrowLeft'?-1:ev.key==='ArrowRight'?1:0)*stepFt;
@@ -3530,6 +3590,169 @@ function tryPlaceRunModule(mod, r, p0){
   wMsg('已放 '+RUN_MOD_NAMES[mod]+'（沿台面 '+Math.round(at*30.48)+'cm）');
   return true;
 }
+/* ---------- S14：电源插座（墙面 / 台面挡水墙 / 台柜上的点状实体） ----------
+   用户 2026-10-22：「添加墙上或者 fixture 上面的电源插座」。homeowner 的真问题是
+   「沙发 / 书桌 / 床头 / 电视柜摆在这里，旁边有没有插座、会不会被挡住」——所以插座是
+   户型文档里的实体（跟着户型走、导出导入、撤销），而不是一件家具。
+   位置的事实来源 = 相对宿主（host/hostId + at + side + dh，见 src/schema/project.ts），
+   (x, y, rot, h) 是 syncOutlets() 从宿主派生的缓存：拖台柜 / 改台面高 / 整图重标定时
+   插座自己跟着走，不用每条变更路径各写一遍「跟随」（前几轮 bug 猎反复钓到的就是漏一条路径）。 */
+const OUTLET_NAMES={std:'普通', usb:'带 USB', gfci:'防水（GFCI）'};
+const OUTLET_HOST_NAMES={wall:'墙面', run:'台面', fx:'台柜'};
+const OUTLET_WALL_H=1.0;          // ft：墙面插座缺省离地 30cm
+const OUTLET_ABOVE_TOP=0.5;       // ft：台面挡水墙 / 台柜上方缺省高出台面 15cm
+const OUTLET_UNDER_TOP=-0.45;     // ft：中岛柜体正面缺省低于台面 14cm
+const OUTLET_GANG_W=0.23;         // ft：一联面板宽 7cm（3D 面板 / 2D 图例联数间距）
+const FX_TOP={counter:2.59, basin:2.63};   // ft：台柜 / 洗手盆台面高（与 3D 洁具建模同一组数）
+function effOutlets(){ return DOC.outlets || []; }
+function selOutlet(){ const s=wallEdit.sel; if(!s||s.kind!=='outlet') return null; return effOutlets().find(o=>o.id===s.id)||null; }
+function outletWallSegs(id){ return effWalls().filter(s=>s._id===id && (s.t==='w'||s.t==='i')); }
+function segsLen(segs){ let a=0; for(const s of segs) a+=Math.hypot(s.x2-s.x1, s.y2-s.y1); return a; }
+function nearestWallDist(x,y){
+  let bd=Infinity;
+  for(const s of effWalls()){
+    if(s.t!=='w' && s.t!=='i') continue;
+    const dx=s.x2-s.x1, dy=s.y2-s.y1, L2=dx*dx+dy*dy; if(L2<1e-9) continue;
+    const t=Math.max(0,Math.min(1,((x-s.x1)*dx+(y-s.y1)*dy)/L2));
+    bd=Math.min(bd, Math.hypot(x-(s.x1+dx*t), y-(s.y1+dy*t)) - (s.wd!=null?s.wd:6.5)/S/2);
+  }
+  return bd;
+}
+/* 台柜的四条边（局部 -y/+x/+y/-x）→ 世界坐标的中点 / 切向 / 外法线 / 半长 */
+function fxEdge(f, side){
+  const cx=(f.x1+f.x2)/2, cy=(f.y1+f.y2)/2, hw=(f.x2-f.x1)/2, hd=(f.y2-f.y1)/2;
+  const r=(f.rot||0)*Math.PI/180, c=Math.cos(r), s=Math.sin(r);
+  const W=(lx,ly)=>[cx+lx*c-ly*s, cy+lx*s+ly*c];
+  const L=[[0,-hd,1,0,0,-1,hw],[hw,0,0,1,1,0,hd],[0,hd,1,0,0,1,hw],[-hw,0,0,1,-1,0,hd]][side];
+  return { m:W(L[0],L[1]), u:[L[2]*c-L[3]*s, L[2]*s+L[3]*c], n:[L[4]*c-L[5]*s, L[4]*s+L[5]*c], half:L[6] };
+}
+/* 宿主 → 派生位姿 {x,y,rot,h}；宿主找不到 → null（调用方用缓存） */
+function outletPose(o){
+  const rotOf=n=>Math.round(((Math.atan2(n[1],n[0])*180/Math.PI)%360+360)%360);
+  if(o.host==='wall'){
+    const segs=outletWallSegs(o.hostId); if(!segs.length) return null;
+    let at=Math.max(0, Math.min(segsLen(segs), o.at||0));
+    for(const s of segs){
+      const L=Math.hypot(s.x2-s.x1, s.y2-s.y1); if(L<1e-9) continue;
+      if(at<=L+1e-9 || s===segs[segs.length-1]){
+        const t=Math.min(1, at/L), u=[(s.x2-s.x1)/L, (s.y2-s.y1)/L], sd=o.side===-1?-1:1;
+        const n=[-u[1]*sd, u[0]*sd], th=(s.wd!=null?s.wd:6.5)/S/2;
+        return { x:s.x1+(s.x2-s.x1)*t+n[0]*th, y:s.y1+(s.y2-s.y1)*t+n[1]*th, rot:rotOf(n), h:o.h };
+      }
+      at-=L;
+    }
+    return null;
+  }
+  if(o.host==='run'){
+    const r=effRuns().find(x=>x.id===o.hostId); if(!r) return null;
+    const q=runPointAt(r, Math.max(0, Math.min(runLength(r), o.at||0))); if(!q) return null;
+    const off=o.side===1 ? r.depth+0.005 : 0.005;     // 0 = 挡水墙（path 靠墙侧），1 = 柜体正面（中岛）
+    const dh=o.dh!=null ? o.dh : (o.side===1 ? OUTLET_UNDER_TOP : OUTLET_ABOVE_TOP);
+    return { x:q.p[0]+q.n[0]*off, y:q.p[1]+q.n[1]*off, rot:rotOf(q.n), h:r.topH+dh };
+  }
+  if(o.host==='fx'){
+    const f=DOC.fixtures.find(x=>x.id===o.hostId); if(!f || !FX_TOP[f.t]) return null;
+    const e=fxEdge(f, Math.max(0, Math.min(3, o.side|0)));
+    const a=Math.max(-e.half, Math.min(e.half, o.at!=null ? o.at-e.half : 0));
+    const dh=o.dh!=null ? o.dh : OUTLET_ABOVE_TOP;
+    // 台柜靠墙那条边：面板贴在边上方的墙面，正面朝台柜里面
+    return { x:e.m[0]+e.u[0]*a, y:e.m[1]+e.u[1]*a, rot:rotOf([-e.n[0],-e.n[1]]), h:FX_TOP[f.t]+dh };
+  }
+  return null;
+}
+/* 缓存坐标取到 0.0001ft：FT2（0.01ft = 3mm）会让面板离墙皮差出可见的缝（实测 0.200 vs 半厚 0.197） */
+const FT4=v=>Math.round(v*1e4)/1e4;
+function syncOutlets(){
+  for(const o of effOutlets()){
+    const p=outletPose(o); if(!p) continue;
+    o.x=FT4(p.x); o.y=FT4(p.y); o.rot=p.rot; o.h=Math.max(0.05, Math.min(SCHEMA.Project.OUTLET_MAX_H||12, FT4(p.h)));
+  }
+}
+/* 点击点 → 挂到哪个宿主上（小目标优先：台柜 > 台面 > 墙）。null = 附近没有能挂的东西。 */
+function outletSnap(x, y){
+  const ppf=pxPerFt();
+  for(const f of DOC.fixtures){
+    if(!FX_TOP[f.t]) continue;
+    const cx=(f.x1+f.x2)/2, cy=(f.y1+f.y2)/2, r=-(f.rot||0)*Math.PI/180;
+    const lx=(x-cx)*Math.cos(r)-(y-cy)*Math.sin(r), ly=(x-cx)*Math.sin(r)+(y-cy)*Math.cos(r);
+    const pad=Math.max(0.1, 4/ppf);
+    if(Math.abs(lx)>(f.x2-f.x1)/2+pad || Math.abs(ly)>(f.y2-f.y1)/2+pad) continue;
+    // 靠墙那条边 = 边外侧一点离墙最近的那条
+    let side=0, bd=Infinity;
+    for(let k=0;k<4;k++){ const e=fxEdge(f,k); const d=nearestWallDist(e.m[0]+e.n[0]*0.15, e.m[1]+e.n[1]*0.15); if(d<bd){ bd=d; side=k; } }
+    const e=fxEdge(f, side);
+    const along=(x-e.m[0])*e.u[0]+(y-e.m[1])*e.u[1];
+    const at=Math.max(0, Math.min(2*e.half, along+e.half));
+    return { host:'fx', hostId:f.id, at:FT2(at), side, dh:OUTLET_ABOVE_TOP };
+  }
+  for(const r of effRuns()){
+    for(let i=0;i<r.path.length-1;i++){
+      const a=r.path[i], b=r.path[i+1], dx=b[0]-a[0], dy=b[1]-a[1], L=Math.hypot(dx,dy); if(L<1e-6) continue;
+      const n=runNormal(dx,dy,a[0],a[1]);
+      const t=((x-a[0])*dx+(y-a[1])*dy)/(L*L), dn=(x-a[0])*n[0]+(y-a[1])*n[1];
+      const pad=Math.max(0.1, 4/ppf);
+      if(t<0 || t>1 || dn<-pad || dn>r.depth+pad) continue;
+      const at=runDistAlong(r, x, y), q=runPointAt(r, at);
+      // 背后贴着墙 = 挡水墙上；背后是空的（中岛）= 柜体正面
+      const back=q && nearestWallDist(q.p[0]-q.n[0]*0.2, q.p[1]-q.n[1]*0.2) < 0.35;
+      return { host:'run', hostId:r.id, at:FT2(at), side: back?0:1, dh: back?OUTLET_ABOVE_TOP:OUTLET_UNDER_TOP };
+    }
+  }
+  // 吸附半径按屏幕像素（28px，比洁具的 20px 宽：插座小、难点准），夹在 0.35~1.5ft
+  let best=null, bd=Math.max(0.35, Math.min(1.5, 28/ppf));
+  const seen=new Map();   // 同一面墙（可能是好几段）上的累计长度
+  for(const s of effWalls()){
+    if(s.t!=='w' && s.t!=='i') continue;
+    const acc=seen.get(s._id)||0, dx=s.x2-s.x1, dy=s.y2-s.y1, L=Math.hypot(dx,dy);
+    seen.set(s._id, acc+L); if(L<1e-6) continue;
+    const t=Math.max(0,Math.min(1,((x-s.x1)*dx+(y-s.y1)*dy)/(L*L)));
+    const px=s.x1+dx*t, py=s.y1+dy*t, d=Math.hypot(x-px, y-py);
+    if(d<bd){ bd=d;
+      const side = (-dy*(x-px)+dx*(y-py)) >= 0 ? 1 : -1;   // 点在墙的哪一侧 = 插座在哪面墙皮
+      best={ host:'wall', hostId:s._id, at:FT2(acc+L*t), side }; }
+  }
+  if(best) best.h=OUTLET_WALL_H;
+  return best;
+}
+function pushUserOutlet(snap, kind, n, hOverride){
+  if(!OUTLET_NAMES[kind]) return null;
+  if(!DOC.outlets) DOC.outlets=[];
+  const ent={ id:SCHEMA.Project.nextId(DOC,'outlet'), x:0, y:0, rot:0, h:OUTLET_WALL_H, kind, src:'user',
+    host:snap.host, hostId:snap.hostId, at:snap.at };
+  if(n>1) ent.n=n;
+  if(snap.side!=null) ent.side=snap.side;
+  if(snap.host==='wall') ent.h=snap.h;
+  else ent.dh=snap.dh;
+  if(hOverride!=null) setOutletHeight(ent, hOverride, true);
+  DOC.outlets.push(ent);
+  const p=outletPose(ent);
+  if(!p){ DOC.outlets.pop(); return null; }
+  ent.x=FT4(p.x); ent.y=FT4(p.y); ent.rot=p.rot; ent.h=FT4(p.h);
+  return ent;
+}
+/* 改离地高：墙面插座直接改 h；台面 / 台柜插座改 dh（跟着台面高走） */
+function outletTopOf(o){
+  if(o.host==='run'){ const r=effRuns().find(x=>x.id===o.hostId); return r? r.topH : null; }
+  if(o.host==='fx'){ const f=DOC.fixtures.find(x=>x.id===o.hostId); return f&&FX_TOP[f.t]? FX_TOP[f.t] : null; }
+  return null;
+}
+const OUTLET_H_MIN=5/30.48;     // 5cm（踢脚线上）
+function outletHeightOk(hFt){ const ceil=(DOC&&DOC.ceilingH)||8.8; return hFt>=OUTLET_H_MIN && hFt<=ceil-0.2; }
+function outletHeightMsg(){ const ceil=(DOC&&DOC.ceilingH)||8.8; return '离地高要在 5cm 到 '+Math.round((ceil-0.2)*30.48)+'cm 之间（天花 '+Math.round(ceil*30.48)+'cm）；留空 = 按挂在哪自动定高'; }
+function setOutletHeight(o, hFt, raw){
+  const top=outletTopOf(o);
+  if(top!=null){ o.dh=FT2(hFt-top); if(raw) return; }
+  o.h=FT2(hFt);
+}
+/* 宿主被删时，挂在它上面的插座一起删（同一步撤销）。留着的话 3D 里会悬在半空。 */
+function dropOutletsOn(hostId){
+  const before=effOutlets().length;
+  if(DOC.outlets) DOC.outlets=DOC.outlets.filter(o=>o.hostId!==hostId);
+  return before-effOutlets().length;
+}
+function outletPlaceMsg(o){
+  return '已放'+OUTLET_NAMES[o.kind]+'插座（'+OUTLET_HOST_NAMES[o.host]+' · 离地 '+Math.round(o.h*30.48)+'cm）｜ 拖=沿宿主移动 · 方向键=微调 · Delete=删除';
+}
 function pushUserRun(pts, depth, topH){
   if(!DOC.runs) DOC.runs=[];
   const ent={ id:SCHEMA.Project.nextId(DOC,'run'), src:'user', userIndex:nextUserIndex('runs'),
@@ -3548,6 +3771,24 @@ function closeDrawRun(){ pushUndo('runClose', true);
     geoChanged(); wMsg('已添加台面（'+pts.length+' 点 · 深 '+Math.round(depth*30.48)+'cm · 台面高 '+Math.round(topH*30.48)+'cm）');
   } else drawWallEdit();
   updateWallBarFromSel();
+}
+function startOutletDrag(ev, p0){
+  const o=selOutlet(); if(!o) return;
+  drag={mode:'olMove', cX:ev.clientX, cY:ev.clientY, moved:false, undoKey:'drag:ol:'+o.id,
+        o:{host:o.host, hostId:o.hostId, at:o.at, side:o.side, h:o.h, dh:o.dh}};
+  svg.setPointerCapture(ev.pointerId);
+  drawWallEdit(); updateWallBarFromSel();
+}
+/* 拖动 = 沿宿主滑动；拖到别的宿主上就换宿主（高度回到那类宿主的缺省值，同宿主类型保留用户改过的高）。
+   离开一切宿主时停在最后一个能挂的位置（插座不能悬在空中）。 */
+function moveOutletTo(o, x, y){
+  const sn=outletSnap(x, y); if(!sn) return false;
+  const kindChanged = sn.host!==o.host || (sn.host==='run' && sn.side!==o.side);
+  o.host=sn.host; o.hostId=sn.hostId; o.at=sn.at;
+  if(sn.side!=null) o.side=sn.side; else delete o.side;
+  if(sn.host==='wall'){ delete o.dh; if(kindChanged) o.h=sn.h; }
+  else if(kindChanged || o.dh==null) o.dh=sn.dh;
+  return true;
 }
 function startRunDrag(ev, p0){
   const r=selRun(); if(!r) return;
@@ -3740,6 +3981,30 @@ function drawWallEdit(){
     el('rect',{x:(f.x1-pad)*S, y:(f.y1-pad)*S, width:(f.x2-f.x1+2*pad)*S, height:(f.y2-f.y1+2*pad)*S,
       fill:'rgba(0,0,0,0)', 'pointer-events':'all', class:'fxHit', 'data-fx':f.id},g);
   });
+  // S14：插座命中区在洁具之上（它最小：贴在台柜 / 台面上的插座必须点得中，同 #34 的 z 序口径）
+  effOutlets().forEach(o=>{
+    const { cs }=outletSymbolCenters(o);
+    const isSel=sel&&sel.kind==='outlet'&&sel.id===o.id;
+    const hv=wallEdit.hoverSel, isHov=hv&&hv.kind==='outlet'&&hv.id===o.id&&!isSel;
+    const rr=Math.max(OUTLET_R*S*1.6, 8/k);
+    const g=el('g',{},gEdit);
+    for(const c of cs){
+      if(isSel) el('circle',{cx:c[0]*S, cy:c[1]*S, r:rr, fill:'rgba(38,224,168,0.22)', stroke:'#26e0a8','stroke-width':1.8/k,'pointer-events':'none'},g);
+      else if(isHov) el('circle',{cx:c[0]*S, cy:c[1]*S, r:rr, fill:'rgba(245,158,66,0.25)', stroke:'#f59e42','stroke-width':1.4/k,'pointer-events':'none'},g);
+      el('circle',{cx:c[0]*S, cy:c[1]*S, r:rr, fill:'rgba(0,0,0,0)','pointer-events':'all', class:'olHit','data-outlet':o.id},g);
+    }
+  });
+  // S14：插座工具的虚线预览（放之前就看见它会挂在哪一面、哪一侧）
+  if(wallEdit.tool==='outlet' && wallEdit.olPreview && !drag){
+    const tmp=Object.assign({ kind:$('#olKind').value, n:+$('#olN').value||1 }, wallEdit.olPreview);
+    const p=outletPose(tmp);
+    if(p){
+      const { cs, n }=outletSymbolCenters(Object.assign(tmp, p));
+      el('line',{x1:p.x*S, y1:p.y*S, x2:(p.x+n[0]*0.04)*S, y2:(p.y+n[1]*0.04)*S, stroke:'#f5c542','stroke-width':1.2/k,'pointer-events':'none'},gEdit);
+      for(const c of cs) el('circle',{cx:c[0]*S, cy:c[1]*S, r:OUTLET_R*S, fill:'none', stroke:'#f5c542',
+        'stroke-width':1.4/k, 'stroke-dasharray':`${3/k} ${2/k}`, 'pointer-events':'none', class:'olPreview'},gEdit);
+    }
+  }
   // 手柄重画一遍放最上层（在命中区之上）
   if(sel && sel.kind==='w'){ const sw=selWallSeg(); if(sw)
     [[sw.x1,sw.y1,0],[sw.x2,sw.y2,1]].forEach(([x,y,ei])=>{
@@ -3778,6 +4043,23 @@ function updateWallBarFromSel(){
   ctxOn('#fxCtl', wallEdit.tool==='fx' || (s&&s.kind==='fx'));
   // S12：台面工具/选中 run 时才显示深度与台面高
   ctxOn('#runCtl', wallEdit.tool==='run' || (s&&s.kind==='run'));
+  // S14：插座工具 / 选中插座
+  ctxOn('#outletCtl', wallEdit.tool==='outlet' || (s&&s.kind==='outlet'));
+  if(s && s.kind==='outlet'){
+    const o=selOutlet();
+    if(o){
+      $('#olKind').value=o.kind; $('#olN').value=String(o.n||1);
+      if(document.activeElement!==$('#olH')) $('#olH').value=Math.round(o.h*30.48);
+      wMsg('插座 · '+OUTLET_NAMES[o.kind]+' · '+(o.n||1)+' 联 · 离地 '+Math.round(o.h*30.48)+'cm · 挂在'+OUTLET_HOST_NAMES[o.host]+
+           ' ｜ 拖=沿宿主移动（拖到别的墙 / 台面上就换过去）· 方向键=微调 · 改类型 / 联数 / 离地高 · Delete=删除');
+    }
+    return;
+  }
+  if(wallEdit.tool==='outlet' && !s){
+    if(document.activeElement!==$('#olH') && $('#olH').dataset.user!=='1') $('#olH').value='';
+    wMsg('点墙附近 = 贴墙面（离地 30cm）；点台面 / 台柜 = 挂在靠墙那一侧（台面上方 15cm）；中岛 = 柜体正面 ｜ 移动鼠标先看虚线预览');
+    return;
+  }
   if(s && s.kind==='run'){
     const r=selRun();
     if(r){
@@ -3929,6 +4211,12 @@ function rescaleDocPlan(k){
   if(Array.isArray(DOC.floorOutline)) DOC.floorOutline=DOC.floorOutline.map(p=>P(p[0],p[1]));
   for(const r of (DOC.rooms||[])){ if(!r.pos) continue; const q=P(r.pos[0],r.pos[1]);
     r.pos[0]=q[0]; r.pos[1]=q[1]; if(r.wd!=null) r.wd=FT2(r.wd*k); if(r.dp!=null) r.dp=FT2(r.dp*k); n++; }
+  /* S14：插座的位置挂在宿主上 —— 墙 / 台面跟着缩放了，沿宿主的距离 at 也要按同一比例缩
+     （台柜是真实尺寸、不缩放，at 不动）；宿主找不到的（缓存坐标）按同一中心搬。高度是真实世界尺寸，不缩放。 */
+  for(const o of (DOC.outlets||[])){
+    if((o.host==='wall' || o.host==='run') && o.at!=null) o.at=FT2(o.at*k);
+    else if(!o.host){ const q=P(o.x,o.y); o.x=q[0]; o.y=q[1]; }
+    n++; }
   // 洁具/台面：真实世界的尺寸不缩放，只把中心搬到缩放后对应的点（贴墙关系保持）
   for(const f of (DOC.fixtures||[])){
     const mx=(f.x1+f.x2)/2, my=(f.y1+f.y2)/2, q=P(mx,my), dx=q[0]-mx, dy=q[1]-my;
@@ -4015,13 +4303,21 @@ function deleteSel(){
     wMsg('这个构件不在当前户型里，选中已取消', true); return;
   }
   drag=null;   // 拖动中删除：先解除拖拽，避免后续 move 继续拉扯已删对象
+  if(s.kind==='outlet'){
+    pushUndo('del:'+s.id, true);
+    DOC.outlets=effOutlets().filter(x=>x.id!==s.id);
+    wallEdit.sel=null; geoChanged(); updateWallBarFromSel(); wMsg('已删除插座'); return;
+  }
+  /* 宿主被删 → 挂在它上面的插座一起删（同一步撤销，并说出来）。留着的话 3D 里悬在半空。 */
+  const olOn = effOutlets().filter(o=>o.hostId===s.id).length;
+  const olTail = olOn ? '（连同上面的 '+olOn+' 个插座）' : '';
   const e=entById(s.id);
   if(s.kind==='fx'){
     const f=DOC.fixtures.find(x=>x.id===s.id);
     if(f && f.src==='user'){
       pushUndo('del:'+s.id, true);   // 删用户洁具必须可撤销（以前只有墙/窗/门/多边形进环 → 误删按不回来，bug 猎 #32）
-      DOC.fixtures=DOC.fixtures.filter(x=>x.id!==s.id);
-      wallEdit.sel=null; geoChanged(); updateWallBarFromSel(); wMsg('已删除洁具'); return;
+      DOC.fixtures=DOC.fixtures.filter(x=>x.id!==s.id); dropOutletsOn(s.id);
+      wallEdit.sel=null; geoChanged(); updateWallBarFromSel(); wMsg('已删除洁具'+olTail); return;
     }
     wallEdit.sel=null; updateWallBarFromSel();
     wMsg('内置洁具不可删除（用户放置的可删）；想还原整套户型用「重置内置」', true); return;
@@ -4030,8 +4326,8 @@ function deleteSel(){
     const r=(DOC.runs||[]).find(x=>x.id===s.id);
     if(r && r.src==='user'){
       pushUndo('del:'+s.id, true);   // 同上：删用户画的台面必须可撤销
-      DOC.runs=DOC.runs.filter(x=>x.id!==s.id);
-      wallEdit.sel=null; geoChanged(); updateWallBarFromSel(); wMsg('已删除台面'); return;
+      DOC.runs=DOC.runs.filter(x=>x.id!==s.id); dropOutletsOn(s.id);
+      wallEdit.sel=null; geoChanged(); updateWallBarFromSel(); wMsg('已删除台面'+olTail); return;
     }
     wallEdit.sel=null; updateWallBarFromSel(); wMsg('只有用户画的台面可删除', true); return;
   }
@@ -4053,7 +4349,8 @@ function deleteSel(){
     if(e && e.src==='user') DOC.solids=DOC.solids.filter(x=>x.id!==s.id);
     else if(e && !DOC.hidden.solids.includes(s.id)) DOC.hidden.solids.push(s.id);
   }
-  wallEdit.sel=null; geoChanged(); updateWallBarFromSel(); wMsg('已删除');
+  if(s.kind==='w') dropOutletsOn(s.id);
+  wallEdit.sel=null; geoChanged(); updateWallBarFromSel(); wMsg('已删除'+(s.kind==='w'?olTail:''));
 }
 function wallEditDown(ev){
  try{
@@ -4119,6 +4416,22 @@ function wallEditDown(ev){
     wallEdit.dEndSel=null;
     wallEdit.sel={kind:'door', id:ent.id};
     geoChanged(); updateWallBarFromSel(); wMsg('已加门（可用上方按钮换类型/铰链/开向）');
+    return;
+  }
+  if(wallEdit.tool==='outlet'){
+    const og = t.closest && t.closest('[data-outlet]');
+    if(og){ wallEdit.sel={kind:'outlet', id:og.dataset.outlet}; startOutletDrag(ev, p0); return; }
+    const sn=outletSnap(p0[0], p0[1]);
+    if(!sn){ wMsg('插座要挂在墙面、台面或台柜 / 洗手盆上：点墙附近，或点在台面 / 台柜上', true); return; }
+    const kind=$('#olKind').value, nG=+$('#olN').value||1;
+    // 「离地」框只有用户在没选中时亲手填过才算「下一个用这个高」（选中时框里显示的是选中那个的高）
+    const hv=$('#olH').dataset.user==='1' ? $('#olH').value.trim() : '', hOv = hv==='' ? null : (+hv)/30.48;
+    if(hOv!=null && !outletHeightOk(hOv)){ wMsg(outletHeightMsg(), true); return; }
+    pushUndo('olPlace', true);
+    const ent=pushUserOutlet(sn, kind, nG, hOv);
+    if(!ent){ wMsg('插座类型无效，未放置', true); return; }
+    wallEdit.sel={kind:'outlet', id:ent.id}; wallEdit.olPreview=null;
+    geoChanged(); updateWallBarFromSel(); wMsg(outletPlaceMsg(ent));
     return;
   }
   if(wallEdit.tool==='fx'){
@@ -4209,6 +4522,9 @@ function wallEditDown(ev){
     svg.setPointerCapture(ev.pointerId);
     drawWallEdit(); updateWallBarFromSel(); return;
   }
+  // S14：选择模式下点插座 → 选中 + 起手拖动（它在洁具 / 台面之上，先判）
+  const olSel = t.closest && t.closest('[data-outlet]');
+  if(olSel){ wallEdit.sel={kind:'outlet', id:olSel.dataset.outlet}; startOutletDrag(ev, p0); return; }
   // S6：选择模式下点洁具 → 选中 + 起手拖移
   const fxSel = t.closest && t.closest('[data-fx]');
   if(fxSel){
@@ -4238,6 +4554,10 @@ function wallEditMove(ev){
   const p0=svgPoint(ev);
   if(wallEdit.tool!=='select' && !drag){   // 拖拽中的手柄在任何工具模式下都要继续响应
     if(wallEdit.drawPts.length){ wallEdit.hover=snapPt(p0,ev); drawWallEdit(); }
+    if(wallEdit.tool==='outlet'){   // 放之前先看见它会挂在哪（虚线预览）
+      const sn=outletSnap(p0[0], p0[1]), key=sn? JSON.stringify(sn) : '';
+      if(key!==wallEdit.olPrevKey){ wallEdit.olPrevKey=key; wallEdit.olPreview=sn; drawWallEdit(); }
+    }
     return;
   }
   if(!drag){
@@ -4245,6 +4565,7 @@ function wallEditMove(ev){
     const t=ev.target; let hv=null;
     if(t.classList && t.classList.contains('wHit')) hv={kind:'w', id:t.dataset.id};
     else if(t.classList && t.classList.contains('pHit')) hv={kind:'p', id:t.dataset.id};
+    else if(t.closest && t.closest('[data-outlet]')) hv={kind:'outlet', id:t.closest('[data-outlet]').dataset.outlet};
     else if(t.closest && t.closest('[data-fx]')) hv={kind:'fx', id:t.closest('[data-fx]').dataset.fx};
     else if(t.closest && t.closest('[data-run]')) hv={kind:'run', id:t.closest('[data-run]').dataset.run};
     const cur=wallEdit.hoverSel;
@@ -4311,6 +4632,18 @@ function wallEditMove(ev){
     f.x1=drag.o.x1+dx; f.y1=drag.o.y1+dy; f.x2=drag.o.x2+dx; f.y2=drag.o.y2+dy;
     build2Dlight(); return;
   }
+  if(drag.mode==='olMove'){
+    if(!drag.moved && Math.hypot(ev.clientX-drag.cX, ev.clientY-drag.cY)<5) return;
+    const o=selOutlet(); if(!o) return;
+    const before=JSON.stringify([o.host,o.hostId,o.at,o.side]);
+    const probe=Object.assign({}, o);
+    if(!moveOutletTo(probe, p0[0], p0[1])) return;
+    if(JSON.stringify([probe.host,probe.hostId,probe.at,probe.side])===before) return;
+    markDragGesture(drag, drag.undoKey);   // 先快照、再变异（#51 同一条判据）
+    moveOutletTo(o, p0[0], p0[1]);
+    wMsg(OUTLET_HOST_NAMES[o.host]+' · 离地 '+Math.round(((outletPose(o)||o).h)*30.48)+'cm');
+    build2Dlight(); return;
+  }
   if(drag.mode==='runMove'){
     if(!drag.moved && Math.hypot(ev.clientX-drag.cX, ev.clientY-drag.cY)<5) return;
     markDragGesture(drag, drag.undoKey);
@@ -4330,7 +4663,7 @@ function wallEditMove(ev){
  }catch(e){ wMsg('编辑器错误: '+e.message, true); }
 }
 function wallEditUp(ev){
-  if(drag && ['wEnd','pVert','wMove','pMove','dMove','dEnd','fxMove','runMove'].includes(drag.mode)){
+  if(drag && ['wEnd','pVert','wMove','pMove','dMove','dEnd','fxMove','runMove','olMove'].includes(drag.mode)){
     const moved = drag.moved!==false;
     drag=null;
     if(moved) geoChanged(); else drawWallEdit();
@@ -5885,6 +6218,36 @@ function buildStatic3D(){
         const m=new THREE.Mesh(new THREE.BoxGeometry(w, r.topH-0.06, 0.02), mSeam);
         m.position.set(q.p[0]+q.n[0]*0.01, (r.topH-0.06)/2, q.p[1]+q.n[1]*0.01);
         m.rotation.y=-th; m.castShadow=m.receiveShadow=true; scene.add(m);
+      }
+    }
+  }
+  /* S14：电源插座 —— 面板（7cm × 11.5cm / 联，厚 0.6cm）贴在安装面上，插孔是深色小块。
+     位置从宿主派生（syncOutlets），与 2D 同一份缓存。面板太小，不投影（省阴影贴图）。 */
+  syncOutlets();
+  if(effOutlets().length){
+    const mPlate=new THREE.MeshStandardMaterial({color:0xf2f0ea, roughness:0.55});
+    const mHole=new THREE.MeshStandardMaterial({color:0x2a2a2a, roughness:0.8});
+    const mBtn=new THREE.MeshStandardMaterial({color:0xc0392b, roughness:0.6});
+    const PH=0.377, PT=0.02;   // ft：面板高 11.5cm、厚 0.6cm
+    for(const o of effOutlets()){
+      const k=o.n||1, W=OUTLET_GANG_W*k+0.02*(k-1);
+      const r=(o.rot||0)*Math.PI/180, n=[Math.cos(r), Math.sin(r)], u=[-n[1], n[0]];
+      const put=(geo, mat, along, up, out)=>{
+        const m=new THREE.Mesh(geo, mat);
+        m.position.set(o.x+n[0]*out+u[0]*along, o.h+up, o.y+n[1]*out+u[1]*along);
+        m.rotation.y=-Math.atan2(u[1], u[0]);     // 本地 x = 安装面切向，本地 z = 法向
+        m.receiveShadow=true; m.userData.outlet=o.id; scene.add(m); return m;
+      };
+      put(new THREE.BoxGeometry(W, PH, PT), mPlate, 0, 0, PT/2);
+      for(let i=0;i<k;i++){
+        const a=(i-(k-1)/2)*(OUTLET_GANG_W+0.02);
+        if(o.kind==='gfci'){
+          put(new THREE.BoxGeometry(0.13, 0.22, 0.012), mHole, a, 0, PT+0.006);
+          put(new THREE.BoxGeometry(0.04, 0.025, 0.014), mBtn, a, 0.0, PT+0.013);
+        } else {
+          for(const up of [0.075, -0.075]) put(new THREE.BoxGeometry(0.11, 0.09, 0.01), mHole, a, up, PT+0.005);
+          if(o.kind==='usb') put(new THREE.BoxGeometry(0.05, 0.018, 0.012), mHole, a, 0, PT+0.006);
+        }
       }
     }
   }
@@ -16389,6 +16752,7 @@ document.querySelectorAll('#wtoolSeg button').forEach(b=>{
     if(b.dataset.t!=='select'){ $('#wType').value='w'; $('#wThick').value=9; } // 防止上次选中的门洞类型粘滞
     if(b.dataset.t!=='fx'){ $('#fxRot').value=0; }   // 切走洁具工具时旋转角复位
     if(b.dataset.t!=='run'){ $('#runModule').value=''; }  // 切走台面工具时模块选择复位
+    if(b.dataset.t!=='outlet'){ $('#olH').value=''; $('#olH').dataset.user=''; wallEdit.olPreview=null; wallEdit.olPrevKey=''; }
     document.querySelectorAll('#wtoolSeg button').forEach(x=>x.classList.toggle('on',x===b));
     wallEdit.sel=null; drawWallEdit(); updateWallBarFromSel(); };
 });
@@ -16400,6 +16764,21 @@ $('#fxRot').onchange=()=>{
   if(v===0){ if(f.rot) delete f.rot; } else f.rot=v;
   geoChanged(); updateWallBarFromSel(); wMsg('旋转 '+v+'°');
 };
+// S14：插座的类型 / 联数 / 离地高（选中时改选中的那个，各占一步撤销；没选中时是「下一个放的」）
+$('#olKind').onchange=()=>{ const o=selOutlet(); if(!o) return;
+  const v=$('#olKind').value; if(!OUTLET_NAMES[v]||v===o.kind) return;
+  pushUndo('olKind:'+o.id, true); o.kind=v; geoChanged(); updateWallBarFromSel(); };
+$('#olN').onchange=()=>{ const o=selOutlet(); if(!o) return;
+  const v=Math.max(1, Math.min(3, +$('#olN').value||1)); if(v===(o.n||1)) return;
+  pushUndo('olN:'+o.id, true); if(v>1) o.n=v; else delete o.n; geoChanged(); updateWallBarFromSel(); };
+$('#olH').onchange=()=>{
+  const raw=$('#olH').value.trim(), o=selOutlet();
+  if(!o){ $('#olH').dataset.user = raw==='' ? '' : '1'; return; }   // 没选中：留给下一次放置
+  if(raw===''){ $('#olH').value=Math.round(o.h*30.48); return; }
+  const hFt=(+raw)/30.48;
+  if(!outletHeightOk(hFt)){ wMsg(outletHeightMsg(), true); $('#olH').value=Math.round(o.h*30.48); return; }
+  if(Math.round(hFt*30.48)===Math.round(o.h*30.48)) return;      // 重打同一个数不占一步（#44）
+  pushUndo('olH:'+o.id, true); setOutletHeight(o, hFt); geoChanged(); $('#olH').blur(); updateWallBarFromSel(); };
 // S12：选中 run 时改深度 / 台面高
 $('#runDepth').onchange=()=>{ const r=selRun(); if(!r) return;
   const v=(+$('#runDepth').value||60)/30.48; pushUndo('runDepth:'+r.id, true); r.depth=FT2(v);
@@ -17282,14 +17661,14 @@ function importDocFromJSON(text){
 function docCounts(d){
   const c = a => Array.isArray(a) ? a.length : 0;
   return { walls:c(d.walls), windows:c(d.windows), doors:c(d.doors), solids:c(d.solids),
-           rooms:c(d.rooms), fixtures:c(d.fixtures), runs:c(d.runs),
+           rooms:c(d.rooms), fixtures:c(d.fixtures), runs:c(d.runs), outlets:c(d.outlets),
            outline: Array.isArray(d.floorOutline) && d.floorOutline.length >= 3, img: !!d.baseImage };
 }
 function showDocConfirm(d, fname){
   const c = docCounts(d);
   let h = `<div class="dxfRow">文件：<b>${escHtml(fname || '')}</b></div>`;
   h += `<div class="dxfRow">户型：<b>${escHtml(d.name || '未命名')}</b></div>`;
-  h += `<div class="dxfRow">实体：墙 ${c.walls} · 窗 ${c.windows} · 门 ${c.doors} · 柱/块 ${c.solids} · 房间 ${c.rooms} · 洁具 ${c.fixtures} · 台面 ${c.runs}</div>`;
+  h += `<div class="dxfRow">实体：墙 ${c.walls} · 窗 ${c.windows} · 门 ${c.doors} · 柱/块 ${c.solids} · 房间 ${c.rooms} · 洁具 ${c.fixtures} · 台面 ${c.runs} · 插座 ${c.outlets}</div>`;
   h += `<div class="dxfRow">地板轮廓：${c.outline ? '文档自带（逐坐标保真）' : '无 → 用几何包围盒'}</div>`;
   if (c.img) h += `<div class="dxfRow">底图：含（${d.baseImage.w}×${d.baseImage.h}px）</div>`;
   h += `<div class="dxfWarn">导入会新建一份户型并切过去（当前户型保留在「工具 ⌄ → 户型」里）；新户型里家具为空（家具用「导入布局」单独导入）</div>`;

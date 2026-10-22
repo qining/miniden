@@ -61,6 +61,11 @@ export const IDB_DB = 'miniden-planner';
 export const IDB_STORE = 'miniden_kv';
 /** LS 里的降级标记：上一次 IDB 写失败过 → 下次载入以 LS 为准。 */
 export const DEGRADED_FLAG = 'planner_store_degraded';
+/** LS 里「这些键的 LS 值比主存新」的清单（JSON 字符串数组）。
+    写主存有防抖，卸载期间发起的 IDB 事务常常来不及提交：没有这份清单，刷新后 warm 会按
+    「主存为准」用旧值把刚写的新值盖掉（E2E outlet-tool 实测约三次一回）。
+    set / remove 时同步记、主存写成功且写进去的就是最新值时划掉；warm 时被记着的键以 LS 为准并回灌。 */
+export const LS_AHEAD_KEY = 'planner_store_ls_ahead';
 
 /** 探测过、可用的 localStorage 后端；不可用（隐私模式/配额）返回 null。 */
 export function lsBackend(raw: StorageLike | null | undefined): KVBackend | null {
@@ -338,6 +343,31 @@ export function createStore(o: StoreOptions): Store {
       return false;
     }
   };
+  /* 每键的「LS 领先主存」清单：启动时从 LS 读一次，之后内存里维护、变化时同步写回 LS */
+  const ahead = new Set<string>();
+  {
+    try {
+      const raw = JSON.parse(lsGetRaw(LS_AHEAD_KEY) || '[]');
+      if (Array.isArray(raw)) for (const k of raw) if (typeof k === 'string') ahead.add(k);
+    } catch (_e) {
+      /* 清单读不动 = 当作没有（退回旧口径：主存为准） */
+    }
+  }
+  const saveAhead = () => {
+    if (!ls) return;
+    try {
+      if (ahead.size) ls.setItem(LS_AHEAD_KEY, JSON.stringify(Array.from(ahead)));
+      else ls.removeItem(LS_AHEAD_KEY);
+    } catch (_e) {
+      /* 写不进去：最坏退回旧口径 */
+    }
+  };
+  const markAhead = (k: string, on: boolean) => {
+    if (on === ahead.has(k)) return;
+    if (on) ahead.add(k);
+    else ahead.delete(k);
+    saveAhead();
+  };
   const markDegraded = () => {
     degraded = true;
     lsSetRaw(flag, '1');
@@ -401,6 +431,21 @@ export function createStore(o: StoreOptions): Store {
     for (const k of list) {
       const r = store[k];
       const l = local[k];
+      if (ahead.has(k) && !touched.has(k)) {
+        /* 上一次会话里写过 / 删过、但主存没来得及写完：LS 是新的那份，以它为准并回灌主存。
+           页面刚才同步读到的就是 LS 的值 → 不需要补载入。 */
+        if (r !== l) st.conflicts++;
+        cache.set(k, l === undefined ? null : l);
+        if (remote) {
+          const ok = l === undefined ? await remote.remove(k) : await remote.write(k, l);
+          if (ok) markAhead(k, false);
+          else {
+            markDegraded();
+            syncFailed = true;
+          }
+        }
+        continue;
+      }
       if (touched.has(k)) {
         // 页面在 warm 完成前已经自己写过这个键：这个值比 warm 起点读到的 LS / 主存值都新。
         // 这里必须让路：不拿主存值覆盖 cache，也不把主存值回写 LS（那会摸掉刚发生的写）。
@@ -460,16 +505,21 @@ export function createStore(o: StoreOptions): Store {
     if (!remote) return { ...st };
     for (const [k, v] of ws) {
       const ok = await remote.write(k, v);
-      if (ok) st.idbWrites++;
-      else {
+      if (ok) {
+        st.idbWrites++;
+        // 只有「写进主存的就是当前最新值」才划掉（flush 途中又写了一次 → 新值还在 pendingW 里）
+        if (cache.get(k) === v && !pendingW.has(k)) markAhead(k, false);
+      } else {
         st.idbFails++;
         markDegraded();
       }
     }
     for (const k of ds) {
       const ok = await remote.remove(k);
-      if (ok) st.idbWrites++;
-      else {
+      if (ok) {
+        st.idbWrites++;
+        if (cache.get(k) === null && !pendingW.has(k)) markAhead(k, false);
+      } else {
         st.idbFails++;
         markDegraded();
       }
@@ -497,9 +547,17 @@ export function createStore(o: StoreOptions): Store {
       pendingW.set(k, v);
       pendingD.delete(k);
       if (v.length <= mirrorLimit) {
-        if (lsSetRaw(k, v)) st.lsMirrors++;
-        else st.lsFails++;
-      } else st.skippedMirror++; // 太大：只进主存（这正是换 IndexedDB 的意义）
+        if (lsSetRaw(k, v)) {
+          st.lsMirrors++;
+          markAhead(k, true);
+        } else {
+          st.lsFails++;
+          markAhead(k, false);
+        }
+      } else {
+        st.skippedMirror++; // 太大：只进主存（这正是换 IndexedDB 的意义）
+        markAhead(k, false); // LS 里没有它（或只有更旧的一份）：不许让 LS 赢
+      }
       schedule();
     },
     remove(k) {
@@ -509,6 +567,7 @@ export function createStore(o: StoreOptions): Store {
       pendingD.add(k);
       try {
         ls?.removeItem(k);
+        markAhead(k, true); // 删除同样要领先：否则刷新后主存里那份旧值会把它「复活」
       } catch (_e) {
         /* 旧键删不掉不影响主存 */
       }
