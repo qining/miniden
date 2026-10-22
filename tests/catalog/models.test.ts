@@ -173,3 +173,39 @@ describe('Phase 2 导入路径的预编译（确认框里的「解析失败 N �
     expect(cache.stats().failed).toBe(1);
   });
 });
+
+/* E19 轮㉚：预编译 seed 不看「索引里这个名字归谁」。
+   两个包都定义了模型 dup，索引先到先得给了 pa；导入 pb 时 precompilePack 把 pb 的函数
+   seed 在 dup 下、srcOf 却记成 pa 的源码 → setIndex 认为「同一份源码」不淘汰 →
+   pa 的家具从此用 pb 的造型，移除 pb（dropPack 按索引归属找，dup 不归 pb）也清不掉。 */
+describe('轮㉚ 预编译不许顶掉别的包的同名模型', () => {
+  const who = (fn: ((C: unknown) => void) | null) => {
+    const C: { who?: string } = {};
+    if (fn) fn(C);
+    return C.who;
+  };
+  it('索引里 dup 归 pa：预编译 pb 之后 dup 仍是 pa 的函数', () => {
+    const a = packOf('pa', { dup: '(C)=>{ C.who="pa"; }' });
+    const b = packOf('pb', { dup: '(C)=>{ C.who="pb"; }', own: '(C)=>{ C.who="pb-own"; }' });
+    const cache = createModelCache(buildModelIndex([a, b]));
+    expect(who(cache.get('dup'))).toBe('pa');
+    const r = precompilePack(b, cache);
+    expect(r.ok).toBe(2); // 编译本身照样如实计数（确认框的数字）
+    expect(who(cache.get('dup'))).toBe('pa');
+    expect(who(cache.get('own'))).toBe('pb-own');
+  });
+  it('还没被用过时预编译 pb：dup 第一次用到也必须是 pa 的', () => {
+    const a = packOf('pa', { dup: '(C)=>{ C.who="pa"; }' });
+    const b = packOf('pb', { dup: '(C)=>{ C.who="pb"; }' });
+    const cache = createModelCache(buildModelIndex([a, b]));
+    precompilePack(b, cache);
+    expect(who(cache.get('dup'))).toBe('pa');
+  });
+  it('seed 的源码与索引对不上就不进缓存（索引还没换到这份包时同理）', () => {
+    const a = packOf('pa', { m: '(C)=>{ C.who="v1"; }' });
+    const cache = createModelCache(buildModelIndex([a]));
+    const v2 = packOf('pa', { m: '(C)=>{ C.who="v2"; }' });
+    precompilePack(v2, cache); // 索引仍是 v1（例如确认框点了取消）
+    expect(who(cache.get('m'))).toBe('v1');
+  });
+});

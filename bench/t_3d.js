@@ -3395,6 +3395,192 @@ async function run3DTest() {
           packModelTriOver().length
       );
 
+      /* ================= 21. E19 轮㉚：Phase 2 自己的判据被真实使用时 =================
+         上限 / 升级判据 / 预编译 seed 都是 Phase 2 新写的「判据」，本节审的是它们在
+         另一条路径上会不会自锁、串号或说错话。 */
+      const p31Pack = (id, version, n, models, entryModel) =>
+        CATPACK.validatePack({
+          pack: id,
+          name: id,
+          version: version,
+          entries: Array.from({ length: n }, (_, i) => ({
+            id: id + '-e' + i,
+            cat: '茶几 / 边几',
+            name: id + ' 件 ' + i,
+            w: 40,
+            d: 40,
+            h: 40,
+            kind: 'sideTable',
+            price: 9,
+            ...(entryModel ? { model: entryModel } : {}),
+          })),
+          models: models || {},
+        }).pack;
+      const p31Reg0 = packRegistry.packs.length;
+      const p31Reload = () => {
+        packDocs.clear();
+        packModelCache.setIndex(new Map());
+        packEntries.length = 0;
+        return loadPacksFromStore();
+      };
+
+      /* 21.1 满额 32 个包（合法上限）刷新后必须全部加载回来 */
+      const p31Ids = Array.from({ length: CATPACK.MAX_PACKS }, (_, i) => 'bench-full-' + i);
+      for (const id of p31Ids) addPackDoc(p31Pack(id, 1, 1), { persist: true });
+      const p31Before = packDocs.size;
+      p31Reload();
+      const p31After = p31Ids.filter((id) => packDocs.has(id)).length;
+      T(
+        'cat31-full-registry-loads-on-startup',
+        p31Before === CATPACK.MAX_PACKS && p31After === CATPACK.MAX_PACKS,
+        '导入 ' + p31Before + ' 个（上限 ' + CATPACK.MAX_PACKS + '）→ 刷新装载回来 ' + p31After + ' 个'
+      );
+      const p31Extra = p31Pack('bench-full-extra', 1, 1);
+      T(
+        'cat31-full-registry-still-refuses-new',
+        packLimitHit(p31Extra) === true && packLimitHit(p31Pack(p31Ids[0], 2, 1)) === false,
+        '满额时第 33 个新包被拒 · 已登记的包升级不占新名额'
+      );
+      for (const id of p31Ids) {
+        // 清理不能依赖被测代码（旧代码下这 32 个没加载上，removePackDoc 会是空操作）
+        removePackDoc(id, { persist: true });
+        STORE.remove(CATPACK.packKeyFor(id));
+        packRegistry = CATPACK.removePackMeta(packRegistry, id);
+      }
+      savePackRegistry();
+
+      /* 21.2 跨包同名模型：先到先得，后导入的包不许把先到那份的造型顶掉 */
+      const p31Tall = '(C)=>{ C.box(C.w, C.cm(70), C.d, C.m.white, 0, 0, 0); }';
+      const p31Low = '(C)=>{ C.box(C.w, C.cm(10), C.d, C.m.white, 0, 0, 0); }';
+      const p31A = p31Pack('bench-dupm-a', 1, 1, { 'bench-dup-m': p31Low }, 'bench-dup-m');
+      const p31B = p31Pack('bench-dupm-b', 1, 1, { 'bench-dup-m': p31Tall }, 'bench-dup-m');
+      const p31H = (id) => {
+        const sp = catalogAll().find((c) => c.id === id);
+        if (!sp) return -1;
+        const g = furn3D({ uid: -1, ref: id, x: 0, y: 0, rot: 0 }, sp);
+        const bb = new THREE.Box3().setFromObject(g);
+        return Math.round((bb.max.y - bb.min.y) * 30.48 * 10) / 10; // 场景单位 ft → cm
+      };
+      addPackDoc(p31A, { persist: false });
+      const p31HBefore = p31H('bench-dupm-a-e0');
+      packCompileErrors = [];
+      showPackConfirm(p31B, [], [], 'bench-dupm-b.json');
+      const p31Info = document.querySelector('#packInfo').textContent;
+      document.querySelector('#packModal').style.display = 'none';
+      addPackDoc(p31B, { persist: false });
+      const p31HAfter = p31H('bench-dupm-a-e0');
+      T(
+        'cat31-cross-pack-model-not-hijacked',
+        p31HBefore > 0 && Math.abs(p31HAfter - p31HBefore) < 0.6,
+        '包 A 的件高 ' + p31HBefore + 'cm → 导入同名模型的包 B 之后 ' + p31HAfter + 'cm（B 的造型是 70cm）'
+      );
+      removePackDoc('bench-dupm-b', { persist: false });
+      const p31HRemoved = p31H('bench-dupm-a-e0');
+      T(
+        'cat31-cross-pack-model-dialog-honest',
+        p31Info.indexOf('已被别的目录包占用') >= 0 &&
+          p31Info.indexOf('bench-dupm-a') >= 0 &&
+          Math.abs(p31HRemoved - p31HBefore) < 0.6,
+        '确认框：' +
+          ((p31Info.match(/其中 \d+ 个模型名已被[^：]*/) || [])[0] || '（没提同名模型）') +
+          ' · 移除 B 后 A 的件高 ' +
+          p31HRemoved +
+          'cm'
+      );
+      removePackDoc('bench-dupm-a', { persist: false });
+
+      /* 21.3 指纹对不上的包：我们告诉用户「重新导入那个包文件」，那条路必须真的走得通 */
+      const p31Fp = p31Pack('bench-fp', 1, 2);
+      addPackDoc(p31Fp, { persist: true });
+      const p31Bad = JSON.parse(JSON.stringify(p31Fp));
+      p31Bad.entries[0].w = 777;
+      STORE.set(CATPACK.packKeyFor('bench-fp'), JSON.stringify(p31Bad));
+      p31Reload();
+      const p31Mis = !packDocs.has('bench-fp') && packDigestMismatch.some((x) => x.pack === 'bench-fp');
+      const p31Dec =
+        typeof packDecisionFor === 'function'
+          ? packDecisionFor(p31Fp)
+          : CATPACK.packUpdateDecision(packMetaOf('bench-fp'), p31Fp); // 修前的入口判据
+      const p31Re = addPackDoc(p31Fp, { persist: true });
+      T(
+        'cat31-mismatch-reimport-recovers',
+        p31Mis &&
+          p31Dec.action === 'update' &&
+          packDocs.has('bench-fp') &&
+          catalogAll().some((c) => c.id === 'bench-fp-e0' && c.w === 40) &&
+          !packDigestMismatch.some((x) => x.pack === 'bench-fp'),
+        '指纹不一致不加载=' +
+          p31Mis +
+          ' → 重新导入原文件：入口判据 ' +
+          p31Dec.action +
+          '（' +
+          p31Dec.reason.slice(0, 40) +
+          '）· 提交 ' +
+          (p31Re.decision ? p31Re.decision.action : '?') +
+          ' · 已加载=' +
+          packDocs.has('bench-fp')
+      );
+      p31Reload();
+      T(
+        'cat31-mismatch-repair-survives-reload',
+        packDocs.has('bench-fp') && packDigestMismatch.length === 0,
+        '修复后刷新：已加载=' + packDocs.has('bench-fp') + ' · 指纹不一致 ' + packDigestMismatch.length + ' 个'
+      );
+      removePackDoc('bench-fp', { persist: true });
+      STORE.remove(CATPACK.packKeyFor('bench-fp'));
+      packRegistry = CATPACK.removePackMeta(packRegistry, 'bench-fp');
+      savePackRegistry();
+      packDigestMismatch = [];
+
+      /* 21.4 升级时新版本删掉的条目：摆着的件会变灰色占位，确认框与 toast 必须说 */
+      addPackDoc(p31Pack('bench-upd', 1, 3), { persist: false });
+      const p31Items0 = state.items.length;
+      state.items.push({ uid: uidSeq++, ref: 'bench-upd-e2', x: CX3, y: CY3, rot: 0 });
+      const p31V2 = p31Pack('bench-upd', 2, 2);
+      packCompileErrors = [];
+      _packEntryIssues = [];
+      showPackConfirm(p31V2, [], [], 'bench-upd-v2.json');
+      const p31UInfo = document.querySelector('#packInfo').textContent;
+      document.querySelector('#packModal').style.display = 'none';
+      _packPending = p31V2;
+      commitPendingPack();
+      const p31UToast = p30ToastText();
+      T(
+        'cat31-update-tells-dropped-placed',
+        /新版本里没有了 1 条/.test(p31UInfo) &&
+          /1 件用的是它们/.test(p31UInfo) &&
+          /新版本里没有了 1 条/.test(p31UToast) &&
+          packDocs.get('bench-upd').version === 2 &&
+          !itemSpec(state.items[state.items.length - 1]),
+        '确认框：' +
+          ((p31UInfo.match(/新版本里没有了[^：]*/) || [])[0] || '（没提）') +
+          ' · toast：' +
+          ((p31UToast.match(/新版本里没有了[^—]*/) || [])[0] || '（没提）')
+      );
+      state.items.length = p31Items0;
+      packCompileErrors = [];
+      showPackConfirm(p31Pack('bench-upd', 3, 2), [], [], 'bench-upd-v3.json');
+      const p31UInfo2 = document.querySelector('#packInfo').textContent;
+      document.querySelector('#packModal').style.display = 'none';
+      T(
+        'cat31-update-no-drop-no-warning',
+        p31UInfo2.indexOf('新版本里没有了') < 0 && p31UInfo2.indexOf('版本 2 → 3') >= 0,
+        '对照组：v2 → v3 条目不变，确认框不报「没有了」'
+      );
+      removePackDoc('bench-upd', { persist: false });
+      refresh();
+      T(
+        'cat31-clean-exit',
+        packDocs.size === 0 &&
+          packRegistry.packs.length === p31Reg0 &&
+          (typeof packNotLoaded === 'undefined' || packNotLoaded.size === 0) &&
+          state.items.length === p31Items0,
+        '探针包清空 · 注册表 ' +
+          packRegistry.packs.length +
+          ' · 未加载记录 ' +
+          (typeof packNotLoaded === 'undefined' ? '-' : packNotLoaded.size)
+      );
+
       /* 19.12 收尾干净：户型回到原来那份，目录回到基线，不留探针包 / 自定义条目 / 未捕获异常 */
       if (PLAN_ID !== p29Plan) switchPlan(p29Plan, true);
       await wait(250);
