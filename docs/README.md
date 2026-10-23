@@ -45,6 +45,7 @@ roadmap.md（状态推进）→ 代码 + AGENTS.md 沉淀
 | [0004](decisions/0004-single-file-artifact.md) | 单文件产物架构（esbuild 源→HTML） | 2026-09-17 |
 | [0005](decisions/0005-project-schema-v1.md) | Project 文档 = id 寻址 JSON（schema v1） | 2026-09-17 |
 | [0006](decisions/0006-product-positioning.md) | 产品调性：homeowner 面向、快捷 = time-to-insight（用户不建模/概念以分钟计）、扩展代码优先（skill 是交付物非依赖）、范围内精度拉满；施工图域不做 | 2026-09-17 |
+| [0007](decisions/0007-multi-level-in-one-doc.md) | 多层 = 一份户型文档里的若干楼层；当前层换进文档顶层（现有编辑代码不动）；只有自包含户型能加楼层；家具带楼层标记；楼梯属于起步层、上层楼板开洞 | 2026-10-22 |
 
 ### design/
 | 文档 | 状态 |
@@ -52,6 +53,7 @@ roadmap.md（状态推进）→ 代码 + AGENTS.md 沉淀
 | [floorplan-input-and-eng-audit.md](design/floorplan-input-and-eng-audit.md) | 研究/提案（未实施；含工程审计 P0-P2） |
 | [architecture.md](design/architecture.md) | **已实施（现状描述）**：一个事实来源→两个入口、几何数据流、模块边界、构建守卫、门禁矩阵、不变量清单、与 R7 目标模块图的差距 |
 | [catalog-extension.md](design/catalog-extension.md) | **已实施（Phase 1）+ 待办（Phase 2）**：目录扩展协议——条目 schema、包格式与上限、建模代码契约（modelCtx + 建模三律不豁免）、合并规则（内置赢）、持久化、信任边界、幽灵件、门禁矩阵、5,000 件规模还缺什么 |
+| [home-v2.md](design/home-v2.md) | **进行中**：house 与「放下去会不会挡住什么」——点位家族 + 遮挡高亮（S15）、房间与地板（S16）、多层与楼梯（S17）、贴墙 / 穿墙 / 门扇（S18）、离地 + 通用件（S19）、多选 + 清单导出（S20）、窗帘 + 墙色（S21） |
 
 ### research/
 
@@ -67,3 +69,4 @@ roadmap.md（状态推进）→ 代码 + AGENTS.md 沉淀
 | 08 | [家具库 scalability](research/08-catalog-scalability.md) | 增长成本：配色变体 0KB / 新家族 2.5KB；先触顶的是 **GPU 三角负载**不是文件（对策：LOD 分级/实例化/单件 40k 硬顶）；1,500+ 条目后走「目录扩展包」；新发现 work/ 644MB 入库需治理 |
 | 09 | [UI 整体风格](research/09-ui-style.md) | 现状 = 冷调深色 pro-tool（截图实测）；竞品坐标：P5D 亮色 consumer / HBM 渲染即产品 / 酷家乐深色 pro；提案 **Warm Dark**（暖炭黑 + 单 accent + token 表）；token 先行三步执行序 |
 | 10 | [UI 验收标准](research/10-ui-acceptance.md) | 五道关：行为断言 / calib 不变性 / **黄金截图（`#ui` 新门禁，8 状态）** / 交互体检（键盘等）/ 卫生（token 纪律 + 体积预算）；明确不验收项（跨浏览器像素/响应式/a11y 全项） |
+| 11 | [家庭布置预览器 gap 审计](research/11-home-furnishing-gaps.md) | 用户点名五件（遮挡高亮 / 同轴网线 / 多层楼梯 / 地板 / 上下水与风口）+ 审计发现八件（房间命名面积、真实外轮廓、贴墙与距离、穿墙与门扇、离地与通用件、多选、清单导出、窗帘墙色）；反目标 = 施工图域 |
