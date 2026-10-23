@@ -2961,6 +2961,85 @@ export const FLOWS = [
   },
 
   {
+    name: 'dxf-as-level',
+    title:
+      'DXF 导入为一层：先导入一份 DXF（新建户型）→ 再导入一次、确认框里选「往上加一层」→ 户型多一层、切过去、一层不动 → 楼层条 ⚙「移动这一层」真鼠标拖：整层平移 → Esc → Ctrl+Z 两下退回单层 → 删户型',
+    run: async (t) => {
+      /* S17b。两次都走真实文件选择；第二次在确认框里改「放到哪」（下拉框值用脚本设，走控件自己的 change 处理）。 */
+      const blur = `(()=>{const a=document.activeElement;if(a&&a.blur)a.blur();})()`;
+      await t.step('导入一份 DXF（新建户型）');
+      await t.setFiles('#fileDxf', t.fixtureDxf);
+      await t.waitFor(`document.querySelector('#dxfModal').style.display==='flex'`, 25000, '确认弹窗出现');
+      await t.click('#dxfOk');
+      await t.waitFor(`docImported()===true`, 20000, '新户型');
+      const plan0 = await t.eval(`PLAN_ID`);
+      const w1 = await t.eval(`DOC.walls.length`);
+
+      await t.step('再导入一次，确认框里选「往上加一层」');
+      await t.setFiles('#fileDxf', t.fixtureDxf);
+      await t.waitFor(`document.querySelector('#dxfModal').style.display==='flex'`, 25000, '确认弹窗出现');
+      const row = await t.eval(`getComputedStyle(document.querySelector('#dxfDestRow')).display!=='none'`);
+      await t.eval(
+        `(()=>{const s=document.querySelector('#dxfDest');s.value='above';s.dispatchEvent(new Event('change'));})()`
+      );
+      const btn = await t.eval(`document.querySelector('#dxfOk').textContent`);
+      t.assert('vl-dest-row', row && btn === '导入为新的一层', `「放到哪」在=${row} · 按钮「${btn}」`);
+      await t.shot('vl-dialog');
+      await t.click('#dxfOk');
+      await t.waitFor(`hasLevelsNow() && DOC.levels.length===2`, 20000, '多了一层');
+      const st = await t.eval(
+        `({plan:PLAN_ID, level:DOC.level, walls:DOC.walls.length, lv1:SCHEMA.Levels.levelContentOf(DOC,'lv1').walls.length, bar:document.querySelectorAll('#lvBtns button').length})`
+      );
+      t.assert(
+        'vl-imported',
+        st.plan === plan0 && st.level !== 'lv1' && st.walls === w1 && st.lv1 === w1 && st.bar === 2,
+        `还是同一份户型=${st.plan === plan0} · 当前层 ${st.level} · 新层墙 ${st.walls} 段 · 一层墙 ${st.lv1} 段 · 楼层条 ${st.bar} 层`
+      );
+
+      await t.step('楼层条 ⚙ →「移动这一层」→ 真鼠标拖');
+      await t.click('#lvMore');
+      await t.click('#lvMove');
+      await t.waitFor(`!!lvMove`, 4000, '进入「移动这一层」');
+      const g0 = await t.eval(`(()=>{const g=DOC.walls[0].geom;return {x:g.x1,y:g.y1};})()`);
+      const c = await t.eval(
+        `(()=>{const P=floorPts();let x=0,y=0;for(const q of P){x+=q[0];y+=q[1];}return {x:x/P.length,y:y/P.length, ppf:document.querySelector('#svg2d').getScreenCTM().a*S};})()`
+      );
+      const from = await t.planPoint(c.x, c.y);
+      await t.drag(from, { x: from.x + 80, y: from.y + 30 }, { steps: 10 });
+      const g1 = await t.eval(`(()=>{const g=DOC.walls[0].geom;return {x:g.x1,y:g.y1};})()`);
+      const lv1Same = await t.eval(`JSON.stringify(SCHEMA.Levels.levelContentOf(DOC,'lv1').walls[0].geom)`);
+      const moved = [(g1.x - g0.x) * c.ppf, (g1.y - g0.y) * c.ppf];
+      t.assert(
+        'vl-moved',
+        Math.abs(moved[0] - 80) < 3 && Math.abs(moved[1] - 30) < 3,
+        `整层拖了 (${moved.map((v) => v.toFixed(1))}) 屏幕像素（期望 80, 30）· 一层第一面墙 ${lv1Same.slice(0, 60)}`
+      );
+      await t.shot('vl-moved');
+      await t.eval(blur);
+      await t.key('Escape', 'Escape', 27);
+      await t.waitFor(`!lvMove`, 4000, '退出移动');
+
+      await t.step('Ctrl+Z 两下：先退回移动，再退回导入');
+      await t.key('z', 'KeyZ', 90, 2);
+      const back1 = await t.eval(`(()=>{const g=DOC.walls[0].geom;return {x:g.x1,y:g.y1,lv:hasLevelsNow()};})()`);
+      await t.key('z', 'KeyZ', 90, 2);
+      await t.waitFor(`!hasLevelsNow()`, 5000, '回到单层');
+      t.assert(
+        'vl-undo',
+        Math.abs(back1.x - g0.x) < 1e-6 && Math.abs(back1.y - g0.y) < 1e-6 && back1.lv,
+        `第一下：墙回到 (${back1.x.toFixed(2)}, ${back1.y.toFixed(2)})（原 ${g0.x.toFixed(2)}, ${g0.y.toFixed(2)}）· 第二下：回到单层`
+      );
+
+      await t.step('清除：删掉这份户型（两步）');
+      await ensureProTools(t);
+      await t.click('#btnPlanDel');
+      await t.click('#btnPlanDel');
+      await t.waitFor(`PLAN_ID===BUILTIN_PLAN_ID`, 8000, '删完切回内置');
+      t.assert('vl-cleaned', true, '回到内置户型');
+    },
+  },
+
+  {
     name: 'doc-export-import',
     title: '导出户型 JSON → 再导入回来（真实下载 + 真实文件选择）',
     run: async (t) => {

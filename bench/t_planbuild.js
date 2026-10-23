@@ -7310,6 +7310,248 @@ async function runPBTest() {
       );
     }
 
+    /* ===== 28. S17b 矢量图纸导入为一层（确认框「放到哪」）+ 楼层条 ⚙「移动这一层」 ===== */
+    {
+      /* 独立量：新层的包围盒中心 = 一层地板轮廓的中心（自己按墙算）；整层拖完每面墙 / 窗 / 房间 / 家具的位移都等于拖的距离、
+         别的层一个坐标不动；拖一次 / 连按方向键各一步撤销。 */
+      await enterEdit();
+      await pbReset();
+      const p28Plans = PLAN_REG.plans.length;
+      Q('#btnPlanNew').click();
+      await tick();
+      const p28Plan = PLAN_ID;
+      const fp28 = floorPts();
+      const X =
+          Math.min.apply(
+            null,
+            fp28.map((p) => p[0])
+          ) + 1,
+        Y =
+          Math.min.apply(
+            null,
+            fp28.map((p) => p[1])
+          ) + 1;
+      const wd = cmToWd(15);
+      pushUserWall(X, Y, X + 16, Y, 'w', wd);
+      pushUserWall(X + 16, Y, X + 16, Y + 12, 'w', wd);
+      pushUserWall(X + 16, Y + 12, X, Y + 12, 'w', wd);
+      pushUserWall(X, Y + 12, X, Y, 'w', wd);
+      geoChanged();
+      fit2DToContent();
+      await tick();
+      if (wallEdit.on) {
+        Q('#btnWallEdit').click();
+        await tick();
+      }
+      const lv1Walls = JSON.stringify(DOC.walls);
+      // 「导入」的那张图：10×8 的一圈墙 + 一扇窗 + 一个房间标签，坐标离这份户型很远（图纸原点不同）
+      const sg = (x1, y1, x2, y2) => ({ t: 'seg', x1, y1, x2, y2 });
+      const src = SCHEMA.Project.blankDoc('二层.dxf');
+      src.walls = [
+        { id: 'w01', kind: 'wall', geom: sg(100, 100, 110, 100), thick: 0.5 },
+        { id: 'w02', kind: 'wall', geom: sg(110, 100, 110, 108), thick: 0.5 },
+        { id: 'w03', kind: 'wall', geom: sg(110, 108, 100, 108), thick: 0.5 },
+        { id: 'w04', kind: 'wall', geom: sg(100, 108, 100, 100), thick: 0.5 },
+      ];
+      src.windows = [
+        {
+          id: 'n01',
+          geom: sg(103, 100, 107, 100),
+          wallId: null,
+          pos: 0.5,
+          width: 4,
+          sill: 2.2,
+          head: 7.4,
+          style: 'fixed',
+          frame: '#1c2528',
+          glass: 0.18,
+          thick: 0.5,
+        },
+      ];
+      src.rooms = [{ id: 'r01', label: '主卧', pos: [105, 104] }];
+
+      /* 28.1 确认框：自包含户型里有「放到哪」，选「往上加一层」后说明与按钮文字跟着变 */
+      vecDestPrep('dxf');
+      const rowShown = getComputedStyle(Q('#dxfDestRow')).display !== 'none';
+      Q('#dxfInfo').innerHTML = '<div class="dxfNote">x</div>';
+      Q('#dxfDest').value = 'above';
+      Q('#dxfDest').dispatchEvent(new Event('change'));
+      const noteLv = Q('#dxfInfo .dxfNote').textContent,
+        btnLv = Q('#dxfOk').textContent;
+      Q('#dxfDest').value = 'new';
+      Q('#dxfDest').dispatchEvent(new Event('change'));
+      T(
+        'pb-vl-dialog-dest',
+        rowShown &&
+          /新的一层/.test(noteLv) &&
+          btnLv === '导入为新的一层' &&
+          Q('#dxfOk').textContent === '导入并替换户型',
+        '「放到哪」在=' + rowShown + ' · 选新楼层后按钮「' + btnLv + '」· 说明「' + noteLv.slice(0, 24) + '…」'
+      );
+
+      /* 28.2 导入为一层：多一层、切过去、内容摆到地板中央、一层不动、整份文档过校验、一步撤销 */
+      const r2 = undoRing.length;
+      const lv = vectorToLevel(src, 'above');
+      await tick();
+      const bb = LV.levelBBox(DOC);
+      const fpc = [X + 8, Y + 6]; // 一层那一圈墙的中心（自己按画的墙算）
+      const lv1Now = JSON.stringify(LV.levelContentOf(DOC, 'lv1').walls);
+      T(
+        'pb-vl-import-as-level',
+        !!lv &&
+          hasLevelsNow() &&
+          DOC.levels.length === 2 &&
+          DOC.level === lv.id &&
+          DOC.walls.length === 4 &&
+          DOC.windows.length === 1 &&
+          !!bb &&
+          Math.abs((bb.x0 + bb.x1) / 2 - fpc[0]) < 0.05 &&
+          Math.abs((bb.y0 + bb.y1) / 2 - fpc[1]) < 0.05 &&
+          lv1Now === lv1Walls &&
+          SCHEMA.Project.validate(DOC).length === 0 &&
+          undoRing.length === r2 + 1,
+        '楼层 ' +
+          (DOC.levels || []).length +
+          ' · 当前 ' +
+          DOC.level +
+          ' · 新层中心 (' +
+          (bb ? [((bb.x0 + bb.x1) / 2).toFixed(2), ((bb.y0 + bb.y1) / 2).toFixed(2)] : '?') +
+          ') vs 一层中心 (' +
+          fpc.map((v) => v.toFixed(2)) +
+          ') · 一层没动=' +
+          (lv1Now === lv1Walls) +
+          ' · 撤销环 +' +
+          (undoRing.length - r2)
+      );
+      undoStep();
+      await tick();
+      const undone = !hasLevelsNow() && JSON.stringify(DOC.walls) === lv1Walls;
+      redoStep();
+      await tick();
+      T(
+        'pb-vl-undo-redo',
+        undone && hasLevelsNow() && DOC.walls.length === 4,
+        '撤销回单层=' + undone + ' · 重做又回来=' + hasLevelsNow()
+      );
+
+      /* 28.3 只收单层图纸：自带楼层的文件被拒、户型与撤销环都不动 */
+      const multi = SCHEMA.Project.blankDoc('多层');
+      LV.enableLevels(multi);
+      LV.addLevel(multi, { where: 'above' });
+      const n3 = DOC.levels.length,
+        r3 = undoRing.length;
+      const rej = vectorToLevel(multi, 'above');
+      T(
+        'pb-vl-reject-multi',
+        rej === null && DOC.levels.length === n3 && undoRing.length === r3,
+        '返回 ' + rej + ' · 楼层 ' + DOC.levels.length + ' · 撤销环 +' + (undoRing.length - r3)
+      );
+
+      /* 28.4 移动这一层：⚙ 面板里有按钮（多层时）→ 拖平面图 = 这一层整体平移（墙 / 窗 / 房间 / 这一层的家具一起），一层不动；
+         3px 手抖不算；一次拖动一步撤销 */
+      addItem('knapper');
+      await tick();
+      const it28 = state.items[state.items.length - 1];
+      const shot = () => ({
+        w: DOC.walls.map((w) => [w.geom.x1, w.geom.y1]),
+        n: [DOC.windows[0].geom.x1, DOC.windows[0].geom.y1],
+        r: DOC.rooms[0].pos.slice(),
+        it: [state.items.find((i) => i.uid === it28.uid).x, state.items.find((i) => i.uid === it28.uid).y],
+      });
+      Q('#lvMore').click();
+      await tick();
+      const btnShown = getComputedStyle(Q('#lvMove')).display !== 'none';
+      Q('#lvMove').click();
+      await tick();
+      const on = !!lvMove && Q('#lvMove').textContent === '完成移动';
+      const s0 = shot(),
+        r4 = undoRing.length;
+      const [ax, ay] = SPT(X + 11, Y + 8); // 别从左上角起拖：楼层条与打开的 ⚙ 面板盖在那儿
+      fire('pointerdown', ax, ay);
+      await tick();
+      fire('pointermove', ax + 3, ay);
+      await tick();
+      const jitter = JSON.stringify(shot()) === JSON.stringify(s0);
+      fire('pointermove', ax + 30, ay + 10);
+      await tick();
+      fire('pointermove', ax + 60, ay + 24);
+      await tick();
+      fire('pointerup', ax + 60, ay + 24, { buttons: 0 });
+      await tick();
+      const s1 = shot(),
+        ppf = pxPerFtNow();
+      const want = [60 / ppf, 24 / ppf];
+      const near = (a, b) => Math.abs(a - b) < 0.02;
+      const allMoved =
+        s1.w.every((p, k) => near(p[0] - s0.w[k][0], want[0]) && near(p[1] - s0.w[k][1], want[1])) &&
+        near(s1.n[0] - s0.n[0], want[0]) &&
+        near(s1.r[1] - s0.r[1], want[1]) &&
+        near(s1.it[0] - s0.it[0], want[0]);
+      T(
+        'pb-vl-move-level-drag',
+        btnShown &&
+          on &&
+          jitter &&
+          allMoved &&
+          JSON.stringify(LV.levelContentOf(DOC, 'lv1').walls) === lv1Walls &&
+          undoRing.length === r4 + 1,
+        '按钮在=' +
+          btnShown +
+          ' · 进模式=' +
+          on +
+          ' · 3px 不动=' +
+          jitter +
+          ' · 墙 / 窗 / 房间 / 家具同位移 (' +
+          want.map((v) => v.toFixed(2)) +
+          'ft)=' +
+          allMoved +
+          ' · 一层没动=' +
+          (JSON.stringify(LV.levelContentOf(DOC, 'lv1').walls) === lv1Walls) +
+          ' · 撤销环 +' +
+          (undoRing.length - r4)
+      );
+
+      /* 28.5 方向键：→ 三下 = +3cm（一步撤销）、Shift+↓ = +10cm；Esc 完成（按钮回原样） */
+      const s2 = shot(),
+        r5 = undoRing.length;
+      key('ArrowRight');
+      key('ArrowRight');
+      key('ArrowRight');
+      await tick();
+      const s3 = shot();
+      const three1 = near(s3.w[0][0] - s2.w[0][0], 3 / 30.48) && undoRing.length === r5 + 1;
+      key('ArrowDown', document.body, true);
+      await tick();
+      const s4 = shot();
+      const shiftDown = near(s4.w[0][1] - s3.w[0][1], 10 / 30.48);
+      key('Escape');
+      await tick();
+      T(
+        'pb-vl-move-level-keys',
+        three1 && shiftDown && !lvMove && Q('#lvMove').textContent === '移动这一层',
+        '→×3 = +' +
+          ((s3.w[0][0] - s2.w[0][0]) * 30.48).toFixed(1) +
+          'cm（一步撤销=' +
+          (undoRing.length >= r5 + 1) +
+          '）· Shift+↓ = +' +
+          ((s4.w[0][1] - s3.w[0][1]) * 30.48).toFixed(1) +
+          'cm · Esc 退出=' +
+          !lvMove
+      );
+
+      /* 收尾：删掉这份户型 */
+      await enterEdit();
+      Q('#btnPlanDel').click();
+      await tick();
+      Q('#btnPlanDel').click();
+      await tick();
+      T(
+        'pb-vl-clean-exit',
+        PLAN_ID !== p28Plan && PLAN_REG.plans.length === p28Plans,
+        'plans ' + p28Plans + '→' + PLAN_REG.plans.length
+      );
+    }
+
     /* ===== 收尾：页面不得有未捕获异常 ===== */
     T('pb-no-page-errors', window.__ERRS.length === 0, window.__ERRS.slice(0, 3).join(' || '));
   } catch (e) {

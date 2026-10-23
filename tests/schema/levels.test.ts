@@ -16,6 +16,9 @@ import {
   levelContentOf,
   activeLevel,
   levelCeil,
+  translateLevelContent,
+  levelBBox,
+  addLevelFromDoc,
 } from '../../src/schema/levels';
 
 const seg = (x1: number, y1: number, x2: number, y2: number) => ({ t: 'seg' as const, x1, y1, x2, y2 });
@@ -313,5 +316,222 @@ describe('校验：楼层与楼梯', () => {
     expect(errs.some((e) => e.path === 'stairs[1].path')).toBe(true);
     expect(errs.some((e) => e.path === 'stairs[2].w')).toBe(true);
     expect(errs.some((e) => e.path === 'stairs[3].steps')).toBe(true);
+  });
+});
+
+/* =====================================================================
+   S17b：矢量图纸导入为一层 + 整层平移
+   ===================================================================== */
+describe('整层平移 / 导入为一层（S17b）', () => {
+  const full = () => {
+    const d = house();
+    d.windows = [
+      {
+        id: 'n01',
+        geom: seg(4, 0, 8, 0),
+        wallId: null,
+        pos: 0.5,
+        width: 4,
+        sill: 2,
+        head: 7,
+        style: 'fixed',
+        frame: '#111',
+        glass: 0.2,
+      },
+    ] as never;
+    d.doors = [
+      {
+        id: 'd01',
+        geom: seg(20, 4, 20, 7),
+        gapGeom: seg(20, 4, 20, 7),
+        wallId: null,
+        pos: 0.5,
+        width: 3,
+        kind: 'swing',
+      },
+    ] as never;
+    d.solids = [
+      {
+        id: 's01',
+        geom: {
+          t: 'poly',
+          pts: [
+            [2, 2],
+            [3, 2],
+            [3, 3],
+            [2, 3],
+          ],
+        },
+        fill: '#0c0d0f',
+      },
+      { id: 's02', geom: { t: 'arc', cx: 15, cy: 10, r: 0.5, a0: 0, a1: 360, dir: 1 }, fill: '#0c0d0f' },
+    ] as never;
+    d.rooms = [
+      {
+        id: 'r01',
+        label: '客厅',
+        pos: [5, 7],
+        poly: [
+          [0.2, 0.2],
+          [9.8, 0.2],
+          [9.8, 13.8],
+          [0.2, 13.8],
+        ],
+      },
+    ] as never;
+    d.fixtures = [{ id: 'f01', t: 'toilet', x1: 11, y1: 1, x2: 13, y2: 3 }] as never;
+    d.runs = [
+      {
+        id: 'k01',
+        path: [
+          [11, 13],
+          [19, 13],
+        ],
+        depth: 2,
+        topH: 3,
+      },
+    ] as never;
+    d.outlets = [{ id: 'ol02', x: 5, y: 7, rot: 0, h: 0, kind: 'floorDrain', host: 'floor' }] as never;
+    d.stairs = [
+      {
+        id: 'st01',
+        path: [
+          [16, 2],
+          [16, 10],
+        ],
+        w: 3,
+      },
+    ] as never;
+    d.floorOutline = [
+      [0, 0],
+      [20, 0],
+      [20, 14],
+      [0, 14],
+    ] as never;
+    d.baseImage = { data: 'data:image/png;base64,AAAA', w: 10, h: 10, mPerPx: 0.1, ox: 1, oy: 2 } as never;
+    return d;
+  };
+
+  it('平移：墙 / 窗 / 门与门洞缺口 / 多边形柱 / 圆柱 / 房间标签与轮廓 / 洁具 / 台面 / 点位 / 楼梯 / 地板轮廓 / 底图 —— 全部同一个位移', () => {
+    const d = full();
+    translateLevelContent(d, 2.5, -1);
+    expect((d.walls[0].geom as any).x1).toBe(2.5);
+    expect((d.walls[0].geom as any).y1).toBe(-1);
+    expect((d.windows[0].geom as any).x2).toBe(10.5);
+    expect((d.doors[0] as any).gapGeom.y2).toBe(6);
+    expect((d.solids[0].geom as any).pts[0]).toEqual([4.5, 1]);
+    expect((d.solids[1].geom as any).cx).toBe(17.5);
+    expect(d.rooms[0].pos).toEqual([7.5, 6]);
+    expect((d.rooms[0] as any).poly[2]).toEqual([12.3, 12.8]);
+    expect([d.fixtures[0].x1, d.fixtures[0].y2]).toEqual([13.5, 2]);
+    expect((d.runs as any)[0].path[1]).toEqual([21.5, 12]);
+    expect([(d.outlets as any)[0].x, (d.outlets as any)[0].y]).toEqual([7.5, 6]);
+    expect((d.stairs as any)[0].path[0]).toEqual([18.5, 1]);
+    expect((d.floorOutline as any)[2]).toEqual([22.5, 13]);
+    expect([(d.baseImage as any).ox, (d.baseImage as any).oy]).toEqual([3.5, 1]);
+    expect(validate(d)).toEqual([]);
+  });
+
+  it('平移不攒浮点尾巴（坐标取到 1e-4ft）；位移为 0 什么都不动', () => {
+    const d = full();
+    const before = JSON.stringify(d);
+    translateLevelContent(d, 0, 0);
+    expect(JSON.stringify(d)).toBe(before);
+    for (let i = 0; i < 10; i++) translateLevelContent(d, 0.1, 0);
+    expect((d.walls[0].geom as any).x1).toBe(1);
+  });
+
+  it('包围盒：墙 / 窗 / 门 / 柱（圆柱按外接方）/ 地板轮廓；空的层 = null', () => {
+    expect(levelBBox(full())).toEqual({ x0: 0, y0: 0, x1: 20, y1: 14 });
+    const d = blankDoc('空');
+    expect(levelBBox(d)).toBeNull();
+    d.solids = [{ id: 's1', geom: { t: 'arc', cx: 3, cy: 4, r: 1, a0: 0, a1: 360, dir: 1 }, fill: '#000' }] as never;
+    expect(levelBBox(d)).toEqual({ x0: 2, y0: 3, x1: 4, y1: 5 });
+  });
+
+  it('导入为一层（往上）：新层在最上面、内容是导入那份的深拷贝并平移过、层高取导入那份的、原文档那一层不动；整份文档过校验', () => {
+    const d = house();
+    const top0 = JSON.stringify({ walls: d.walls, outlets: d.outlets });
+    const src = full();
+    src.ceilingH = 9.5;
+    const lv = addLevelFromDoc(d, src, { where: 'above', dx: 1, dy: 1 })!;
+    expect(lv).toBeTruthy();
+    expect(sortedLevels(d).map((l) => l.id)).toEqual(['lv1', lv.id]);
+    expect(lv.elev).toBe(0 + d.ceilingH + SLAB_DEFAULT);
+    expect((lv as any).walls).toHaveLength(5);
+    expect((lv as any).walls[0].geom.x1).toBe(1);
+    expect((lv as any).ceilingH).toBe(9.5);
+    expect((lv as any).baseImage.ox).toBe(2);
+    (src.walls[0].geom as any).x1 = 99; // 深拷贝：改导入那份不影响新层
+    expect((lv as any).walls[0].geom.x1).toBe(1);
+    expect(JSON.stringify({ walls: d.walls, outlets: d.outlets })).toBe(top0);
+    expect(d.level).toBe('lv1'); // 不切过去
+    expect(validate(d)).toEqual([]);
+    expect(activateLevel(d, lv.id)).toBe(true);
+    expect((d.walls[0].geom as any).x1).toBe(1);
+    expect(validate(d)).toEqual([]);
+  });
+
+  it('平移的边界：只有部分键的内容、门没有门洞缺口、房间没有轮廓、阳台跟着走、认不出的几何不动', () => {
+    const v: any = {
+      walls: [{ id: 'w1', kind: 'wall', geom: seg(0, 0, 1, 0) }],
+      doors: [{ id: 'd1', geom: seg(0, 0, 1, 0) }],
+      rooms: [{ id: 'r1', label: '', pos: [1, 1] }],
+      solids: [
+        { id: 's1', geom: { t: 'weird', x: 1 } },
+        { id: 's2', geom: { t: 'poly' } },
+      ],
+      patio: { geom: seg(5, 5, 6, 5) },
+    };
+    translateLevelContent(v, 1, 2);
+    expect(v.walls[0].geom.x1).toBe(1);
+    expect(v.doors[0].geom.y2).toBe(2);
+    expect(v.rooms[0].pos).toEqual([2, 3]);
+    expect(v.rooms[0].poly).toBeUndefined();
+    expect(v.solids[0].geom).toEqual({ t: 'weird', x: 1 });
+    expect(v.solids[1].geom).toEqual({ t: 'poly' });
+    expect(v.patio.geom.x1).toBe(6);
+    const empty: any = {};
+    translateLevelContent(empty, 3, 3); // 什么键都没有也不炸
+    expect(empty).toEqual({});
+  });
+
+  it('包围盒的边界：非有限坐标不算、多边形没有点、只有地板轮廓', () => {
+    const v: any = {
+      walls: [{ id: 'w1', geom: { t: 'seg', x1: Number.NaN, y1: 0, x2: 2, y2: 3 } }],
+      solids: [{ id: 's1', geom: { t: 'poly' } }, { id: 's2' }],
+    };
+    expect(levelBBox(v)).toEqual({ x0: 2, y0: 3, x1: 2, y1: 3 });
+    expect(
+      levelBBox({
+        floorOutline: [
+          [1, 1],
+          [4, 5],
+        ],
+      } as any)
+    ).toEqual({ x0: 1, y0: 1, x1: 4, y1: 5 });
+  });
+
+  it('导入那份没给层高（或给了 0）就用当前户型的层高；没有 hidden / patio 时补上合法空值', () => {
+    const d = house();
+    const src: any = { walls: [{ id: 'w1', kind: 'wall', geom: seg(0, 0, 3, 0) }], ceilingH: 0 };
+    const lv: any = addLevelFromDoc(d, src as ProjectDoc, { where: 'above' })!;
+    expect(lv.ceilingH).toBe(d.ceilingH);
+    expect(lv.hidden).toEqual({ walls: [], windows: [], doors: [], solids: [] });
+    expect(lv.patio).toBeNull();
+    expect(lv.walls[0].geom.x2).toBe(3);
+  });
+
+  it('导入为地下室（往下）：标高在最下一层下面；导入的是多层文档 = 不收（null，文档不动）', () => {
+    const d = house();
+    const lv = addLevelFromDoc(d, full(), { where: 'below', name: '地下室' })!;
+    expect(lv.name).toBe('地下室');
+    expect(lv.elev).toBeLessThan(0);
+    const multi = house();
+    enableLevels(multi);
+    addLevel(multi, { where: 'above' });
+    const n = d.levels!.length;
+    expect(addLevelFromDoc(d, multi, { where: 'above' })).toBeNull();
+    expect(d.levels!.length).toBe(n);
   });
 });
