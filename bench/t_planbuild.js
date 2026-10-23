@@ -6231,6 +6231,238 @@ async function runPBTest() {
       );
     }
 
+    /* ===== 25. S19 家具离地（壁挂电视 / 搁板）：检视面板「离地」→ 2D 虚线 +「离地 xx」/ 3D 抬高 / 高度区间进碰撞、遮挡、挡门 ===== */
+    {
+      /* gap 审计 G9。独立量：3D 底面 = 离地值；碰撞 = 两件的高度区间是否相交（电视底 120cm > 电视柜顶 50cm → 不碰）；
+         插座遮挡 = 面板 [h ± 半高] 与家具高度区间相交；挡门 = 整件是否高过门洞上沿（门扇 207cm）。 */
+      await enterEdit();
+      await pbReset();
+      const p25Plans = PLAN_REG.plans.length;
+      Q('#btnPlanNew').click();
+      await tick();
+      const p25Plan = PLAN_ID;
+      const fp25 = floorPts();
+      const X =
+          Math.min.apply(
+            null,
+            fp25.map((p) => p[0])
+          ) + 1,
+        Y =
+          Math.min.apply(
+            null,
+            fp25.map((p) => p[1])
+          ) + 1;
+      const RW = 16,
+        RH = 12,
+        wd15 = cmToWd(15);
+      const wTop = pushUserWall(X, Y, X + RW, Y, 'w', wd15);
+      pushUserWall(X + RW, Y, X + RW, Y + 4, 'w', wd15);
+      pushUserWall(X + RW, Y + 4, X + RW, Y + 7, 'd', wd15);
+      pushUserWall(X + RW, Y + 7, X + RW, Y + RH, 'w', wd15);
+      pushUserWall(X + RW, Y + RH, X, Y + RH, 'w', wd15);
+      pushUserWall(X, Y + RH, X, Y, 'w', wd15);
+      const door25 = pushUserDoor(X + RW, Y + 4, X + RW, Y + 7);
+      geoChanged();
+      fit2DToContent();
+      await tick();
+      const half = pbDrawnThick(effWalls().find((s) => s._id === wTop.id)) / 2;
+      const faceTop = Y + half;
+      // 上墙上一个 30cm 的普通插座（点位工具同一条放置路径）
+      const sn = pointSnap(X + 8, faceTop + 0.2, 'std', 'auto');
+      const ol25 = pushUserOutlet(sn, 'std', 1, null);
+      syncOutlets && syncOutlets();
+      if (wallEdit.on) {
+        Q('#btnWallEdit').click();
+        await tick();
+      }
+      const mk = (name, w, d, h, x, y) => {
+        const uid = uidSeq++;
+        state.items.push({ uid, custom: { name, w, d, h, color: '#5a5f66' }, x, y, rot: 0 });
+        return uid;
+      };
+      const tvU = mk('测试电视', 123, 8, 72, X + 8, faceTop + 4 / 30.48);
+      const benchU = mk('测试电视柜', 180, 40, 50, X + 8, faceTop + 20 / 30.48);
+      const shelfU = mk('测试搁板', 80, 20, 15, X + 4, Y + RH / 2);
+      const it25 = (u) => state.items.find((i) => i.uid === u);
+      const g25 = (u) => pbSvg.querySelector('g.furn[data-uid="' + u + '"]');
+      drawFurniture();
+      await tick();
+      const setZ = async (cm) => {
+        Q('#pZ').value = String(cm);
+        Q('#pZ').dispatchEvent(new Event('change'));
+        await tick();
+      };
+
+      /* 25.1 选中电视：「离地」框在；改成 120 → it.z = 120cm、一步撤销；重打 120 不占步；−5 / 超过「层高 − 件高」被拒且框回原值 */
+      selected = tvU;
+      drawFurniture();
+      await tick();
+      const rowShown = getComputedStyle(Q('#pZRow')).display !== 'none';
+      const r1 = undoRing.length;
+      await setZ(120);
+      const z1 = it25(tvU).z,
+        step1 = undoRing.length - r1;
+      await setZ(120);
+      const same = undoRing.length - r1;
+      await setZ(-5);
+      const neg = it25(tvU).z === z1 && Q('#pZ').value === '120';
+      await setZ(Math.round(CEIL_H * 30.48) - 72 + 1);
+      const tooHigh = it25(tvU).z === z1 && Q('#pZ').value === '120';
+      T(
+        'pb-z-props-field',
+        rowShown && Math.abs(z1 - 120 / 30.48) < 1e-4 && step1 === 1 && same === 1 && neg && tooHigh,
+        '框在=' +
+          rowShown +
+          ' · z=' +
+          (z1 * 30.48).toFixed(1) +
+          'cm · 撤销环 +' +
+          step1 +
+          '（重打后仍 +' +
+          same +
+          '）· 负数拒=' +
+          neg +
+          ' · 顶到天花拒=' +
+          tooHigh
+      );
+
+      /* 25.2 2D：虚线外框 +「离地 120 cm」；画在落地家具之上（电视在电视柜上方，俯视看得见） */
+      const gT = g25(tvU);
+      const dash =
+        gT && gT.querySelector('rect,circle') ? gT.querySelector('rect,circle').getAttribute('stroke-dasharray') : null;
+      const lbl = gT && gT.querySelector('.zLbl') ? gT.querySelector('.zLbl').textContent : '';
+      const order = [...gFurn.children].map((e) => +e.dataset.uid);
+      T(
+        'pb-z-2d-marked',
+        !!gT &&
+          gT.classList.contains('elevated') &&
+          !!dash &&
+          lbl === '离地 ' + fmtLen(120 / 30.48) &&
+          order.indexOf(tvU) > order.indexOf(benchU),
+        'class=' +
+          (gT ? gT.getAttribute('class') : '?') +
+          ' · 虚线=' +
+          dash +
+          ' · 标注「' +
+          lbl +
+          '」· 画在电视柜之上=' +
+          (order.indexOf(tvU) > order.indexOf(benchU))
+      );
+
+      /* 25.3 碰撞按高度区间：电视（120–192cm）在电视柜（0–50cm）正上方 → 不算重叠；电视放回地上 → 重叠 */
+      Object.assign(it25(tvU), { x: X + 8, y: faceTop + 20 / 30.48 }); // 与电视柜同一块占地
+      drawFurniture();
+      const noOv = !g25(tvU).classList.contains('overlap') && !g25(benchU).classList.contains('overlap');
+      const zSave = it25(tvU).z;
+      delete it25(tvU).z;
+      drawFurniture();
+      const ov = g25(tvU).classList.contains('overlap') && g25(benchU).classList.contains('overlap');
+      it25(tvU).z = zSave;
+      T('pb-z-overlap-by-height', noOv && ov, '挂在 120cm 不碰电视柜=' + noOv + ' · 放回地上就重叠=' + ov);
+
+      /* 25.4 插座遮挡按高度区间：电视贴上墙、正对 30cm 的插座 —— 挂在 120cm 不挡，放到地上就挡 */
+      Object.assign(it25(benchU), { x: X + 3, y: Y + RH - 2 }); // 电视柜挪开
+      Object.assign(it25(tvU), { x: ol25.x, y: faceTop + 4 / 30.48 });
+      drawFurniture();
+      const freeHigh = !(ptBlocked.get(ol25.id) || []).length;
+      delete it25(tvU).z;
+      drawFurniture();
+      const blkLow = (ptBlocked.get(ol25.id) || []).includes('测试电视');
+      it25(tvU).z = zSave;
+      drawFurniture();
+      T('pb-z-outlet-by-height', freeHigh && blkLow, '挂在 120cm 不挡插座=' + freeHigh + ' · 放到地上挡=' + blkLow);
+
+      /* 25.5 挡门按「是否整件高过门洞上沿」：搁板（高 15cm）底边 215cm → 门扇从它下面扫过，不算挡；底边 100cm → 挡 */
+      const sw25 = doorSweeps().find((d) => d.id === door25.id);
+      const cen25 = sw25.poly.reduce(
+        (a, p) => [a[0] + p[0] / sw25.poly.length, a[1] + p[1] / sw25.poly.length],
+        [0, 0]
+      );
+      Object.assign(it25(shelfU), { x: cen25[0], y: cen25[1], z: 215 / 30.48 });
+      drawFurniture();
+      const highOk = !g25(shelfU).classList.contains('blocksDoor');
+      it25(shelfU).z = 100 / 30.48;
+      drawFurniture();
+      const lowBlk = g25(shelfU).classList.contains('blocksDoor');
+      Object.assign(it25(shelfU), { x: X + 4, y: Y + RH / 2 });
+      drawFurniture();
+      T('pb-z-door-by-height', highOk && lowBlk, '底边 215cm 不挡门=' + highOk + ' · 底边 100cm 挡=' + lowBlk);
+
+      /* 25.6 3D：电视的包围盒底面 = 离地 120cm（独立量）；搁板 100cm */
+      setView('3d');
+      await wait3D(80);
+      await tick();
+      const bb = (u) => {
+        const rec = three.furnMap.get(u);
+        rec.g.updateMatrixWorld(true);
+        return new THREE.Box3().setFromObject(rec.g);
+      };
+      const tvMin = bb(tvU).min.y,
+        shMin = bb(shelfU).min.y;
+      setView('2d');
+      await tick();
+      T(
+        'pb-z-3d-raised',
+        Math.abs(tvMin - 120 / 30.48) < 0.03 && Math.abs(shMin - 100 / 30.48) < 0.03,
+        '电视底 ' + (tvMin * 30.48).toFixed(1) + 'cm · 搁板底 ' + (shMin * 30.48).toFixed(1) + 'cm'
+      );
+
+      /* 25.7 撤销把离地退回去（面板跟着回去）；导入布局：z 原样收下、非法的 z（负数）被丢掉 */
+      selected = tvU;
+      drawFurniture();
+      await tick();
+      const ringU = undoRing.length;
+      await setZ(150);
+      undoStep();
+      await tick();
+      const undoOk =
+        Math.abs((state.items.find((i) => i.uid === tvU).z || 0) - zSave) < 1e-9 && undoRing.length === ringU;
+      const lay = {
+        items: [
+          { uid: 9001, custom: { name: '导入电视', w: 100, d: 8, h: 60 }, x: X + 5, y: Y + 3, rot: 0, z: 110 / 30.48 },
+          { uid: 9002, custom: { name: '坏离地', w: 50, d: 30, h: 40 }, x: X + 9, y: Y + 6, rot: 0, z: -3 },
+        ],
+        customCat: [],
+      };
+      const toastTxt = () => (Q('#toast') || {}).textContent || '';
+      for (let tryN = 0; tryN < 3; tryN++) {
+        const before = toastTxt();
+        const dt = new DataTransfer();
+        dt.items.add(new File([JSON.stringify(lay)], '家具布局.json', { type: 'application/json' }));
+        Q('#fileJson').files = dt.files;
+        Q('#fileJson').dispatchEvent(new Event('change', { bubbles: true }));
+        let got = false;
+        for (let i = 0; i < 40 && !got; i++) {
+          await tick();
+          got = toastTxt() !== before && /已导入布局/.test(toastTxt());
+        }
+        if (got) break;
+      }
+      const iA = state.items.find((i) => i.uid === 9001),
+        iB = state.items.find((i) => i.uid === 9002);
+      T(
+        'pb-z-undo-and-import',
+        undoOk && !!iA && Math.abs(iA.z - 110 / 30.48) < 1e-9 && !!iB && !('z' in iB),
+        '撤销回到 120=' +
+          undoOk +
+          ' · 导入 z=110 收下=' +
+          !!(iA && Math.abs(iA.z - 110 / 30.48) < 1e-9) +
+          ' · 负数被丢=' +
+          !!(iB && !('z' in iB))
+      );
+
+      /* 收尾：删掉这份户型 */
+      await enterEdit();
+      Q('#btnPlanDel').click();
+      await tick();
+      Q('#btnPlanDel').click();
+      await tick();
+      T(
+        'pb-z-clean-exit',
+        PLAN_ID !== p25Plan && PLAN_REG.plans.length === p25Plans,
+        'plans ' + p25Plans + '→' + PLAN_REG.plans.length
+      );
+    }
+
     /* ===== 收尾：页面不得有未捕获异常 ===== */
     T('pb-no-page-errors', window.__ERRS.length === 0, window.__ERRS.slice(0, 3).join(' || '));
   } catch (e) {

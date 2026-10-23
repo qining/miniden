@@ -1402,6 +1402,54 @@ export const FLOWS = [
   },
 
   {
+    name: 'elevate',
+    title:
+      '家具离地：点卡片摆一件 → 检视面板「离地」真键盘打 120 + 回车 → 平面图上虚线 +「离地 120 cm」→ 3D 里它真的悬在 120cm → Ctrl+Z 落回地面 → 删掉',
+    run: async (t) => {
+      /* gap 审计 G9（壁挂电视 / 吊柜 / 挂画）。 */
+      const before = await stateOf(t);
+      await t.step('点目录卡片摆一件');
+      await t.click('.catCard');
+      await t.waitFor(`state.items.length===${before.items + 1}`, 6000, '家具 +1');
+      const uid = await t.eval(`state.items[state.items.length-1].uid`);
+      await t.step('检视面板「离地」打 120 + 回车');
+      await t.type('#pZ', '120');
+      await t.key('Enter', 'Enter', 13);
+      await t.waitFor(
+        `(()=>{const i=state.items.find(x=>x.uid===${uid});return !!i && Math.abs((i.z||0)*30.48-120)<0.01;})()`,
+        6000,
+        'z = 120cm'
+      );
+      const two = await t.eval(
+        `(()=>{const g=document.querySelector('#svg2d g.furn[data-uid="${uid}"]');return {cls:g?g.getAttribute('class'):'',lbl:g&&g.querySelector('.zLbl')?g.querySelector('.zLbl').textContent:''};})()`
+      );
+      t.assert('elevate-2d', /elevated/.test(two.cls) && /离地 120/.test(two.lbl), `class=${two.cls} · 「${two.lbl}」`);
+      await t.shot('elevate-2d');
+      await t.step('3D 俯瞰：它悬在 120cm');
+      await t.click('#btnDoll');
+      await t.waitFor(
+        `state.view!=='2d' && three && three.staticGroup && !geoDirty3D && three.furnMap && three.furnMap.has(${uid})`,
+        20000,
+        '3D 建好'
+      );
+      const y3 = await t.eval(
+        `(()=>{const r=three.furnMap.get(${uid});r.g.updateMatrixWorld(true);return new THREE.Box3().setFromObject(r.g).min.y*30.48;})()`
+      );
+      t.assert('elevate-3d', Math.abs(y3 - 120) < 1, `3D 底面 ${y3.toFixed(1)}cm`);
+      await t.click('#btn2d');
+      await t.waitFor(`state.view==='2d'`, 8000, '回到 2D');
+      await t.step('Ctrl+Z：落回地面');
+      await t.eval(`(()=>{const a=document.activeElement;if(a&&a.blur)a.blur();})()`);
+      await t.key('z', 'KeyZ', 90, 2);
+      await t.waitFor(`(()=>{const i=state.items.find(x=>x.uid===${uid});return !!i && !i.z;})()`, 6000, 'z 回到 0');
+      t.assert('elevate-undo', (await t.eval(`document.querySelector('#pZ').value`)) === '0', '面板「离地」回到 0');
+      await t.key('Delete', 'Delete', 46);
+      await t.waitFor(`state.items.length===${before.items}`, 6000, '家具数复位');
+      t.assert('elevate-cleanup', (await stateOf(t)).items === before.items, `回到 ${before.items} 件`);
+    },
+  },
+
+  {
     name: 'props-panel',
     title: '检视面板：改颜色能撤销、旋转口径一致、自定义件尺寸有上下限',
     run: async (t) => {
