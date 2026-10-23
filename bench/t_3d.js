@@ -1976,6 +1976,189 @@ async function run3DTest() {
       setView('3d');
       await wait(300);
     }
+    // ===== S19b：通用件目录（电视 / 洗衣机 / 烘干机 / 冰箱 / 衣柜 = noPrice 按尺寸档位）+ 绿植 / 挂画 / 落地镜（IKEA 实物）=====
+    {
+      const S19B = [
+        'tv-43',
+        'tv-55',
+        'tv-65',
+        'tv-75',
+        'tv-85',
+        'washer-27',
+        'dryer-27',
+        'fridge-24',
+        'fridge-28',
+        'fridge-36',
+        'wardrobe-100',
+        'wardrobe-150',
+        'wardrobe-200',
+        'ficus-lyrata-12',
+        'sansevieria-8',
+        'pjaetteryd-forest',
+        'blodflaeder-seine',
+        'knapper',
+      ];
+      const sps = S19B.map((id) => CATALOG.find((c) => c.id === id));
+      T(
+        's19b-catalog',
+        sps.every((s) => s && s.model && typeof MODELS[s.model] === 'function'),
+        sps.filter(Boolean).length + '/' + S19B.length + ' 件在目录、都有专属模型'
+      );
+      const gen = sps.filter((s) => s && s.noPrice === true);
+      T(
+        's19b-generic-noprice',
+        gen.length === 13 && gen.every((s) => s.price == null && s.priceCA == null && !priceOf(s, 'usd')),
+        gen.length + ' 件通用件显式 noPrice（不计价，也不算「漏采价格」）'
+      );
+      T(
+        's19b-ikea-priced',
+        sps.filter((s) => s && !s.noPrice).every((s) => !!priceOf(s, 'usd')),
+        'IKEA 实物 5 件都带美国标价'
+      );
+      // 每件专属模型：填充 92–102%（逐顶点量）、重心归零、贴地、面数（通用回退只有 120 面）
+      const s19bad = [],
+        s19info = [];
+      const fitOf = (sp) => {
+        const g = furn3D({ uid: -190, ref: sp.id, x: 0, y: 0, rot: 0 }, sp);
+        g.updateMatrixWorld(true);
+        const b = new THREE.Box3().setFromObject(g, true);
+        const sz = new THREE.Vector3(),
+          ct = new THREE.Vector3();
+        b.getSize(sz);
+        b.getCenter(ct);
+        let tri = 0,
+          sum = 0;
+        g.traverse((o) => {
+          if (!o.isMesh || !o.geometry || !o.geometry.attributes.position) return;
+          const a = o.geometry.attributes.position.array;
+          tri += a.length / 9;
+          for (let i = 0; i < a.length; i += 7) sum += a[i];
+        });
+        disposeOwned(g);
+        return { f: [sz.x / cm2ft(sp.w), sz.z / cm2ft(sp.d), sz.y / cm2ft(sp.h)], ct, minY: b.min.y, tri, sum };
+      };
+      for (const sp of sps) {
+        if (!sp) continue;
+        const r = fitOf(sp),
+          e = [];
+        if (r.f.some((v) => v < 0.92 || v > 1.02)) e.push('填充率 ' + r.f.map((v) => (v * 100).toFixed(0)).join('/'));
+        if (Math.abs(r.ct.x) > 0.03 || Math.abs(r.ct.z) > 0.03) e.push('重心偏');
+        if (r.minY < -0.02) e.push('沉地板 ' + r.minY.toFixed(3));
+        if (r.tri < 500) e.push('面数 ' + Math.round(r.tri));
+        if (e.length) s19bad.push(sp.id + ':' + e.join('/'));
+        else s19info.push(sp.id + ' ' + r.f.map((v) => (v * 100).toFixed(0)).join('/'));
+      }
+      T('s19b-models-fit', s19bad.length === 0, s19bad.length ? s19bad.join(' | ') : s19info.join(' · '));
+      // 叶片是随机生成的：同一件建两次必须一模一样（贴图先建、再 srand，种子不被贴图的 srand 冲掉）
+      const det = ['ficus-lyrata-12', 'sansevieria-8'].map((id) => {
+        const sp = CATALOG.find((c) => c.id === id);
+        const a = fitOf(sp),
+          b = fitOf(sp);
+        return a.sum === b.sum && a.tri === b.tri;
+      });
+      T('s19b-plants-deterministic', det.every(Boolean), '琴叶榕 / 虎尾兰各建两次：' + det.join(' / '));
+      // 壁挂件放进来就挂在目录给的缺省高度（cm → ft）；落地件不带 z
+      const n0 = state.items.length;
+      for (const id of ['tv-55', 'pjaetteryd-forest', 'washer-27', 'ficus-lyrata-12', 'knapper']) addItem(id);
+      await wait(150);
+      const add = state.items.slice(n0);
+      const [iTv, iArt, iWash, iPlant, iMir] = add;
+      T(
+        's19b-z-default',
+        add.length === 5 &&
+          Math.abs(itemZ(iTv) - cm2ft(71)) < 1e-3 &&
+          Math.abs(itemZ(iArt) - cm2ft(110)) < 1e-3 &&
+          !iWash.z &&
+          !iPlant.z &&
+          !iMir.z,
+        '电视 55″ 离地 ' +
+          (itemZ(iTv) * 30.48).toFixed(0) +
+          'cm · 挂画 ' +
+          (itemZ(iArt) * 30.48).toFixed(0) +
+          'cm · 洗衣机 / 绿植 / 落地镜 ' +
+          [iWash.z || 0, iPlant.z || 0, iMir.z || 0].join('/')
+      );
+      drawFurniture();
+      await wait(80);
+      const has2d = (it, sel) => {
+        const gg = gFurn.querySelector('[data-uid="' + it.uid + '"]');
+        return !!(gg && gg.querySelector(sel));
+      };
+      T(
+        's19b-2d-legends',
+        has2d(iTv, 'line[stroke="#7fb8ff"]') &&
+          has2d(iWash, 'circle') &&
+          has2d(iPlant, 'circle[fill="' + itemSpec(iPlant).color2 + '"]') &&
+          has2d(iMir, 'line[stroke="#bfe3ff"]'),
+        '电视屏幕亮线 / 洗衣机滚筒圆 / 绿植盆圆 / 镜面亮线'
+      );
+      // 落地镜的镜面：烘一张立方体贴图反射房间（不是窗外城市全景）；转向后重烘、朝向跟着转；删掉时释放
+      setView('3d');
+      sync3D();
+      await wait(900);
+      const mirOf = (it) => {
+        const rec = three.furnMap && three.furnMap.get(it.uid);
+        let m = null;
+        if (rec)
+          rec.g.traverse((o) => {
+            if (o.isMesh && o.userData.mirrorFurn) m = o;
+          });
+        return m;
+      };
+      const mir0 = mirOf(iMir),
+        env0 = mir0 && mir0.material.envMap,
+        n0v = mir0 && mir0.userData.mirrorN;
+      T(
+        's19b-mirror-baked',
+        !!env0 && !!env0.isCubeTexture && !!n0v && n0v[2] > 0.9,
+        mir0
+          ? env0
+            ? '已烘 · 朝向 ' + JSON.stringify(n0v.map((v) => +v.toFixed(2)))
+            : '没烘（还在反射环境全景）'
+          : '找不到镜面 mesh'
+      );
+      iMir.rot = 90;
+      sync3D();
+      await wait(900);
+      const n1v = mir0 && mir0.userData.mirrorN;
+      T(
+        's19b-mirror-rebake-on-rotate',
+        !!mir0 &&
+          mirOf(iMir) === mir0 &&
+          !!mir0.material.envMap &&
+          mir0.material.envMap !== env0 &&
+          !!n1v &&
+          n1v[0] < -0.9,
+        '转 90° 后朝向 ' +
+          JSON.stringify((n1v || []).map((v) => +v.toFixed(2))) +
+          (mir0 && mir0.material.envMap !== env0 ? ' · 已重烘' : ' · 没重烘')
+      );
+      const rt0 = mir0 && mir0.userData.mirrorEnv;
+      for (const it of add) {
+        const i = state.items.indexOf(it);
+        if (i >= 0) state.items.splice(i, 1);
+      }
+      drawFurniture();
+      sync3D();
+      T(
+        's19b-mirror-rt-freed',
+        !!rt0 && !!mir0 && mir0.userData.mirrorEnv === null,
+        '删掉落地镜 → 它烘的立方体贴图一起释放'
+      );
+      // 户型洁具镜子：静态重建丢弃旧镜面时也要释放旧贴图（原先每次改墙都漏一张）
+      const sm = three.mirrors && three.mirrors[0];
+      const smHad = !!(sm && sm.userData.mirrorEnv);
+      geoChanged();
+      setView('2d');
+      setView('3d');
+      await wait(400);
+      T(
+        's19b-static-mirror-rt-freed',
+        !sm ||
+          (smHad && sm.userData.mirrorEnv === null && three.mirrors[0] !== sm && !!three.mirrors[0].userData.mirrorEnv),
+        sm ? (smHad ? '旧镜面贴图已释放 · 新镜面已重烘' : '旧镜面没烘过') : '户型没有镜子（跳过）'
+      );
+    }
     // ===== S12：用户画的台面 run（3D 柜体 + 台面石板）=====
     // 按材质分桶会把 mesh 合并（parameters 消失、position 不可靠），所以用顶点数 + 桶包围盒。
     {

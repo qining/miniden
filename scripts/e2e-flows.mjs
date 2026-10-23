@@ -1450,6 +1450,79 @@ export const FLOWS = [
   },
 
   {
+    name: 'generic-items',
+    title:
+      '通用件 + 落地镜：搜「电视 55」点卡片 → 直接挂在 71cm（面板「离地」71、平面图「离地 71 cm」）→ 搜 knapper 摆一面落地镜 → 3D 里镜面烘的是房间（立方体贴图，不是窗外全景）→ 删掉',
+    run: async (t) => {
+      /* gap 审计 G9 后半（S19b）。通用件按尺寸档位规划空间；壁挂件放进来就在目录给的缺省高度；家具里的镜子要照出房间。 */
+      const before = await stateOf(t);
+      const clearSearch = () =>
+        t.eval(
+          `(()=>{const s=document.querySelector('#catSearch');s.value='';s.dispatchEvent(new Event('input',{bubbles:true}));})()`
+        );
+      await t.step('搜「电视 55」，点那张卡片');
+      await t.type('#catSearch', '电视 55');
+      await t.waitFor(`document.querySelectorAll('.catCard').length===1`, 5000, '只剩 55″ 一张卡片');
+      const card = await t.eval(`document.querySelector('.catCard').textContent.replace(/\\s+/g,' ').trim()`);
+      t.assert(
+        'generic-card',
+        /电视 55″/.test(card) && !/US\$|CA\$/.test(card),
+        `卡片：${card.slice(0, 60)}（通用件不标价）`
+      );
+      await t.click('.catCard');
+      await t.waitFor(`state.items.length===${before.items + 1}`, 6000, '家具 +1');
+      const tv = await t.eval(`state.items[state.items.length-1].uid`);
+      const tvZ = await t.eval(`(()=>{const i=state.items.find(x=>x.uid===${tv});return (i.z||0)*30.48;})()`);
+      const pZ = await t.eval(`document.querySelector('#pZ').value`);
+      const lbl = await t.eval(
+        `(()=>{const g=document.querySelector('#svg2d g.furn[data-uid="${tv}"]');const l=g&&g.querySelector('.zLbl');return l?l.textContent:'';})()`
+      );
+      t.assert(
+        'generic-tv-wallmounted',
+        Math.abs(tvZ - 71) < 0.05 && pZ === '71' && /离地 71/.test(lbl),
+        `离地 ${tvZ.toFixed(1)}cm · 面板「${pZ}」· 平面图「${lbl}」`
+      );
+      await t.step('Delete 删掉电视（刚摆的那件就是选中的）');
+      await t.eval(`(()=>{const a=document.activeElement;if(a&&a.blur)a.blur();})()`);
+      await t.key('Delete', 'Delete', 46);
+      await t.waitFor(`state.items.length===${before.items}`, 6000, '电视删掉');
+      await t.step('搜 knapper，摆一面落地镜');
+      await clearSearch();
+      await t.type('#catSearch', 'knapper');
+      await t.waitFor(`document.querySelectorAll('.catCard').length===1`, 5000, '搜到 KNAPPER');
+      await t.click('.catCard');
+      await t.waitFor(`state.items.length===${before.items + 1}`, 6000, '家具 +1');
+      const mir = await t.eval(`state.items[state.items.length-1].uid`);
+      await clearSearch();
+      await t.shot('generic-2d');
+      await t.step('3D 俯瞰：镜面烘了房间反射');
+      await t.click('#btnDoll');
+      await t.waitFor(
+        `state.view!=='2d' && three && three.staticGroup && !geoDirty3D && three.furnMap && three.furnMap.has(${mir})`,
+        20000,
+        '3D 建好'
+      );
+      const baked = `(()=>{let m=null;three.furnMap.get(${mir}).g.traverse(o=>{if(o.isMesh&&o.userData.mirrorFurn)m=o;});
+        return !!(m && m.material.envMap && m.material.envMap.isCubeTexture);})()`;
+      await t.waitFor(baked, 8000, '镜面有立方体贴图');
+      t.assert('generic-mirror-baked', await t.eval(baked), '落地镜反射的是房间（不是窗外城市全景）');
+      await t.shot('generic-3d');
+      await t.click('#btn2d');
+      await t.waitFor(`state.view==='2d'`, 8000, '回到 2D');
+      await t.step('Delete 删掉落地镜（它还是选中的）');
+      t.assert(
+        'generic-mirror-still-selected',
+        (await t.eval(`selected`)) === mir,
+        `选中 uid=${await t.eval(`selected`)}`
+      );
+      await t.eval(`(()=>{const a=document.activeElement;if(a&&a.blur)a.blur();})()`);
+      await t.key('Delete', 'Delete', 46);
+      await t.waitFor(`state.items.length===${before.items}`, 6000, '家具数复位');
+      t.assert('generic-cleanup', (await stateOf(t)).items === before.items, `回到 ${before.items} 件`);
+    },
+  },
+
+  {
     name: 'props-panel',
     title: '检视面板：改颜色能撤销、旋转口径一致、自定义件尺寸有上下限',
     run: async (t) => {

@@ -166,6 +166,27 @@ describe('目录条目 schema', () => {
     expect(warns(r).some((i) => i.field === 'wood')).toBe(true);
   });
 
+  it('z（壁挂件缺省离地 cm）：0–300 的数字才收，并原样带进条目', () => {
+    const r = validateEntry({ ...good(), z: 110 });
+    expect(r.ok).toBe(true);
+    expect(r.entry?.z).toBe(110);
+    expect(warns(r).some((i) => i.field === 'z')).toBe(false); // 已知字段，不报「未知字段」
+    expect(validateEntry({ ...good(), z: 0 }).ok).toBe(true);
+    expect(validateEntry({ ...good(), z: 300 }).ok).toBe(true);
+    expect(validateEntry({ ...good(), z: -1 }).ok).toBe(false);
+    expect(validateEntry({ ...good(), z: 301 }).ok).toBe(false);
+    expect(validateEntry({ ...good(), z: '110' }).ok).toBe(false);
+    expect(validateEntry({ ...good(), z: Number.NaN }).ok).toBe(false);
+  });
+
+  it('S19b 的 8 个新 kind 是已知 kind（不报「陌生 kind 走通用回退」）', () => {
+    for (const kind of ['tv', 'washer', 'dryer', 'fridge', 'wardrobe', 'plant', 'art', 'mirror']) {
+      const r = validateEntry({ ...good(), kind });
+      expect(r.ok).toBe(true);
+      expect(warns(r).some((i) => i.field === 'kind')).toBe(false);
+    }
+  });
+
   it('未知字段只提醒并保留（schema 要向前兼容）', () => {
     const r = validateEntry({ ...good(), futureField: 7 });
     expect(r.ok).toBe(true);

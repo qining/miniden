@@ -6348,6 +6348,45 @@ async function runPBTest() {
           (order.indexOf(tvU) > order.indexOf(benchU))
       );
 
+      /* 25.2b 薄件（电视 8cm 深）：「离地」标注放到正面外侧、不压件名；转 180° 后字不倒、仍在正面那一侧
+         （以前标注就在件名上叠着，转半圈后倒着写） */
+      const lblBoxes = (u) => {
+        const g = g25(u),
+          z = g && g.querySelector('.zLbl'),
+          nm = g && g.querySelector('text:not(.zLbl)');
+        if (!z || !nm) return null;
+        const a = z.getBoundingClientRect(),
+          b = nm.getBoundingClientRect(),
+          body = g.querySelector('rect,circle').getBoundingClientRect();
+        const hit = !(a.right <= b.left || b.right <= a.left || a.bottom <= b.top || b.bottom <= a.top);
+        return { hit, up: z.getScreenCTM().a > 0, zc: (a.top + a.bottom) / 2, bc: (body.top + body.bottom) / 2 };
+      };
+      const lb0 = lblBoxes(tvU);
+      it25(tvU).rot = 180;
+      drawFurniture();
+      await tick();
+      const lb1 = lblBoxes(tvU);
+      it25(tvU).rot = 0;
+      drawFurniture();
+      T(
+        'pb-z-label-clear',
+        !!lb0 && !!lb1 && !lb0.hit && !lb1.hit && lb0.up && lb1.up && lb0.zc > lb0.bc && lb1.zc < lb1.bc,
+        lb0 && lb1
+          ? '0°：压件名=' +
+              lb0.hit +
+              ' 正立=' +
+              lb0.up +
+              ' 在正面（下）=' +
+              (lb0.zc > lb0.bc) +
+              ' · 180°：压件名=' +
+              lb1.hit +
+              ' 正立=' +
+              lb1.up +
+              ' 在正面（上）=' +
+              (lb1.zc < lb1.bc)
+          : '标注或件名缺失'
+      );
+
       /* 25.3 碰撞按高度区间：电视（120–192cm）在电视柜（0–50cm）正上方 → 不算重叠；电视放回地上 → 重叠 */
       Object.assign(it25(tvU), { x: X + 8, y: faceTop + 20 / 30.48 }); // 与电视柜同一块占地
       drawFurniture();
