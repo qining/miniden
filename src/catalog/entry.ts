@@ -8,7 +8,8 @@
                                   mergeCatalog, PACKS_KEY, packKeyFor,
                                   normalizeRegistry, serializeRegistry,
                                   upsertPackMeta, removePackMeta, packMetaFor,
-                                  KNOWN_KINDS, … }
+                                  KNOWN_KINDS, buildShoppingList, shoppingCSV,
+                                  shoppingText, shoppingTail, csvCell, … }
 
    主脚本消费方式（app.html）：
      · 目录 = [...CATALOG, ...packEntries, ...state.customCat]（catalogAll()）
@@ -24,6 +25,7 @@
 import * as schema from './schema';
 import * as packs from './packs';
 import * as models from './models';
+import * as shopping from './shopping';
 
 const g = globalThis as Record<string, unknown>;
 
@@ -31,4 +33,5 @@ const g = globalThis as Record<string, unknown>;
   ...schema,
   ...packs,
   ...models,
+  ...shopping,
 };
