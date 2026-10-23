@@ -199,3 +199,126 @@ export function forEachLevel(doc: ProjectDoc, fn: (view: Content, lv: Level, act
     fn(active ? (doc as Content) : (lv as Content), lv, active);
   }
 }
+
+/* ---------- S17b：矢量图纸（DXF / 矢量 PDF）导入为一层 + 整层平移 ---------- */
+
+const r4 = (v: number) => Math.round(v * 1e4) / 1e4;
+type Geomish = {
+  t: string;
+  x1?: number;
+  y1?: number;
+  x2?: number;
+  y2?: number;
+  cx?: number;
+  cy?: number;
+  pts?: number[][];
+};
+function moveGeom(g: Geomish | undefined | null, dx: number, dy: number): void {
+  if (!g) return;
+  if (g.t === 'seg') {
+    g.x1 = r4((g.x1 as number) + dx);
+    g.y1 = r4((g.y1 as number) + dy);
+    g.x2 = r4((g.x2 as number) + dx);
+    g.y2 = r4((g.y2 as number) + dy);
+  } else if (g.t === 'arc') {
+    g.cx = r4((g.cx as number) + dx);
+    g.cy = r4((g.cy as number) + dy);
+  } else if (g.t === 'poly' && Array.isArray(g.pts)) g.pts = g.pts.map((p) => [r4(p[0] + dx), r4(p[1] + dy)]);
+}
+const movePts = (pts: number[][] | undefined, dx: number, dy: number) =>
+  Array.isArray(pts) ? pts.map((p) => [r4(p[0] + dx), r4(p[1] + dy)]) : pts;
+
+/** 整层平移（就地改）：这一层所有带坐标的东西一起挪 —— 墙 / 窗 / 门（含门洞缺口）/ 柱与异形墙 / 房间（标签点 + 轮廓）/
+    洁具（包围盒）/ 台面（path）/ 点位（缓存坐标；挂墙 / 台面 / 台柜的本来就是相对宿主，跟着宿主走）/ 楼梯 / 地板轮廓 / 底图 / 阳台。
+    view = levelContentOf(doc, id)（当前层就是文档顶层） */
+export function translateLevelContent(view: Content, dx: number, dy: number): void {
+  if (!dx && !dy) return;
+  const V = view as unknown as Record<string, any>;
+  for (const w of V.walls || []) moveGeom(w.geom, dx, dy);
+  for (const w of V.windows || []) moveGeom(w.geom, dx, dy);
+  for (const d of V.doors || []) {
+    moveGeom(d.geom, dx, dy);
+    moveGeom(d.gapGeom, dx, dy);
+  }
+  for (const s of V.solids || []) moveGeom(s.geom, dx, dy);
+  for (const r of V.rooms || []) {
+    if (Array.isArray(r.pos)) r.pos = [r4(r.pos[0] + dx), r4(r.pos[1] + dy)];
+    if (r.poly) r.poly = movePts(r.poly, dx, dy);
+  }
+  for (const f of V.fixtures || []) {
+    f.x1 = r4(f.x1 + dx);
+    f.x2 = r4(f.x2 + dx);
+    f.y1 = r4(f.y1 + dy);
+    f.y2 = r4(f.y2 + dy);
+  }
+  for (const r of V.runs || []) r.path = movePts(r.path, dx, dy);
+  for (const o of V.outlets || []) {
+    o.x = r4(o.x + dx);
+    o.y = r4(o.y + dy);
+  }
+  for (const s of V.stairs || []) s.path = movePts(s.path, dx, dy);
+  if (V.floorOutline) V.floorOutline = movePts(V.floorOutline, dx, dy);
+  if (V.baseImage) {
+    V.baseImage.ox = r4(V.baseImage.ox + dx);
+    V.baseImage.oy = r4(V.baseImage.oy + dy);
+  }
+  if (V.patio && V.patio.geom) moveGeom(V.patio.geom, dx, dy);
+}
+
+/** 一层内容的包围盒（墙 / 窗 / 门 / 柱 / 地板轮廓；弧按外接方）；什么都没有 = null */
+export function levelBBox(view: Content): { x0: number; y0: number; x1: number; y1: number } | null {
+  const V = view as unknown as Record<string, any>;
+  let x0 = Infinity,
+    y0 = Infinity,
+    x1 = -Infinity,
+    y1 = -Infinity;
+  const add = (x: number, y: number) => {
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+    x0 = Math.min(x0, x);
+    y0 = Math.min(y0, y);
+    x1 = Math.max(x1, x);
+    y1 = Math.max(y1, y);
+  };
+  const geom = (g: Geomish | undefined | null) => {
+    if (!g) return;
+    if (g.t === 'seg') {
+      add(g.x1 as number, g.y1 as number);
+      add(g.x2 as number, g.y2 as number);
+    } else if (g.t === 'arc') {
+      const r = (g as unknown as { r: number }).r;
+      add((g.cx as number) - r, (g.cy as number) - r);
+      add((g.cx as number) + r, (g.cy as number) + r);
+    } else if (g.t === 'poly') for (const p of g.pts || []) add(p[0], p[1]);
+  };
+  for (const k of ['walls', 'windows', 'doors', 'solids']) for (const e of V[k] || []) geom(e.geom);
+  for (const p of V.floorOutline || []) add(p[0], p[1]);
+  return Number.isFinite(x0) ? { x0, y0, x1, y1 } : null;
+}
+
+export interface AddLevelFromOpts {
+  where: 'above' | 'below';
+  name?: string;
+  /** 导入内容整体平移（ft），用来先摆到这份户型的地板中央 */
+  dx?: number;
+  dy?: number;
+}
+
+/** 把一份单层文档（DXF / 矢量 PDF 导入读出来的）当成新的一层加进来（不切过去）。
+    内容深拷贝、先整体平移 (dx, dy)；层高取它自己的 ceilingH。src 自己就有楼层 = 不收（返回 null：只收单层的图纸）。
+    楼层之间的实体 id 各管各的（每层单独校验），所以不重编 id。 */
+export function addLevelFromDoc(doc: ProjectDoc, src: ProjectDoc, opts: AddLevelFromOpts): Level | null {
+  if (hasLevels(src)) return null;
+  const S = src as unknown as Bag,
+    content: Bag = {};
+  for (const k of LEVEL_KEYS) if (S[k] !== undefined) content[k] = JSON.parse(JSON.stringify(S[k]));
+  translateLevelContent(content as Content, opts.dx || 0, opts.dy || 0);
+  const ceil =
+    typeof content.ceilingH === 'number' && content.ceilingH > 0 ? (content.ceilingH as number) : doc.ceilingH;
+  const lv = addLevel(doc, { where: opts.where, name: opts.name, ceilingH: ceil });
+  const L = lv as unknown as Bag;
+  // 层高已按上面的口径（合法才用导入那份的）交给 addLevel 了：这里不能再照抄一遍，否则导入那份的 0 / 负数会把它盖掉
+  for (const k of LEVEL_KEYS) if (k !== 'ceilingH' && content[k] !== undefined) L[k] = content[k];
+  if (!L.hidden) L.hidden = { walls: [], windows: [], doors: [], solids: [] };
+  if (L.patio === undefined) L.patio = null;
+  return lv;
+}
