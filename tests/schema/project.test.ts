@@ -1009,3 +1009,84 @@ describe('房间与地板（S16）', () => {
     expect(Object.keys(docToLegacy(good()))).toEqual(['walls', 'fixed', 'doors']);
   });
 });
+
+/* =====================================================================
+   S21：窗帘（windows[].curtain）与墙色（rooms[].wallColor）
+   ===================================================================== */
+describe('窗帘与墙色（S21）', () => {
+  const win = (curtain?: unknown) => ({
+    id: 'n1',
+    geom: seg(4),
+    wallId: null,
+    pos: 0.5,
+    width: 4,
+    sill: 2.2,
+    head: 7.4,
+    style: 'fixed' as const,
+    frame: '#111',
+    glass: 0.2,
+    ...(curtain === undefined ? {} : { curtain: curtain as never }),
+  });
+  const docWith = (curtain?: unknown, wallColor?: unknown) => {
+    const d = blankDoc('窗帘');
+    d.windows.push(win(curtain));
+    d.rooms = [
+      {
+        id: 'r01',
+        label: '卧室',
+        pos: [2, 2],
+        poly: [
+          [0, 0.2],
+          [4, 0.2],
+          [4, 4],
+          [0, 4],
+        ],
+        ...(wallColor === undefined ? {} : { wallColor: wallColor as never }),
+      },
+    ] as never;
+    return d;
+  };
+
+  it('四种款式 + 颜色 + 可选的挂向通过校验，JSON 往返逐字段相等；墙色 #rgb / #rrggbb 都收', () => {
+    for (const style of ['drape', 'sheer', 'drapeSheer', 'roller']) {
+      const d = docWith({ style, color: '#c9b79c', side: -1 }, '#e8dfd0');
+      expect(validate(d)).toEqual([]);
+      const round = JSON.parse(JSON.stringify(d));
+      expect(validate(round)).toEqual([]);
+      expect(round).toEqual(d);
+    }
+    expect(validate(docWith({ style: 'drape', color: '#abc' }, '#fff'))).toEqual([]);
+  });
+
+  it('纯增量可选字段：旧文档没有它们照样合法；JSON Schema 里有定义、不在 required', () => {
+    expect(validate(docWith())).toEqual([]);
+    const s = projectSchema() as Record<string, any>;
+    expect(s.definitions.window.properties.curtain.properties.style.enum).toEqual([
+      'drape',
+      'sheer',
+      'drapeSheer',
+      'roller',
+    ]);
+    expect(s.definitions.window.required).not.toContain('curtain');
+    expect(s.definitions.room.properties.wallColor).toBeTruthy();
+    expect(s.definitions.room.required || []).not.toContain('wallColor');
+  });
+
+  it('款式 / 颜色 / 挂向非法被拒，路径指到具体字段', () => {
+    const paths = (d: ProjectDoc) => validate(d).map((e) => e.path);
+    expect(paths(docWith({ style: 'blinds', color: '#fff' }))).toContain('windows[0].curtain.style');
+    expect(paths(docWith({ style: 'drape', color: 'beige' }))).toContain('windows[0].curtain.color');
+    expect(paths(docWith({ style: 'drape', color: '#fff', side: 0 }))).toContain('windows[0].curtain.side');
+    expect(paths(docWith(null))).toContain('windows[0].curtain');
+    expect(paths(docWith(undefined, 'white'))).toContain('rooms[0].wallColor');
+    expect(paths(docWith(undefined, '#12345'))).toContain('rooms[0].wallColor');
+  });
+
+  it('窗帘与墙色不进 docToLegacy 投影（投影键集冻结）', () => {
+    expect(Object.keys(docToLegacy(docWith({ style: 'drape', color: '#fff' }, '#eee')))).toEqual([
+      'walls',
+      'fixed',
+      'doors',
+    ]);
+  });
+});

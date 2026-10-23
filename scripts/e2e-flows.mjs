@@ -1676,6 +1676,107 @@ export const FLOWS = [
   },
 
   {
+    name: 'curtain-paint',
+    title:
+      '窗帘 + 墙色：空白户型真鼠标画一圈墙（上墙中间一段是窗）→ 房间工具点进房间 → 墙色选「鼠尾草绿」、窗帘选「落地帘 + 纱帘」→ 平面图上窗的室内一侧出现窗帘符号 → 3D 室内：射线打到刷了色的墙、窗两侧是帘 → 删户型',
+    run: async (t) => {
+      /* gap 审计 G14 / G15。墙用真鼠标画（窗那一段切成「窗」类型），房间是真点出来的；下拉框的值用脚本设（与 wType 同一做法），
+         但走的是控件自己的 change 处理。 */
+      await t.step('新建空白户型，真鼠标画一圈墙（上墙中间那段是窗）');
+      await ensureProTools(t);
+      await t.click('#btnPlanNew');
+      await t.waitFor(`PLAN_ID!==BUILTIN_PLAN_ID`, 8000, '切到空白户型');
+      const cv = await t.eval(
+        `(()=>{const P=floorPts();let x1=1e9,y1=1e9,x2=-1e9,y2=-1e9;` +
+          `for(const q of P){x1=Math.min(x1,q[0]);y1=Math.min(y1,q[1]);x2=Math.max(x2,q[0]);y2=Math.max(y2,q[1]);}` +
+          `return {x1,y1,x2,y2};})()`
+      );
+      const A = [cv.x1 + 1, cv.y1 + 1],
+        B = [cv.x2 - 1, cv.y1 + 1],
+        C = [cv.x2 - 1, cv.y2 - 1],
+        D = [cv.x1 + 1, cv.y2 - 1];
+      const W1 = [A[0] + (B[0] - A[0]) * 0.3, A[1]],
+        W2 = [A[0] + (B[0] - A[0]) * 0.6, A[1]];
+      await t.click('#btnWallEdit');
+      await t.waitFor(`wallEdit.on`, 5000, '进入编辑');
+      await t.click('#wtoolSeg button[data-t="wall"]');
+      await t.waitFor(`wallEdit.tool==='wall'`, 5000, 'tool=wall');
+      const piece = async (p, q, type) => {
+        await t.eval(`document.querySelector('#wType').value='${type}'`);
+        await t.click(await t.planPoint(p[0], p[1]));
+        await t.click(await t.planPoint(q[0], q[1]));
+        await t.key('Enter', 'Enter', 13);
+        await t.waitFor(`wallEdit.drawPts.length===0`, 6000, '这段提交');
+      };
+      await piece(A, W1, 'w');
+      await piece(W1, W2, 'g');
+      await piece(W2, B, 'w');
+      await piece(B, C, 'w');
+      await piece(C, D, 'w');
+      await piece(D, A, 'w');
+      t.assert('wc-window-drawn', (await t.eval(`DOC.windows.length`)) === 1, '上墙中间一段是窗');
+
+      await t.step('房间工具：点进房间');
+      await t.click('#wtoolSeg button[data-t="room"]');
+      await t.waitFor(`wallEdit.tool==='room'`, 5000, 'tool=room');
+      const mid = [(A[0] + C[0]) / 2, (A[1] + C[1]) / 2];
+      await t.click(await t.planPoint(mid[0], mid[1]));
+      await t.waitFor(`wallEdit.sel && wallEdit.sel.kind==='room'`, 5000, '选中房间');
+      t.assert(
+        'wc-room-picked',
+        (await t.eval(
+          `getComputedStyle(document.querySelector('#rmWallL')).display!=='none' && roomWindows(selRoom()).length===1`
+        )) === true,
+        '房间工具条里有「墙色」「窗帘」，这间房认出 1 扇窗'
+      );
+
+      await t.step('墙色选「鼠尾草绿」、窗帘选「落地帘 + 纱帘」');
+      await t.eval(
+        `(()=>{const s=document.querySelector('#rmWall');s.value='#b9c2b2';s.dispatchEvent(new Event('change'));})()`
+      );
+      await t.eval(
+        `(()=>{const s=document.querySelector('#rmCurtain');s.value='drapeSheer';s.dispatchEvent(new Event('change'));})()`
+      );
+      const st = await t.eval(
+        `({wc:selRoom().wallColor, c:DOC.windows[0].curtain||null, sym:document.querySelectorAll('#svg2d .curtainSym').length, msg:document.querySelector('#wMsg').textContent})`
+      );
+      t.assert(
+        'wc-set',
+        st.wc === '#b9c2b2' && !!st.c && st.c.style === 'drapeSheer' && st.sym === 3 && /鼠尾草绿/.test(st.msg),
+        `墙色 ${st.wc} · 窗帘 ${JSON.stringify(st.c)} · 平面图上窗帘符号 ${st.sym} 道 · 提示「${st.msg.slice(0, 50)}…」`
+      );
+      await t.shot('wc-2d');
+
+      await t.step('3D 室内：墙是刷过色的、窗两侧是帘');
+      await t.click('#wDone');
+      await t.waitFor(`!wallEdit.on`, 5000, '退出编辑');
+      await t.click('#btnDoll');
+      await t.waitFor(`state.view!=='2d' && three && three.staticGroup && !geoDirty3D`, 20000, '3D 建好');
+      const ray = await t.eval(
+        `(()=>{three.staticGroup.updateMatrixWorld(true);const rc=new THREE.Raycaster();
+          const hit=(o,d)=>{rc.set(new THREE.Vector3(...o),new THREE.Vector3(...d).normalize());const h=rc.intersectObject(three.staticGroup,true).filter(x=>x.object.visible)[0];return h&&h.object.material&&h.object.material.userData||{};};
+          const c=[${mid[0]},4,${mid[1]}], s=DOC.windows[0].geom, wx=s.x1+(s.x2-s.x1)*0.03;
+          return {left:!!hit(c,[-1,0,0]).roomPaint, side:hit([wx,4,${mid[1]}],[0,0,-1]).curtain||'', mid:hit([(s.x1+s.x2)/2,4,${mid[1]}],[0,0,-1]).curtain||''};})()`
+      );
+      t.assert(
+        'wc-3d',
+        ray.left && ray.side === 'drape' && ray.mid === 'sheer',
+        `朝左墙打到漆=${ray.left} · 窗边打到「${ray.side}」· 窗中间打到「${ray.mid}」（落地帘收在两侧、中间是纱帘）`
+      );
+      await t.shot('wc-3d');
+      await t.click('#btn2d');
+      await t.waitFor(`state.view==='2d'`, 8000, '回到 2D');
+
+      await t.step('清除：删掉这份户型（两步）');
+      await ensureProTools(t);
+      await t.click('#btnPlanDel');
+      await t.click('#btnPlanDel');
+      await t.waitFor(`PLAN_ID===BUILTIN_PLAN_ID`, 8000, '删完切回内置');
+      t.assert('wc-cleaned', true, '回到内置户型');
+    },
+  },
+
+  {
     name: 'props-panel',
     title: '检视面板：改颜色能撤销、旋转口径一致、自定义件尺寸有上下限',
     run: async (t) => {

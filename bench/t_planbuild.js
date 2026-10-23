@@ -6994,6 +6994,322 @@ async function runPBTest() {
       );
     }
 
+    /* ===== 27. S21 窗帘 + 墙色：房间工具里选墙色 / 给这间房的窗配窗帘；窗工具条里逐扇改；2D 符号；3D 刷墙（窗洞 / 门洞留白）与窗帘 ===== */
+    {
+      /* gap 审计 G14 / G15。独立量：从房间中心朝四面墙打射线 —— 实墙那面、窗台以下、门头以上打到「漆」；
+         窗玻璃高度、门洞中段打不到漆（打到的是玻璃 / 穿过去）；窗帘挂在房间这一侧（中点在房间轮廓里）、离地 ≈1cm 到帘杆。 */
+      await enterEdit();
+      await pbReset();
+      const p27Plans = PLAN_REG.plans.length;
+      Q('#btnPlanNew').click();
+      await tick();
+      const p27Plan = PLAN_ID;
+      const fp27 = floorPts();
+      const X =
+          Math.min.apply(
+            null,
+            fp27.map((p) => p[0])
+          ) + 1,
+        Y =
+          Math.min.apply(
+            null,
+            fp27.map((p) => p[1])
+          ) + 1;
+      const RW = 16,
+        RH = 12,
+        wd15 = cmToWd(15);
+      pushUserWall(X, Y, X + 4, Y, 'w', wd15);
+      const win27 = pushUserWindow(X + 4, Y, X + 9, Y, wd15);
+      pushUserWall(X + 9, Y, X + RW, Y, 'w', wd15);
+      pushUserWall(X + RW, Y, X + RW, Y + 4, 'w', wd15);
+      pushUserWall(X + RW, Y + 4, X + RW, Y + 7, 'd', wd15);
+      pushUserDoor(X + RW, Y + 4, X + RW, Y + 7);
+      pushUserWall(X + RW, Y + 7, X + RW, Y + RH, 'w', wd15);
+      pushUserWall(X + RW, Y + RH, X, Y + RH, 'w', wd15);
+      pushUserWall(X, Y + RH, X, Y, 'w', wd15);
+      geoChanged();
+      fit2DToContent();
+      await tick();
+      const winE = () => DOC.windows.find((w) => w.id === win27.id) || DOC.windows[0];
+      const r27 = pickRoomAt(X + 8, Y + 6);
+      await tick();
+      const room = () => effRooms().find((r) => r.id === r27.id);
+
+      /* 27.1 房间工具条：墙色 / 窗帘两个控件在；选「鼠尾草绿」→ wallColor 写进去、一步撤销；重选同一个不占步；这间房认出 1 扇窗 */
+      const shown =
+        getComputedStyle(Q('#rmWallL')).display !== 'none' && getComputedStyle(Q('#rmCurtainL')).display !== 'none';
+      const wins = roomWindows(room());
+      const r1 = undoRing.length;
+      Q('#rmWall').value = '#b9c2b2';
+      Q('#rmWall').dispatchEvent(new Event('change'));
+      await tick();
+      const step1 = undoRing.length - r1;
+      Q('#rmWall').dispatchEvent(new Event('change'));
+      await tick();
+      T(
+        'pb-wc-room-paint-set',
+        !!r27 &&
+          shown &&
+          wins.length === 1 &&
+          wins[0].win.id === winE().id &&
+          room().wallColor === '#b9c2b2' &&
+          step1 === 1 &&
+          undoRing.length - r1 === 1 &&
+          /鼠尾草绿/.test(Q('#wMsg').textContent),
+        '控件在=' +
+          shown +
+          ' · 认出窗 ' +
+          wins.length +
+          ' 扇 · wallColor=' +
+          room().wallColor +
+          ' · 撤销环 +' +
+          step1 +
+          '（重选同色后仍 +' +
+          (undoRing.length - r1) +
+          '）'
+      );
+
+      /* 27.2 窗帘：这间房「落地帘」+ 深灰蓝 → 窗的 curtain = {drape, #3b4250, side 朝房间}；一步撤销；2D 两道波浪线在房间那一侧 */
+      Q('#rmCurtainC').value = '#3b4250';
+      const r2 = undoRing.length;
+      Q('#rmCurtain').value = 'drape';
+      Q('#rmCurtain').dispatchEvent(new Event('change'));
+      await tick();
+      const cw = winE().curtain || {};
+      const syms = [...pbSvg.querySelectorAll('.curtainSym[data-win="' + winE().id + '"]')];
+      const symY = syms.length
+        ? syms.every((pl) =>
+            pl
+              .getAttribute('points')
+              .split(' ')
+              .every((q) => +q.split(',')[1] / S > Y)
+          )
+        : false;
+      T(
+        'pb-wc-room-curtain-set',
+        cw.style === 'drape' &&
+          cw.color === '#3b4250' &&
+          (cw.side === 1 || cw.side === -1) &&
+          undoRing.length === r2 + 1 &&
+          syms.length === 2 &&
+          symY,
+        'curtain=' +
+          JSON.stringify(cw) +
+          ' · 撤销环 +' +
+          (undoRing.length - r2) +
+          ' · 2D 符号 ' +
+          syms.length +
+          ' 道、全在房间那一侧（窗在上墙、房间在下）=' +
+          symY
+      );
+
+      /* 27.3 3D：从房间中心朝四面打射线（独立量：射线 + 材质身上的标记，不读实现的段表） */
+      if (wallEdit.on) {
+        Q('#btnWallEdit').click();
+        await tick();
+      }
+      setView('3d');
+      await tick();
+      await tick();
+      for (let i = 0; i < 20 && geoDirty3D; i++) await tick();
+      three.staticGroup.updateMatrixWorld(true);
+      const rc = new THREE.Raycaster();
+      const firstHit = (ox, oy, oz, dx, dz) => {
+        rc.set(new THREE.Vector3(ox, oy, oz), new THREE.Vector3(dx, 0, dz).normalize());
+        rc.far = 30;
+        const hits = rc.intersectObject(three.staticGroup, true).filter((h) => h.object.visible);
+        return hits[0] || null;
+      };
+      const isPaint = (h) => !!(h && h.object.material && h.object.material.userData.roomPaint === r27.id);
+      const cx = X + RW / 2,
+        cy = Y + RH / 2;
+      const hLeft = firstHit(cx, 4, cy, -1, 0); // 实墙
+      const hWinSill = firstHit(X + 6.5, 1.2, cy, 0, -1); // 窗台以下（窗台 2.2ft）
+      const hWinGlass = firstHit(X + 6.5, 4.5, cy, 0, -1); // 窗玻璃高度
+      const hWinHead = firstHit(X + 6.5, 7.9, cy, 0, -1); // 过梁以上（窗头 7.38ft）
+      const hDoorMid = firstHit(cx, 3, Y + 5.5, 1, 0); // 门洞中段
+      const hDoorHead = firstHit(cx, 7.5, Y + 5.5, 1, 0); // 门头以上（6.8ft）
+      const paintCol = hLeft && hLeft.object.material.color;
+      const want = new THREE.Color('#b9c2b2').convertSRGBToLinear();
+      T(
+        'pb-wc-paint-3d',
+        isPaint(hLeft) &&
+          isPaint(hWinSill) &&
+          !isPaint(hWinGlass) &&
+          isPaint(hWinHead) &&
+          !isPaint(hDoorMid) &&
+          isPaint(hDoorHead) &&
+          !!paintCol &&
+          Math.abs(paintCol.r - want.r) < 1e-3 &&
+          Math.abs(paintCol.g - want.g) < 1e-3,
+        '实墙=' +
+          isPaint(hLeft) +
+          ' · 窗台下=' +
+          isPaint(hWinSill) +
+          ' · 玻璃高度（不该刷）=' +
+          isPaint(hWinGlass) +
+          ' · 过梁上=' +
+          isPaint(hWinHead) +
+          ' · 门洞中段（不该刷）=' +
+          isPaint(hDoorMid) +
+          ' · 门头上=' +
+          isPaint(hDoorHead)
+      );
+      const curtMeshes = [];
+      three.staticGroup.traverse((o) => {
+        if (o.isMesh && o.material && o.material.userData && o.material.userData.curtain === 'drape')
+          curtMeshes.push(o);
+      });
+      const cb = new THREE.Box3();
+      for (const m of curtMeshes) cb.expandByObject(m);
+      const cc = new THREE.Vector3();
+      cb.getCenter(cc);
+      T(
+        'pb-wc-curtain-3d',
+        curtMeshes.length >= 1 &&
+          cb.min.y < 0.1 &&
+          cb.max.y > winE().head &&
+          cb.max.y < CEIL_H &&
+          cc.z > Y &&
+          cc.z < Y + 1.2 &&
+          cb.min.x < X + 4 &&
+          cb.max.x > X + 9,
+        '帘 mesh ' +
+          curtMeshes.length +
+          ' · 高 ' +
+          cb.min.y.toFixed(2) +
+          '→' +
+          cb.max.y.toFixed(2) +
+          'ft（窗头 ' +
+          winE().head.toFixed(2) +
+          ' / 层高 ' +
+          CEIL_H.toFixed(2) +
+          '）· 离墙中线 ' +
+          (cc.z - Y).toFixed(2) +
+          'ft（房间一侧）· 横向 ' +
+          cb.min.x.toFixed(1) +
+          '→' +
+          cb.max.x.toFixed(1)
+      );
+      // 从房间往窗看（窗玻璃高度）：先打到的是窗帘？落地帘收在两侧，窗中间是空的 —— 打到的应是玻璃不是帘
+      const hMidWin = firstHit(X + 6.5, 4.5, cy, 0, -1);
+      const hSideWin = firstHit(X + 4.2, 4.5, cy, 0, -1);
+      const isCurt = (h) =>
+        !!(h && h.object.material && h.object.material.userData && h.object.material.userData.curtain);
+      T(
+        'pb-wc-curtain-open-sides',
+        !isCurt(hMidWin) && isCurt(hSideWin),
+        '窗中间打到窗帘=' + isCurt(hMidWin) + ' · 靠窗边打到窗帘=' + isCurt(hSideWin)
+      );
+      setView('2d');
+      await tick();
+
+      /* 27.4 窗工具条逐扇改：选中这扇窗 → 「窗帘：落地帘」→ 点一下 = 纱帘（一步撤销）→ 再点三下 = 落地帘+纱帘 → 卷帘 → 无；
+         换一侧 = side 取反；颜色框改色一步撤销 */
+      await enterEdit();
+      wallEdit.sel = { kind: 'w', id: winE().id };
+      drawWallEdit();
+      updateWallBarFromSel();
+      await tick();
+      const t0 = Q('#wWinCurtain').textContent;
+      const r4 = undoRing.length;
+      Q('#wWinCurtain').click();
+      await tick();
+      const s1 = winE().curtain && winE().curtain.style,
+        st1 = undoRing.length - r4;
+      const side0 = winE().curtain.side;
+      Q('#wWinCurtainSide').click();
+      await tick();
+      const flipped = winE().curtain.side === -side0;
+      Q('#wWinCurtainC').value = '#a8786a';
+      Q('#wWinCurtainC').dispatchEvent(new Event('change'));
+      await tick();
+      const recol = winE().curtain.color === '#a8786a';
+      Q('#wWinCurtain').click();
+      await tick();
+      const s2 = winE().curtain.style;
+      Q('#wWinCurtain').click();
+      await tick();
+      const s3 = winE().curtain.style;
+      Q('#wWinCurtain').click();
+      await tick();
+      const none = !winE().curtain && Q('#wWinCurtain').textContent === '窗帘：无';
+      T(
+        'pb-wc-window-cycle',
+        t0 === '窗帘：落地帘' &&
+          s1 === 'sheer' &&
+          st1 === 1 &&
+          flipped &&
+          recol &&
+          s2 === 'drapeSheer' &&
+          s3 === 'roller' &&
+          none,
+        '「' +
+          t0 +
+          '」→ ' +
+          s1 +
+          '（+' +
+          st1 +
+          ' 步）→ 换侧=' +
+          flipped +
+          ' · 改色=' +
+          recol +
+          ' → ' +
+          s2 +
+          ' → ' +
+          s3 +
+          ' → 无=' +
+          none
+      );
+
+      /* 27.5 撤销回到「落地帘 + 墙色」那一步；导出再导入：窗帘与墙色原样带过去、过校验 */
+      for (let i = 0; i < 6; i++) undoStep();
+      await tick();
+      const backOk = winE().curtain && winE().curtain.style === 'drape' && room().wallColor === '#b9c2b2';
+      const json = exportDocJSON();
+      const imp = importDocFromJSON(json);
+      const iw = imp.doc && imp.doc.windows.find((w) => w.curtain);
+      const ir = imp.doc && imp.doc.rooms.find((r) => r.wallColor);
+      T(
+        'pb-wc-undo-export',
+        backOk && imp.errs.length === 0 && !!iw && iw.curtain.color === '#3b4250' && !!ir && ir.wallColor === '#b9c2b2',
+        '撤销 6 步回到落地帘 + 墙色=' +
+          !!backOk +
+          ' · 导入校验错 ' +
+          imp.errs.length +
+          ' · 窗帘 ' +
+          (iw ? JSON.stringify(iw.curtain) : '丢了') +
+          ' · 墙色 ' +
+          (ir ? ir.wallColor : '丢了')
+      );
+
+      /* 27.6 墙色「白墙（缺省）」= 删掉字段；房间的窗帘「不挂」= 去掉这间房所有窗的窗帘 */
+      wallEdit.sel = { kind: 'room', id: r27.id };
+      updateWallBarFromSel();
+      Q('#rmWall').value = '';
+      Q('#rmWall').dispatchEvent(new Event('change'));
+      Q('#rmCurtain').value = 'none';
+      Q('#rmCurtain').dispatchEvent(new Event('change'));
+      await tick();
+      T(
+        'pb-wc-clear',
+        !('wallColor' in room()) && !winE().curtain && !pbSvg.querySelector('.curtainSym'),
+        'wallColor 字段还在=' + ('wallColor' in room()) + ' · 窗帘还在=' + !!winE().curtain
+      );
+
+      /* 收尾：删掉这份户型 */
+      await enterEdit();
+      Q('#btnPlanDel').click();
+      await tick();
+      Q('#btnPlanDel').click();
+      await tick();
+      T(
+        'pb-wc-clean-exit',
+        PLAN_ID !== p27Plan && PLAN_REG.plans.length === p27Plans,
+        'plans ' + p27Plans + '→' + PLAN_REG.plans.length
+      );
+    }
+
     /* ===== 收尾：页面不得有未捕获异常 ===== */
     T('pb-no-page-errors', window.__ERRS.length === 0, window.__ERRS.slice(0, 3).join(' || '));
   } catch (e) {
