@@ -6041,6 +6041,196 @@ async function runPBTest() {
       );
     }
 
+    /* ===== 24. S18 摆家具：贴墙吸附（Alt 不吸）/ 拖动时的离墙距离 / 插进墙里 / 挡住门扇 ===== */
+    {
+      /* gap 审计 G6 / G7。独立量：墙皮 = 轴线 ± 画出来的半厚（pbDrawnThick 从 wallPolys 量，不照抄实现）；
+         距离标注 = 家具边到墙皮的差；门扇扫过的扇形用 doorSweeps() 的几何，但「挡没挡」按家具摆的位置独立构造。 */
+      await enterEdit();
+      await pbReset();
+      const p24Plans = PLAN_REG.plans.length;
+      Q('#btnPlanNew').click();
+      await tick();
+      const p24Plan = PLAN_ID;
+      const fp24 = floorPts();
+      const X =
+          Math.min.apply(
+            null,
+            fp24.map((p) => p[0])
+          ) + 1,
+        Y =
+          Math.min.apply(
+            null,
+            fp24.map((p) => p[1])
+          ) + 1;
+      const RW = 16,
+        RH = 12,
+        wd15 = cmToWd(15);
+      const wTop = pushUserWall(X, Y, X + RW, Y, 'w', wd15);
+      pushUserWall(X + RW, Y, X + RW, Y + 4, 'w', wd15);
+      pushUserWall(X + RW, Y + 4, X + RW, Y + 7, 'd', wd15); // 右墙上的门洞
+      pushUserWall(X + RW, Y + 7, X + RW, Y + RH, 'w', wd15);
+      pushUserWall(X + RW, Y + RH, X, Y + RH, 'w', wd15);
+      pushUserWall(X, Y + RH, X, Y, 'w', wd15);
+      const door24 = pushUserDoor(X + RW, Y + 4, X + RW, Y + 7);
+      geoChanged();
+      fit2DToContent();
+      await tick();
+      const half = pbDrawnThick(effWalls().find((s) => s._id === wTop.id)) / 2;
+      const faceTop = Y + half,
+        faceLeft = X + half;
+      if (wallEdit.on) {
+        Q('#btnWallEdit').click(); // 家具在普通模式里拖
+        await tick();
+      }
+      const spec24 = CATALOG.find((c) => c.kind === 'sofa' && c.w >= 150 && c.d >= 70);
+      addItem(spec24.id);
+      await tick();
+      const uid24 = state.items[state.items.length - 1].uid;
+      const live = () => state.items.find((i) => i.uid === uid24);
+      const W = cm2ft(spec24.w),
+        D = cm2ft(spec24.d);
+      const putAt = (x, y) => {
+        Object.assign(live(), { x, y, rot: 0 });
+        drawFurniture();
+      };
+      putAt(X + RW / 2, Y + RH / 2);
+      await tick();
+      const dragTo = async (fx, fy, extra) => {
+        const [cx, cy] = SPT(live().x, live().y),
+          [tx, ty] = SPT(fx, fy);
+        fire('pointerdown', cx, cy);
+        await tick();
+        fire('pointermove', (cx + tx) / 2, (cy + ty) / 2, extra);
+        await tick();
+        fire('pointermove', tx, ty, extra);
+        await tick();
+        const mid = {
+          guides: pbSvg.querySelectorAll('.distGuide').length,
+          snap: pbSvg.querySelectorAll('.snapFace').length,
+          lbls: Array.from(pbSvg.querySelectorAll('.distLbl')).map((t) => t.textContent),
+          x: live().x,
+          y: live().y,
+        };
+        fire('pointerup', tx, ty, extra);
+        await tick();
+        return mid;
+      };
+      const ppf = pxPerFtNow();
+
+      /* 24.1 拖到离上墙皮 6 屏幕像素 → 贴上（上沿 = 墙皮）；拖动中贴上的那面墙皮描绿、四周有距离标注，
+         左边那条读数 = 左沿到左墙皮的独立量；松手后标注消失 */
+      const r1 = undoRing.length;
+      const m1 = await dragTo(X + RW / 2, faceTop + D / 2 + 6 / ppf);
+      const wantLeft = m1.x - W / 2 - faceLeft;
+      T(
+        'pb-place-snap-to-wall',
+        Math.abs(live().y - D / 2 - faceTop) < 1e-3 && m1.snap === 1 && undoRing.length === r1 + 1,
+        '上沿 ' +
+          (live().y - D / 2).toFixed(4) +
+          ' · 墙皮 ' +
+          faceTop.toFixed(4) +
+          ' · 描绿 ' +
+          m1.snap +
+          ' · 撤销环 +' +
+          (undoRing.length - r1)
+      );
+      T(
+        'pb-place-distance-guides',
+        m1.guides >= 2 && m1.lbls.includes(fmtLen(wantLeft)) && pbSvg.querySelectorAll('.distGuides').length === 0,
+        '拖动中标注 ' +
+          m1.guides +
+          ' 条（' +
+          m1.lbls.join(' / ') +
+          '）· 左边独立量 ' +
+          fmtLen(wantLeft) +
+          ' · 松手后 ' +
+          pbSvg.querySelectorAll('.distGuides').length
+      );
+
+      /* 24.2 按住 Alt 拖到同一个位置 → 不吸（停在拖到的地方，离墙皮约 6px） */
+      putAt(X + RW / 2, Y + RH / 2);
+      await dragTo(X + RW / 2, faceTop + D / 2 + 6 / ppf, { altKey: true });
+      const gapAlt = live().y - D / 2 - faceTop;
+      T(
+        'pb-place-alt-no-snap',
+        gapAlt > 3 / ppf && gapAlt < 9 / ppf,
+        'Alt 拖完离墙皮 ' + (gapAlt * ppf).toFixed(1) + 'px'
+      );
+
+      /* 24.3 拖进左上墙角（两面都在半径内）→ 两面都贴上 */
+      putAt(X + RW / 2, Y + RH / 2);
+      const m3 = await dragTo(faceLeft + W / 2 + 5 / ppf, faceTop + D / 2 + 5 / ppf);
+      T(
+        'pb-place-snap-corner',
+        Math.abs(live().x - W / 2 - faceLeft) < 1e-3 && Math.abs(live().y - D / 2 - faceTop) < 1e-3 && m3.snap === 2,
+        '左沿差 ' +
+          (live().x - W / 2 - faceLeft).toExponential(1) +
+          ' · 上沿差 ' +
+          (live().y - D / 2 - faceTop).toExponential(1) +
+          ' · 描绿 ' +
+          m3.snap
+      );
+
+      /* 24.4 插进墙里 0.4ft → 红框 + 提示「插进墙里」；正好贴着（只碰边）→ 不红 */
+      const furnG = () => pbSvg.querySelector('g.furn[data-uid="' + uid24 + '"]');
+      putAt(X + RW / 2, faceTop + D / 2 - 0.4);
+      const inW =
+        furnG().classList.contains('inWall') &&
+        /插进墙里/.test((furnG().querySelector('title') || {}).textContent || '');
+      putAt(X + RW / 2, faceTop + D / 2);
+      const flushOk = !furnG().classList.contains('inWall');
+      T('pb-place-in-wall', inW && flushOk, '插进去 0.4ft 标红=' + inW + ' · 贴着不红=' + flushOk);
+
+      /* 24.5 摆进门扇扫过的扇形 → 家具红框 +「挡住门」、扇形整个画红（data-door = 那扇门）；挪开 → 都没了 */
+      const sw = doorSweeps().find((d) => d.id === door24.id);
+      const cen = sw.poly.reduce((a, p) => [a[0] + p[0] / sw.poly.length, a[1] + p[1] / sw.poly.length], [0, 0]);
+      putAt(cen[0], cen[1]);
+      const blk =
+        furnG().classList.contains('blocksDoor') && !!pbSvg.querySelector('.doorBlk[data-door="' + door24.id + '"]');
+      putAt(X + 4, Y + RH / 2);
+      const free = !furnG().classList.contains('blocksDoor') && pbSvg.querySelectorAll('.doorBlk').length === 0;
+      T('pb-place-blocks-door', blk && free, '摆进扇形=' + blk + ' · 挪开后扇形消失=' + free);
+
+      /* 24.6 对照组：地毯压到墙上不算插墙；吸顶灯在门扇上方不算挡门 */
+      const rug = CATALOG.find((c) => c.kind === 'rug');
+      addItem(rug.id);
+      await tick();
+      const rugIt = state.items[state.items.length - 1];
+      Object.assign(rugIt, { x: X + RW / 2, y: faceTop + cm2ft(rug.d) / 2 - 0.5, rot: 0 });
+      const lampC = CATALOG.find((c) => c.kind === 'ceilingLight');
+      addItem(lampC.id);
+      await tick();
+      const lampIt = state.items[state.items.length - 1];
+      Object.assign(lampIt, { x: cen[0], y: cen[1], rot: 0 });
+      drawFurniture();
+      const gR = pbSvg.querySelector('g.furn[data-uid="' + rugIt.uid + '"]'),
+        gL = pbSvg.querySelector('g.furn[data-uid="' + lampIt.uid + '"]');
+      T(
+        'pb-place-rug-lamp-exempt',
+        !!gR &&
+          !gR.classList.contains('inWall') &&
+          !!gL &&
+          !gL.classList.contains('blocksDoor') &&
+          pbSvg.querySelectorAll('.doorBlk').length === 0,
+        '地毯压墙不红=' +
+          (gR && !gR.classList.contains('inWall')) +
+          ' · 吸顶灯在门扇上方不红=' +
+          (gL && !gL.classList.contains('blocksDoor'))
+      );
+
+      /* 收尾：删掉这份户型 */
+      await enterEdit();
+      Q('#btnPlanDel').click();
+      await tick();
+      Q('#btnPlanDel').click();
+      await tick();
+      T(
+        'pb-place-clean-exit',
+        PLAN_ID !== p24Plan && PLAN_REG.plans.length === p24Plans,
+        'plans ' + p24Plans + '→' + PLAN_REG.plans.length
+      );
+    }
+
     /* ===== 收尾：页面不得有未捕获异常 ===== */
     T('pb-no-page-errors', window.__ERRS.length === 0, window.__ERRS.slice(0, 3).join(' || '));
   } catch (e) {

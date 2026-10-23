@@ -63,7 +63,8 @@ export const FLOWS = [
           const done=vis.filter(k=>k.querySelector('.ph.has')).length;
           return {cards:cards.length, catalog:CATALOG.length, vis:vis.length, thumbs:done,
            seeded:((JSON.parse(document.querySelector('#miniden-plan').textContent).layout||{}).items||[]).length,
-           red:document.querySelectorAll('#furn [stroke="#e05656"]').length,
+           red:document.querySelectorAll('#furn .furn.overlap').length,
+           why:[...document.querySelectorAll('#furn .furn')].filter(g=>g.querySelector('[stroke="#e05656"]')).map(g=>(g.querySelector('title')||{}).textContent||'').join(' | '),
            title:document.title, sub:document.querySelector('#titleSub').textContent};})()`
       );
       t.assert('startup-catalog-cards', c.cards === c.catalog, `卡片 ${c.cards} = 目录 ${c.catalog}`);
@@ -74,7 +75,9 @@ export const FLOWS = [
       );
       t.assert('startup-layout-seeded', s.items === c.seeded, `家具 ${s.items} = 户型内置布局 ${c.seeded}`);
       t.assert('startup-view-2d', s.view === '2d', 'view=' + s.view);
-      t.assert('startup-no-overlap', c.red === 0, `初始红描边 ${c.red} 个`);
+      // S18 之后红框不只是「重叠」（还有插进墙里 / 挡住门 / 压在楼梯上）：这条断的是「内置布局里家具互不重叠」
+      t.assert('startup-no-overlap', c.red === 0, `初始互相重叠的家具 ${c.red} 件`);
+      t.info('startup-red-other', c.why || '无');
       t.info('startup-title', c.title + ' · ' + c.sub);
       await t.shot('startup');
     },
@@ -1114,6 +1117,112 @@ export const FLOWS = [
   },
 
   {
+    name: 'place-snap',
+    title:
+      '摆家具贴墙：空白户型画一圈墙 → 点卡片摆一件 → 真实拖到墙边：拖动中看见距离标注与描绿的墙皮 → 松手贴齐 → 按住 Alt 再拖不吸 → 删户型',
+    run: async (t) => {
+      /* gap 审计 G6：「贴墙了吗」「离墙还有多远」。真实鼠标按住拖（不是改坐标），拖动中途截图。 */
+      await t.step('新建空白户型，画一圈墙');
+      await ensureProTools(t);
+      await t.click('#btnPlanNew');
+      await t.waitFor(`PLAN_ID!==BUILTIN_PLAN_ID`, 8000, '切到空白户型');
+      const cv = await t.eval(
+        `(()=>{const P=floorPts();let x1=1e9,y1=1e9,x2=-1e9,y2=-1e9;` +
+          `for(const q of P){x1=Math.min(x1,q[0]);y1=Math.min(y1,q[1]);x2=Math.max(x2,q[0]);y2=Math.max(y2,q[1]);}` +
+          `return {x1,y1,x2,y2};})()`
+      );
+      const A = [cv.x1 + 1, cv.y1 + 1],
+        B = [cv.x2 - 1, cv.y1 + 1],
+        C = [cv.x2 - 1, cv.y2 - 1],
+        D = [cv.x1 + 1, cv.y2 - 1];
+      await t.click('#btnWallEdit');
+      await t.waitFor(`wallEdit.on`, 5000, '进入编辑');
+      await t.click('#wtoolSeg button[data-t="wall"]');
+      await t.waitFor(`wallEdit.tool==='wall'`, 5000, 'tool=wall');
+      const piece = async (p, q) => {
+        await t.eval(`document.querySelector('#wType').value='w'`);
+        await t.click(await t.planPoint(p[0], p[1]));
+        await t.click(await t.planPoint(q[0], q[1]));
+        await t.key('Enter', 'Enter', 13);
+        await t.waitFor(`wallEdit.drawPts.length===0`, 6000, '这段墙提交');
+      };
+      await piece(A, B);
+      await piece(B, C);
+      await piece(C, D);
+      await piece(D, A);
+      await t.click('#wDone');
+      await t.waitFor(`!wallEdit.on`, 5000, '退出编辑');
+
+      await t.step('点目录卡片摆一件');
+      const n0 = await t.eval(`state.items.length`);
+      await t.click('.catCard');
+      await t.waitFor(`state.items.length===${n0 + 1}`, 6000, '家具 +1');
+      // 上墙的室内墙皮：画出来的那块墙体多边形里朝房间那条长边（与 2D / 3D 同源）
+      const g = await t.eval(
+        `(()=>{const it=state.items[state.items.length-1],sp=itemSpec(it);it.rot=0;drawFurniture();` +
+          `const top=wallPolys().filter(q=>Math.abs(q[0][1]-q[1][1])<1e-6&&Math.abs(q[2][1]-q[3][1])<1e-6).sort((a,b)=>Math.min(a[0][1],a[2][1])-Math.min(b[0][1],b[2][1]))[0];` +
+          `return {uid:it.uid,x:it.x,y:it.y,w:cm2ft(sp.w),d:cm2ft(sp.d),face:Math.max(top[0][1],top[2][1]),ppf:document.querySelector('#svg2d').getScreenCTM().a*S};})()`
+      );
+      const from = await t.planPoint(g.x, g.y);
+      const to = await t.planPoint(g.x, g.face + g.d / 2 + 6 / g.ppf); // 上沿离墙皮 6 屏幕像素
+
+      await t.step('真实按住拖到上墙边（中途截图：距离标注 + 描绿的墙皮）');
+      await t.mouse('mouseMoved', from.x, from.y);
+      await t.mouse('mousePressed', from.x, from.y, { button: 'left', buttons: 1, clickCount: 1 });
+      for (let i = 1; i <= 10; i++)
+        await t.mouse('mouseMoved', from.x + ((to.x - from.x) * i) / 10, from.y + ((to.y - from.y) * i) / 10, {
+          button: 'left',
+          buttons: 1,
+        });
+      const mid = await t.eval(
+        `({guides:document.querySelectorAll('#svg2d .distGuide').length, snap:document.querySelectorAll('#svg2d .snapFace').length,` +
+          `lbls:[...document.querySelectorAll('#svg2d .distLbl')].map(e=>e.textContent)})`
+      );
+      await t.shot('place-snap-drag');
+      await t.mouse('mouseReleased', to.x, to.y, { button: 'left', buttons: 0, clickCount: 1 });
+      const after = await t.eval(
+        `(()=>{const it=state.items.find(i=>i.uid===${g.uid});return {top:it.y-${g.d}/2, guides:document.querySelectorAll('#svg2d .distGuides').length};})()`
+      );
+      t.assert(
+        'snap-guides-while-dragging',
+        mid.guides >= 2 && mid.snap === 1,
+        `拖动中距离标注 ${mid.guides} 条（${mid.lbls.join(' / ')}）· 描绿墙皮 ${mid.snap}`
+      );
+      t.assert(
+        'snap-flush-on-release',
+        Math.abs(after.top - g.face) < 1e-3 && after.guides === 0,
+        `松手后上沿 ${after.top.toFixed(4)} · 墙皮 ${g.face.toFixed(4)} · 标注剩 ${after.guides}`
+      );
+
+      await t.step('按住 Alt 拖开再拖回墙边：不吸');
+      const here = await t.planPoint(g.x, after.top + g.d / 2);
+      const away = { x: here.x, y: here.y + 80 };
+      await t.drag(here, away, { steps: 8 });
+      const back = await t.planPoint(g.x, g.face + g.d / 2 + 6 / g.ppf);
+      await t.mouse('mouseMoved', away.x, away.y, { modifiers: 1 });
+      await t.mouse('mousePressed', away.x, away.y, { button: 'left', buttons: 1, clickCount: 1, modifiers: 1 });
+      for (let i = 1; i <= 8; i++)
+        await t.mouse('mouseMoved', away.x + ((back.x - away.x) * i) / 8, away.y + ((back.y - away.y) * i) / 8, {
+          button: 'left',
+          buttons: 1,
+          modifiers: 1,
+        });
+      await t.mouse('mouseReleased', back.x, back.y, { button: 'left', buttons: 0, clickCount: 1, modifiers: 1 });
+      const gap = await t.eval(
+        `(()=>{const it=state.items.find(i=>i.uid===${g.uid});return it.y-${g.d}/2-${g.face};})()`
+      );
+      t.assert('alt-drag-no-snap', gap > 2 / g.ppf, `Alt 拖完离墙皮 ${(gap * g.ppf).toFixed(1)}px（没有被吸上去）`);
+
+      await t.step('清除：删掉这份户型（两步）');
+      await ensureProTools(t);
+      await t.click('#btnPlanDel');
+      await t.click('#btnPlanDel');
+      await t.waitFor(`PLAN_ID===BUILTIN_PLAN_ID`, 8000, '删完切回内置');
+      t.assert('place-snap-cleaned', true, '回到内置户型');
+    },
+  },
+
+  {
     name: 'undo-redo',
     title: '撤销 / 重做：误删的洁具、画错的墙都能退回去（真实键盘）',
     run: async (t) => {
@@ -1576,16 +1685,17 @@ export const FLOWS = [
       const p1 = await t.eval(`(()=>{const i=state.items[state.items.length-1];return [i.x,i.y];})()`);
       await t.click('.catCard');
       await t.eval(`(()=>{const i=state.items[state.items.length-1];i.x=${p1[0]};i.y=${p1[1]};drawFurniture();})()`);
-      await t.waitFor(`document.querySelectorAll('#furn [stroke="#e05656"]').length>=2`, 6000, '红描边出现');
-      const red = await t.eval(`document.querySelectorAll('#furn [stroke="#e05656"]').length`);
-      t.assert('overlap-red-shown', red >= 2, `红描边 ${red} 个`);
+      await t.waitFor(`document.querySelectorAll('#furn .furn.overlap').length>=2`, 6000, '红描边出现');
+      const red = await t.eval(`document.querySelectorAll('#furn .furn.overlap').length`);
+      t.assert('overlap-red-shown', red >= 2, `重叠红描边 ${red} 件`);
       await t.shot('overlap');
 
       await t.step('把上面那件移开', '拖 8ft');
       const uid = await t.eval(`state.items[state.items.length-1].uid`);
       await t.drag(await t.planPoint(p1[0], p1[1]), await t.planPoint(p1[0] + 8, p1[1] + 6), { steps: 18 });
-      const red2 = await t.eval(`document.querySelectorAll('#furn [stroke="#e05656"]').length`);
-      t.assert('overlap-red-cleared', red2 === 0, `移开后红描边 ${red2} 个`);
+      // 只数「重叠」：内置户型里拖开 8ft 可能落进墙边 / 门扇里，那是另一种红（S18），不是这条要断的
+      const red2 = await t.eval(`document.querySelectorAll('#furn .furn.overlap').length`);
+      t.assert('overlap-red-cleared', red2 === 0, `移开后重叠红描边 ${red2} 件`);
 
       await t.eval(`state.items=state.items.filter(i=>i.uid!==${uid}&&i.uid!==${uid - 1});drawFurniture();save();`);
       await t.waitFor(`state.items.length===${before.items}`, 6000, '复位');
@@ -2762,8 +2872,8 @@ export const FLOWS = [
         { ref: 'malm_q', kw: 'malm', at: [16.0, 5.0] }, // 床
         { ref: 'nordli_ns', kw: 'nordli', at: [12.3, 2.2] }, // 床头柜
         { ref: 'hauga6', kw: 'hauga', at: [16.0, 12.2] }, // 六屉柜
-        { ref: 'micke', kw: 'micke', at: [12.2, 9.8], rot90: true }, // 书桌
-        { ref: 'markus', kw: 'markus', at: [14.3, 9.8] }, // 办公椅
+        { ref: 'micke', kw: 'micke', at: [12.2, 10.4], rot90: true }, // 书桌（让开卧室门扇扫过的那块：S18 会标红）
+        { ref: 'markus', kw: 'markus', at: [14.3, 10.0] }, // 办公椅（再往下会碰到六屉柜）
         { ref: 'stall', kw: 'stall', at: [8.28, 11.4], rot90: true }, // 鞋柜（门厅）
         { ref: 'raskog-3', kw: 'raskog', at: [10.4, 10.0] }, // 手推车
       ];
@@ -2854,13 +2964,14 @@ export const FLOWS = [
       }
       t.assert('demo-doors-count', (await counts()).doors === 4, '门 4 扇（入户 / 卫生间 / 门厅↔客厅 / 卧室）');
       await t.shot('doors');
-      await t.step('换款式：门厅↔客厅那扇改成另一种开法');
+      await t.step('换款式：门厅↔客厅那扇改成推拉门（平开 → 双开 → 推拉；双开的左扇会扫到沙发 —— S18 会标红）');
       await t.click(await t.planPoint(9.2, 9));
       await t.waitFor(`wallEdit.sel && wallEdit.sel.kind==='door'`, 6000, '选中那扇门');
       const kindBefore = await t.eval(`entById(wallEdit.sel.id).kind`);
       await t.click('#dKind');
+      await t.click('#dKind');
       const kindAfter = await t.eval(`entById(wallEdit.sel.id).kind`);
-      t.assert('demo-door-kind', kindAfter !== kindBefore, `款式 ${kindBefore} → ${kindAfter}`);
+      t.assert('demo-door-kind', kindBefore === 'swing' && kindAfter === 'slide', `款式 ${kindBefore} → ${kindAfter}`);
       await t.step('拖门端点改门宽（直接操纵，不是填数字）');
       const dGeom = await t.eval(
         `(()=>{const e=entById(wallEdit.sel.id);return {x1:e.geom.x1,y1:e.geom.y1,x2:e.geom.x2,y2:e.geom.y2};})()`
@@ -2876,6 +2987,13 @@ export const FLOWS = [
         `门宽 ${wBefore.toFixed(2)}ft → ${wAfter.toFixed(2)}ft（拖终点手柄，联动把门洞两侧门垛补回去）`
       );
       await t.shot('door-narrower');
+      await t.step('卫生间的门改成往卫生间里开（往客厅开的话，沙发摆上去门就开不开 —— S18 会把它标红）');
+      await t.click(await t.planPoint(4.7, 9));
+      await t.waitFor(`wallEdit.sel && wallEdit.sel.kind==='door'`, 6000, '选中卫生间的门');
+      const sideBefore = await t.eval(`entById(wallEdit.sel.id).side`);
+      await t.click('#dSide');
+      const sideAfter = await t.eval(`entById(wallEdit.sel.id).side`);
+      t.assert('demo-door-side', sideAfter === -sideBefore, `开向 ${sideBefore} → ${sideAfter}`);
 
       /* ===== ④ 固定的物品（上）：洁具 4 件，台柜 / 镜子自动贴墙 ===== */
       await t.step('洁具工具：放台柜 / 镜子 / 马桶 / 浴缸');
@@ -3012,6 +3130,12 @@ export const FLOWS = [
       );
       t.assert('demo-items-count', (await counts()).items === 20, '家具 + 固定灯具共 20 件');
       const red = await t.eval(`document.querySelectorAll('#furn [stroke="#e05656"]').length`);
+      t.info(
+        'demo-red-why',
+        await t.eval(
+          `[...document.querySelectorAll('#furn .furn')].filter(g=>g.querySelector('[stroke="#e05656"]')).map(g=>{const it=state.items.find(i=>i.uid===+g.dataset.uid);return (it?it.ref:'?')+'@'+(it?it.x.toFixed(2)+','+it.y.toFixed(2)+' r'+it.rot:'')+'：'+((g.querySelector('title')||{}).textContent||'');}).join(' | ')||'无'`
+        )
+      );
       t.assert('demo-no-overlap', red === 0, `红色描边（与其他家具重叠）件数 = ${red}`);
       t.info('demo-totals-all', await t.eval(`document.querySelector('#totals').textContent.replace(/\\s+/g,' ')`));
       await t.shot('furnished');
