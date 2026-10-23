@@ -17,6 +17,7 @@ import * as Trace from './image-trace';
 import * as Points from './points';
 import * as Regions from './regions';
 import * as Stairs from './stairs';
+import * as Placement from './placement';
 
 (globalThis as { MINIDEN_GEO?: unknown }).MINIDEN_GEO = {
   importDxf: Dxf.importDxf,
@@ -48,5 +49,10 @@ import * as Stairs from './stairs';
   stepCount: Stairs.stepCount,
   fitStairPath: Stairs.fitStairPath,
   isDogLeg: Stairs.isDogLeg,
+  // S18：摆家具的几何判据（墙皮 / 贴墙吸附 / 离墙距离 / 门扇扫过的扇形）
+  wallFaces: Placement.wallFaces,
+  snapBox: Placement.snapBox,
+  clearances: Placement.clearances,
+  doorSweep: Placement.doorSweep,
   convexClipArea: Points.convexClipArea,
 };
