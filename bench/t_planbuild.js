@@ -4162,7 +4162,7 @@ async function runPBTest() {
       await setTool('outlet');
       T(
         'pb-ol-tool-visible',
-        wallEdit.tool === 'outlet' && vis('#outletCtl') === 'visible' && /点墙附近/.test(msg()),
+        wallEdit.tool === 'outlet' && vis('#outletCtl') === 'visible' && /点墙边/.test(msg()),
         'tool=' + wallEdit.tool + ' outletCtl=' + vis('#outletCtl') + ' · ' + msg().slice(0, 30)
       );
 
@@ -4245,7 +4245,7 @@ async function runPBTest() {
       await tap(midX, (OY0 + OY1) / 2);
       T(
         'pb-ol-free-rejected',
-        olN() === n1 && ring() === r1 && /要挂在墙面/.test(msg()) && Q('#wMsg').classList.contains('err'),
+        olN() === n1 && ring() === r1 && /可装在/.test(msg()) && Q('#wMsg').classList.contains('err'),
         '#wMsg=' + msg().slice(0, 36)
       );
 
@@ -4416,7 +4416,7 @@ async function runPBTest() {
       const gone = !DOC.fixtures.some((f) => f.id === cnt.id) && !(DOC.outlets || []).some((o) => o.hostId === cnt.id);
       T(
         'pb-ol-host-delete-cascades',
-        gone && olN() === nF - 1 && /连同上面的 1 个插座/.test(msg()) && ring() === r5 + 1,
+        gone && olN() === nF - 1 && /连同上面的 1 个点位/.test(msg()) && ring() === r5 + 1,
         '台柜与插座都删了=' + gone + ' · ' + msg()
       );
       undoStep();
@@ -4434,7 +4434,7 @@ async function runPBTest() {
       await tick();
       T(
         'pb-ol-delete',
-        olN() === nD - 1 && !(DOC.outlets || []).some((o) => o.id === oA.id) && /已删除插座/.test(msg()),
+        olN() === nD - 1 && !(DOC.outlets || []).some((o) => o.id === oA.id) && /已删除「/.test(msg()),
         msg()
       );
       undoStep();
@@ -4527,6 +4527,331 @@ async function runPBTest() {
           ol0Plans +
           '→' +
           PLAN_REG.plans.length
+      );
+    }
+
+    /* ===== 20. S15 点位家族：网络电视 / 水 / 燃气 / 风 + 地面与天花 + 被家具挡住高亮 ===== */
+    {
+      /* 用户 2026-10-22：同轴 / 网线口；洗衣机烘干机上下水、通风管道口、油烟机管道口；插座被挡住时高亮。
+         与第 19 节同样在一份新建的空白户型里自己画一间房（plan-independent）；遮挡用自定义件
+         （尺寸自己定，不依赖目录里某一件商品的尺寸）+ 目录里任意一条地毯。 */
+      await enterEdit();
+      await pbReset();
+      const p20Plans = PLAN_REG.plans.length;
+      Q('#btnPlanNew').click();
+      await tick();
+      const p20Plan = PLAN_ID;
+      const fp20 = floorPts();
+      const xs20 = fp20.map((p) => p[0]),
+        ys20 = fp20.map((p) => p[1]);
+      const X0 = Math.min.apply(null, xs20) + 1,
+        X1 = Math.max.apply(null, xs20) - 1,
+        Y0 = Math.min.apply(null, ys20) + 1,
+        Y1 = Math.max.apply(null, ys20) - 1;
+      const wd20 = cmToWd(12);
+      const wTop = pushUserWall(X0, Y0, X1, Y0, 'w', wd20);
+      pushUserWall(X1, Y0, X1, Y1, 'w', wd20);
+      pushUserWall(X1, Y1, X0, Y1, 'w', wd20);
+      pushUserWall(X0, Y1, X0, Y0, 'w', wd20);
+      geoChanged();
+      fit2DToContent();
+      drawWallEdit();
+      await tick();
+      const sTop = effWalls().find((s) => s._id === wTop.id);
+      const half20 = pbDrawnThick(sTop) / 2;
+      const cx20 = (X0 + X1) / 2,
+        cy20 = (Y0 + Y1) / 2;
+      const ol20 = () => DOC.outlets || [];
+      const last20 = () => ol20()[ol20().length - 1];
+      const msg20 = () => (Q('#wMsg') || {}).textContent || '';
+      const setKind = async (k, mount) => {
+        wallEdit.sel = null;
+        Q('#olKind').value = k;
+        Q('#olKind').dispatchEvent(new Event('change'));
+        Q('#olMount').value = mount || 'auto';
+        Q('#olMount').dispatchEvent(new Event('change'));
+        await tick();
+      };
+      await setTool('outlet');
+
+      /* 20.1 工具与类型表：按钮叫「点位」，类型下拉 = 类型表（5 组 16 类） */
+      const groups = Array.from(Q('#olKind').querySelectorAll('optgroup'));
+      T(
+        'pb-pt-kinds-from-schema',
+        Q('#wtoolSeg button[data-t="outlet"]').textContent.trim() === '点位' &&
+          groups.length === 5 &&
+          Q('#olKind').options.length === SCHEMA.Project.OUTLET_KINDS.length &&
+          SCHEMA.Project.OUTLET_KINDS.length === 16,
+        groups.map((g) => g.label + ' ' + g.children.length).join(' · ')
+      );
+
+      /* 20.2 同轴 / 网线口：贴墙、离地 30cm、按类别着色（网络 = 青） */
+      await setKind('coax');
+      await tap(cx20 - 2, Y0 + half20 + 0.25);
+      const oCoax = last20();
+      await setKind('lan');
+      await tap(cx20 - 1, Y0 + half20 + 0.25);
+      const oLan = last20();
+      const strokeOf = (o) => {
+        const g = pbSvg.querySelector('[data-outlet="' + o.id + '"].outletSym');
+        const e = g && g.querySelector('polygon,circle');
+        return e ? e.getAttribute('stroke') : null;
+      };
+      T(
+        'pb-pt-coax-lan-on-wall',
+        !!oCoax &&
+          !!oLan &&
+          oCoax.kind === 'coax' &&
+          oLan.kind === 'lan' &&
+          oCoax.host === 'wall' &&
+          Math.abs(oCoax.h * 30.48 - 30) < 0.6 &&
+          Math.abs(distSeg(oLan.x, oLan.y, sTop) - half20) < 0.002 &&
+          strokeOf(oCoax) === PT_CAT_COL.data &&
+          strokeOf(oLan) === PT_CAT_COL.data,
+        (oCoax ? oCoax.kind + '@' + Math.round(oCoax.h * 30.48) + 'cm ' : '') +
+          (oLan ? oLan.kind + ' 离墙轴 ' + distSeg(oLan.x, oLan.y, sTop).toFixed(3) : '') +
+          ' · 颜色 ' +
+          (oCoax ? strokeOf(oCoax) : '?')
+      );
+
+      /* 20.3 上水 / 下水 / 燃气 / 烘干机排风：各自的缺省高度；上水的安装面只有墙（地面 / 天花选项是灰的） */
+      const expectH = { supply: 110, drain: 95, gas: 30, dryerVent: 40 };
+      const got3 = [];
+      let i3 = 0;
+      for (const k of Object.keys(expectH)) {
+        await setKind(k);
+        await tap(cx20 + 1 + i3 * 1.2, Y0 + half20 + 0.25);
+        const o = last20();
+        got3.push(o && o.kind === k && o.host === 'wall' && Math.abs(o.h * 30.48 - expectH[k]) < 0.6 ? k : '✗' + k);
+        i3++;
+      }
+      await setKind('supply');
+      const mOpt = (v) => Q('#olMount').querySelector('option[value="' + v + '"]').disabled;
+      T(
+        'pb-pt-water-gas-air-heights',
+        got3.every((x) => x[0] !== '✗') && mOpt('floor') && mOpt('ceiling') && !mOpt('wall'),
+        got3.join(' · ') + ' · 上水的「地面」灰=' + mOpt('floor')
+      );
+
+      /* 20.4 地面送风口：点房间中间 → 落在地上、h=0、长边按最近的墙摆正；3D 射线从上往下先打到格栅 */
+      await setKind('supplyVent');
+      await tap(cx20, Y0 + 2.2);
+      const oVent = last20();
+      T(
+        'pb-pt-floor-vent',
+        !!oVent &&
+          oVent.host === 'floor' &&
+          oVent.h === 0 &&
+          Math.abs(oVent.x - cx20) < 0.05 &&
+          (oVent.rot === 0 || oVent.rot === 90),
+        oVent ? oVent.host + ' @(' + oVent.x.toFixed(2) + ',' + oVent.y.toFixed(2) + ') rot ' + oVent.rot : '没放上'
+      );
+
+      /* 20.5 地漏（只能装地上）+ 天花上的油烟机排风口 */
+      await setKind('floorDrain');
+      await tap(cx20 + 3, cy20);
+      const oDrain = last20();
+      await setKind('hood', 'ceiling');
+      await tap(cx20 - 3, cy20);
+      const oHood = last20();
+      T(
+        'pb-pt-floor-drain-ceiling-hood',
+        !!oDrain &&
+          oDrain.kind === 'floorDrain' &&
+          oDrain.host === 'floor' &&
+          !!oHood &&
+          oHood.kind === 'hood' &&
+          oHood.host === 'ceiling' &&
+          Math.abs(oHood.h - CEIL_H) < 1e-6,
+        (oDrain ? oDrain.kind + '/' + oDrain.host : '?') +
+          ' · ' +
+          (oHood ? oHood.kind + '/' + oHood.host + ' h=' + oHood.h.toFixed(2) : '?')
+      );
+
+      /* 20.6 装不到的地方如实拒：上水选「地面」、地漏选「墙面」、点在地板外 */
+      const n6 = ol20().length,
+        r6 = undoRing.length;
+      await setKind('supply');
+      Q('#olMount').value = 'floor';
+      Q('#olMount').dispatchEvent(new Event('change'));
+      const floorDisabled = Q('#olMount').querySelector('option[value="floor"]').disabled;
+      const snapFloor = pointSnap(cx20, cy20, 'supply', 'floor');
+      await setKind('floorDrain');
+      const wallDisabled = Q('#olMount').querySelector('option[value="wall"]').disabled;
+      const snapWall = pointSnap(cx20, Y0 + half20 + 0.25, 'floorDrain', 'wall');
+      const m6 = pointRejectMsg('floorDrain', 'wall', [cx20, Y0 + half20 + 0.25]);
+      T(
+        'pb-pt-reject-illegal-mount',
+        floorDisabled &&
+          snapFloor === null &&
+          ol20().length === n6 &&
+          undoRing.length === r6 &&
+          /不能装在墙面上/.test(m6),
+        '上水「地面」灰=' + floorDisabled + ' · 地漏选墙面：' + m6.slice(0, 30)
+      );
+
+      /* 20.7 被挡住：自定义沙发（高 80cm）推到 30cm 的插座前 → 变红 + 晕 + 提示写出沙发名；挪开 → 恢复 */
+      await setKind('std');
+      await tap(cx20 + 2, Y1 - half20 - 0.25);
+      const oStd = last20();
+      const sofaUid = uidSeq++;
+      state.items.push({
+        uid: sofaUid,
+        custom: { name: '测试沙发', w: 200, d: 90, h: 80, color: '#7a6a5a' },
+        x: oStd.x,
+        y: oStd.y - (45 + 2) / 30.48,
+        rot: 0,
+      });
+      drawFurniture();
+      const blkG = () => pbSvg.querySelector('[data-outlet="' + oStd.id + '"].outletSym');
+      const halo = () => pbSvg.querySelector('#ptBlk .olBlockHalo[data-outlet="' + oStd.id + '"]');
+      const t7 = blkG() ? (blkG().querySelector('title') || {}).textContent || '' : '';
+      T(
+        'pb-pt-blocked-by-sofa',
+        !!blkG() &&
+          blkG().classList.contains('olBlocked') &&
+          !!halo() &&
+          /测试沙发/.test(t7) &&
+          (ptBlocked.get(oStd.id) || []).includes('测试沙发'),
+        '提示：' + t7
+      );
+      const sofa = state.items.find((it) => it.uid === sofaUid);
+      sofa.y -= 3;
+      drawFurniture();
+      T(
+        'pb-pt-unblocked-after-move',
+        !blkG().classList.contains('olBlocked') && !halo() && !ptBlocked.has(oStd.id),
+        '挪开 3ft 后 class/晕/记账都清了'
+      );
+
+      /* 20.8 对照组：矮凳（20cm）在插座前不挡；上水前站着洗衣机（85cm）不挡（上下水本来就该在家电后面） */
+      sofa.x = oStd.x;
+      sofa.y = oStd.y - (17.5 + 2) / 30.48;
+      sofa.custom = { name: '矮凳', w: 100, d: 35, h: 20, color: '#888' };
+      const oSup = ol20().find((o) => o.kind === 'supply');
+      const washUid = uidSeq++;
+      state.items.push({
+        uid: washUid,
+        custom: { name: '洗衣机', w: 60, d: 60, h: 85, color: '#eee' },
+        x: oSup.x,
+        y: oSup.y + (30 + 2) / 30.48,
+        rot: 0,
+      });
+      drawFurniture();
+      T(
+        'pb-pt-control-low-stool-and-washer',
+        !ptBlocked.has(oStd.id) && !ptBlocked.has(oSup.id),
+        '矮凳前的插座 blocked=' + ptBlocked.has(oStd.id) + ' · 洗衣机后的上水 blocked=' + ptBlocked.has(oSup.id)
+      );
+      state.items = state.items.filter((it) => it.uid !== sofaUid && it.uid !== washUid);
+
+      /* 20.9 地毯盖住地面送风口 → 挡住；同一块地毯在墙面插座前 → 不挡 */
+      const rugSpec = catalogAll().find((c) => c.kind === 'rug');
+      const rugUid = uidSeq++;
+      if (rugSpec) state.items.push({ uid: rugUid, ref: rugSpec.id, x: oVent.x, y: oVent.y, rot: 0 });
+      drawFurniture();
+      const ventBlk = ptBlocked.has(oVent.id);
+      const rug = state.items.find((it) => it.uid === rugUid);
+      if (rug) {
+        rug.x = oStd.x;
+        rug.y = oStd.y - cm2ft(rugSpec.d) / 2;
+      }
+      drawFurniture();
+      T(
+        'pb-pt-rug-blocks-floor-vent-not-wall',
+        !!rugSpec && ventBlk && !ptBlocked.has(oVent.id) && !ptBlocked.has(oStd.id),
+        rugSpec
+          ? '地毯「' +
+              rugSpec.name.slice(0, 14) +
+              '」盖送风口 blocked=' +
+              ventBlk +
+              ' · 挪到插座前 blocked=' +
+              ptBlocked.has(oStd.id)
+          : '目录里没有地毯'
+      );
+      state.items = state.items.filter((it) => it.uid !== rugUid);
+      drawFurniture();
+
+      /* 20.10 选中地面送风口：换成上水被拒（上水不能装地上）；安装面换成天花 → host=ceiling、h=层高；一步撤销 */
+      wallEdit.sel = { kind: 'outlet', id: oVent.id };
+      updateWallBarFromSel();
+      Q('#olKind').value = 'supply';
+      Q('#olKind').dispatchEvent(new Event('change'));
+      const rej10 = oVent.kind === 'supplyVent' && /不能装在地面上/.test(msg20());
+      const r10 = undoRing.length;
+      Q('#olMount').value = 'ceiling';
+      Q('#olMount').dispatchEvent(new Event('change'));
+      await tick();
+      const v10 = ol20().find((o) => o.id === oVent.id);
+      T(
+        'pb-pt-change-kind-and-mount',
+        rej10 && !!v10 && v10.host === 'ceiling' && Math.abs(v10.h - CEIL_H) < 1e-6 && undoRing.length === r10 + 1,
+        '换上水被拒=' +
+          rej10 +
+          ' · 换天花 → ' +
+          (v10 ? v10.host + ' h=' + v10.h.toFixed(2) : '?') +
+          ' · 撤销环 +' +
+          (undoRing.length - r10)
+      );
+
+      /* 20.11 文档往返：16 类里放过的每一类都通过 schema 校验 */
+      const kinds11 = Array.from(new Set(ol20().map((o) => o.kind)));
+      const v11 = SCHEMA.Project.validate(DOC);
+      T(
+        'pb-pt-doc-valid',
+        v11.length === 0 && kinds11.length >= 9,
+        '放过 ' + kinds11.length + ' 类：' + kinds11.join(',') + ' · validate 错误 ' + v11.length
+      );
+
+      /* 20.12 3D：墙上的网线口、地上的地漏、天花的油烟机口都真的在场景里（射线打到它们，而不是墙 / 地 / 天花） */
+      setView('3d');
+      await wait3D();
+      three.staticGroup.updateMatrixWorld(true);
+      const rc = new THREE.Raycaster();
+      const firstHit = (o, d) => {
+        rc.set(o, d);
+        const hs = rc.intersectObjects(three.staticGroup.children, true);
+        return hs.length ? hs[0] : null;
+      };
+      const nL = [Math.cos((oLan.rot * Math.PI) / 180), Math.sin((oLan.rot * Math.PI) / 180)];
+      const hLan = firstHit(
+        new THREE.Vector3(oLan.x + nL[0], oLan.h, oLan.y + nL[1]),
+        new THREE.Vector3(-nL[0], 0, -nL[1])
+      );
+      const hDrain = firstHit(new THREE.Vector3(oDrain.x, 3, oDrain.y), new THREE.Vector3(0, -1, 0));
+      const hHood = firstHit(new THREE.Vector3(oHood.x, 2, oHood.y), new THREE.Vector3(0, 1, 0));
+      T(
+        'pb-pt-3d-present',
+        !!hLan &&
+          hLan.distance < 0.99 &&
+          !!hDrain &&
+          hDrain.point.y > 0.006 &&
+          hDrain.point.y < 0.05 &&
+          !!hHood &&
+          hHood.point.y < CEIL_H - 0.05,
+        '网线口 ' +
+          (hLan ? hLan.distance.toFixed(3) : '无') +
+          'ft · 地漏顶 y=' +
+          (hDrain ? hDrain.point.y.toFixed(3) : '无') +
+          ' · 油烟机口底 y=' +
+          (hHood ? hHood.point.y.toFixed(2) : '无') +
+          '（天花 ' +
+          CEIL_H +
+          '）'
+      );
+      setView('2d');
+      await tick();
+
+      /* 收尾 */
+      await enterEdit();
+      Q('#btnPlanDel').click();
+      await tick();
+      Q('#btnPlanDel').click();
+      await tick();
+      T(
+        'pb-pt-clean-exit',
+        PLAN_ID !== p20Plan && PLAN_REG.plans.length === p20Plans,
+        'plans ' + p20Plans + '→' + PLAN_REG.plans.length
       );
     }
 

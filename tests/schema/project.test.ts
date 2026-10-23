@@ -167,7 +167,15 @@ describe('validate —— 拒绝非法文档', () => {
 describe('validate —— 洁具字段（S6 前置：rot 进文档）', () => {
   const fx = (patch: object = {}): ProjectDoc => {
     const d = blankDoc();
-    d.fixtures.push({ id: 'f01', t: 'toilet', x1: 1, y1: 1, x2: 2, y2: 2, ...patch });
+    d.fixtures.push({
+      id: 'f01',
+      t: 'toilet',
+      x1: 1,
+      y1: 1,
+      x2: 2,
+      y2: 2,
+      ...patch,
+    });
     return d;
   };
 
@@ -268,7 +276,13 @@ describe('projectSchema（JSON Schema 导出）', () => {
 describe('整圆原语进文档（ADR-0002：圆柱可用 arc 存）', () => {
   it('fullCircle 作为 solid.geom 通过校验', () => {
     const d = blankDoc();
-    d.solids.push({ id: 's1', name: '柱', geom: fullCircle(5, 5, 1.1), fill: '#0c0d0f', column: true });
+    d.solids.push({
+      id: 's1',
+      name: '柱',
+      geom: fullCircle(5, 5, 1.1),
+      fill: '#0c0d0f',
+      column: true,
+    });
     expect(validate(d)).toEqual([]);
   });
 });
@@ -293,7 +307,13 @@ describe('plan 快照（S11b）', () => {
         [0, 3],
       ],
       islLabel: { p: [30, 12], w: 9.6, d: 2.4, calib: '9.6×2.4' },
-      isl: { a: [24, 27.8], b: [40, 27.8], e: [40, 30], cp2: [32, 31], d: [24, 30] },
+      isl: {
+        a: [24, 27.8],
+        b: [40, 27.8],
+        e: [40, 30],
+        cp2: [32, 31],
+        d: [24, 30],
+      },
       inner: [{ x1: 0, y1: 12, x2: 8, y2: 12, wd: 3 }],
       kitchen: [
         { m: 'cab', box: [9.6, 3.0, 2.41], p: [26.18, 1.5, 14.33], sh: true },
@@ -558,7 +578,12 @@ describe('checkGeoms —— 几何字段形状（bug 猎 #10）', () => {
   });
   it('arc：r≤0 / dir 非法 / 缺 a0 被拒；fullCircle 通过', () => {
     const ok = base();
-    ok.solids.push({ id: 's02', geom: fullCircle(1, 1, 0.5), fill: '#8a919c', column: true });
+    ok.solids.push({
+      id: 's02',
+      geom: fullCircle(1, 1, 0.5),
+      fill: '#8a919c',
+      column: true,
+    });
     expect(checkGeoms(ok)).toEqual([]);
     for (const patch of [
       (g: Record<string, unknown>) => (g.r = 0),
@@ -577,7 +602,13 @@ describe('checkGeoms —— 几何字段形状（bug 猎 #10）', () => {
     (d.walls[0] as { geom: unknown }).geom = { t: 'circle', r: 1 };
     expect(checkGeoms(d).map((e) => e.path)).toContain('walls[0].geom.t');
     const d2 = base();
-    (d2.doors[0] as { gapGeom: unknown }).gapGeom = { t: 'seg', x1: 0, y1: 0, x2: '3.9', y2: 0 };
+    (d2.doors[0] as { gapGeom: unknown }).gapGeom = {
+      t: 'seg',
+      x1: 0,
+      y1: 0,
+      x2: '3.9',
+      y2: 0,
+    };
     expect(checkGeoms(d2).map((e) => e.path)).toContain('doors[0].gapGeom.x2');
   });
   it('geom 必填（缺了就不是原语链）', () => {
@@ -712,5 +743,184 @@ describe('outlet 实体（S14）', () => {
     const d = good();
     expect(nextId(d, 'outlet')).toBe('ol04');
     expect(nextId(blankDoc(), 'outlet')).toBe('ol01');
+  });
+});
+
+/* =====================================================================
+   S15：点位家族（电源 / 网络电视 / 水 / 燃气 / 风）+ 地面 / 天花安装面
+   ===================================================================== */
+import { POINT_KINDS, OUTLET_KINDS } from '../../src/schema/project';
+
+describe('点位类型表（S15）', () => {
+  const CATS = ['power', 'data', 'water', 'gas', 'air'];
+  const HOSTS = ['wall', 'run', 'fx', 'floor', 'ceiling'];
+
+  it('16 类，每一类的名称 / 类别 / 安装面 / 缺省高度 / 面板尺寸 / 遮挡口径都齐', () => {
+    expect(OUTLET_KINDS.length).toBe(16);
+    for (const k of OUTLET_KINDS) {
+      const d = POINT_KINDS[k];
+      expect(d, k).toBeTruthy();
+      expect(d.name.length, k).toBeGreaterThan(0);
+      expect(CATS, k).toContain(d.cat);
+      expect(d.hosts.length, k).toBeGreaterThan(0);
+      for (const h of d.hosts) expect(HOSTS, k).toContain(h);
+      expect(d.h, k).toBeGreaterThanOrEqual(0);
+      expect(d.plate.length, k).toBe(2);
+      expect(d.plate[0] > 0 && d.plate[1] > 0, k).toBe(true);
+      expect(typeof d.blocks, k).toBe('boolean');
+      expect((d.gang ?? 1) >= 1, k).toBe(true);
+    }
+  });
+
+  it('用户点名的每一样都在表里：同轴、网线、上水、下水、地漏、烘干机排风、送 / 回风口、油烟机排风', () => {
+    for (const k of ['coax', 'lan', 'supply', 'drain', 'floorDrain', 'dryerVent', 'supplyVent', 'returnVent', 'hood'])
+      expect(OUTLET_KINDS).toContain(k as never);
+  });
+
+  it('「被挡住」只对电源 / 网络 / 开关 / 送回风口成立；上下水、燃气、排风口前面站着家电是正确的摆法', () => {
+    for (const k of ['std', 'usb', 'gfci', 'w240', 'switch', 'coax', 'lan', 'supplyVent', 'returnVent'])
+      expect(POINT_KINDS[k as keyof typeof POINT_KINDS].blocks, k).toBe(true);
+    for (const k of ['supply', 'drain', 'floorDrain', 'gas', 'dryerVent', 'hood', 'exhaust'])
+      expect(POINT_KINDS[k as keyof typeof POINT_KINDS].blocks, k).toBe(false);
+  });
+
+  it('每一类装在它的第一个安装面上都通过校验（地面 h=0、天花 h=层高）', () => {
+    const d = blankDoc('点位');
+    d.outlets = OUTLET_KINDS.map((k, i) => {
+      const def = POINT_KINDS[k];
+      const host = def.hosts[0];
+      const o: Record<string, unknown> = {
+        id: `ol${i + 1}`,
+        x: 1 + i,
+        y: 1,
+        rot: 0,
+        kind: k,
+        src: 'user',
+        host,
+      };
+      o.h = host === 'floor' ? 0 : host === 'ceiling' ? d.ceilingH : def.h / 30.48;
+      if (host === 'wall') Object.assign(o, { hostId: 'w01', at: 1, side: 1 });
+      return o as never;
+    });
+    expect(validate(d)).toEqual([]);
+  });
+
+  it('装在它不允许的安装面上被拒（上水不能装地上、地漏不能装墙上、开关不能装天花）', () => {
+    const d = blankDoc('点位');
+    d.outlets = [
+      { id: 'ol01', x: 1, y: 1, rot: 0, h: 0, kind: 'supply', host: 'floor' },
+      {
+        id: 'ol02',
+        x: 2,
+        y: 1,
+        rot: 0,
+        h: 1,
+        kind: 'floorDrain',
+        host: 'wall',
+        hostId: 'w01',
+        at: 1,
+        side: 1,
+      },
+      {
+        id: 'ol03',
+        x: 3,
+        y: 1,
+        rot: 0,
+        h: 8.8,
+        kind: 'switch',
+        host: 'ceiling',
+      },
+    ] as never;
+    const errs = validate(d);
+    for (const i of [0, 1, 2])
+      expect(
+        errs.some((e) => e.path === `outlets[${i}].host`),
+        `outlets[${i}]`
+      ).toBe(true);
+  });
+
+  it('地面安装面允许 h=0；墙面安装面 h=0 仍然拒（墙上的面板不能埋进地里）', () => {
+    const d = blankDoc('点位');
+    d.outlets = [
+      {
+        id: 'ol01',
+        x: 1,
+        y: 1,
+        rot: 0,
+        h: 0,
+        kind: 'supplyVent',
+        host: 'floor',
+      },
+      {
+        id: 'ol02',
+        x: 2,
+        y: 1,
+        rot: 0,
+        h: 0,
+        kind: 'std',
+        host: 'wall',
+        hostId: 'w01',
+        at: 1,
+        side: 1,
+      },
+    ] as never;
+    const errs = validate(d);
+    expect(errs.some((e) => e.path === 'outlets[0].h')).toBe(false);
+    expect(errs.some((e) => e.path === 'outlets[1].h')).toBe(true);
+  });
+
+  it('联数超过这一类的上限被拒（网线口最多 2 联、上水只有 1）', () => {
+    const d = blankDoc('点位');
+    d.outlets = [
+      {
+        id: 'ol01',
+        x: 1,
+        y: 1,
+        rot: 0,
+        h: 1,
+        kind: 'lan',
+        n: 3,
+        host: 'wall',
+        hostId: 'w01',
+        at: 1,
+        side: 1,
+      },
+      {
+        id: 'ol02',
+        x: 2,
+        y: 1,
+        rot: 0,
+        h: 3.6,
+        kind: 'supply',
+        n: 2,
+        host: 'wall',
+        hostId: 'w01',
+        at: 2,
+        side: 1,
+      },
+      {
+        id: 'ol03',
+        x: 3,
+        y: 1,
+        rot: 0,
+        h: 1,
+        kind: 'std',
+        n: 3,
+        host: 'wall',
+        hostId: 'w01',
+        at: 3,
+        side: 1,
+      },
+    ] as never;
+    const errs = validate(d);
+    expect(errs.some((e) => e.path === 'outlets[0].n')).toBe(true);
+    expect(errs.some((e) => e.path === 'outlets[1].n')).toBe(true);
+    expect(errs.some((e) => e.path === 'outlets[2].n')).toBe(false);
+  });
+
+  it('JSON Schema 的枚举与类型表同步（16 类 · 5 种安装面）', () => {
+    const s = projectSchema() as Record<string, any>;
+    expect([...s.definitions.outlet.properties.kind.enum].sort()).toEqual([...OUTLET_KINDS].sort());
+    expect([...s.definitions.outlet.properties.host.enum].sort()).toEqual([...HOSTS].sort());
   });
 });

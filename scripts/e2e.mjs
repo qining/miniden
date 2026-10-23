@@ -17,6 +17,7 @@
  *   node scripts/e2e.mjs --ci               headless=new + swiftshader + fast + 入口 dist/app.html + app.html
  * 产物（全部 gitignore）：work/e2e/report.html（逐步截图 + 断言，人可审）、log.json、shots/
  */
+import { PNG } from 'pngjs';
 import { spawn } from 'node:child_process';
 import { rmSync, mkdirSync, writeFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
@@ -281,10 +282,33 @@ async function runEntry(entry) {
     return name;
   };
 
+  /* 人眼可见性第三层探针（AGENTS §8.4）：截一块屏幕区域，数「看起来是红色」的像素占比。
+     elementFromPoint 量不到 pointer-events:none 的叠加层（比如被挡住的点位的红晕），像素才是用户看到的东西。 */
+  const redRatio = async (rect) => {
+    const clip = {
+      x: Math.max(0, rect.x),
+      y: Math.max(0, rect.y),
+      width: Math.max(1, rect.w),
+      height: Math.max(1, rect.h),
+      scale: 1,
+    };
+    const r = await cdp('Page.captureScreenshot', { format: 'png', clip });
+    const png = PNG.sync.read(Buffer.from(r.data, 'base64'));
+    let red = 0;
+    for (let i = 0; i < png.data.length; i += 4) {
+      const R = png.data[i],
+        G = png.data[i + 1],
+        B = png.data[i + 2];
+      if (R > 170 && G < 120 && B < 120 && R - G > 70) red++;
+    }
+    return red / (png.width * png.height);
+  };
+
   const t = {
     get flow() {
       return currentFlow;
     },
+    redRatio,
     async step(label, note) {
       currentStep = label;
       await banner(`${currentFlow} · ${label}${note ? ' — ' + note : ''}`);

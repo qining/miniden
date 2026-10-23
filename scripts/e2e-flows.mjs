@@ -719,7 +719,7 @@ export const FLOWS = [
         `挂在 ${o.hostId} · 离地 ${Math.round(o.h * 30.48)}cm`
       );
       const msg = await t.eval(`document.querySelector('#wMsg').textContent`);
-      t.assert('outlet-told', /已放普通插座/.test(msg), msg.slice(0, 40));
+      t.assert('outlet-told', /已放「普通插座」/.test(msg), msg.slice(0, 40));
       /* 人眼可见性三层探针：几何（rect 有宽度）+ 遮挡（图例中心最上层是它的命中区）+ 截图 */
       const vis = await t.eval(
         `(()=>{const g=document.querySelector('#svg2d [data-outlet="${o.id}"].outletSym');if(!g)return null;` +
@@ -776,6 +776,41 @@ export const FLOWS = [
           ? `${o4.kind} · ${Math.round(o4.h * 30.48)}cm · at 放下 ${o.at.toFixed(2)} → 拖后 ${o3.at.toFixed(2)} → 刷新后 ${o4.at.toFixed(2)}`
           : '刷新后没了'
       );
+
+      await t.step('目录里放一件家具 → 真实拖到插座正前方：插座变红（被挡住）→ 拖开：恢复');
+      const nItems = await t.eval('state.items.length');
+      await t.click('.catCard');
+      await t.waitFor('state.items.length>' + nItems, 6000, '家具数 +1');
+      const fu = await t.eval(
+        `(()=>{const i=state.items[state.items.length-1];const s=itemSpec(i);const o=DOC.outlets.find(q=>q.id==='${o.id}');` +
+          `const n=[Math.cos(o.rot*Math.PI/180),Math.sin(o.rot*Math.PI/180)];const back=(Math.min(s.w,s.d)/2+3)/30.48;` +
+          `return {uid:i.uid,x:i.x,y:i.y,h:s.h,name:s.name,tx:o.x+n[0]*back,ty:o.y+n[1]*back,ox:o.x,oy:o.y};})()`
+      );
+      const fFrom = await t.planPoint(fu.x, fu.y);
+      const fTo = await t.planPoint(fu.tx, fu.ty);
+      await t.drag(fFrom, fTo, { steps: 18 });
+      await t.waitFor(`ptBlocked.has('${o.id}')`, 6000, '插座被挡住');
+      const box = await t.eval(
+        `(()=>{const h=document.querySelector('#ptBlk .olBlockHalo[data-outlet="${o.id}"]');if(!h)return null;const r=h.getBoundingClientRect();return {x:r.x,y:r.y,w:r.width,h:r.height};})()`
+      );
+      const redOn = box ? await t.redRatio(box) : 0;
+      const names = await t.eval(`(ptBlocked.get('${o.id}')||[]).join(',')`);
+      t.assert(
+        'outlet-blocked-highlight',
+        !!box && box.w > 6 && redOn > 0.05 && names.length > 0,
+        box
+          ? `被「${names}」挡住 · 红晕 ${box.w.toFixed(0)}px · 截图里红色像素 ${(redOn * 100).toFixed(1)}%`
+          : '没有红晕'
+      );
+      await t.shot('outlet-blocked');
+      const fAway = await t.planPoint(fu.tx + 0, fu.ty);
+      const fAway2 = await t.planPoint(fu.ox + (fu.tx - fu.ox) * 4, fu.oy + (fu.ty - fu.oy) * 4);
+      await t.drag(fAway, fAway2, { steps: 18 });
+      await t.waitFor(`!ptBlocked.has('${o.id}')`, 6000, '挪开后恢复');
+      const redOff = box ? await t.redRatio(box) : 1;
+      t.assert('outlet-unblocked-after-drag', redOff < 0.01, `拖开后同一块区域红色像素 ${(redOff * 100).toFixed(2)}%`);
+      await t.key('Delete', 'Delete', 46);
+      await t.waitFor('state.items.length===' + nItems, 6000, '家具删掉');
 
       await t.step('选中 → Delete');
       await t.click('#btnWallEdit');
