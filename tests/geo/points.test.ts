@@ -2,7 +2,7 @@
    口径（docs/design/home-v2.md §S15）：墙面类看面板正前方 5–25cm 的一排探点 + 高度区间是否相交；
    地面类看占地是否盖住中心且家具落地；天花永不判；灯具 / 幽灵件不参与；blocks=false 的类型（上下水 / 燃气 / 排风口）不判。 */
 import { describe, it, expect } from 'vitest';
-import { pointBlockers, obbCorners, pointInPoly, type FurnBox } from '../../src/geo/points';
+import { pointBlockers, obbCorners, pointInPoly, convexClipArea, type FurnBox, type Pt2 } from '../../src/geo/points';
 
 const CM = 1 / 30.48;
 // 一面朝 +y 的墙在 y=0，插座贴墙皮装在 (0, 0)，正面朝 +y（rot = 90°）
@@ -122,5 +122,34 @@ describe('pointBlockers：地面 / 天花点位', () => {
   });
   it('空列表 → 空结果', () => {
     expect(pointBlockers(vent, [])).toEqual([]);
+  });
+});
+
+describe('S17 家具压在楼梯上：凸多边形裁任意多边形的面积', () => {
+  // L 形楼梯外轮廓（手算：第一段 x∈[-1.5,1.5]、y∈[0,9.5]；第二段 y∈[6.5,9.5]、x 到 6）
+  const L: Pt2[] = [
+    [-1.5, 0],
+    [-1.5, 9.5],
+    [6, 9.5],
+    [6, 6.5],
+    [1.5, 6.5],
+    [1.5, 0],
+  ];
+  it('完全在里面 = 自己的面积；压住一半 = 一半', () => {
+    expect(convexClipArea(L, obbCorners(0, 3, 2, 2, 0))).toBeCloseTo(4, 9);
+    expect(convexClipArea(L, obbCorners(1.5, 3, 2, 2, 0))).toBeCloseTo(2, 9);
+  });
+  it('放在 L 的凹口里（两段梯段之间那块空地）= 0：凹多边形不能当凸包算', () => {
+    expect(convexClipArea(L, obbCorners(3.5, 3, 2, 2, 0))).toBeCloseTo(0, 9);
+  });
+  it('只碰边（柜子贴着楼梯口放）= 0；转 45° 跨过拐角 > 0', () => {
+    expect(convexClipArea(L, obbCorners(2.5, 3, 2, 2, 0))).toBeCloseTo(0, 9);
+    expect(convexClipArea(L, obbCorners(1.5, 6.5, 2, 2, 45))).toBeGreaterThan(0.5);
+  });
+  it('绕向无关；退化输入 = 0', () => {
+    const box = obbCorners(0, 3, 2, 2, 0);
+    expect(convexClipArea(L.slice().reverse(), box.slice().reverse())).toBeCloseTo(4, 9);
+    expect(convexClipArea([], box)).toBe(0);
+    expect(convexClipArea(L, box.slice(0, 2))).toBe(0);
   });
 });

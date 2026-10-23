@@ -962,6 +962,158 @@ export const FLOWS = [
   },
 
   {
+    name: 'levels-stairs',
+    title:
+      '多层与楼梯：空白户型 → 画一圈墙 → ＋加一层（带外墙）→ 二层摆家具 → 回一层画 L 形楼梯 → 3D 两层叠起来、楼梯口开洞 → 真实刷新还在 → 删户型',
+    run: async (t) => {
+      /* 用户 2026-10-22：「对于 house 来说，多层以及楼梯，这个需求也非常要命」。
+         全程真实输入（点楼层条按钮、点楼梯的三个点、回车），坐标从空白画布派生 ⇒ plan-independent。 */
+      await t.step('新建空白户型');
+      await ensureProTools(t);
+      await t.click('#btnPlanNew');
+      await t.waitFor(`PLAN_ID!==BUILTIN_PLAN_ID`, 8000, '切到空白户型');
+      const bar0 = await t.eval(
+        `({show:getComputedStyle(document.querySelector('#levelBar')).display!=='none', btns:[...document.querySelectorAll('#lvBtns button')].map(b=>b.textContent)})`
+      );
+      t.assert('lv-bar-on-blank', bar0.show && bar0.btns.join('/') === '一层', '楼层条 ' + bar0.btns.join('/'));
+      const cv = await t.eval(
+        `(()=>{const P=floorPts();let x1=1e9,y1=1e9,x2=-1e9,y2=-1e9;` +
+          `for(const q of P){x1=Math.min(x1,q[0]);y1=Math.min(y1,q[1]);x2=Math.max(x2,q[0]);y2=Math.max(y2,q[1]);}` +
+          `return {x1,y1,x2,y2};})()`
+      );
+      const A = [cv.x1 + 1, cv.y1 + 1],
+        B = [cv.x2 - 1, cv.y1 + 1],
+        C = [cv.x2 - 1, cv.y2 - 1],
+        D = [cv.x1 + 1, cv.y2 - 1];
+
+      await t.step('画一圈外墙');
+      await t.click('#btnWallEdit');
+      await t.waitFor(`wallEdit.on`, 5000, '进入编辑');
+      await t.click('#wtoolSeg button[data-t="wall"]');
+      await t.waitFor(`wallEdit.tool==='wall'`, 5000, 'tool=wall');
+      const piece = async (p, q) => {
+        await t.eval(`document.querySelector('#wType').value='w'`);
+        await t.click(await t.planPoint(p[0], p[1]));
+        await t.click(await t.planPoint(q[0], q[1]));
+        await t.key('Enter', 'Enter', 13);
+        await t.waitFor(`wallEdit.drawPts.length===0`, 6000, '这段墙提交');
+      };
+      await piece(A, B);
+      await piece(B, C);
+      await piece(C, D);
+      await piece(D, A);
+      t.assert('lv-house-drawn', (await t.eval(`DOC.walls.length`)) === 4, '外墙 4 段');
+
+      await t.step('点「＋ 加一层」：切到二层，外墙跟着上来');
+      await t.click('#lvAddUp');
+      await t.waitFor(`DOC.levels && DOC.levels.length===2`, 6000, '两层');
+      const up = await t.eval(
+        `(()=>{const l=DOC.levels.find(x=>x.id===DOC.level);return {id:l.id,name:l.name,elev:l.elev,walls:DOC.walls.length,ceil:LV.levelContentOf(DOC,'lv1').ceilingH,` +
+          `btns:[...document.querySelectorAll('#lvBtns button')].map(b=>b.textContent+(b.classList.contains('on')?'*':'')).join('/')};})()`
+      );
+      t.assert(
+        'lv-added-above',
+        up.name === '二层' && Math.abs(up.elev - (up.ceil + 1.0)) < 1e-6 && up.walls === 4 && up.btns === '二层*/一层',
+        `${up.name}@${up.elev.toFixed(2)}ft · 墙 ${up.walls} · 条 ${up.btns}`
+      );
+      await t.shot('levels-upper-2d');
+
+      await t.step('二层摆一件家具（点目录卡片）');
+      await t.click('#wDone');
+      await t.waitFor(`!wallEdit.on`, 5000, '退出编辑');
+      const n0 = await t.eval(`state.items.length`);
+      await t.click('.catCard');
+      await t.waitFor(`state.items.length===${n0 + 1}`, 6000, '家具 +1');
+      const it = await t.eval(`(()=>{const i=state.items[state.items.length-1];return {uid:i.uid,lv:i.lv};})()`);
+      t.assert('lv-item-on-upper', it.lv === up.id, `it.lv=${it.lv}`);
+
+      await t.step('点楼层条「一层」：家具不在这一层的图上');
+      await t.click(`#lvBtns button[data-lv="lv1"]`);
+      await t.waitFor(`DOC.level==='lv1'`, 6000, '切到一层');
+      const hidden = await t.eval(`!document.querySelector('#svg2d [data-uid="${it.uid}"]')`);
+      t.assert('lv-item-not-on-lower', hidden, '一层的平面图上没有二层的家具');
+
+      await t.step('一层画 L 形楼梯：三个点 + 回车');
+      await t.click('#btnWallEdit');
+      await t.waitFor(`wallEdit.on`, 5000, '进入编辑');
+      await t.click('#wtoolSeg button[data-t="stair"]');
+      await t.waitFor(`wallEdit.tool==='stair'`, 5000, 'tool=stair');
+      const S0 = [A[0] + 2, A[1] + 1.8],
+        S1 = [A[0] + 2, D[1] - 2],
+        S2 = [A[0] + 12, D[1] - 2]; // 两段梯段共 ≈15ft：踏面 ≈27cm（不触发「太陡」）
+      for (const p of [S0, S1, S2]) await t.click(await t.planPoint(p[0], p[1]));
+      await t.key('Enter', 'Enter', 13);
+      await t.waitFor(`(DOC.stairs||[]).length===1`, 6000, '楼梯放上');
+      const st = await t.eval(
+        `(()=>{const L=stairLayoutOf(DOC.stairs[0]);return {n:L.stepsN,land:L.landings.length,rise:L.rise,msg:document.querySelector('#wMsg').textContent,sym:document.querySelectorAll('#svg2d .stairSym').length};})()`
+      );
+      t.assert(
+        'lv-stair-drawn',
+        st.n === Math.round(st.rise / (17.5 / 30.48)) && st.land === 1 && st.sym === 1 && /级/.test(st.msg),
+        `${st.n} 级 · 平台 ${st.land} · ${st.msg.slice(0, 40)}`
+      );
+      await t.shot('levels-stair-2d');
+      await t.click('#wDone');
+      await t.waitFor(`!wallEdit.on`, 5000, '退出编辑');
+
+      await t.step('3D 俯瞰：两层叠起来，二层楼板在楼梯处开洞');
+      await t.click('#btnDoll');
+      await t.waitFor(`state.view!=='2d' && three && three.staticGroup && !geoDirty3D`, 20000, '3D 建好');
+      await t.click(`#lvBtns button[data-lv="${up.id}"]`);
+      await t.waitFor(`DOC.level===${JSON.stringify(up.id)}`, 6000, '3D 里切到二层');
+      const g3 = await t.eval(
+        `(()=>{three.staticGroup.updateMatrixWorld(true);const G=three.levelGroups;const rc=new THREE.Raycaster();` +
+          `const hit=(x,y)=>{rc.set(new THREE.Vector3(x,40,y),new THREE.Vector3(0,-1,0));const h=rc.intersectObjects(three.staticGroup.children,true)[0];return h?{y:h.point.y,stair:!!h.object.material.userData.stair}:null;};` +
+          `return {groups:[...G.keys()].map(k=>k+':'+G.get(k).visible+'@'+G.get(k).position.y.toFixed(2)).join(','),` +
+          `st:hit(${S0[0]},${(S0[1] + S1[1]) / 2}),fl:hit(${(B[0] + S2[0]) / 2 + 2},${(A[1] + D[1]) / 2})};})()`
+      );
+      t.assert(
+        'lv-3d-stacked-with-hole',
+        /lv1:true@0\.00/.test(g3.groups) &&
+          new RegExp(up.id + ':true@' + up.elev.toFixed(2)).test(g3.groups) &&
+          !!g3.st &&
+          g3.st.stair &&
+          g3.st.y < up.elev &&
+          !!g3.fl &&
+          Math.abs(g3.fl.y - up.elev) < 0.05,
+        `${g3.groups} · 楼梯处 ${g3.st ? g3.st.y.toFixed(2) + (g3.st.stair ? '(踏步)' : '') : '无'} · 别处 ${g3.fl ? g3.fl.y.toFixed(2) : '无'}`
+      );
+      await t.shot('levels-3d');
+      await t.click('#btn2d');
+      await t.waitFor(`state.view==='2d'`, 8000, '回到 2D');
+
+      await t.step('真实刷新：两层、当前层、楼梯、二层的家具都还在');
+      await t.reload();
+      await t.waitForReady();
+      const after = await t.eval(
+        `({n:(DOC.levels||[]).length, level:DOC.level, stairs:(LV.levelContentOf(DOC,'lv1').stairs||[]).length,` +
+          `item:state.items.some(i=>i.uid===${it.uid} && i.lv===${JSON.stringify(up.id)}), walls:DOC.walls.length,` +
+          `bar:[...document.querySelectorAll('#lvBtns button')].map(b=>b.textContent+(b.classList.contains('on')?'*':'')).join('/')})`
+      );
+      t.assert(
+        'lv-survives-reload',
+        after.n === 2 &&
+          after.level === up.id &&
+          after.stairs === 1 &&
+          after.item &&
+          after.walls === 4 &&
+          after.bar === '二层*/一层',
+        JSON.stringify(after)
+      );
+
+      await t.step('清除：删掉这份户型（两步）');
+      await ensureProTools(t);
+      await t.click('#btnPlanDel');
+      await t.click('#btnPlanDel');
+      await t.waitFor(`PLAN_ID===BUILTIN_PLAN_ID`, 8000, '删完切回内置');
+      const fin = await t.eval(
+        `({levels:!!DOC.levels, bar:getComputedStyle(document.querySelector('#levelBar')).display})`
+      );
+      t.assert('lv-cleaned', !fin.levels && fin.bar === 'none', '回到内置户型：没有楼层、楼层条隐藏');
+    },
+  },
+
+  {
     name: 'undo-redo',
     title: '撤销 / 重做：误删的洁具、画错的墙都能退回去（真实键盘）',
     run: async (t) => {

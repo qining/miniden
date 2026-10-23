@@ -5231,6 +5231,816 @@ async function runPBTest() {
       );
     }
 
+    /* ===== 23. S17 楼层与楼梯：加一层（带外墙）→ 家具归层 → 楼梯（2D 符号 / 3D 踏步 / 上层楼板开洞）→
+       撤销跨层 → 改层高重排标高 → 往下加 / 删层 → 整图缩放带上所有楼层 → 导出往返 ===== */
+    {
+      /* 用户 2026-10-22：「对于 house 来说，多层以及楼梯，这个需求也非常要命」。
+         独立量：层高 / 楼板厚取 ADR-0007 写下的口径（新建空白户型层高 8.8ft、楼板 1ft），
+         踏步数 = 层间高差 / 17.5cm 四舍五入（ADR 的目标踢面），踏面 = 梯段长 / 踏步数（拐角平台 = 梯宽见方）。 */
+      await enterEdit();
+      await pbReset();
+      const p23Plans = PLAN_REG.plans.length;
+      const builtin23 = !docImported();
+      const barB = getComputedStyle(Q('#levelBar')).display;
+      Q('#btnPlanNew').click();
+      await tick();
+      const p23Plan = PLAN_ID;
+      const barN = getComputedStyle(Q('#levelBar')).display;
+      const lvBtns = () => Array.from(document.querySelectorAll('#lvBtns button'));
+      T(
+        'pb-lv-bar-self-contained',
+        builtin23 && barB === 'none' && barN !== 'none' && lvBtns().length === 1 && lvBtns()[0].textContent === '一层',
+        '内置户型楼层条 ' +
+          barB +
+          ' · 空白户型 ' +
+          barN +
+          ' · 按钮 ' +
+          lvBtns()
+            .map((b) => b.textContent)
+            .join('/')
+      );
+
+      const fp0 = floorPts();
+      const X =
+          Math.min.apply(
+            null,
+            fp0.map((p) => p[0])
+          ) + 1,
+        Y =
+          Math.min.apply(
+            null,
+            fp0.map((p) => p[1])
+          ) + 1;
+      const HW = 24,
+        HD = 16;
+      const wd15 = cmToWd(15);
+      // 顶边：墙 · 门洞（入户；比墙薄 —— 加层时补成实墙要取相邻外墙的厚度）· 墙；底边上叠一扇窗
+      pushUserWall(X, Y, X + 3, Y, 'w', wd15);
+      const op23 = pushUserWall(X + 3, Y, X + 6, Y, 'd', cmToWd(10));
+      pushUserWall(X + 6, Y, X + HW, Y, 'w', wd15);
+      pushUserWall(X + HW, Y, X + HW, Y + HD, 'w', wd15);
+      pushUserWall(X + HW, Y + HD, X, Y + HD, 'w', wd15);
+      pushUserWall(X, Y + HD, X, Y, 'w', wd15);
+      const win23 = pushUserWindow(X + 15, Y + HD, X + 19, Y + HD, wd15);
+      const inner23 = pushUserWall(X + 12, Y, X + 12, Y + HD, 'w', cmToWd(10)); // 内墙：不该被带到上一层
+      // 窗的 wallId 指向一面不会被带上去的墙（DXF 导入的窗常挂在一面合并过的长墙上）：复制件必须断开引用，否则文档过不了校验
+      win23.wallId = inner23.id;
+      geoChanged();
+      fit2DToContent();
+      await tick();
+      const ceil1 = DOC.ceilingH;
+
+      /* 23.0b 带内置专属构件的户型（内置户型导出再导入）：不画楼层条、加楼层被拒并说明 —— 厨房 / 中岛 / 内部示意墙不分楼层 */
+      DOC.plan = { inner: [] };
+      levelBarUI();
+      const barHard = getComputedStyle(Q('#levelBar')).display;
+      const refuse = addLevelUI('above');
+      delete DOC.plan;
+      levelBarUI();
+      T(
+        'pb-lv-refused-with-builtin-parts',
+        barHard === 'none' && refuse === null && !hasLevelsNow() && getComputedStyle(Q('#levelBar')).display !== 'none',
+        '楼层条 ' +
+          barHard +
+          ' · addLevelUI → ' +
+          refuse +
+          ' · 去掉之后楼层条 ' +
+          getComputedStyle(Q('#levelBar')).display
+      );
+      const segKey = (w) => {
+        const g = w.geom,
+          a = [g.x1, g.y1].map((v) => v.toFixed(2)).join(','),
+          b = [g.x2, g.y2].map((v) => v.toFixed(2)).join(',');
+        return a < b ? a + '|' + b : b + '|' + a;
+      };
+      const perim = new Set(DOC.walls.slice(0, 6).map(segKey)); // 外墙 5 段 + 门洞（上一层它是墙）
+
+      /* 23.1 ＋ 加一层：切到新层；它带上本层的外壳 —— 5 段外墙 + 门洞补成的实墙（厚度 = 相邻外墙）+ 那扇窗，内墙与门不带；
+         标高 = 层高 + 楼板 1ft；一步撤销 */
+      const r1 = undoRing.length;
+      Q('#lvAddUp').click();
+      await tick();
+      const lv2 = DOC.level;
+      const L2 = DOC.levels.find((l) => l.id === lv2);
+      const c1 = LV.levelContentOf(DOC, 'lv1');
+      T(
+        'pb-lv-add-up-shell',
+        DOC.levels.length === 2 &&
+          lv2 !== 'lv1' &&
+          L2.name === '二层' &&
+          Math.abs(L2.elev - (ceil1 + 1.0)) < 1e-6 &&
+          DOC.walls.length === 6 &&
+          DOC.walls.every((w) => perim.has(segKey(w)) && w.src === 'user' && w.kind === 'wall') &&
+          Math.abs(DOC.walls.find((w) => segKey(w) === segKey(op23)).thick - wd15 / S) < 1e-9 &&
+          DOC.windows.length === 1 &&
+          segKey(DOC.windows[0]) === segKey(win23) &&
+          DOC.windows[0].wallId === null &&
+          DOC.doors.length === 0 &&
+          c1.walls.length === 7 &&
+          undoRing.length === r1 + 1 &&
+          SCHEMA.Project.validate(DOC).length === 0,
+        '楼层 ' +
+          DOC.levels.map((l) => l.name + '@' + l.elev.toFixed(2)).join(',') +
+          ' · 新层墙 ' +
+          DOC.walls.length +
+          '（门洞补墙厚 ' +
+          (DOC.walls.find((w) => segKey(w) === segKey(op23)) || {}).thick +
+          '）· 窗 ' +
+          DOC.windows.length +
+          ' · 一层墙 ' +
+          c1.walls.length +
+          ' · 撤销环 +' +
+          (undoRing.length - r1)
+      );
+
+      /* 23.2 楼层条：高的在上（二层 on / 一层）；2D 上画着下一层的 7 段墙作参照（虚线、不吃指针） */
+      const refLines = pbSvg.querySelectorAll('.lowerRef line').length;
+      T(
+        'pb-lv-bar-and-lower-ref',
+        lvBtns()
+          .map((b) => b.textContent + (b.classList.contains('on') ? '*' : ''))
+          .join('/') === '二层*/一层' &&
+          refLines === 7 &&
+          getComputedStyle(pbSvg.querySelector('.lowerRef')).pointerEvents === 'none',
+        '按钮 ' +
+          lvBtns()
+            .map((b) => b.textContent + (b.classList.contains('on') ? '*' : ''))
+            .join('/') +
+          ' · 参照墙线 ' +
+          refLines
+      );
+
+      /* 23.3 家具归层：在二层放一件 → it.lv = 二层；切回一层看不见它、墙是一层的 7 段、层高回到一层的 */
+      // 落地的普通家具（地毯 / 灯具不参与碰撞，压在楼梯口上也不红 —— 23.6b 要用它）
+      addItem(CATALOG.find((c) => c.kind !== 'rug' && !isLight(c) && c.w >= 60 && c.d >= 40).id);
+      await tick();
+      const it23 = state.items[state.items.length - 1];
+      const onSvg = (uid) => !!pbSvg.querySelector('[data-uid="' + uid + '"]');
+      const seen2 = onSvg(it23.uid);
+      Q('#lvBtns button[data-lv="lv1"]').click();
+      await tick();
+      T(
+        'pb-lv-item-belongs',
+        it23.lv === lv2 &&
+          seen2 &&
+          !onSvg(it23.uid) &&
+          DOC.level === 'lv1' &&
+          DOC.walls.length === 7 &&
+          CEIL_H === ceil1,
+        'it.lv=' +
+          it23.lv +
+          ' · 二层看得见=' +
+          seen2 +
+          ' · 切到一层后看得见=' +
+          onSvg(it23.uid) +
+          ' · 一层墙 ' +
+          DOC.walls.length
+      );
+
+      /* 23.3b 撤销的合并键是实体 id，而复制上去的外墙与下层同 id：一层微调 w01 → 切到二层再微调它的 w01，
+         必须是两步撤销（以前并成一步：撤一次同时退掉两层的改动并跳回一层） */
+      await enterEdit();
+      await setTool('select');
+      const w01 = DOC.walls[0].id;
+      const step = 1 / 30.48; // 方向键一下 = 1cm
+      const gy = () => DOC.walls.find((w) => w.id === w01).geom.y1;
+      const y1a = gy(),
+        r3b = undoRing.length;
+      wallEdit.sel = { kind: 'w', id: w01 };
+      updateWallBarFromSel();
+      key('ArrowDown');
+      await tick();
+      Q('#lvBtns button[data-lv="' + lv2 + '"]').click();
+      await tick();
+      const y2a = gy();
+      wallEdit.sel = { kind: 'w', id: w01 };
+      updateWallBarFromSel();
+      key('ArrowDown');
+      await tick();
+      const steps3b = undoRing.length - r3b;
+      undoStep();
+      await tick();
+      const lv1y = LV.levelContentOf(DOC, 'lv1').walls.find((w) => w.id === w01).geom.y1;
+      const back1 = DOC.level === lv2 && Math.abs(gy() - y2a) < 1e-9 && Math.abs(lv1y - (y1a + step)) < 1e-6;
+      undoStep();
+      await tick();
+      const back2 = DOC.level === 'lv1' && Math.abs(gy() - y1a) < 1e-9;
+      T(
+        'pb-lv-nudge-not-merged-across-levels',
+        steps3b === 2 && back1 && back2,
+        '两层各微调一次 → 撤销环 +' +
+          steps3b +
+          ' · 撤一次只退二层（一层那下还在）=' +
+          back1 +
+          ' · 再撤一次退一层=' +
+          back2
+      );
+      wallEdit.sel = null;
+      updateWallBarFromSel();
+
+      /* 23.4 楼梯工具：在一层点 3 个点（L 形）+ 回车 → 一部楼梯；踏步数 / 踏面按独立量；2D 有踏步线 + 「上」 */
+      await setTool('stair');
+      const sp = [
+        [X + 2, Y + 2],
+        [X + 2, Y + 12],
+        [X + 9, Y + 12],
+      ];
+      const r4 = undoRing.length;
+      for (const p of sp) await tap(p[0], p[1]);
+      key('Enter');
+      await tick();
+      const st = (DOC.stairs || [])[0];
+      const lay = st ? stairLayoutOf(st) : null;
+      const w4 = st ? st.w : 0;
+      const rise4 = L2.elev - 0;
+      const wantN = Math.round(rise4 / (17.5 / 30.48));
+      const run4 = 10 - w4 / 2 + (7 - w4 / 2);
+      const symN = pbSvg.querySelectorAll('.stairSym').length;
+      T(
+        'pb-lv-stair-draw',
+        (DOC.stairs || []).length === 1 &&
+          !!lay &&
+          lay.stepsN === wantN &&
+          lay.landings.length === 1 &&
+          Math.abs(lay.tread - run4 / wantN) < 1e-6 &&
+          Math.abs(lay.steps[lay.steps.length - 1].top - rise4) < 1e-6 &&
+          wallEdit.sel &&
+          wallEdit.sel.kind === 'stair' &&
+          symN === 1 &&
+          undoRing.length === r4 + 1 &&
+          new RegExp(wantN + ' 级').test(Q('#wMsg').textContent),
+        (lay ? lay.stepsN : '?') +
+          ' 级（独立量 ' +
+          wantN +
+          '）· 踏面 ' +
+          (lay ? (lay.tread * 30.48).toFixed(1) : '?') +
+          'cm · 平台 ' +
+          (lay ? lay.landings.length : '?') +
+          ' · ' +
+          Q('#wMsg').textContent.slice(0, 40)
+      );
+
+      /* 23.4b 双跑楼梯：梯宽 91cm、第一段斜着（不触发横平竖直吸附）—— 第 3 点吸到一个梯宽、点满 4 个点自动结束 →
+         一部双跑楼梯（端点与梯宽各自取整到 0.01ft 也不许被判「放不下」：审查实测 91cm 时一半被拒）；
+         整图 ×0.99 之后它还在、还是双跑（中段定回一个梯宽），撤销两步回到原样 */
+      // 外轮廓 = 梯段 + 平台的并集（面积相等 = 没有碎缝 / 尖刺 / 自交）
+      const ringArea = (P) =>
+        Math.abs(P.reduce((t, p, i) => t + p[0] * P[(i + 1) % P.length][1] - P[(i + 1) % P.length][0] * p[1], 0) / 2);
+      const outlineIsUnion = (L) =>
+        !!L && Math.abs(ringArea(L.outline) - L.footprint.reduce((t, q) => t + ringArea(q), 0)) < 0.05;
+      Q('#stW').value = '91';
+      const w4b = FT2(91 / 30.48);
+      const Q0 = [X + 14, Y + 2],
+        Q1 = [X + 15.5, Y + 11]; // 偏 9.5°
+      const dir4b = [
+        (Q1[0] - Q0[0]) / Math.hypot(Q1[0] - Q0[0], Q1[1] - Q0[1]),
+        (Q1[1] - Q0[1]) / Math.hypot(Q1[0] - Q0[0], Q1[1] - Q0[1]),
+      ];
+      const nrm4b = [-dir4b[1], dir4b[0]];
+      const Q2 = [Q1[0] + nrm4b[0] * (w4b + 0.12), Q1[1] + nrm4b[1] * (w4b + 0.12)]; // 点得不准：吸附把它拉到正好一个梯宽
+      const Q3 = [Q2[0] - dir4b[0] * 8, Q2[1] - dir4b[1] * 8];
+      const n4b = DOC.stairs.length,
+        r4b = undoRing.length;
+      for (const p of [Q0, Q1, Q2, Q3]) await tap(p[0], p[1]);
+      await tick();
+      const st4b = DOC.stairs[DOC.stairs.length - 1];
+      const ok4b =
+        DOC.stairs.length === n4b + 1 &&
+        Math.abs(st4b.w - w4b) < 1e-9 &&
+        GEO_PTS.isDogLeg(st4b.path, st4b.w) &&
+        !!stairLayoutOf(st4b) &&
+        stairLayoutOf(st4b).landings.length === 2 &&
+        outlineIsUnion(stairLayoutOf(st4b));
+      pushUndo('pb-lv-dog-rescale', true);
+      rescaleDocPlan(0.99);
+      geoChanged();
+      await tick();
+      const st4c = DOC.stairs.find((x) => x.id === st4b.id);
+      const ok4c =
+        !!st4c &&
+        !!stairLayoutOf(st4c) &&
+        GEO_PTS.isDogLeg(st4c.path, st4c.w) &&
+        pbSvg.querySelectorAll('.stairBad').length === 0;
+      undoStep();
+      await tick();
+      undoStep();
+      await tick();
+      Q('#stW').value = '90';
+      T(
+        'pb-lv-dogleg-91cm-and-rescale',
+        ok4b && ok4c && DOC.stairs.length === n4b && undoRing.length === r4b,
+        '画出来=' +
+          ok4b +
+          '（梯宽 ' +
+          (st4b ? st4b.w : '?') +
+          '）· ×0.99 后仍是双跑=' +
+          ok4c +
+          ' · 撤销回到 ' +
+          DOC.stairs.length +
+          ' 部'
+      );
+
+      /* 23.4c 放不下的楼梯（手改 / 旧导出的文档里才会有）：图上照样画出来（红色虚线 +「?」）、点得中、提示说清、Delete 删得掉 */
+      DOC.stairs.push({
+        id: 'st99',
+        path: [
+          [X + 20, Y + 3],
+          [X + 20, Y + 3.2],
+        ],
+        w: 3,
+        src: 'user',
+      });
+      geoChanged();
+      await tick();
+      const bad = pbSvg.querySelector('.stairBad[data-stair="st99"]');
+      const hitBad = pbSvg.querySelector('.stHit[data-stair="st99"]');
+      wallEdit.sel = { kind: 'stair', id: 'st99' };
+      updateWallBarFromSel();
+      const msgBad = Q('#wMsg').textContent;
+      key('Delete');
+      await tick();
+      T(
+        'pb-lv-invalid-stair-visible-and-deletable',
+        !!bad && !!hitBad && /放不下/.test(msgBad) && !DOC.stairs.some((x) => x.id === 'st99'),
+        '画出来=' +
+          !!bad +
+          ' · 命中区=' +
+          !!hitBad +
+          ' · 提示「' +
+          msgBad.slice(0, 24) +
+          '」· 删掉=' +
+          !DOC.stairs.some((x) => x.id === 'st99')
+      );
+      undoRing.length = r4b; // 这一步只是测试注入，不留在撤销环里
+      updateUndoUI();
+
+      /* 23.5 太陡要说：直跑 4ft 爬 9.8ft → 踏面不到 22cm → 提示「太陡」（红字），楼梯照样放下（用户自己决定） */
+      const nS = DOC.stairs.length;
+      for (const p of [
+        [X + 16, Y + 3],
+        [X + 16, Y + 7],
+      ])
+        await tap(p[0], p[1]);
+      key('Enter');
+      await tick();
+      const steepMsg = Q('#wMsg').textContent;
+      T(
+        'pb-lv-stair-steep-warned',
+        DOC.stairs.length === nS + 1 && /太陡/.test(steepMsg) && Q('#wMsg').classList.contains('err'),
+        steepMsg.slice(0, 60)
+      );
+      undoStep();
+      await tick();
+      await setTool('select');
+
+      /* 23.6 上一层看楼梯口：二层画虚线轮廓 +「下」，没有踏步线 */
+      Q('#lvBtns button[data-lv="' + lv2 + '"]').click();
+      await tick();
+      const gh = pbSvg.querySelector('.stairGhost');
+      T(
+        'pb-lv-stair-ghost-above',
+        !!gh && !pbSvg.querySelector('.stairSym') && gh.querySelector('.stairLbl').textContent === '下',
+        '虚线轮廓 ' + !!gh + ' · 本层楼梯符号 ' + pbSvg.querySelectorAll('.stairSym').length
+      );
+
+      /* 23.6a 二层用楼梯工具在楼梯口里点：是在画一部新楼梯的起步点，不是去选（拖 / 删）下一层那部同 id 的楼梯 */
+      await setTool('stair');
+      await tap(X + 2, Y + 7);
+      const startedHere = wallEdit.drawPts.length === 1 && !wallEdit.sel;
+      key('Escape');
+      await tick();
+      await setTool('select');
+      T(
+        'pb-lv-stair-tool-ignores-ghost',
+        startedHere && (LV.levelContentOf(DOC, 'lv1').stairs || []).length === 1 && (DOC.stairs || []).length === 0,
+        '楼梯口里点一下 → 起步点=' +
+          startedHere +
+          ' · 一层楼梯还在=' +
+          ((LV.levelContentOf(DOC, 'lv1').stairs || []).length === 1)
+      );
+
+      /* 23.6b 家具压在楼梯口上 = 红框（与家具互相重叠同一套反馈）；挪到房间另一头就不红；
+         挪进 L 形两段梯段之间那块空地（凹口里）也不红 —— 洞是 L 形，不是凸包 */
+      const furnG = () => pbSvg.querySelector('g.furn[data-uid="' + it23.uid + '"]');
+      // 撤销 / 重做会换掉 state.items 里的对象（快照 JSON 重建）：按 uid 取活的那一件
+      const live23 = () => state.items.find((i) => i.uid === it23.uid);
+      const at0 = [live23().x, live23().y, live23().rot];
+      const putAt = (x, y) => {
+        Object.assign(live23(), { x, y, rot: 0 });
+        drawFurniture();
+      };
+      putAt(X + 2, Y + 7);
+      const onHole = furnG().classList.contains('onStair');
+      putAt(X + 18, Y + 8);
+      const away = furnG().classList.contains('onStair');
+      putAt(X + 7, Y + 6); // 两段梯段之间（凸包会把这里也算成洞）
+      const inNotch = furnG().classList.contains('onStair');
+      Object.assign(live23(), { x: at0[0], y: at0[1], rot: at0[2] });
+      drawFurniture();
+      T(
+        'pb-lv-furniture-on-stair-opening',
+        onHole && !away && !inNotch,
+        '压在楼梯口=' + onHole + ' · 房间另一头=' + away + ' · L 的凹口里=' + inNotch
+      );
+
+      /* 23.7 3D：两层各在自己的标高；从上往下打射线 —— 楼梯处穿过二层楼板的洞打到一层的踏步，别处打到二层地面 */
+      setView('3d');
+      await wait3D(80);
+      const G = three.levelGroups;
+      three.staticGroup.updateMatrixWorld(true);
+      const rc23 = new THREE.Raycaster();
+      const down23 = (x, y) => {
+        rc23.set(new THREE.Vector3(x, 40, y), new THREE.Vector3(0, -1, 0));
+        const hs = rc23.intersectObjects(three.staticGroup.children, true);
+        return hs.length ? hs[0] : null;
+      };
+      const hSt = down23(X + 2, Y + 7),
+        hFl = down23(X + 18, Y + 8);
+      const furn23 = three.furnMap && three.furnMap.get(it23.uid);
+      T(
+        'pb-lv-3d-stack-and-hole',
+        !!G &&
+          G.size === 2 &&
+          Math.abs(G.get('lv1').position.y) < 1e-9 &&
+          Math.abs(G.get(lv2).position.y - L2.elev) < 1e-9 &&
+          G.get('lv1').visible &&
+          G.get(lv2).visible &&
+          !!hSt &&
+          !!hSt.object.material.userData.stair &&
+          hSt.point.y > 0.3 &&
+          hSt.point.y < L2.elev - 0.3 &&
+          !!hFl &&
+          Math.abs(hFl.point.y - L2.elev) < 0.05 &&
+          !!furn23 &&
+          Math.abs(furn23.g.position.y - L2.elev) < 0.05,
+        '组 ' +
+          (G ? [...G.keys()].map((k) => k + '@' + G.get(k).position.y.toFixed(2)).join(',') : '无') +
+          ' · 楼梯处射线 y=' +
+          (hSt ? hSt.point.y.toFixed(2) + (hSt.object.material.userData.stair ? '(踏步)' : '(别的)') : '无') +
+          ' · 别处 y=' +
+          (hFl ? hFl.point.y.toFixed(2) : '无') +
+          ' · 家具 y=' +
+          (furn23 ? furn23.g.position.y.toFixed(2) : '无')
+      );
+
+      /* 23.8 娃娃屋切到一层：二层（和它的家具）藏起来，相机整体下移一个标高差；室内视角显示全部楼层 */
+      const ty0 = three.controls.target.y;
+      Q('#lvBtns button[data-lv="lv1"]').click();
+      await wait3D(80);
+      const hid = !G.get(lv2).visible && G.get('lv1').visible && !furn23.g.visible;
+      const dT = three.controls.target.y - ty0;
+      setCamMode('fp');
+      await tick();
+      // setCamMode 末尾的 controls.update() 会把室内机位推高几厘米（S17 之前就这样）——
+      // 这里断的是「站在这一层」：离这一层的眼高 < 0.5ft（站错层差的是一整个层高）
+      const fpY = three.cam.position.y;
+      const fpAll = G.get(lv2).visible && furn23.g.visible && Math.abs(fpY - eyeY()) < 0.5;
+      setCamMode('doll');
+      await tick();
+      T(
+        'pb-lv-3d-doll-shows-below',
+        hid && Math.abs(dT + L2.elev) < 1e-6 && fpAll,
+        '二层隐藏=' +
+          hid +
+          ' · 相机目标 Δy=' +
+          dT.toFixed(2) +
+          ' · 室内全显=' +
+          fpAll +
+          '（机位 y=' +
+          fpY.toFixed(2) +
+          '）'
+      );
+
+      /* 23.8b 在 3D 里点「＋ 加一层」：新楼层（连同带上来的外壳）当场出现在 3D 里 —— 切层不重建 3D，但加层改了内容的并集
+         （审查实测：以前要等下一次改几何才出现，相机还被抬到一层空气里）；撤销后回到两层 */
+      Q('#lvAddUp').click();
+      await wait3D(80);
+      const G8 = three.levelGroups,
+        lv8 = DOC.level;
+      const has8 = !!G8 && G8.size === 3 && G8.has(lv8) && G8.get(lv8).children.length > 0;
+      undoStep();
+      await wait3D(80);
+      const back8 = three.levelGroups.size === 2 && DOC.level === 'lv1';
+      T(
+        'pb-lv-3d-add-level-appears',
+        has8 && back8,
+        '加层后 3D 组 ' +
+          (G8 ? G8.size : 0) +
+          ' 个（新层有构件=' +
+          has8 +
+          '）· 撤销后 ' +
+          three.levelGroups.size +
+          ' 个'
+      );
+      setView('2d');
+      await tick();
+      await enterEdit();
+
+      /* 23.9 撤销跨层：撤掉「画楼梯」→ 楼梯没了；再撤「二层放家具」→ 视图回到二层、家具没了；重做两步全回来 */
+      undoStep();
+      await tick();
+      const u1 = DOC.level === 'lv1' && (DOC.stairs || []).length === 0;
+      undoStep();
+      await tick();
+      const u2 = DOC.level === lv2 && !state.items.some((i) => i.uid === it23.uid);
+      redoStep();
+      await tick();
+      redoStep();
+      await tick();
+      const u3 =
+        DOC.level === 'lv1' &&
+        (DOC.stairs || []).length === 1 &&
+        state.items.some((i) => i.uid === it23.uid && i.lv === lv2);
+      T('pb-lv-undo-cross-level', u1 && u2 && u3, '撤楼梯=' + u1 + ' · 撤家具回到二层=' + u2 + ' · 重做两步=' + u3);
+
+      /* 23.10 改一层层高 → 二层标高跟着重排（层高 + 楼板），楼梯跟着变高（踏步重算，最后一级仍齐平上层地面） */
+      Q('#lvMore').click();
+      await tick();
+      Q('#lvCeil').value = '300';
+      Q('#lvCeil').dispatchEvent(new Event('change'));
+      await tick();
+      const want10 = 300 / 30.48 + 1.0;
+      const e10 = DOC.levels.find((l) => l.id === lv2).elev;
+      const lay10 = stairLayoutOf(DOC.stairs[0]);
+      T(
+        'pb-lv-ceil-relayout',
+        Math.abs(DOC.ceilingH - 300 / 30.48) < 1e-6 &&
+          Math.abs(e10 - want10) < 1e-6 &&
+          Math.abs(lay10.rise - want10) < 1e-6 &&
+          Math.abs(lay10.steps[lay10.steps.length - 1].top - want10) < 1e-6 &&
+          lay10.stepsN === Math.round(want10 / (17.5 / 30.48)),
+        '二层标高 ' + e10.toFixed(3) + '（独立量 ' + want10.toFixed(3) + '）· 楼梯 ' + lay10.stepsN + ' 级'
+      );
+      undoStep();
+      await tick();
+
+      /* 23.10b 层高上下限按 cm 判：输入框允许的 610cm 收下（以前 610/30.48 = 20.013 > 20 被拒）、212cm 拒（门扇 207cm 会戳出天花）；
+         吸顶灯按层高建模：改层高后 3D 里灯跟着上去，抬高量 = 层高差（以前签名里没有层高，只挪了位姿 → 抬高 0） */
+      const setCeil = async (cm) => {
+        Q('#lvCeil').value = String(cm);
+        Q('#lvCeil').dispatchEvent(new Event('change'));
+        await tick();
+      };
+      const r10 = undoRing.length;
+      await setCeil(610);
+      const took610 = Math.abs(DOC.ceilingH - 610 / 30.48) < 1e-6 && undoRing.length === r10 + 1;
+      undoStep();
+      await tick();
+      await setCeil(212);
+      const refused212 = Math.abs(DOC.ceilingH - ceil1) < 1e-9 && undoRing.length === r10;
+      Q('#lvCeil').value = String(Math.round(ceil1 * 30.48));
+      const lamp = CATALOG.find((c) => c.kind === 'ceilingLight');
+      addItem(lamp.id);
+      await tick();
+      const lampIt = state.items[state.items.length - 1];
+      const topOf = () => {
+        const rec = three.furnMap.get(lampIt.uid);
+        rec.g.updateMatrixWorld(true);
+        return new THREE.Box3().setFromObject(rec.g).max.y;
+      };
+      setView('3d');
+      await wait3D(80);
+      const top0 = topOf();
+      setView('2d');
+      await tick();
+      await setCeil(300);
+      setView('3d');
+      await wait3D(80);
+      const top1 = topOf();
+      setView('2d');
+      await tick();
+      await enterEdit();
+      undoStep(); // 层高
+      await tick();
+      undoStep(); // 那盏灯
+      await tick();
+      T(
+        'pb-lv-ceil-limits-and-lamp-follows',
+        took610 &&
+          refused212 &&
+          Math.abs(top1 - top0 - (300 / 30.48 - ceil1)) < 0.02 &&
+          !state.items.some((i) => i.uid === lampIt.uid),
+        '610cm 收下=' +
+          took610 +
+          ' · 212cm 拒=' +
+          refused212 +
+          ' · 吸顶灯顶 ' +
+          top0.toFixed(2) +
+          ' → ' +
+          top1.toFixed(2) +
+          'ft（天花 ' +
+          ceil1.toFixed(2) +
+          ' → ' +
+          (300 / 30.48).toFixed(2) +
+          '）'
+      );
+
+      /* 23.11 往下加（地下室）：标高 = −(层高 + 楼板)；楼层条三个按钮自上而下；删它要点两次，删完回到相邻层 */
+      Q('#lvAddDown').click();
+      await tick();
+      const b11 = DOC.levels.find((l) => l.id === DOC.level);
+      const order11 = lvBtns()
+        .map((b) => b.textContent)
+        .join('/');
+      Q('#lvDel').click();
+      await tick();
+      const armed = DOC.levels.length === 3;
+      // 点亮「再点一次就删」之后切走再切回来：确认状态作废（换户型 / 撤销同理），这一下只是重新点亮
+      const bId = DOC.level;
+      Q('#lvBtns button[data-lv="lv1"]').click();
+      await tick();
+      Q('#lvBtns button[data-lv="' + bId + '"]').click();
+      await tick();
+      Q('#lvDel').click();
+      await tick();
+      const rearmed = DOC.levels.length === 3;
+      Q('#lvDel').click();
+      await tick();
+      T(
+        'pb-lv-basement-add-delete',
+        b11.name === '地下室' &&
+          Math.abs(b11.elev + (DOC.ceilingH + 1.0)) < 1e-6 &&
+          order11 === '二层/一层/地下室' &&
+          armed &&
+          rearmed &&
+          DOC.levels.length === 2 &&
+          DOC.level === 'lv1',
+        b11.name +
+          '@' +
+          b11.elev.toFixed(2) +
+          ' · 条 ' +
+          order11 +
+          ' · 第一次点删除只是确认=' +
+          armed +
+          ' · 切走再回来要重新确认=' +
+          rearmed +
+          ' · 删后当前层 ' +
+          DOC.level
+      );
+
+      /* 23.12 整图缩放 ×2：不在当前层的二层也一起缩（同一个中心）—— 否则上下层错位 */
+      const k2 = LV.levelContentOf(DOC, lv2).walls[0].geom;
+      const len2 = Math.hypot(k2.x2 - k2.x1, k2.y2 - k2.y1);
+      const k1 = DOC.walls[0].geom;
+      const len1 = Math.hypot(k1.x2 - k1.x1, k1.y2 - k1.y1);
+      pushUndo('pb-lv-rescale', true);
+      rescaleDocPlan(2);
+      geoChanged();
+      await tick();
+      const g2 = LV.levelContentOf(DOC, lv2).walls[0].geom,
+        g1 = DOC.walls[0].geom;
+      const len2b = Math.hypot(g2.x2 - g2.x1, g2.y2 - g2.y1),
+        len1b = Math.hypot(g1.x2 - g1.x1, g1.y2 - g1.y1);
+      const same = Math.abs(g2.x1 - g1.x1) < 0.02 && Math.abs(g2.y1 - g1.y1) < 0.02; // 上下层同一面外墙仍重合
+      T(
+        'pb-lv-rescale-all-levels',
+        Math.abs(len2b / len2 - 2) < 0.01 && Math.abs(len1b / len1 - 2) < 0.01 && same,
+        '一层 ' +
+          len1.toFixed(2) +
+          '→' +
+          len1b.toFixed(2) +
+          ' · 二层 ' +
+          len2.toFixed(2) +
+          '→' +
+          len2b.toFixed(2) +
+          ' · 重合=' +
+          same
+      );
+      undoStep();
+      await tick();
+
+      /* 23.13 导出往返：整栋（两层 + 当前层）过校验；不在当前层的那层也带上自己的地板轮廓 */
+      const ex = JSON.parse(exportDocJSON());
+      const im = importDocFromJSON(JSON.stringify(ex));
+      const exL2 = (ex.levels || []).find((l) => l.id === lv2);
+      T(
+        'pb-lv-export-roundtrip',
+        im.errs.length === 0 &&
+          ex.levels.length === 2 &&
+          ex.level === 'lv1' &&
+          !!exL2 &&
+          Array.isArray(exL2.floorOutline) &&
+          exL2.floorOutline.length >= 4 &&
+          exL2.walls.length === 6 &&
+          exL2.windows.length === 1 &&
+          (exL2.stairs || []).length === 0 &&
+          (ex.stairs || []).length === 1,
+        '校验错误 ' +
+          im.errs.length +
+          ' · 二层轮廓 ' +
+          (exL2 && exL2.floorOutline ? exL2.floorOutline.length : 0) +
+          ' 点'
+      );
+
+      /* 23.14 删掉二层：它的家具一起删（两步确认、可撤销）；撤销回来家具还在二层 */
+      Q('#lvBtns button[data-lv="' + lv2 + '"]').click();
+      await tick();
+      const nI = state.items.length;
+      Q('#lvDel').click();
+      await tick();
+      Q('#lvDel').click();
+      await tick();
+      const del14 = DOC.levels.length === 1 && state.items.length === nI - 1 && DOC.level === 'lv1';
+      undoStep();
+      await tick();
+      const back14 = DOC.levels.length === 2 && state.items.some((i) => i.uid === it23.uid && i.lv === lv2);
+      T('pb-lv-delete-with-items', del14 && back14, '删=' + del14 + ' · 撤销回来=' + back14);
+
+      /* 23.15 每层一张图：加一层「不带外墙」的空楼层 → 导入底图时缺省「放进这一层」（不新建户型）；
+         底图摆在房子正中；空楼层的地板轮廓沿用下一层的（不是底图那块带留白的包围盒）；一步撤销 */
+      Q('#lvCopyShell').checked = false;
+      Q('#lvAddUp').click();
+      await tick();
+      Q('#lvCopyShell').checked = true;
+      const lv15 = DOC.level,
+        plans15 = PLAN_REG.plans.length;
+      const fpBelow = LV.levelContentOf(DOC, lv2) ? withLevel(lv2, () => floorPts()) : null;
+      const cv15 = document.createElement('canvas');
+      cv15.width = 400;
+      cv15.height = 300;
+      const g15 = cv15.getContext('2d');
+      g15.fillStyle = '#fff';
+      g15.fillRect(0, 0, 400, 300);
+      g15.fillStyle = '#000';
+      g15.fillRect(40, 30, 320, 240);
+      const im15 = new Image();
+      im15.src = cv15.toDataURL('image/png');
+      _imgPending = { data: im15.src, w: 400, h: 300, name: 'pb-二层图', pts: [], _im: im15 };
+      openImgModal();
+      await tick();
+      const destShown = getComputedStyle(Q('#imgDestRow')).display !== 'none',
+        destDefault = Q('#imgDest').value,
+        okText = Q('#imgOk').textContent;
+      const r15 = undoRing.length;
+      const trace0 = Q('#imgTraceChk').checked;
+      Q('#imgTraceChk').checked = false; // 特征线提取是异步的，别让它在后面几步里才落地
+      Q('#imgOk').click();
+      await tick();
+      Q('#imgTraceChk').checked = trace0;
+      const bi15 = DOC.baseImage;
+      const bb = (P) => {
+        const xs = P.map((q) => q[0]),
+          ys = P.map((q) => q[1]);
+        return [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)];
+      };
+      const fpNow = floorPts();
+      const [fx0, fy0, fx1, fy1] = bb(fpNow);
+      const [bx0, by0, bx1, by1] = bb(fpBelow);
+      const imgW = (400 * 0.01) / 0.3048,
+        imgH = (300 * 0.01) / 0.3048; // 未标定：1px = 1cm
+      const centered =
+        !!bi15 &&
+        Math.abs(bi15.ox + imgW / 2 - (bx0 + bx1) / 2) < 0.05 &&
+        Math.abs(bi15.oy + imgH / 2 - (by0 + by1) / 2) < 0.05;
+      const sameOutline =
+        Math.abs(fx0 - bx0) < 1e-6 &&
+        Math.abs(fy0 - by0) < 1e-6 &&
+        Math.abs(fx1 - bx1) < 1e-6 &&
+        Math.abs(fy1 - by1) < 1e-6;
+      undoStep();
+      await tick();
+      const undone = DOC.level === lv15 && !DOC.baseImage;
+      T(
+        'pb-lv-image-per-level',
+        destShown &&
+          destDefault === 'level' &&
+          okText === '导入到这一层' &&
+          !!bi15 &&
+          PLAN_REG.plans.length === plans15 &&
+          DOC.walls.length === 0 &&
+          centered &&
+          sameOutline &&
+          undoRing.length === r15 &&
+          undone,
+        '缺省=' +
+          destDefault +
+          ' · 按钮「' +
+          okText +
+          '」· 没新建户型=' +
+          (PLAN_REG.plans.length === plans15) +
+          ' · 居中=' +
+          centered +
+          ' · 空楼层轮廓沿用下层=' +
+          sameOutline +
+          ' · 撤销=' +
+          undone
+      );
+
+      /* 收尾：删掉这份户型 */
+      Q('#lvMore').click();
+      await tick();
+      await enterEdit();
+      Q('#btnPlanDel').click();
+      await tick();
+      Q('#btnPlanDel').click();
+      await tick();
+      T(
+        'pb-lv-clean-exit',
+        PLAN_ID !== p23Plan && PLAN_REG.plans.length === p23Plans && !hasLevelsNow(),
+        'plans ' + p23Plans + '→' + PLAN_REG.plans.length
+      );
+    }
+
     /* ===== 收尾：页面不得有未捕获异常 ===== */
     T('pb-no-page-errors', window.__ERRS.length === 0, window.__ERRS.slice(0, 3).join(' || '));
   } catch (e) {
