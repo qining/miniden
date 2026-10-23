@@ -16,6 +16,7 @@ import * as Pdf from './import-pdf';
 import * as Trace from './image-trace';
 import * as Points from './points';
 import * as Regions from './regions';
+import * as Stairs from './stairs';
 
 (globalThis as { MINIDEN_GEO?: unknown }).MINIDEN_GEO = {
   importDxf: Dxf.importDxf,
@@ -42,4 +43,10 @@ import * as Regions from './regions';
   footprint: Regions.footprint,
   polyArea: Regions.polyArea,
   simplifyClosed: Regions.simplifyClosed,
+  // S17：楼梯几何（直跑 / L / U / 双跑 → 踏步 / 平台 / 外轮廓 / 箭头）；家具压在楼梯 / 楼梯口上的面积
+  stairLayout: Stairs.stairLayout,
+  stepCount: Stairs.stepCount,
+  fitStairPath: Stairs.fitStairPath,
+  isDogLeg: Stairs.isDogLeg,
+  convexClipArea: Points.convexClipArea,
 };

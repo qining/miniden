@@ -348,6 +348,59 @@ export interface Outlet {
   src?: 'user';
 }
 
+/* S17（ADR-0007）：楼梯 —— 属于它起步的那一层，升到上一层。中心线 2–4 个点（直跑 / L 形 / U 形），宽 w（ft）；
+   踏步数缺省按层间高差 / 17.5cm 取整（steps 给了就用它）。 */
+export interface Stair {
+  id: string;
+  path: Pt[];
+  w: number;
+  steps?: number;
+  src?: 'user';
+}
+
+/* S17（ADR-0007）：楼层。当前层的内容在文档顶层；其余层的内容在各自的 levels[i] 里（LEVEL_KEYS 这些键）。 */
+export const LEVEL_KEYS = [
+  'walls',
+  'windows',
+  'doors',
+  'solids',
+  'rooms',
+  'fixtures',
+  'runs',
+  'outlets',
+  'stairs',
+  'floorOutline',
+  'baseImage',
+  'patio',
+  'hidden',
+  'ceilingH',
+  'floorMat',
+] as const;
+export type LevelKey = (typeof LEVEL_KEYS)[number];
+export interface Level {
+  id: string;
+  name: string;
+  /** ft：这一层地面相对地面层（标高 0）的高度 */
+  elev: number;
+  /** ft：这一层地面下的楼板厚（缺省 1ft） */
+  slab?: number;
+  walls?: Wall[];
+  windows?: Window[];
+  doors?: Door[];
+  solids?: Solid[];
+  rooms?: Room[];
+  fixtures?: Fixture[];
+  runs?: Run[];
+  outlets?: Outlet[];
+  stairs?: Stair[];
+  floorOutline?: Pt[];
+  baseImage?: BaseImage;
+  patio?: { geom: Geom } | null;
+  hidden?: ProjectDoc['hidden'];
+  ceilingH?: number;
+  floorMat?: string;
+}
+
 export interface EnvState {
   preset: string; // 环境预设（R3：seattle-city / …）
   mode: 'day' | 'night';
@@ -420,6 +473,9 @@ export interface ProjectDoc {
   runs?: Run[]; // S12：台面/柜体 run（纯增量可选字段，不进投影）
   outlets?: Outlet[]; // S14：电源插座（纯增量可选字段，不进投影）
   floorMat?: string; // S16：整层的缺省地板（预设 id；缺省 = 应用自己的默认木地板）
+  stairs?: Stair[]; // S17：当前层的楼梯（纯增量可选字段，不进投影）
+  levels?: Level[]; // S17（ADR-0007）：楼层表；缺 = 单层（与以前逐字节一致）
+  level?: string; // S17：当前层 id（它的内容就是文档顶层这些数组）
   env: EnvState;
   baseImage?: BaseImage; // S7：用户底图（可选）
   floorOutline?: Pt[][]; // S11：地板轮廓（ft 多边形，导出/导入往返用）。纯增量可选字段，不进 docToLegacy 投影
@@ -445,11 +501,15 @@ const ID_PREFIX: Record<string, string> = {
   fixture: 'f',
   run: 'rn',
   outlet: 'ol',
+  stair: 'st',
 };
 
 /** 下一个未占用的稳定 id（w01, w02, …）。 */
 export function nextId(
-  doc: Pick<ProjectDoc, 'walls' | 'windows' | 'doors' | 'solids' | 'rooms' | 'fixtures' | 'runs' | 'outlets'>,
+  doc: Pick<
+    ProjectDoc,
+    'walls' | 'windows' | 'doors' | 'solids' | 'rooms' | 'fixtures' | 'runs' | 'outlets' | 'stairs'
+  >,
   kind: keyof typeof ID_PREFIX
 ): string {
   const p = ID_PREFIX[kind];
@@ -468,7 +528,9 @@ export function nextId(
                 ? doc.fixtures
                 : kind === 'outlet'
                   ? doc.outlets
-                  : doc.runs) ?? [];
+                  : kind === 'stair'
+                    ? doc.stairs
+                    : doc.runs) ?? [];
   let n = list.length + 1;
   const used = new Set(list.map((e) => e.id));
   while (used.has(`${p}${String(n).padStart(2, '0')}`)) n++;
@@ -819,6 +881,67 @@ export function validate(doc: unknown): ValidationError[] {
       if (!Array.isArray(hidden[k]) || !hidden[k].every(isStr)) fail(`hidden.${k}`, '必须是 id 字符串数组');
     }
   }
+  // S17：楼梯（中心线 2–4 点 = 直跑 / L / U；宽 1–10ft；踏步数可选）
+  if (d.stairs !== undefined) checkEntities(d.stairs, 'stairs', []);
+  if (Array.isArray(d.stairs)) {
+    (d.stairs as Array<Record<string, unknown>>).forEach((e, i) => {
+      if (typeof e !== 'object' || e === null) return;
+      const p = e.path;
+      if (!Array.isArray(p) || p.length < 2 || p.length > 4)
+        fail(`stairs[${i}].path`, '中心线必须是 2–4 个 [x, y]（ft）');
+      else
+        p.forEach((q, j) => {
+          if (!Array.isArray(q) || q.length !== 2 || !isNum(q[0]) || !isNum(q[1]))
+            fail(`stairs[${i}].path[${j}]`, '必须是 [x, y]（ft）');
+        });
+      if (!isNum(e.w) || (e.w as number) < 1 || (e.w as number) > 10) fail(`stairs[${i}].w`, '楼梯宽必须在 1–10ft');
+      if (e.steps !== undefined && (!Number.isInteger(e.steps) || (e.steps as number) < 2 || (e.steps as number) > 40))
+        fail(`stairs[${i}].steps`, '踏步数必须是 2–40 的整数');
+    });
+  }
+
+  // S17（ADR-0007）：楼层。当前层的内容在顶层（已经按上面的规则校验过）；其余层逐层用同一套规则校验
+  if (d.levels !== undefined) {
+    if (!Array.isArray(d.levels) || !d.levels.length) fail('levels', 'levels 必须是非空数组');
+    else {
+      const ids: string[] = [];
+      (d.levels as Array<Record<string, unknown>>).forEach((lv, i) => {
+        if (typeof lv !== 'object' || lv === null) {
+          fail(`levels[${i}]`, '不是对象');
+          return;
+        }
+        if (!isStr(lv.id) || !lv.id) fail(`levels[${i}].id`, 'id 必须是非空字符串');
+        else if (ids.includes(lv.id)) fail(`levels[${i}].id`, `重复的楼层 id ${lv.id}`);
+        else ids.push(lv.id);
+        if (!isStr(lv.name) || lv.name.length > 40) fail(`levels[${i}].name`, '楼层名必须是 ≤40 字符的文本');
+        if (!isNum(lv.elev)) fail(`levels[${i}].elev`, 'elev 必须是数（ft）');
+        if (lv.slab !== undefined && (!isNum(lv.slab) || (lv.slab as number) < 0 || (lv.slab as number) > 5))
+          fail(`levels[${i}].slab`, '楼板厚必须在 0–5ft');
+        if (lv.id === d.level) {
+          if (LEVEL_KEYS.some((k) => k in lv)) fail(`levels[${i}]`, '当前层的内容应该在文档顶层，外壳里不许再放内容');
+          return;
+        }
+        const synth: Record<string, unknown> = { ...d };
+        delete synth.levels;
+        delete synth.level;
+        for (const k of LEVEL_KEYS) delete synth[k];
+        Object.assign(synth, {
+          walls: [],
+          windows: [],
+          doors: [],
+          solids: [],
+          rooms: [],
+          fixtures: [],
+          patio: null,
+          hidden: { walls: [], windows: [], doors: [], solids: [] },
+          ceilingH: d.ceilingH,
+        });
+        for (const k of LEVEL_KEYS) if (lv[k] !== undefined) synth[k] = lv[k];
+        for (const e of validate(synth)) fail(`levels[${i}].${e.path}`, e.message);
+      });
+      if (!isStr(d.level) || !ids.includes(d.level)) fail('level', '当前层必须是 levels 里的某一层');
+    }
+  } else if (d.level !== undefined) fail('level', '没有 levels 却给了 level');
 
   return errs;
 }
@@ -919,6 +1042,9 @@ export function projectSchema(): object {
       runs: { type: 'array', items: { $ref: '#/definitions/run' } },
       outlets: { type: 'array', items: { $ref: '#/definitions/outlet' } },
       floorMat: { type: 'string', minLength: 1, maxLength: 40 },
+      stairs: { type: 'array', items: { $ref: '#/definitions/stair' } },
+      levels: { type: 'array', minItems: 1, items: { $ref: '#/definitions/level' } },
+      level: { type: 'string' },
       env: {
         type: 'object',
         required: ['preset', 'mode'],
@@ -1276,6 +1402,32 @@ export function projectSchema(): object {
           },
           src: { enum: ['builtin', 'user'] },
           userIndex: { type: 'integer' },
+        },
+      },
+      stair: {
+        type: 'object',
+        required: ['id', 'path', 'w'],
+        properties: {
+          id: { type: 'string' },
+          path: {
+            type: 'array',
+            minItems: 2,
+            maxItems: 4,
+            items: { type: 'array', minItems: 2, maxItems: 2, items: { type: 'number' } },
+          },
+          w: { type: 'number', minimum: 1, maximum: 10 },
+          steps: { type: 'integer', minimum: 2, maximum: 40 },
+          src: { enum: ['user'] },
+        },
+      },
+      level: {
+        type: 'object',
+        required: ['id', 'name', 'elev'],
+        properties: {
+          id: { type: 'string' },
+          name: { type: 'string', maxLength: 40 },
+          elev: { type: 'number' },
+          slab: { type: 'number', minimum: 0, maximum: 5 },
         },
       },
       outlet: {

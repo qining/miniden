@@ -98,3 +98,46 @@ export function pointBlockers(p: PointLike, boxes: readonly FurnBox[]): Array<st
   }
   return out;
 }
+
+/** 有向面积（绕向相关；只用它的符号与绝对值） */
+function ringArea(p: readonly Pt2[]): number {
+  let a = 0;
+  for (let i = 0; i < p.length; i++) {
+    const q = p[(i + 1) % p.length];
+    a += p[i][0] * q[1] - q[0] * p[i][1];
+  }
+  return a / 2;
+}
+
+/** S17：任意简单多边形 subject 落在凸多边形 clip 里的面积（Sutherland–Hodgman）。
+    subject 可以是凹的（L / U 形楼梯外轮廓）：裁出来的环可能带退化边，面积照样对。
+    用法：家具占地（凸）裁楼梯轮廓，面积 > 容差 = 压在楼梯 / 楼梯口上（只碰边、贴着放面积为 0，不算）。 */
+export function convexClipArea(subject: readonly Pt2[], clip: readonly Pt2[]): number {
+  if (subject.length < 3 || clip.length < 3) return 0;
+  const s = ringArea(clip) >= 0 ? 1 : -1;
+  let out: Pt2[] = subject.map((p) => [p[0], p[1]] as Pt2);
+  for (let i = 0; i < clip.length && out.length; i++) {
+    const a = clip[i],
+      b = clip[(i + 1) % clip.length];
+    const side = (p: Pt2) => s * ((b[0] - a[0]) * (p[1] - a[1]) - (b[1] - a[1]) * (p[0] - a[0]));
+    const cut = (p: Pt2, q: Pt2): Pt2 => {
+      const dp = side(p),
+        dq = side(q),
+        t = dp / (dp - dq);
+      return [p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t];
+    };
+    const inp = out;
+    out = [];
+    for (let j = 0; j < inp.length; j++) {
+      const p = inp[(j - 1 + inp.length) % inp.length],
+        q = inp[j];
+      const pIn = side(p) >= 0,
+        qIn = side(q) >= 0;
+      if (qIn) {
+        if (!pIn) out.push(cut(p, q));
+        out.push(q);
+      } else if (pIn) out.push(cut(p, q));
+    }
+  }
+  return out.length >= 3 ? Math.abs(ringArea(out)) : 0;
+}

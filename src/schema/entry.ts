@@ -17,5 +17,6 @@
 import * as Primitives from './primitives';
 import * as Project from './project';
 import * as Migrate from './migrate';
+import * as Levels from './levels';
 
-(globalThis as { MINIDEN?: unknown }).MINIDEN = { Primitives, Project, Migrate };
+(globalThis as { MINIDEN?: unknown }).MINIDEN = { Primitives, Project, Migrate, Levels };
