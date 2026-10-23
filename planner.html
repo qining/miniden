@@ -644,6 +644,7 @@
       <div class="field"><label>旋转</label><input id="pRot" type="number" step="0.1" style="width:64px"> °
         <input id="pRotSlider" type="range" min="0" max="359.5" step="0.5" style="width:104px;vertical-align:middle">
         <button class="btn" id="pRot90" style="padding:2px 8px">+90°</button></div>
+      <div class="field" id="pZRow"><label>离地</label><input id="pZ" type="number" min="0" step="1" style="width:64px" title="壁挂电视 / 吊柜 / 挂画 / 墙上的搁板：底边离地多高（0 = 落地）"> cm</div>
       <div class="field"><label>颜色</label><input id="pColor" type="color" style="width:50px;padding:2px;height:28px"></div>
       <div id="pLightRow" style="display:none">
         <div class="field"><label>色温</label>
@@ -4387,7 +4388,7 @@ function furnBoxes(){
     if(!onCurLevel(it)) continue;   // S17：别的楼层的家具挡不住这一层的插座
     const sp=itemSpec(it);
     if(!sp){ out.push({id:it.uid, corners:[], z0:0, z1:0, ghost:true}); continue; }
-    const vs=vSpan(sp);
+    const vs=vSpanIt(it, sp);   // S19：壁挂件按离地后的高度区间（挂在插座上方的不挡）
     out.push({ id:it.uid, corners:GEO_PTS.obbCorners(it.x, it.y, cm2ft(sp.w), cm2ft(sp.d), it.rot||0),
                z0:vs[0], z1:vs[1], rug:sp.kind==='rug', light:isLight(sp), name:sp.name });
   }
@@ -5253,6 +5254,7 @@ function drawFurniture(){
   const layer = (it)=>{ const sp=itemSpec(it)||{};
     if(sp.kind==='rug') return 0;                  // 地毯最底
     if(isLight(sp)) return 2;                      // 灯具永远最上层
+    if(itemZ(it)>0) return 1.5;                    // S19：壁挂件画在落地家具之上（电视挂在电视柜上方，俯视看得见它）
     return 1; };
   // S17：只画当前层的家具（其他层的在 3D 里；碰撞 / 选中也只在同层判）
   const sorted = state.items.filter(onCurLevel).sort((a,b)=>layer(a)-layer(b));
@@ -5264,6 +5266,12 @@ function drawFurniture(){
     const g = furnShape(it, spec);
     g.setAttribute('transform',`translate(${it.x*S} ${it.y*S}) rotate(${it.rot})`);
     gFurn.appendChild(g);
+    if(itemZ(it)>0 && !isLight(spec)){   // S19：离地件 = 虚线外框 + 「离地 xx」（建筑平面图里高处构件的画法）
+      g.classList.add('elevated');
+      const o=g.querySelector('rect,circle'); if(o) o.setAttribute('stroke-dasharray','5 3');
+      const t=el('text',{x:0, y:cm2ft(spec.d)/2*S-3, 'text-anchor':'middle', 'font-size':Math.min(9, cm2ft(spec.w)*S/5), fill:'rgba(255,255,255,.78)', class:'zLbl'}, g);
+      t.textContent='离地 '+fmtLen(itemZ(it));
+    }
     boxes.push({it, spec});
   }
   // 重叠检测
@@ -5280,16 +5288,17 @@ function drawFurniture(){
     const a=boxes[i]; if((a.spec.kind==='rug')) continue;
     const why=[];
     const c = isLight(a.spec) ? null : GEO_PTS.obbCorners(a.it.x, a.it.y, cm2ft(a.spec.w), cm2ft(a.spec.d), a.it.rot||0);
+    const high = vSpanIt(a.it, a.spec)[0] >= DOOR_HEAD;   // S19：整件高过门洞上沿的壁挂件：不挡门、不压楼梯（插墙照样判）
     for(let j=0;j<boxes.length;j++){
       if(i===j) continue; const b=boxes[j];
       if(b.spec.kind==='rug') continue;
       if(tuck(a.spec.kind,b.spec.kind)||tuck(b.spec.kind,a.spec.kind)) continue;
-      if(!vOverlap(a.spec,b.spec)) continue;      // 高度不重叠（如吸顶灯 vs 矮家具）不算碰撞
+      if(!vOverlapIt(a.it,a.spec,b.it,b.spec)) continue;      // 高度不重叠（如吸顶灯 vs 矮家具 / 壁挂电视 vs 下面的电视柜）不算碰撞
       if(obbOverlap(a.it,a.spec,b.it,b.spec)){ why.push('overlap'); break; }
     }
-    if(c && stObs.length && stObs.some(P=>GEO_PTS.convexClipArea(P, c) > 0.05)) why.push('onStair');
+    if(c && !high && stObs.length && stObs.some(P=>GEO_PTS.convexClipArea(P, c) > 0.05)) why.push('onStair');
     if(c && obsP && obsP.polys.some(P=>GEO_PTS.convexClipArea(P, c) > WALL_TOL)) why.push('inWall');
-    if(c && sweeps.length){
+    if(c && !high && sweeps.length){
       const hitD = sweeps.filter(d=>GEO_PTS.convexClipArea(d.poly, c) > DOOR_TOL);
       if(hitD.length){ why.push('blocksDoor'); for(const d of hitD) if(!blockedSweeps.includes(d)) blockedSweeps.push(d); }
     }
@@ -5374,6 +5383,15 @@ function vSpan(spec){
 function vOverlap(sa,sb){
   const a=vSpan(sa), b=vSpan(sb);
   return Math.min(a[1],b[1]) - Math.max(a[0],b[0]) > 0.02;   // 高度区间不相交=不算碰撞
+}
+/* S19：家具离地（壁挂电视 / 吊柜 / 挂画 / 墙上的搁板）。it.z = 离地 ft（缺 = 0，落地）；
+   灯具不吃 z（吸顶 / 筒灯 / 吊灯按层高定位，见 vSpan）。高度区间、遮挡、碰撞、3D 全按这个口径 */
+const DOOR_HEAD = 6.8;   // ft：门洞上沿（门扇高 207cm）——整件在它之上的壁挂件不挡门、不挡楼梯
+function itemZ(it){ return (it && typeof it.z==='number' && isFinite(it.z) && it.z>0) ? it.z : 0; }
+function vSpanIt(it, spec){ const v=vSpan(spec); if(isLight(spec)) return v; const z=itemZ(it); return [v[0]+z, v[1]+z]; }
+function vOverlapIt(ia,sa,ib,sb){
+  const a=vSpanIt(ia,sa), b=vSpanIt(ib,sb);
+  return Math.min(a[1],b[1]) - Math.max(a[0],b[0]) > 0.02;
 }
 function obbCorners(it,spec){
   // 圆形家具（圆桌/转椅/圆几）按内接方近似，避免方角误报碰撞
@@ -19211,7 +19229,7 @@ function sync3D(){
       if(prev && prev.sig!==GHOST_SIG){ disposeOwned(prev.g); three.furnGroup.remove(prev.g); prev.g=ghostGroup3D(); prev.sig=GHOST_SIG; changed++; }
       else if(!prev){ const g=ghostGroup3D(); three.furnGroup.add(g); map.set(it.uid,{g,sig:GHOST_SIG}); changed++; }
       const rec=map.get(it.uid);
-      rec.g.position.set(it.x, levelElev(itemLevel(it)), it.y); rec.g.rotation.y = -(it.rot||0)*Math.PI/180;
+      rec.g.position.set(it.x, levelElev(itemLevel(it))+itemZ(it), it.y); rec.g.rotation.y = -(it.rot||0)*Math.PI/180;
       alive.add(it.uid); continue;
     }
     let spec=base, shadow=false;
@@ -19222,7 +19240,7 @@ function sync3D(){
     const sig=furnSig(it, base, shadow)+'|'+ceilIt.toFixed(3);
     const prev=map.get(it.uid);
     if(prev && prev.sig===sig){                        // 几何没变 → 只更新位姿
-      prev.g.position.set(it.x, levelElev(itemLevel(it)), it.y);
+      prev.g.position.set(it.x, levelElev(itemLevel(it))+(isLight(base)?0:itemZ(it)), it.y);
       prev.g.rotation.y = -(it.rot||0)*Math.PI/180;
       continue;
     }
@@ -19233,7 +19251,7 @@ function sync3D(){
       const c0=CEIL_H, lvI=levelById(itemLevel(it)); CEIL_H = lvI ? LV.levelCeil(DOC, lvI) : c0;
       try{ g=furn3D(it,spec); } finally{ CEIL_H=c0; }
     } else g=furn3D(it,spec);
-    g.position.y = levelElev(itemLevel(it));
+    g.position.y = levelElev(itemLevel(it)) + (isLight(base)?0:itemZ(it));   // S19：离地
     three.furnGroup.add(g);
     map.set(it.uid, {g, sig});
     changed++;
@@ -19691,6 +19709,7 @@ function updateProps(){
     $('#pDims').textContent = '尺寸未知 · 位置可改、可旋转、可删除';
     if(document.activeElement!==$('#pRot')) $('#pRot').value = it.rot;
     if(document.activeElement!==$('#pRotSlider')) $('#pRotSlider').value = ((it.rot%360)+360)%360;
+    $('#pZRow').style.display='none';
     $('#pLightRow').style.display='none';
     $('#pColor').value = /^#/.test(itemColor(it))? itemColor(it) : '#8a7d6b';
     $('#pPrice').textContent = '—'; $('#pPrice').title = '目录里没有这件，不进采购清单';
@@ -19704,6 +19723,9 @@ function updateProps(){
   $('#pDims').textContent = fmtDims(s);
   if(document.activeElement!==$('#pRot')) $('#pRot').value = it.rot;
   if(document.activeElement!==$('#pRotSlider')) $('#pRotSlider').value = ((it.rot%360)+360)%360;
+  // S19：离地（灯具按天花定位，不给这个框）
+  $('#pZRow').style.display = isLight(s) ? 'none' : '';
+  if(document.activeElement!==$('#pZ')) $('#pZ').value = Math.round(itemZ(it)*30.48);
   syncLightUI(it);
   $('#pColor').value = /^#/.test(itemColor(it))? itemColor(it) : '#8a7d6b';
   const _pp = priceOf(s);
@@ -19717,6 +19739,20 @@ function updateProps(){
   $('#pClear').textContent = `位置 (${it.x.toFixed(2)}, ${it.y.toFixed(2)}) ft` + (why.length ? ' · ⚠ '+why.map(k=>BLOCK_WHY[k]).join('；') : '');
   $('#pClear').style.color = why.length ? '#ff8a80' : '';
 }
+/* S19：离地。提交式（change）：一次改动一步撤销；顶不能高过这一层的天花；重打同一个数不占步 */
+$('#pZ').addEventListener('change', e=>{
+  if(photoFrozen('改家具')) return;
+  const it=state.items.find(i=>i.uid===selected); if(!it) return; const sp=itemSpec(it); if(!sp || isLight(sp)) return;
+  const v=+e.target.value, cur=Math.round(itemZ(it)*30.48);
+  if(e.target.value==='' || !isFinite(v) || v<0){ e.target.value=cur; toast('离地要填 0 或正数（cm）'); return; }
+  const lv = hasLevelsNow() ? levelById(itemLevel(it)) : null, ceil = lv ? LV.levelCeil(DOC, lv) : CEIL_H;
+  const maxCm = Math.max(0, Math.floor((ceil - cm2ft(sp.h||60))*30.48));
+  if(v>maxCm){ e.target.value=cur; toast('这件高 '+Math.round(sp.h||60)+'cm，层高 '+Math.round(ceil*30.48)+'cm：离地最多 '+maxCm+'cm（再高就顶到天花了）', 5000); return; }
+  if(Math.round(v)===cur) return;
+  pushUndo('z:'+it.uid, true);
+  if(v>0) it.z=FT4(v/30.48); else delete it.z;
+  drawFurniture(); save();
+});
 $('#pRot').addEventListener('input', e=>{ if(photoFrozen('改家具')) return; const it=state.items.find(i=>i.uid===selected); if(!it) return;
   // 空框 / 非法文本（"-"、"1e"）不是角度：把它当 0 会让家具先转没了再转回来，还白占一步撤销。
   // （"45." 在 number input 里是合法浮点写法，Number("45.")=45，不需要特殊处理）
@@ -21080,6 +21116,7 @@ $('#fileJson').addEventListener('change', ev=>{
     const lvIds = new Set(hasLevelsNow() ? DOC.levels.map(l=>l.id) : [LV.BASE_LEVEL_ID]);
     // 没有 lv 的件 = lv1；lv1 若已被删掉，它们同样是「楼层对不上」（不就地改就会出现在每一层、跟着切层走）
     for(const it of state.items) if(!lvIds.has(it.lv || LV.BASE_LEVEL_ID)){ if(hasLevelsNow()) it.lv = DOC.level; else delete it.lv; lvFix++; }
+    for(const it of state.items) if('z' in it && !(typeof it.z==='number' && isFinite(it.z) && it.z>=0 && it.z<40)) delete it.z;   // S19：离地只收合法数（ft）
     uidSeq = Math.max(0, ...state.items.map(i=>i.uid), 0) + 1;
     selected = null; buildCatalog(); refresh(); save();
     /* 「可撤销」这句话不能说成条件句：pushUndo 在「环顶已等于当前状态」时会跳过（死步防护），
