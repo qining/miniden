@@ -87,7 +87,9 @@ window.addEventListener('load', ()=>{ setTimeout(async ()=>{
     // --- 建模 ---
     const g=furn3D({uid:-1, ref:sp.id, x:0, y:0, rot:0}, sp);
     g.updateMatrixWorld(true);
-    const b=new THREE.Box3().setFromObject(g);
+    // precise=true：逐顶点量。?nomerge 下每个部件的几何包围盒是在它自己的局部系里算的，转到世界系再取 AABB 会膨胀
+    // （侧转的叶片、斜腿虚报 3–6%）；实际出图走合并，合并后的几何就在模型系里 —— 逐顶点量才和用户看到的一致
+    const b=new THREE.Box3().setFromObject(g, true);
     const sz=new THREE.Vector3(), ct=new THREE.Vector3(); b.getSize(sz); b.getCenter(ct);
     const fx=sz.x/cm2ft(sp.w), fz=sz.z/cm2ft(sp.d), fy=sz.y/cm2ft(sp.h);
     const P=(n,ok,x)=>L.push((ok?'PASS ':'FAIL ')+n+(x!==undefined?' | '+x:''));
@@ -128,7 +130,7 @@ window.addEventListener('load', ()=>{ setTimeout(async ()=>{
     // --- 最高/最低的部件（排查沉底用）---
     const rows=[];
     g.children.forEach((ch,i)=>{ ch.updateMatrixWorld(true);
-      const bb=new THREE.Box3().setFromObject(ch);
+      const bb=new THREE.Box3().setFromObject(ch, true);
       if(!bb.isEmpty()) rows.push([i, bb.min.y, bb.max.y]); });
     rows.sort((a,b)=>a[1]-b[1]);
     L.push('最低的三个部件 y: '+rows.slice(0,3).map(r=>'#'+r[0]+'@'+r[1].toFixed(2)).join('  '));
@@ -153,6 +155,7 @@ window.addEventListener('load', ()=>{ setTimeout(async ()=>{
     }
     // --- 价格 ---
     if(isBuiltIn(sp)) L.push('价格：公寓自带，不计价');
+    else if(sp.noPrice===true) L.push('价格：通用件（noPrice：显式声明没有独立售价，按尺寸档位规划用）');
     else{
       P('有价格', !!priceOf(sp,'usd')||!!priceOf(sp,'cad'),
         'US '+(fmtPrice(sp,'usd')||'—')+' / CA '+(fmtPrice(sp,'cad')||'—'));
@@ -160,6 +163,8 @@ window.addEventListener('load', ()=>{ setTimeout(async ()=>{
         L.push('  注意：没有加拿大实际标价，加元视图会按汇率折算并标 ≈');
     }
     // --- 隔离渲染出图 ---
+    // E26 首次引导卡（只弹一次，但体检用的是默认 profile，弹不弹看这台机器的历史）会盖住画布：出图前收掉
+    { const fr=document.querySelector('#firstRun'); if(fr) fr.style.display='none'; }
     state.items=[]; save=()=>{};
     state.items.push({uid:uidSeq++, ref:sp.id, x:18, y:26, rot:0});
     refresh(); setView('doll'); await wait(3400);

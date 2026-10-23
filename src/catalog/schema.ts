@@ -52,6 +52,8 @@ export interface CatalogEntry {
   color?: string;
   color2?: string;
   seatH?: number;
+  /** S19：缺省离地高（cm）—— 壁挂件（电视 / 挂画 / 搁板）放进来就挂在这个高度；用户在检视面板里随时改 */
+  z?: number;
   wood?: string;
   dimmable?: boolean;
   url?: string;
@@ -61,11 +63,12 @@ export interface CatalogEntry {
   [extra: string]: unknown;
 }
 
-/** 内置目录当前用到的 kind 全集（2026-10 实测 57 个）。
+/** 内置目录当前用到的 kind 全集（2026-10 实测 57 个；S19b 起 + tv / wardrobe / washer / dryer / fridge / plant / art / mirror = 65 个）。
     只用于「陌生 kind」的 warning，不作为白名单闸门。 */
 export const KNOWN_KINDS: readonly string[] = [
   'accentConsole',
   'armchair',
+  'art',
   'balanceBike',
   'ballPit',
   'bed',
@@ -83,14 +86,18 @@ export const KNOWN_KINDS: readonly string[] = [
   'deskSitStand',
   'downlight',
   'dresser',
+  'dryer',
   'easel',
+  'fridge',
   'goal',
   'lamp',
   'magTiles',
+  'mirror',
   'nightstand',
   'officeChair',
   'pendant',
   'pikler',
+  'plant',
   'playCouch',
   'playKitchen',
   'playMat',
@@ -115,10 +122,13 @@ export const KNOWN_KINDS: readonly string[] = [
   'tableRound',
   'trampoline',
   'tubChair',
+  'tv',
   'tvBench',
   'vanityLight',
   'wagon',
   'walker',
+  'wardrobe',
+  'washer',
   'wobble',
   'xylophone',
 ];
@@ -146,6 +156,7 @@ const KNOWN_FIELDS = new Set([
   'color',
   'color2',
   'seatH',
+  'z',
   'wood',
   'dimmable',
   'url',
@@ -257,6 +268,7 @@ export function validateEntry(raw: unknown, whereHint?: string): EntryCheck {
     push('warning', 'wood', `陌生的 wood "${String(e.wood)}"：会退回默认木纹`);
   if (e.seatH !== undefined && (!isNum(e.seatH) || e.seatH < ENTRY_MIN_CM || e.seatH > 120))
     push('error', 'seatH', 'seatH 必须在 1–120cm');
+  if (e.z !== undefined && (!isNum(e.z) || e.z < 0 || e.z > 300)) push('error', 'z', 'z（缺省离地高）必须在 0–300cm');
   if (e.dimmable !== undefined && typeof e.dimmable !== 'boolean') push('error', 'dimmable', 'dimmable 必须是布尔');
 
   // ---- 链接 / 备注 ----
@@ -292,6 +304,7 @@ export function validateEntry(raw: unknown, whereHint?: string): EntryCheck {
     'color',
     'color2',
     'seatH',
+    'z',
     'wood',
     'dimmable',
     'url',

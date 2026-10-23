@@ -686,7 +686,7 @@
 /* VENDORED —— 由 scripts/build-catalog.mjs 从 src/catalog/ 编译生成，勿手改。
    src/ 是唯一事实来源（单测 + tsc strict）；改 src/catalog/ 后跑 `npm run catalog:build`。
    build.mjs 校验本块与最新编译输出逐字节一致。 */
-"use strict";(()=>{var V=Object.defineProperty;var w=(n,t)=>{for(var s in t)V(n,s,{get:t[s],enumerable:!0})};var E={};w(E,{BUILTIN_LIGHT_KINDS:()=>K,ENTRY_MAX_CM:()=>B,ENTRY_MAX_PRICE:()=>G,ENTRY_MIN_CM:()=>J,ENTRY_SCHEMA:()=>Z,KNOWN_KINDS:()=>j,KNOWN_WOODS:()=>L,duplicateIds:()=>_,validateEntry:()=>x});var Z=1,J=1,B=1200,G=1e5,j=["accentConsole","armchair","balanceBike","ballPit","bed","bedMetal","bookcase","cart","ceilingLight","chair","climber","clothesRail","coatRack","coffeeTable","crib","desk","deskSitStand","downlight","dresser","easel","goal","lamp","magTiles","nightstand","officeChair","pendant","pikler","playCouch","playKitchen","playMat","playset","recliner","rideOn","rocking","rug","sandTable","scooter","shelf","shoeCab","sideTable","sofa","sofaL","sportsZone","stool","swivelChair","tableDrawer","tableFold","tableRect","tableRound","trampoline","tubChair","tvBench","vanityLight","wagon","walker","wobble","xylophone"],L=["pine","beech","birch","oak","walnut"],K=["downlight","ceilingLight","vanityLight","pendant"],D=new Set(["id","cat","name","w","d","h","kind","model","price","priceCA","caNA","caVar","color","color2","seatH","wood","dimmable","url","note","cct","lum","glassShelf","spShelves","noCal","sourcePack","noPrice","seat","col2"]),T=/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/,W=/^[a-z][A-Za-z0-9]{0,31}$/,U=/^#[0-9a-fA-F]{3,8}$/,k=n=>typeof n=="string",v=n=>typeof n=="number"&&Number.isFinite(n);function x(n,t){let s=[];if(!n||typeof n!="object"||Array.isArray(n))return{issues:[{level:"error",where:t||"?",field:"",message:"\u6761\u76EE\u5FC5\u987B\u662F\u5BF9\u8C61"}],ok:!1};let e=Object.assign({},n),r=k(e.id)&&e.id?e.id:t||"?",o=(a,f,g)=>s.push({level:a,where:r,field:f,message:g});e.col2!==void 0&&(e.color2===void 0?(e.color2=e.col2,o("warning","col2","col2 \u662F\u65E7\u522B\u540D\uFF08\u5185\u7F6E\u76EE\u5F55\u66FE\u8BEF\u7528\u8FC7\uFF09\uFF0C\u5DF2\u6309 color2 \u5904\u7406 \u2014\u2014 \u8BF7\u6539\u5199 color2")):o("warning","col2","\u540C\u65F6\u7ED9\u4E86 col2 \u4E0E color2\uFF1A\u6309 color2 \u5904\u7406"),delete e.col2),!k(e.id)||!e.id?o("error","id","\u7F3A\u5C11 id"):T.test(e.id)||o("error","id",`id \u53EA\u80FD\u7528\u5B57\u6BCD/\u6570\u5B57/._-\uFF0C\u4E14\u4E0D\u8D85\u8FC7 64 \u5B57\u7B26\uFF08\u5F53\u524D "${e.id}"\uFF09`),!k(e.cat)||!e.cat.trim()?o("error","cat","\u7F3A\u5C11\u5206\u7C7B\uFF08cat\uFF09"):e.cat.length>60&&o("error","cat","\u5206\u7C7B\u540D\u8FC7\u957F\uFF08>60 \u5B57\u7B26\uFF09"),!k(e.name)||!e.name.trim()?o("error","name","\u7F3A\u5C11\u540D\u79F0\uFF08name\uFF09"):e.name.length>140&&o("error","name","\u540D\u79F0\u8FC7\u957F\uFF08>140 \u5B57\u7B26\uFF09");let c=["w","d","h"];for(let a of c){let f=e[a];v(f)?(f<1||f>1200)&&o("error",a,`${a}=${f}cm \u8D85\u51FA 1\u20131200cm \u7684\u5408\u7406\u8303\u56F4`):o("error",a,`${a} \u5FC5\u987B\u662F\u6570\u5B57\uFF08cm\uFF09`)}!k(e.kind)||!e.kind?o("error","kind","\u7F3A\u5C11 kind\uFF08\u51B3\u5B9A 2D \u56FE\u4F8B / \u6750\u8D28 / \u901A\u7528\u56DE\u9000\u5EFA\u6A21\uFF09"):W.test(e.kind)?j.includes(e.kind)||o("warning","kind",`\u964C\u751F\u7684 kind "${e.kind}"\uFF1A\u80FD\u653E\u80FD\u641C\uFF0C\u4F46\u5EFA\u6A21\u4F1A\u8D70\u901A\u7528\u56DE\u9000\u30012D \u56FE\u4F8B\u662F\u901A\u7528\u77E9\u5F62`):o("error","kind",`kind \u53EA\u80FD\u7528\u5B57\u6BCD\u5F00\u5934\u7684 [A-Za-z0-9]\uFF08\u5F53\u524D "${e.kind}"\uFF09`),e.model!==void 0&&(!k(e.model)||!T.test(e.model))&&o("error","model","model \u5FC5\u987B\u662F\u5408\u6CD5\u7684\u6A21\u578B\u540D");for(let a of["price","priceCA"]){let f=e[a];f!==void 0&&(!v(f)||f<0||f>1e5)&&o("error",a,`${a} \u5FC5\u987B\u662F 0\u2013100000 \u7684\u6570\u5B57`)}e.caNA!==void 0&&typeof e.caNA!="boolean"&&o("error","caNA","caNA \u5FC5\u987B\u662F\u5E03\u5C14"),e.caVar!==void 0&&typeof e.caVar!="boolean"&&!(k(e.caVar)&&e.caVar.length<=240)&&o("error","caVar","caVar \u5FC5\u987B\u662F\u5E03\u5C14\uFF0C\u6216 \u2264240 \u5B57\u7B26\u7684\u8BF4\u660E\u6587\u672C"),e.noPrice!==void 0&&e.noPrice!==!0&&o("error","noPrice","noPrice \u53EA\u7528\u6765\u663E\u5F0F\u58F0\u660E\u300C\u6CA1\u6709\u72EC\u7ACB\u552E\u4EF7\u300D\uFF0C\u5199 true \u6216\u4E0D\u5199"),e.price===void 0&&e.priceCA===void 0&&e.caNA!==!0&&e.noPrice!==!0&&!K.includes(String(e.kind))&&o("warning","price","\u6CA1\u6709\u4EFB\u4F55\u4EF7\u683C\uFF1A\u754C\u9762\u4F1A\u663E\u793A\u4E3A\u7A7A\uFF08\u56FA\u5B9A\u706F\u5177\u672C\u6765\u5C31\u8BE5\u6CA1\u6709\u4EF7\u683C\uFF0C\u5176\u5B83\u6761\u76EE\u901A\u5E38\u662F\u6F0F\u91C7\u4E86\uFF09");for(let a of["color","color2"]){let f=e[a];f!==void 0&&(!k(f)||!U.test(f))&&o("error",a,`${a} \u5FC5\u987B\u662F #hex\uFF08\u5982 "#D4C4A8"\uFF09`)}e.wood!==void 0&&!L.includes(String(e.wood))&&o("warning","wood",`\u964C\u751F\u7684 wood "${String(e.wood)}"\uFF1A\u4F1A\u9000\u56DE\u9ED8\u8BA4\u6728\u7EB9`),e.seatH!==void 0&&(!v(e.seatH)||e.seatH<1||e.seatH>120)&&o("error","seatH","seatH \u5FC5\u987B\u5728 1\u2013120cm"),e.dimmable!==void 0&&typeof e.dimmable!="boolean"&&o("error","dimmable","dimmable \u5FC5\u987B\u662F\u5E03\u5C14"),e.url!==void 0&&(!k(e.url)||e.url.length>300?o("error","url","url \u5FC5\u987B\u662F \u2264300 \u5B57\u7B26\u7684\u6587\u672C"):/^https?:\/\//.test(e.url)||o("error","url","url \u5FC5\u987B\u4EE5 http:// \u6216 https:// \u5F00\u5934")),e.note!==void 0&&(!k(e.note)||e.note.length>400)&&o("error","note","note \u5FC5\u987B\u662F \u2264400 \u5B57\u7B26\u7684\u6587\u672C");for(let a of Object.keys(e))!D.has(a)&&a!=="sourcePack"&&o("warning",a,`\u672A\u77E5\u5B57\u6BB5 "${a}"\uFF08\u4F1A\u88AB\u4FDD\u7559\u4F46\u4E0D\u6D88\u8D39\uFF09`);if(s.some(a=>a.level==="error"))return{issues:s,ok:!1};let m={id:String(e.id),cat:String(e.cat).trim(),name:String(e.name).trim(),w:Number(e.w),d:Number(e.d),h:Number(e.h),kind:String(e.kind)};for(let a of["model","price","priceCA","caNA","caVar","color","color2","seatH","wood","dimmable","url","note","cct","lum","glassShelf","spShelves","noCal","noPrice","seat"])e[a]!==void 0&&(m[a]=e[a]);for(let a of Object.keys(e))D.has(a)||(m[a]=e[a]);return{entry:m,issues:s,ok:!0}}function _(n){let t=new Set,s=new Set;for(let e of n)t.has(e.id)&&s.add(e.id),t.add(e.id);return Array.from(s)}var $={};w($,{DIGEST_RE:()=>X,MAX_MODEL_SRC:()=>N,MAX_PACKS:()=>S,MAX_PACK_ENTRIES:()=>A,MAX_PACK_MODELS:()=>M,MAX_PACK_MODELS_BYTES:()=>I,PACKS_KEY:()=>q,PACK_SCHEMA:()=>y,canonicalJson:()=>C,compileModel:()=>P,contentDigest:()=>Y,mergeCatalog:()=>re,normalizeRegistry:()=>ie,packDigest:()=>R,packKeyFor:()=>Q,packMetaFor:()=>le,packUpdateDecision:()=>oe,removePackMeta:()=>de,serializeRegistry:()=>ae,upsertPackMeta:()=>ce,validatePack:()=>ne});var y=2,q="planner_packs_v1",Q=n=>"planner_pack:"+n,A=2e3,M=500,N=6e4,I=4e5,S=32,F=/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/,ee=/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/,p=n=>typeof n=="string",b=n=>typeof n=="number"&&Number.isFinite(n);function ne(n){let t=[],s=[],e=(i,d)=>t.push({level:"error",where:"?",field:i,message:d});if(!n||typeof n!="object"||Array.isArray(n))return e("","\u76EE\u5F55\u5305\u5FC5\u987B\u662F\u4E00\u4E2A JSON \u5BF9\u8C61"),{issues:t,entryIssues:s,ok:!1};let r=n,o=p(r.pack)&&r.pack?r.pack:"?",c=(i,d,u)=>t.push({level:i,where:o,field:d,message:u});!p(r.pack)||!r.pack?e("pack","\u7F3A\u5C11\u5305 id\uFF08pack\uFF09"):F.test(r.pack)?r.pack==="builtin"&&e("pack",'\u5305 id \u4E0D\u80FD\u53EB "builtin"\uFF08\u90A3\u662F\u5185\u7F6E\u76EE\u5F55\u7684\u547D\u540D\u7A7A\u95F4\uFF09'):e("pack",`\u5305 id \u53EA\u80FD\u7528\u5B57\u6BCD/\u6570\u5B57/._-\uFF0C\u4E14\u4E0D\u8D85\u8FC7 64 \u5B57\u7B26\uFF08\u5F53\u524D "${r.pack}"\uFF09`);let m=1;r.version!==void 0&&(!b(r.version)||!Number.isInteger(r.version)||r.version<1?e("version","version \u5FC5\u987B\u662F \u22651 \u7684\u6574\u6570"):m=r.version);let a=p(r.pack)?r.pack:"\u672A\u547D\u540D\u76EE\u5F55\u5305";r.name!==void 0&&(!p(r.name)||!r.name.trim()||r.name.length>80?e("name","name \u5FC5\u987B\u662F 1\u201380 \u5B57\u7B26\u7684\u6587\u672C"):a=r.name.trim()),Array.isArray(r.entries)?r.entries.length===0?e("entries","entries \u662F\u7A7A\u7684\uFF1A\u8FD9\u4E2A\u5305\u6CA1\u6709\u4EFB\u4F55\u6761\u76EE"):r.entries.length>A&&e("entries",`entries \u8D85\u8FC7 ${A} \u6761\u4E0A\u9650\uFF08\u5F53\u524D ${r.entries.length}\uFF09`):e("entries","\u7F3A\u5C11 entries\uFF08\u6761\u76EE\u6570\u7EC4\uFF09");let f={};if(r.models!==void 0)if(!r.models||typeof r.models!="object"||Array.isArray(r.models))e("models","models \u5FC5\u987B\u662F {\u540D\u5B57: \u51FD\u6570\u6E90\u7801\u5B57\u7B26\u4E32} \u5BF9\u8C61");else{let i=Object.keys(r.models);i.length>M&&e("models",`models \u8D85\u8FC7 ${M} \u4E2A\u4E0A\u9650\uFF08\u5F53\u524D ${i.length}\uFF09`);let d=0;for(let u of i){let h=r.models[u];if(!ee.test(u)){c("error",`models.${u}`,"\u6A21\u578B\u540D\u53EA\u80FD\u7528\u5B57\u6BCD/\u6570\u5B57/._-\uFF0C\u4E14\u4E0D\u8D85\u8FC7 64 \u5B57\u7B26");continue}if(!p(h)){c("error",`models.${u}`,'\u6A21\u578B\u5FC5\u987B\u662F\u51FD\u6570\u6E90\u7801\u5B57\u7B26\u4E32\uFF08\u5982 "(C)=>{ \u2026 }"\uFF09');continue}if(h.length>N){c("error",`models.${u}`,`\u5355\u4E2A\u6A21\u578B\u6E90\u7801\u8D85\u8FC7 ${N} \u5B57\u7B26`);continue}d+=h.length,f[u]=h}d>I&&e("models",`\u6574\u5305\u6A21\u578B\u6E90\u7801\u8D85\u8FC7 ${I} \u5B57\u7B26\u4E0A\u9650\uFF08\u5F53\u524D ${d}\uFF09`)}for(let i of Object.keys(r))i!=="pack"&&i!=="name"&&i!=="version"&&i!=="entries"&&i!=="models"&&i!=="homepage"&&i!=="note"&&c("warning",i,`\u672A\u77E5\u5B57\u6BB5 "${i}"\uFF08\u4F1A\u88AB\u5FFD\u7565\uFF09`);r.homepage!==void 0&&(!p(r.homepage)||!/^https?:\/\//.test(r.homepage)||r.homepage.length>300)&&c("error","homepage","homepage \u5FC5\u987B\u662F http(s) \u94FE\u63A5\uFF08\u2264300 \u5B57\u7B26\uFF09"),r.note!==void 0&&(!p(r.note)||r.note.length>600)&&c("error","note","note \u5FC5\u987B\u662F \u2264600 \u5B57\u7B26\u7684\u6587\u672C");let g=[];if(Array.isArray(r.entries)){for(let u of r.entries){let h=x(u);s.push(...h.issues),h.ok&&h.entry&&g.push({...h.entry,sourcePack:o})}for(let u of _(g))t.push({level:"error",where:o,field:"entries",message:`\u5305\u5185 id \u91CD\u590D\uFF1A"${u}"\uFF08\u540E\u4E00\u6761\u88AB\u4E22\u5F03\uFF09`});let i=new Set,d=g.filter(u=>i.has(u.id)?!1:(i.add(u.id),!0));g.length=0,g.push(...d)}if(t.some(i=>i.level==="error"))return{issues:t,entryIssues:s,ok:!1};if(g.length===0)return{issues:t,entryIssues:s,ok:!1};let l={pack:String(r.pack),name:a,version:m,entries:g,models:f};return p(r.homepage)&&(l.homepage=r.homepage),p(r.note)&&(l.note=r.note),{pack:l,issues:t,entryIssues:s,ok:!0}}function P(n){try{let t=new Function('"use strict";return ('+n+");")();return typeof t!="function"?{error:"\u6E90\u7801\u6C42\u503C\u7ED3\u679C\u4E0D\u662F\u51FD\u6570"}:{fn:t}}catch(t){return{error:(t instanceof Error?t.message:"")||"\u7F16\u8BD1\u5931\u8D25"}}}function re(n,t){let s=[],e=[],r=new Set;for(let o of n)r.has(o.id)||(r.add(o.id),s.push(o));for(let o of t)for(let c of o.entries){if(r.has(c.id)){e.push({id:c.id,pack:o.pack,reason:"\u4E0E\u5DF2\u52A0\u8F7D\u7684\u6761\u76EE\u540C id\uFF08\u5185\u7F6E\u76EE\u5F55 / \u5148\u52A0\u8F7D\u7684\u5305\u8D62\uFF09"});continue}r.add(c.id),s.push({...c,sourcePack:o.pack})}return{entries:s,conflicts:e}}function C(n){if(n==null)return"null";let t=typeof n;if(t==="number")return Number.isFinite(n)?JSON.stringify(n):"null";if(t==="string"||t==="boolean")return JSON.stringify(n);if(Array.isArray(n))return"["+n.map(C).join(",")+"]";if(t==="object"){let s=n;return"{"+Object.keys(s).sort().map(r=>JSON.stringify(r)+":"+(s[r]===void 0?"null":C(s[r]))).join(",")+"}"}return"null"}var te=16777619;function z(n,t){let s=t>>>0;for(let e=0;e<n.length;e++)s^=n.charCodeAt(e),s=Math.imul(s,te)>>>0;return s>>>0}function Y(n){let t=C(n),s=z(t,2166136261),e=z(t+"",(16777619^t.length)>>>0);return s.toString(16).padStart(8,"0")+e.toString(16).padStart(8,"0")}var X=/^[0-9a-f]{16}$/,R=n=>Y({pack:n.pack,version:n.version,name:n.name,entries:n.entries,models:n.models});function oe(n,t){return n?t.version>n.version?{action:"update",reason:`\u7248\u672C ${n.version} \u2192 ${t.version}`}:t.version<n.version?{action:"reject",reason:`\u5DF2\u52A0\u8F7D\u7684\u662F\u7248\u672C ${n.version}\uFF0C\u8FD9\u4EFD\u662F\u7248\u672C ${t.version}\uFF1A\u8981\u6362\u65E7\u7248\u8BF7\u5148\u79FB\u9664\u5F53\u524D\u8FD9\u4EFD`}:n.digest?n.digest===R(t)?{action:"same",reason:`\u5185\u5BB9\u4E0E\u5DF2\u52A0\u8F7D\u7684\u8FD9\u4EFD\u5B8C\u5168\u76F8\u540C\uFF08\u7248\u672C ${n.version}\uFF09`}:{action:"reject",reason:`\u540C\u540D\u540C\u7248\u672C\uFF08\u7248\u672C ${n.version}\uFF09\u4F46\u5185\u5BB9\u4E0D\u540C\uFF1A\u6539\u5185\u5BB9\u8BF7\u628A version \u63D0\u9AD8\u5230 ${n.version+1} \u4EE5\u4E0A\u518D\u5BFC\u5165`}:{action:"update",reason:`\u540C\u7248\u672C\uFF08${n.version}\uFF09\uFF1A\u65E7\u8BB0\u5F55\u6CA1\u6709\u5185\u5BB9\u6307\u7EB9\uFF08\u6307\u7EB9\u529F\u80FD\u4E4B\u524D\u5BFC\u5165\u7684\uFF09\uFF0C\u6309\u65B0\u6587\u4EF6\u66FF\u6362\u5E76\u8865\u4E0A\u6307\u7EB9`}:{action:"add",reason:""}}function se(n){if(!n||typeof n!="object"||Array.isArray(n))return null;let t=n;if(!p(t.pack)||!F.test(t.pack))return null;let s=p(t.name)&&t.name&&t.name.length<=80?t.name:t.pack,e=(r,o)=>b(r)&&r>=0?Math.min(Math.floor(r),o):0;return{pack:t.pack,name:s,version:b(t.version)&&t.version>=1?Math.floor(t.version):1,entries:e(t.entries,A),models:e(t.models,M),addedAt:b(t.addedAt)&&t.addedAt>=0?Math.floor(t.addedAt):0,digest:p(t.digest)&&X.test(t.digest)?t.digest:null}}function ie(n){let t=[];if(n&&typeof n=="object"&&!Array.isArray(n)){let s=n;if(Array.isArray(s.packs)){let e=new Map;for(let r of s.packs){let o=se(r);o&&e.set(o.pack,o)}t.push(...Array.from(e.values()))}}return{v:y,packs:t.slice(0,S)}}var ae=n=>JSON.stringify({v:y,packs:n.packs});function ce(n,t,s){let e={...t,addedAt:t.addedAt||s},o=n.packs.some(c=>c.pack===e.pack)?n.packs.map(c=>c.pack===e.pack?e:c):[...n.packs,e];return{v:y,packs:o.slice(0,S)}}function de(n,t){return{v:y,packs:n.packs.filter(s=>s.pack!==t)}}var le=n=>({pack:n.pack,name:n.name,version:n.version,entries:n.entries.length,models:Object.keys(n.models).length,addedAt:0,digest:R(n)});var O={};w(O,{MAX_RESIDENT_MODELS:()=>H,buildModelIndex:()=>ue,createModelCache:()=>fe,precompilePack:()=>ge});var H=400;function ue(n){let t=new Map;for(let s of n)for(let[e,r]of Object.entries(s.models))t.has(e)||t.set(e,{pack:s.pack,src:r});return t}function fe(n,t){let s=Math.max(1,t?.limit??H),e=n,r=new Map,o=new Map,c=new Map,m=0,a=0,f=0,g=(l,i,d)=>{for(r.delete(l),r.set(l,i),d!==void 0&&o.set(l,d);r.size>s;){let u=r.keys().next().value;if(u===void 0||u===l)break;r.delete(u),o.delete(u),f++}};return{get(l){let i=r.get(l);if(i!==void 0)return g(l,i),a++,i;if(c.has(l))return null;let d=e.get(l);if(!d)return null;let u=P(d.src);return u.error||!u.fn?(c.set(l,u.error||"\u7F16\u8BD1\u5931\u8D25"),null):(m++,g(l,u.fn,d.src),u.fn)},has:l=>r.has(l),setIndex(l){e=l;for(let i of Array.from(r.keys()))e.get(i)?.src!==o.get(i)&&(r.delete(i),o.delete(i));for(let i of Array.from(c.keys()))e.has(i)||c.delete(i)},dropPack(l){let i=0;for(let d of Array.from(r.keys()))e.get(d)?.pack===l&&(r.delete(d),o.delete(d),i++);for(let d of Array.from(c.keys()))e.get(d)?.pack===l&&(c.delete(d),i++);return i},seed(l,i,d){return e.get(l)?.src!==d?!1:(c.delete(l),g(l,i,d),!0)},stats:()=>({resident:r.size,compiled:m,reused:a,evicted:f,failed:c.size}),failuresFor(l){let i=[];for(let[d,u]of c)e.get(d)?.pack===l&&i.push({model:d,error:u});return i},residentFor(l){let i=0;for(let d of r.keys())e.get(d)?.pack===l&&i++;return i}}}function ge(n,t){let s=[],e=0;for(let[r,o]of Object.entries(n.models)){let c=P(o);if(c.error||!c.fn){s.push({model:r,error:c.error||"\u7F16\u8BD1\u5931\u8D25"});continue}e++,t.seed(r,c.fn,o)}return{ok:e,errors:s}}var pe=globalThis;pe.MINIDEN_CATALOG={...E,...$,...O};})();
+"use strict";(()=>{var V=Object.defineProperty;var v=(n,t)=>{for(var s in t)V(n,s,{get:t[s],enumerable:!0})};var E={};v(E,{BUILTIN_LIGHT_KINDS:()=>L,ENTRY_MAX_CM:()=>B,ENTRY_MAX_PRICE:()=>G,ENTRY_MIN_CM:()=>J,ENTRY_SCHEMA:()=>Z,KNOWN_KINDS:()=>z,KNOWN_WOODS:()=>j,duplicateIds:()=>_,validateEntry:()=>x});var Z=1,J=1,B=1200,G=1e5,z=["accentConsole","armchair","art","balanceBike","ballPit","bed","bedMetal","bookcase","cart","ceilingLight","chair","climber","clothesRail","coatRack","coffeeTable","crib","desk","deskSitStand","downlight","dresser","dryer","easel","fridge","goal","lamp","magTiles","mirror","nightstand","officeChair","pendant","pikler","plant","playCouch","playKitchen","playMat","playset","recliner","rideOn","rocking","rug","sandTable","scooter","shelf","shoeCab","sideTable","sofa","sofaL","sportsZone","stool","swivelChair","tableDrawer","tableFold","tableRect","tableRound","trampoline","tubChair","tv","tvBench","vanityLight","wagon","walker","wardrobe","washer","wobble","xylophone"],j=["pine","beech","birch","oak","walnut"],L=["downlight","ceilingLight","vanityLight","pendant"],D=new Set(["id","cat","name","w","d","h","kind","model","price","priceCA","caNA","caVar","color","color2","seatH","z","wood","dimmable","url","note","cct","lum","glassShelf","spShelves","noCal","sourcePack","noPrice","seat","col2"]),T=/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/,W=/^[a-z][A-Za-z0-9]{0,31}$/,U=/^#[0-9a-fA-F]{3,8}$/,m=n=>typeof n=="string",b=n=>typeof n=="number"&&Number.isFinite(n);function x(n,t){let s=[];if(!n||typeof n!="object"||Array.isArray(n))return{issues:[{level:"error",where:t||"?",field:"",message:"\u6761\u76EE\u5FC5\u987B\u662F\u5BF9\u8C61"}],ok:!1};let e=Object.assign({},n),r=m(e.id)&&e.id?e.id:t||"?",o=(a,f,g)=>s.push({level:a,where:r,field:f,message:g});e.col2!==void 0&&(e.color2===void 0?(e.color2=e.col2,o("warning","col2","col2 \u662F\u65E7\u522B\u540D\uFF08\u5185\u7F6E\u76EE\u5F55\u66FE\u8BEF\u7528\u8FC7\uFF09\uFF0C\u5DF2\u6309 color2 \u5904\u7406 \u2014\u2014 \u8BF7\u6539\u5199 color2")):o("warning","col2","\u540C\u65F6\u7ED9\u4E86 col2 \u4E0E color2\uFF1A\u6309 color2 \u5904\u7406"),delete e.col2),!m(e.id)||!e.id?o("error","id","\u7F3A\u5C11 id"):T.test(e.id)||o("error","id",`id \u53EA\u80FD\u7528\u5B57\u6BCD/\u6570\u5B57/._-\uFF0C\u4E14\u4E0D\u8D85\u8FC7 64 \u5B57\u7B26\uFF08\u5F53\u524D "${e.id}"\uFF09`),!m(e.cat)||!e.cat.trim()?o("error","cat","\u7F3A\u5C11\u5206\u7C7B\uFF08cat\uFF09"):e.cat.length>60&&o("error","cat","\u5206\u7C7B\u540D\u8FC7\u957F\uFF08>60 \u5B57\u7B26\uFF09"),!m(e.name)||!e.name.trim()?o("error","name","\u7F3A\u5C11\u540D\u79F0\uFF08name\uFF09"):e.name.length>140&&o("error","name","\u540D\u79F0\u8FC7\u957F\uFF08>140 \u5B57\u7B26\uFF09");let c=["w","d","h"];for(let a of c){let f=e[a];b(f)?(f<1||f>1200)&&o("error",a,`${a}=${f}cm \u8D85\u51FA 1\u20131200cm \u7684\u5408\u7406\u8303\u56F4`):o("error",a,`${a} \u5FC5\u987B\u662F\u6570\u5B57\uFF08cm\uFF09`)}!m(e.kind)||!e.kind?o("error","kind","\u7F3A\u5C11 kind\uFF08\u51B3\u5B9A 2D \u56FE\u4F8B / \u6750\u8D28 / \u901A\u7528\u56DE\u9000\u5EFA\u6A21\uFF09"):W.test(e.kind)?z.includes(e.kind)||o("warning","kind",`\u964C\u751F\u7684 kind "${e.kind}"\uFF1A\u80FD\u653E\u80FD\u641C\uFF0C\u4F46\u5EFA\u6A21\u4F1A\u8D70\u901A\u7528\u56DE\u9000\u30012D \u56FE\u4F8B\u662F\u901A\u7528\u77E9\u5F62`):o("error","kind",`kind \u53EA\u80FD\u7528\u5B57\u6BCD\u5F00\u5934\u7684 [A-Za-z0-9]\uFF08\u5F53\u524D "${e.kind}"\uFF09`),e.model!==void 0&&(!m(e.model)||!T.test(e.model))&&o("error","model","model \u5FC5\u987B\u662F\u5408\u6CD5\u7684\u6A21\u578B\u540D");for(let a of["price","priceCA"]){let f=e[a];f!==void 0&&(!b(f)||f<0||f>1e5)&&o("error",a,`${a} \u5FC5\u987B\u662F 0\u2013100000 \u7684\u6570\u5B57`)}e.caNA!==void 0&&typeof e.caNA!="boolean"&&o("error","caNA","caNA \u5FC5\u987B\u662F\u5E03\u5C14"),e.caVar!==void 0&&typeof e.caVar!="boolean"&&!(m(e.caVar)&&e.caVar.length<=240)&&o("error","caVar","caVar \u5FC5\u987B\u662F\u5E03\u5C14\uFF0C\u6216 \u2264240 \u5B57\u7B26\u7684\u8BF4\u660E\u6587\u672C"),e.noPrice!==void 0&&e.noPrice!==!0&&o("error","noPrice","noPrice \u53EA\u7528\u6765\u663E\u5F0F\u58F0\u660E\u300C\u6CA1\u6709\u72EC\u7ACB\u552E\u4EF7\u300D\uFF0C\u5199 true \u6216\u4E0D\u5199"),e.price===void 0&&e.priceCA===void 0&&e.caNA!==!0&&e.noPrice!==!0&&!L.includes(String(e.kind))&&o("warning","price","\u6CA1\u6709\u4EFB\u4F55\u4EF7\u683C\uFF1A\u754C\u9762\u4F1A\u663E\u793A\u4E3A\u7A7A\uFF08\u56FA\u5B9A\u706F\u5177\u672C\u6765\u5C31\u8BE5\u6CA1\u6709\u4EF7\u683C\uFF0C\u5176\u5B83\u6761\u76EE\u901A\u5E38\u662F\u6F0F\u91C7\u4E86\uFF09");for(let a of["color","color2"]){let f=e[a];f!==void 0&&(!m(f)||!U.test(f))&&o("error",a,`${a} \u5FC5\u987B\u662F #hex\uFF08\u5982 "#D4C4A8"\uFF09`)}e.wood!==void 0&&!j.includes(String(e.wood))&&o("warning","wood",`\u964C\u751F\u7684 wood "${String(e.wood)}"\uFF1A\u4F1A\u9000\u56DE\u9ED8\u8BA4\u6728\u7EB9`),e.seatH!==void 0&&(!b(e.seatH)||e.seatH<1||e.seatH>120)&&o("error","seatH","seatH \u5FC5\u987B\u5728 1\u2013120cm"),e.z!==void 0&&(!b(e.z)||e.z<0||e.z>300)&&o("error","z","z\uFF08\u7F3A\u7701\u79BB\u5730\u9AD8\uFF09\u5FC5\u987B\u5728 0\u2013300cm"),e.dimmable!==void 0&&typeof e.dimmable!="boolean"&&o("error","dimmable","dimmable \u5FC5\u987B\u662F\u5E03\u5C14"),e.url!==void 0&&(!m(e.url)||e.url.length>300?o("error","url","url \u5FC5\u987B\u662F \u2264300 \u5B57\u7B26\u7684\u6587\u672C"):/^https?:\/\//.test(e.url)||o("error","url","url \u5FC5\u987B\u4EE5 http:// \u6216 https:// \u5F00\u5934")),e.note!==void 0&&(!m(e.note)||e.note.length>400)&&o("error","note","note \u5FC5\u987B\u662F \u2264400 \u5B57\u7B26\u7684\u6587\u672C");for(let a of Object.keys(e))!D.has(a)&&a!=="sourcePack"&&o("warning",a,`\u672A\u77E5\u5B57\u6BB5 "${a}"\uFF08\u4F1A\u88AB\u4FDD\u7559\u4F46\u4E0D\u6D88\u8D39\uFF09`);if(s.some(a=>a.level==="error"))return{issues:s,ok:!1};let k={id:String(e.id),cat:String(e.cat).trim(),name:String(e.name).trim(),w:Number(e.w),d:Number(e.d),h:Number(e.h),kind:String(e.kind)};for(let a of["model","price","priceCA","caNA","caVar","color","color2","seatH","z","wood","dimmable","url","note","cct","lum","glassShelf","spShelves","noCal","noPrice","seat"])e[a]!==void 0&&(k[a]=e[a]);for(let a of Object.keys(e))D.has(a)||(k[a]=e[a]);return{entry:k,issues:s,ok:!0}}function _(n){let t=new Set,s=new Set;for(let e of n)t.has(e.id)&&s.add(e.id),t.add(e.id);return Array.from(s)}var $={};v($,{DIGEST_RE:()=>X,MAX_MODEL_SRC:()=>N,MAX_PACKS:()=>S,MAX_PACK_ENTRIES:()=>M,MAX_PACK_MODELS:()=>C,MAX_PACK_MODELS_BYTES:()=>I,PACKS_KEY:()=>q,PACK_SCHEMA:()=>y,canonicalJson:()=>P,compileModel:()=>w,contentDigest:()=>Y,mergeCatalog:()=>re,normalizeRegistry:()=>ie,packDigest:()=>R,packKeyFor:()=>Q,packMetaFor:()=>le,packUpdateDecision:()=>oe,removePackMeta:()=>de,serializeRegistry:()=>ae,upsertPackMeta:()=>ce,validatePack:()=>ne});var y=2,q="planner_packs_v1",Q=n=>"planner_pack:"+n,M=2e3,C=500,N=6e4,I=4e5,S=32,F=/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/,ee=/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/,p=n=>typeof n=="string",A=n=>typeof n=="number"&&Number.isFinite(n);function ne(n){let t=[],s=[],e=(i,d)=>t.push({level:"error",where:"?",field:i,message:d});if(!n||typeof n!="object"||Array.isArray(n))return e("","\u76EE\u5F55\u5305\u5FC5\u987B\u662F\u4E00\u4E2A JSON \u5BF9\u8C61"),{issues:t,entryIssues:s,ok:!1};let r=n,o=p(r.pack)&&r.pack?r.pack:"?",c=(i,d,u)=>t.push({level:i,where:o,field:d,message:u});!p(r.pack)||!r.pack?e("pack","\u7F3A\u5C11\u5305 id\uFF08pack\uFF09"):F.test(r.pack)?r.pack==="builtin"&&e("pack",'\u5305 id \u4E0D\u80FD\u53EB "builtin"\uFF08\u90A3\u662F\u5185\u7F6E\u76EE\u5F55\u7684\u547D\u540D\u7A7A\u95F4\uFF09'):e("pack",`\u5305 id \u53EA\u80FD\u7528\u5B57\u6BCD/\u6570\u5B57/._-\uFF0C\u4E14\u4E0D\u8D85\u8FC7 64 \u5B57\u7B26\uFF08\u5F53\u524D "${r.pack}"\uFF09`);let k=1;r.version!==void 0&&(!A(r.version)||!Number.isInteger(r.version)||r.version<1?e("version","version \u5FC5\u987B\u662F \u22651 \u7684\u6574\u6570"):k=r.version);let a=p(r.pack)?r.pack:"\u672A\u547D\u540D\u76EE\u5F55\u5305";r.name!==void 0&&(!p(r.name)||!r.name.trim()||r.name.length>80?e("name","name \u5FC5\u987B\u662F 1\u201380 \u5B57\u7B26\u7684\u6587\u672C"):a=r.name.trim()),Array.isArray(r.entries)?r.entries.length===0?e("entries","entries \u662F\u7A7A\u7684\uFF1A\u8FD9\u4E2A\u5305\u6CA1\u6709\u4EFB\u4F55\u6761\u76EE"):r.entries.length>M&&e("entries",`entries \u8D85\u8FC7 ${M} \u6761\u4E0A\u9650\uFF08\u5F53\u524D ${r.entries.length}\uFF09`):e("entries","\u7F3A\u5C11 entries\uFF08\u6761\u76EE\u6570\u7EC4\uFF09");let f={};if(r.models!==void 0)if(!r.models||typeof r.models!="object"||Array.isArray(r.models))e("models","models \u5FC5\u987B\u662F {\u540D\u5B57: \u51FD\u6570\u6E90\u7801\u5B57\u7B26\u4E32} \u5BF9\u8C61");else{let i=Object.keys(r.models);i.length>C&&e("models",`models \u8D85\u8FC7 ${C} \u4E2A\u4E0A\u9650\uFF08\u5F53\u524D ${i.length}\uFF09`);let d=0;for(let u of i){let h=r.models[u];if(!ee.test(u)){c("error",`models.${u}`,"\u6A21\u578B\u540D\u53EA\u80FD\u7528\u5B57\u6BCD/\u6570\u5B57/._-\uFF0C\u4E14\u4E0D\u8D85\u8FC7 64 \u5B57\u7B26");continue}if(!p(h)){c("error",`models.${u}`,'\u6A21\u578B\u5FC5\u987B\u662F\u51FD\u6570\u6E90\u7801\u5B57\u7B26\u4E32\uFF08\u5982 "(C)=>{ \u2026 }"\uFF09');continue}if(h.length>N){c("error",`models.${u}`,`\u5355\u4E2A\u6A21\u578B\u6E90\u7801\u8D85\u8FC7 ${N} \u5B57\u7B26`);continue}d+=h.length,f[u]=h}d>I&&e("models",`\u6574\u5305\u6A21\u578B\u6E90\u7801\u8D85\u8FC7 ${I} \u5B57\u7B26\u4E0A\u9650\uFF08\u5F53\u524D ${d}\uFF09`)}for(let i of Object.keys(r))i!=="pack"&&i!=="name"&&i!=="version"&&i!=="entries"&&i!=="models"&&i!=="homepage"&&i!=="note"&&c("warning",i,`\u672A\u77E5\u5B57\u6BB5 "${i}"\uFF08\u4F1A\u88AB\u5FFD\u7565\uFF09`);r.homepage!==void 0&&(!p(r.homepage)||!/^https?:\/\//.test(r.homepage)||r.homepage.length>300)&&c("error","homepage","homepage \u5FC5\u987B\u662F http(s) \u94FE\u63A5\uFF08\u2264300 \u5B57\u7B26\uFF09"),r.note!==void 0&&(!p(r.note)||r.note.length>600)&&c("error","note","note \u5FC5\u987B\u662F \u2264600 \u5B57\u7B26\u7684\u6587\u672C");let g=[];if(Array.isArray(r.entries)){for(let u of r.entries){let h=x(u);s.push(...h.issues),h.ok&&h.entry&&g.push({...h.entry,sourcePack:o})}for(let u of _(g))t.push({level:"error",where:o,field:"entries",message:`\u5305\u5185 id \u91CD\u590D\uFF1A"${u}"\uFF08\u540E\u4E00\u6761\u88AB\u4E22\u5F03\uFF09`});let i=new Set,d=g.filter(u=>i.has(u.id)?!1:(i.add(u.id),!0));g.length=0,g.push(...d)}if(t.some(i=>i.level==="error"))return{issues:t,entryIssues:s,ok:!1};if(g.length===0)return{issues:t,entryIssues:s,ok:!1};let l={pack:String(r.pack),name:a,version:k,entries:g,models:f};return p(r.homepage)&&(l.homepage=r.homepage),p(r.note)&&(l.note=r.note),{pack:l,issues:t,entryIssues:s,ok:!0}}function w(n){try{let t=new Function('"use strict";return ('+n+");")();return typeof t!="function"?{error:"\u6E90\u7801\u6C42\u503C\u7ED3\u679C\u4E0D\u662F\u51FD\u6570"}:{fn:t}}catch(t){return{error:(t instanceof Error?t.message:"")||"\u7F16\u8BD1\u5931\u8D25"}}}function re(n,t){let s=[],e=[],r=new Set;for(let o of n)r.has(o.id)||(r.add(o.id),s.push(o));for(let o of t)for(let c of o.entries){if(r.has(c.id)){e.push({id:c.id,pack:o.pack,reason:"\u4E0E\u5DF2\u52A0\u8F7D\u7684\u6761\u76EE\u540C id\uFF08\u5185\u7F6E\u76EE\u5F55 / \u5148\u52A0\u8F7D\u7684\u5305\u8D62\uFF09"});continue}r.add(c.id),s.push({...c,sourcePack:o.pack})}return{entries:s,conflicts:e}}function P(n){if(n==null)return"null";let t=typeof n;if(t==="number")return Number.isFinite(n)?JSON.stringify(n):"null";if(t==="string"||t==="boolean")return JSON.stringify(n);if(Array.isArray(n))return"["+n.map(P).join(",")+"]";if(t==="object"){let s=n;return"{"+Object.keys(s).sort().map(r=>JSON.stringify(r)+":"+(s[r]===void 0?"null":P(s[r]))).join(",")+"}"}return"null"}var te=16777619;function K(n,t){let s=t>>>0;for(let e=0;e<n.length;e++)s^=n.charCodeAt(e),s=Math.imul(s,te)>>>0;return s>>>0}function Y(n){let t=P(n),s=K(t,2166136261),e=K(t+"",(16777619^t.length)>>>0);return s.toString(16).padStart(8,"0")+e.toString(16).padStart(8,"0")}var X=/^[0-9a-f]{16}$/,R=n=>Y({pack:n.pack,version:n.version,name:n.name,entries:n.entries,models:n.models});function oe(n,t){return n?t.version>n.version?{action:"update",reason:`\u7248\u672C ${n.version} \u2192 ${t.version}`}:t.version<n.version?{action:"reject",reason:`\u5DF2\u52A0\u8F7D\u7684\u662F\u7248\u672C ${n.version}\uFF0C\u8FD9\u4EFD\u662F\u7248\u672C ${t.version}\uFF1A\u8981\u6362\u65E7\u7248\u8BF7\u5148\u79FB\u9664\u5F53\u524D\u8FD9\u4EFD`}:n.digest?n.digest===R(t)?{action:"same",reason:`\u5185\u5BB9\u4E0E\u5DF2\u52A0\u8F7D\u7684\u8FD9\u4EFD\u5B8C\u5168\u76F8\u540C\uFF08\u7248\u672C ${n.version}\uFF09`}:{action:"reject",reason:`\u540C\u540D\u540C\u7248\u672C\uFF08\u7248\u672C ${n.version}\uFF09\u4F46\u5185\u5BB9\u4E0D\u540C\uFF1A\u6539\u5185\u5BB9\u8BF7\u628A version \u63D0\u9AD8\u5230 ${n.version+1} \u4EE5\u4E0A\u518D\u5BFC\u5165`}:{action:"update",reason:`\u540C\u7248\u672C\uFF08${n.version}\uFF09\uFF1A\u65E7\u8BB0\u5F55\u6CA1\u6709\u5185\u5BB9\u6307\u7EB9\uFF08\u6307\u7EB9\u529F\u80FD\u4E4B\u524D\u5BFC\u5165\u7684\uFF09\uFF0C\u6309\u65B0\u6587\u4EF6\u66FF\u6362\u5E76\u8865\u4E0A\u6307\u7EB9`}:{action:"add",reason:""}}function se(n){if(!n||typeof n!="object"||Array.isArray(n))return null;let t=n;if(!p(t.pack)||!F.test(t.pack))return null;let s=p(t.name)&&t.name&&t.name.length<=80?t.name:t.pack,e=(r,o)=>A(r)&&r>=0?Math.min(Math.floor(r),o):0;return{pack:t.pack,name:s,version:A(t.version)&&t.version>=1?Math.floor(t.version):1,entries:e(t.entries,M),models:e(t.models,C),addedAt:A(t.addedAt)&&t.addedAt>=0?Math.floor(t.addedAt):0,digest:p(t.digest)&&X.test(t.digest)?t.digest:null}}function ie(n){let t=[];if(n&&typeof n=="object"&&!Array.isArray(n)){let s=n;if(Array.isArray(s.packs)){let e=new Map;for(let r of s.packs){let o=se(r);o&&e.set(o.pack,o)}t.push(...Array.from(e.values()))}}return{v:y,packs:t.slice(0,S)}}var ae=n=>JSON.stringify({v:y,packs:n.packs});function ce(n,t,s){let e={...t,addedAt:t.addedAt||s},o=n.packs.some(c=>c.pack===e.pack)?n.packs.map(c=>c.pack===e.pack?e:c):[...n.packs,e];return{v:y,packs:o.slice(0,S)}}function de(n,t){return{v:y,packs:n.packs.filter(s=>s.pack!==t)}}var le=n=>({pack:n.pack,name:n.name,version:n.version,entries:n.entries.length,models:Object.keys(n.models).length,addedAt:0,digest:R(n)});var O={};v(O,{MAX_RESIDENT_MODELS:()=>H,buildModelIndex:()=>ue,createModelCache:()=>fe,precompilePack:()=>ge});var H=400;function ue(n){let t=new Map;for(let s of n)for(let[e,r]of Object.entries(s.models))t.has(e)||t.set(e,{pack:s.pack,src:r});return t}function fe(n,t){let s=Math.max(1,t?.limit??H),e=n,r=new Map,o=new Map,c=new Map,k=0,a=0,f=0,g=(l,i,d)=>{for(r.delete(l),r.set(l,i),d!==void 0&&o.set(l,d);r.size>s;){let u=r.keys().next().value;if(u===void 0||u===l)break;r.delete(u),o.delete(u),f++}};return{get(l){let i=r.get(l);if(i!==void 0)return g(l,i),a++,i;if(c.has(l))return null;let d=e.get(l);if(!d)return null;let u=w(d.src);return u.error||!u.fn?(c.set(l,u.error||"\u7F16\u8BD1\u5931\u8D25"),null):(k++,g(l,u.fn,d.src),u.fn)},has:l=>r.has(l),setIndex(l){e=l;for(let i of Array.from(r.keys()))e.get(i)?.src!==o.get(i)&&(r.delete(i),o.delete(i));for(let i of Array.from(c.keys()))e.has(i)||c.delete(i)},dropPack(l){let i=0;for(let d of Array.from(r.keys()))e.get(d)?.pack===l&&(r.delete(d),o.delete(d),i++);for(let d of Array.from(c.keys()))e.get(d)?.pack===l&&(c.delete(d),i++);return i},seed(l,i,d){return e.get(l)?.src!==d?!1:(c.delete(l),g(l,i,d),!0)},stats:()=>({resident:r.size,compiled:k,reused:a,evicted:f,failed:c.size}),failuresFor(l){let i=[];for(let[d,u]of c)e.get(d)?.pack===l&&i.push({model:d,error:u});return i},residentFor(l){let i=0;for(let d of r.keys())e.get(d)?.pack===l&&i++;return i}}}function ge(n,t){let s=[],e=0;for(let[r,o]of Object.entries(n.models)){let c=w(o);if(c.error||!c.fn){s.push({model:r,error:c.error||"\u7F16\u8BD1\u5931\u8D25"});continue}e++,t.seed(r,c.fn,o)}return{ok:e,errors:s}}var pe=globalThis;pe.MINIDEN_CATALOG={...E,...$,...O};})();
 
 </script><!-- /miniden-catalog -->
 <script id="miniden-storage">
@@ -1114,10 +1114,30 @@ const CATALOG = [
  {id:'sc172-0', cat:'沙发 / 单椅', name:'Simply Comfort SC172 电动功能沙发 · 深灰', w:96.5,d:87.6,h:104.8, priceCA:1399.99, color:'#333538', color2:'#8a8272', seatH:47, model:'sc172', kind:'armchair', url:'https://www.costco.ca/p/-/simply-comfort-power-reclining-chair-dark-grey/4000359775?langId=-24', note:'100%头层牛皮·电动躺椅（电动头枕/腰托/脚踏）·高密度海绵·加拿大制造（Costco.ca 在售，美国站未查到同型号→只录加元价）·官方 upright 尺寸 L87.63×W96.52×H104.78cm，座高47/座深50.8/扶手高59.7cm·香槟金控制面板在左扶手外'},
  {id:'aldryn-0', cat:'沙发 / 单椅', name:'Gilman Creek Aldryn 电动躺椅（电动头枕）· Dark Brown', w:82.8,d:95.8,h:100.8, price:599.99, caNA:true, color:'#282524', color2:'#4a4744', seatH:48.8, model:'aldryn', kind:'recliner', url:'https://www.costco.com/p/-/gilman-creek-aldryn-leather-gliding-power-recliner-with-power-headrest/4201001396?langId=-1', note:'头层牛皮（侧面/背面为同色 PVC 贴面）·Leggett & Platt 电动躺椅机构 + 电动头枕，脚踏收合（建模按 upright 姿态，展开后深度增加）·左扶手外侧控制面板（2 按钮 + USB-A 15W / USB-C 20W）·官方 upright W82.8×D95.8×H100.8cm（32.6"×37.7"×39.7"），座高48.8/座深53.9/座宽57.9/扶手高61.0cm·加拿大不售（Costco.ca 无此型号）·美国 $599.99（含 9/21–10/4 的 $100 促销）'},
  {id:'murphy-0', cat:'沙发 / 单椅', name:'Henredon Murphy 马蹄形旋转椅（bouclé）· Cream', w:79.25,d:74.93,h:76.46, price:299.99, priceCA:449.99, caVar:'加拿大在售的是同系列不同配置（Dark Wood Pedestal，Yellow/Taupe，item 4000438049）', color:'#d3cfc6', color2:'#8b6a45', seatH:48.0, model:'murphy', kind:'tubChair', url:'https://www.costco.com/p/-/henredon-murphy-swivel-boucle-chair-cream/4000222234?langId=-1', note:'100% polyester bouclé（绒圈织）·plywood 框架 + solid wood·全 360° 旋转，实心木圆盘底座 Ø50.2×高11cm（官方未写，由正交背视图量出）·马蹄形外壳（224° 弧，前口敞开），厚 11cm，顶边 waterfall：背 76.5 → 扶手端 64.0cm；外壳向下收窄（g6 正交背视图拟合 79.0cm@72.7 → 66.3cm@16.7）·座宽 53.9 / 座高 48.0cm·完全组装·承重 275lb·美国 $299.99（原 $399.99，9/21–10/18 减 $100）'},
- {id:'murphy-1', cat:'沙发 / 单椅', name:'Henredon Murphy 马蹄形旋转椅（bouclé）· Gray', w:79.25,d:74.93,h:76.46, price:299.99, priceCA:449.99, caVar:'加拿大在售的是同系列不同配置（Dark Wood Pedestal，Yellow/Taupe，item 4000438049）', color:'#333532', color2:'#8b6a45', seatH:48.0, model:'murphy', kind:'tubChair', url:'https://www.costco.com/p/-/henredon-murphy-swivel-boucle-chair-gray/4000424664?langId=-1', note:'同 Cream 款，仅配色不同（Costco item 4000424664）·100% polyester bouclé·360° 旋转 + 实心木圆盘底座·官方 W79.25×D74.93×H76.46cm，座高 48.0cm'}
+ {id:'murphy-1', cat:'沙发 / 单椅', name:'Henredon Murphy 马蹄形旋转椅（bouclé）· Gray', w:79.25,d:74.93,h:76.46, price:299.99, priceCA:449.99, caVar:'加拿大在售的是同系列不同配置（Dark Wood Pedestal，Yellow/Taupe，item 4000438049）', color:'#333532', color2:'#8b6a45', seatH:48.0, model:'murphy', kind:'tubChair', url:'https://www.costco.com/p/-/henredon-murphy-swivel-boucle-chair-gray/4000424664?langId=-1', note:'同 Cream 款，仅配色不同（Costco item 4000424664）·100% polyester bouclé·360° 旋转 + 实心木圆盘底座·官方 W79.25×D74.93×H76.46cm，座高 48.0cm'},
+ // ===== S19b（2026-10-23）通用件：按尺寸档位（noPrice：规划空间不看品牌，尺寸取一款主流机型的官方 / 零售商规格）=====
+ {id:'tv-43', cat:'电视 / 家电', name:'电视 43″（通用尺寸 · 壁挂）', w:96.8, d:6.1, h:56.1, noPrice:true, color:'#2b2c2f', kind:'tv', model:'tvFlat', z:79, url:'https://www.bestbuy.com/site/reviews/samsung-43-class-du7200-series-crystal-uhd-4k-smart-tizen-tv-2024/6576342', note:'机身取 Samsung DU7200 43″（不含底座 38.1×22.1×2.4″）；离地缺省 = 屏幕中心约 107cm（坐姿视线高），壁挂支架另加 2–5cm 厚'},
+ {id:'tv-55', cat:'电视 / 家电', name:'电视 55″（通用尺寸 · 壁挂）', w:123.4, d:6.1, h:71.1, noPrice:true, color:'#2b2c2f', kind:'tv', model:'tvFlat', z:71, url:'https://www.tomsguide.com/tvs/4k-tvs/samsung-du7200-led-tv-review', note:'机身取 Samsung DU7200 55″（不含底座 48.6×28.0×2.4″）；离地缺省 = 屏幕中心约 107cm'},
+ {id:'tv-65', cat:'电视 / 家电', name:'电视 65″（通用尺寸 · 壁挂）', w:145.3, d:6.1, h:83.3, noPrice:true, color:'#2b2c2f', kind:'tv', model:'tvFlat', z:65, url:'https://www.bestbuy.com/site/questions/samsung-65-class-du7200-series-crystal-uhd-4k-smart-tizen-tv-2024/6575140', note:'机身取 Samsung DU7200 65″（不含底座 57.2×32.8×2.4″）；离地缺省 = 屏幕中心约 107cm'},
+ {id:'tv-75', cat:'电视 / 家电', name:'电视 75″（通用尺寸 · 壁挂）', w:167.6, d:6.1, h:96.3, noPrice:true, color:'#2b2c2f', kind:'tv', model:'tvFlat', z:59, url:'https://www.bestbuy.com/site/questions/samsung-75-class-du7200-series-crystal-uhd-4k-smart-tizen-tv-2024/6575097/question/eec90cad-7f62-3cfd-810c-243179a7c478', note:'机身取 Samsung DU7200 75″（不含底座 66.0×37.9×2.4″）；离地缺省 = 屏幕中心约 107cm'},
+ {id:'tv-85', cat:'电视 / 家电', name:'电视 85″（通用尺寸 · 壁挂）', w:190.2, d:6.1, h:109, noPrice:true, color:'#2b2c2f', kind:'tv', model:'tvFlat', z:53, url:'https://www.tomsguide.com/tvs/4k-tvs/samsung-du7200-led-tv-review', note:'机身取 Samsung DU7200 85″（不含底座 74.9×42.9×2.4″）；离地缺省 = 屏幕中心约 107cm'},
+ {id:'washer-27', cat:'电视 / 家电', name:'滚筒洗衣机 27″（通用尺寸）', w:68.6, d:76.8, h:99.1, noPrice:true, color:'#f4f4f2', kind:'washer', model:'washerFL', url:'https://www.bestbuy.com/product/lg-4-5-cu-ft-high-efficiency-stackable-front-load-washer-with-6motion-technology-white/J7G564PKH5/sku/6397853', note:'尺寸取 LG WM3400CW（27×39×30¼″）；开门需要的进深 55″（140cm）；可叠烘干机：烘干机「离地」填 99'},
+ {id:'dryer-27', cat:'电视 / 家电', name:'滚筒烘干机 27″（通用尺寸）', w:68.6, d:76.2, h:98.3, noPrice:true, color:'#f4f4f2', kind:'dryer', model:'dryerFL', url:'https://bestbuy.com/site/lg-7-4-cu-ft-stackable-electric-dryer-with-flowsense-white/6397855.p?skuId=6397855', note:'尺寸取 LG DLE3400W（27×38 11/16×30″）；开门需要的进深 51″（130cm）；叠在洗衣机上：离地 99cm'},
+ {id:'fridge-24', cat:'电视 / 家电', name:'冰箱 24″ 上冷冻（通用尺寸）', w:60.3, d:66.7, h:152.4, noPrice:true, color:'#f2f2f0', kind:'fridge', model:'fridgeTop', url:'https://www.homedepot.ca/product/frigidaire-24-inch-w-10-1-cu-ft-top-freezer-apartment-size-refrigerator-in-white-energy-star-/1001592905', note:'尺寸取 Frigidaire FFET1022（23¾×60×26¼″，含门与把手；高到铰链）'},
+ {id:'fridge-28', cat:'电视 / 家电', name:'冰箱 28″ 上冷冻（通用尺寸）', w:71.1, d:82.9, h:171.1, noPrice:true, color:'#f2f2f0', kind:'fridge', model:'fridgeTop', url:'https://www.geappliances.com/appliance/GE-ENERGY-STAR-17-5-Cu-Ft-Top-Freezer-Refrigerator-GTE18GTNRWW', note:'尺寸取 GE GTE18GTNRWW（28×67⅜×32⅝″，含把手；开门 90° 进深 57″）'},
+ {id:'fridge-36', cat:'电视 / 家电', name:'冰箱 36″ 法式对开（通用尺寸）', w:90.8, d:89.9, h:177.8, noPrice:true, color:'#b9bcc0', kind:'fridge', model:'fridgeFD', url:'https://www.bestbuy.com/site/samsung-28-cu-ft-large-capacity-3-door-french-door-refrigerator-fingerprint-resistant-stainless-steel/6417767.p', note:'尺寸取 Samsung RF28T5001SR（35¾×70×35⅜″，含把手；铰链一侧离墙留 2½″ 才开得了门）'},
+ {id:'wardrobe-100', cat:'衣柜', name:'衣柜 两门 100（通用尺寸）', w:100, d:60, h:201, noPrice:true, color:'#f0efeb', kind:'wardrobe', model:'wardrobe', url:'https://www.ikea.com/us/en/p/pax-forsand-wardrobe-combination-white-white-s89559141/', note:'尺寸取 IKEA PAX 框体 100×58×201 + FORSAND 门（总深 60）；平开门需要门前 50cm 开门空间'},
+ {id:'wardrobe-150', cat:'衣柜', name:'衣柜 三门 150（通用尺寸）', w:150, d:60, h:201, noPrice:true, color:'#f0efeb', kind:'wardrobe', model:'wardrobe', url:'https://www.ikea.com/us/en/p/pax-forsand-wardrobe-combination-gray-beige-gray-beige-s89562327/', note:'尺寸取 IKEA PAX 框体（100 + 50）×58×201 + FORSAND 门（总深 60）'},
+ {id:'wardrobe-200', cat:'衣柜', name:'衣柜 四门 200（通用尺寸）', w:200, d:60, h:201, noPrice:true, color:'#f0efeb', kind:'wardrobe', model:'wardrobe', url:'https://www.ikea.com/us/en/p/pax-forsand-wardrobe-combination-white-white-s89559141/', note:'尺寸取 IKEA PAX 框体 2×100×58×201 + FORSAND 门（总深 60）'},
+ // ===== S19b 绿植 / 装饰（IKEA 实物，官网实测尺寸与当地实际标价）=====
+ {id:'ficus-lyrata-12', cat:'绿植 / 装饰', name:'FICUS LYRATA 琴叶榕（盆径 30）', w:75, d:75, h:142, price:69.99, caNA:true, color:'#2f5d2a', color2:'#1f1f22', kind:'plant', model:'ficusLyrata', url:'https://www.ikea.com/us/en/p/ficus-lyrata-potted-plant-fiddle-leaf-fig-30568185/', note:'官网：盆径 12″、株高 56″（育苗盆，常再套一个装饰盆）；冠幅按官方图以株高标定 ≈ 75cm（植物个体有差异）；加拿大只有 24cm 盆的小株'},
+ {id:'sansevieria-8', cat:'绿植 / 装饰', name:'SANSEVIERIA 虎尾兰（盆径 20）', w:25, d:25, h:60, price:24.99, priceCA:24.99, color:'#4f7a3a', color2:'#b8562e', kind:'plant', model:'sansevieria', url:'https://www.ikea.com/us/en/p/sansevieria-potted-plant-mother-in-laws-tongue-20426691/', note:'官网：盆径 8″、株高 23½″；叶丛宽按官方图以盆径标定 ≈ 25cm'},
+ {id:'pjaetteryd-forest', cat:'绿植 / 装饰', name:'PJÄTTERYD 画布画 50×70 · 森林童话', w:50.2, d:2.5, h:69.9, price:29.99, priceCA:24.99, color:'#ead2cf', kind:'art', model:'canvasArt', z:110, url:'https://www.ikea.com/us/en/p/pjaetteryd-picture-forest-fairy-tale-30614130/', note:'官网 19¾×27½″；无框画布，厚度按包装厚 1″ 取上限；离地缺省 = 画心约 145cm（常规挂画高度）'},
+ {id:'blodflaeder-seine', cat:'绿植 / 装饰', name:'BLODFLÄDER 装框画 118×78 · 吉维尼的塞纳河', w:118.1, d:3.2, h:78.1, price:99.99, priceCA:89, color:'#5a5434', kind:'art', model:'framedArt', z:105, url:'https://www.ikea.com/us/en/p/blodflaeder-picture-the-seine-at-giverny-20601915/', note:'官网 46½×30¾″、框深 1¼″；挂在沙发上方时画底离沙发背 20–25cm'},
+ {id:'knapper', cat:'绿植 / 装饰', name:'KNAPPER 立式穿衣镜 · 白色', w:47.9, d:53, h:160, price:129.99, priceCA:74.99, color:'#f2f2f0', kind:'mirror', model:'knapper', url:'https://www.ikea.com/us/en/p/knapper-floor-mirror-white-00396242/', note:'官网 18⅞×20⅞×63″，镜面宽 15⅜″；背后管架顶横杆可挂衣、镜板背面 5 个挂钩'},
 ];
 /* 目录侧栏分类的显示顺序（未列出的分类，如用户自定义，按出现顺序附后） */
-const CAT_ORDER = ['床 / 婴儿床','床头柜','沙发 / 单椅','儿童沙发','餐椅 / 吧凳','办公椅','餐桌','茶几 / 边几','书桌','收纳 / 搁架','手推车','入户 / 衣物','落地灯','固定灯具','地毯 / 爬行垫','儿童游乐架','运动器材','骑乘玩具','儿童桌 / 活动','儿童玩具'];
+const CAT_ORDER = ['床 / 婴儿床','床头柜','衣柜','沙发 / 单椅','儿童沙发','餐椅 / 吧凳','办公椅','餐桌','茶几 / 边几','电视 / 家电','书桌','收纳 / 搁架','手推车','入户 / 衣物','绿植 / 装饰','落地灯','固定灯具','地毯 / 爬行垫','儿童游乐架','运动器材','骑乘玩具','儿童桌 / 活动','儿童玩具'];
 
 /* =====================================================================
    S10（R8-5K）：目录扩展包 —— 条目与建模代码的外部来源
@@ -3107,6 +3127,8 @@ function furnShape(it, spec){
   // 主体
   if(kind==='tableRound' || kind==='trampoline' || (kind==='sideTable' && spec.w===spec.d && spec.w>=60)){
     el('circle',{cx:0,cy:0,r:wp/2,fill:col,stroke:'rgba(0,0,0,.4)','stroke-width':1.2},body);
+  } else if(kind==='plant'){                                    // S19b 绿植：冠幅圆（半透明，看得见下面的东西）+ 叶片放射线 + 盆
+    el('circle',{cx:0,cy:0,r:wp/2,fill:col,'fill-opacity':.55,stroke:'rgba(20,60,20,.6)','stroke-width':1},body);
   } else {
     R(-wf/2,-df/2,wf,df, isRug?3:4, col, {stroke:'rgba(0,0,0,.45)','stroke-width':isRug?0.8:1.2, opacity:isRug?0.82:1});
   }
@@ -3164,6 +3186,29 @@ function furnShape(it, spec){
     }
     el('line',{x1:-wp/2+3,y1:-dp/2+3,x2:wp/2-3,y2:dp/2-3,stroke:'rgba(0,0,0,.20)','stroke-width':1},body);
     el('line',{x1:-wp/2+3,y1:dp/2-3,x2:wp/2-3,y2:-dp/2+3,stroke:'rgba(0,0,0,.20)','stroke-width':1},body);
+  } else if(kind==='tv'){                                        // S19b：电视 = 深色细条 + 屏幕那一面（+y = 正面）一道亮线
+    R(-wf/2,-df/2,wf,df,1,'#141518');
+    el('line',{x1:-wp/2+1,y1:dp/2-0.6,x2:wp/2-1,y2:dp/2-0.6,stroke:'#7fb8ff','stroke-width':1.1,opacity:.85},body);
+  } else if(kind==='washer'||kind==='dryer'){                    // 洗衣机 / 烘干机：方框 + 滚筒圆 + 正面（门）一道粗线
+    el('circle',{cx:0,cy:0,r:Math.min(wp,dp)*0.33,fill:'none',stroke:'rgba(0,0,0,.30)','stroke-width':1.2},body);
+    el('line',{x1:-wp/2+2,y1:dp/2-1.5,x2:wp/2-2,y2:dp/2-1.5,stroke:'rgba(0,0,0,.45)','stroke-width':2},body);
+  } else if(kind==='fridge'){                                     // 冰箱：门那一侧一道门线；法式对开（宽 ≥ 80cm）门带中间再一道中缝
+    const dl=dp/2-cm2ft(11)*S;
+    el('line',{x1:-wp/2+1,y1:dl,x2:wp/2-1,y2:dl,stroke:'rgba(0,0,0,.40)','stroke-width':1.2},body);
+    if(spec.w>=80) el('line',{x1:0,y1:dl,x2:0,y2:dp/2,stroke:'rgba(0,0,0,.40)','stroke-width':1.2},body);
+  } else if(kind==='wardrobe'){                                   // 衣柜：门线 + 挂衣杆（虚线）+ 门缝
+    const dl=dp/2-cm2ft(2)*S, n=Math.max(2,Math.round(spec.w/50));
+    el('line',{x1:-wp/2+1,y1:dl,x2:wp/2-1,y2:dl,stroke:'rgba(0,0,0,.40)','stroke-width':1.2},body);
+    el('line',{x1:-wp/2+3,y1:-dp*0.05,x2:wp/2-3,y2:-dp*0.05,stroke:'rgba(0,0,0,.35)','stroke-width':1,'stroke-dasharray':'5 3'},body);
+    for(let i=1;i<n;i++){ const x=-wp/2+wp*i/n; el('line',{x1:x,y1:dl,x2:x,y2:dp/2,stroke:'rgba(0,0,0,.40)','stroke-width':1},body); }
+  } else if(kind==='plant'){
+    for(let a=0;a<8;a++){ const t=a*Math.PI/4+0.3; el('line',{x1:Math.cos(t)*wp*0.14,y1:Math.sin(t)*wp*0.14,x2:Math.cos(t)*wp*0.46,y2:Math.sin(t)*wp*0.46,stroke:'rgba(255,255,255,.35)','stroke-width':1},body); }
+    el('circle',{cx:0,cy:0,r:Math.max(2.5, wp*0.18),fill:spec.color2||'#3a3a3a',stroke:'rgba(0,0,0,.4)','stroke-width':.8},body);
+  } else if(kind==='art'){                                        // 挂画：细条（画的主色）+ 画面一侧亮线
+    el('line',{x1:-wp/2+1,y1:dp/2-0.5,x2:wp/2-1,y2:dp/2-0.5,stroke:'rgba(255,255,255,.75)','stroke-width':1},body);
+  } else if(kind==='mirror'){                                     // 立式镜：前沿镜面（浅蓝亮线）+ 后管架
+    el('line',{x1:-wp/2+1,y1:dp/2-1.2,x2:wp/2-1,y2:dp/2-1.2,stroke:'#bfe3ff','stroke-width':2.2},body);
+    el('line',{x1:-wp/2+2,y1:-dp/2+1.5,x2:wp/2-2,y2:-dp/2+1.5,stroke:'rgba(0,0,0,.35)','stroke-width':1},body);
   } else if(kind==='dresser'||kind==='nightstand'||kind==='bookcase'||kind==='shoeCab'){
     el('line',{x1:-wp/2+3,y1:0,x2:wp/2-3,y2:0,stroke:dk,'stroke-width':1},body);
   } else if(kind==='lamp'){
@@ -3275,8 +3320,23 @@ function drawFurniture(){
     if(itemZ(it)>0 && !isLight(spec)){   // S19：离地件 = 虚线外框 + 「离地 xx」（建筑平面图里高处构件的画法）
       g.classList.add('elevated');
       const o=g.querySelector('rect,circle'); if(o) o.setAttribute('stroke-dasharray','5 3');
-      const t=el('text',{x:0, y:cm2ft(spec.d)/2*S-3, 'text-anchor':'middle', 'font-size':Math.min(9, cm2ft(spec.w)*S/5), fill:'rgba(255,255,255,.78)', class:'zLbl'}, g);
+      // 「离地 xx」：默认贴着正面边缘画在件内；放不下（薄件：电视 / 挂画 / 搁板）或会压到件名，就画到正面外侧。
+      // 转过半圈时跟件名一样翻 180°（不然字倒着）。字框用实测 getBBox：中日文字体的上下伸部比西文大，按字号估会压字；
+      // 2D 视图隐藏时量不到（高度 0）才退回按字号估
+      const dp=cm2ft(spec.d)*S, fs=Math.min(9, cm2ft(spec.w)*S/5), rr=((it.rot%360)+360)%360, flip=rr>90&&rr<270;
+      const t=el('text',{x:0, y:0, 'text-anchor':'middle', 'font-size':fs, fill:'rgba(255,255,255,.78)', class:'zLbl'}, g);
       t.textContent='离地 '+fmtLen(itemZ(it));
+      const tbox=(e, f, y0)=>{ let b=null; try{ b=e.getBBox(); }catch(_){}
+        return (b && b.height>0) ? {top:b.y, bot:b.y+b.height} : {top:y0-1.06*f, bot:y0+0.3*f}; };
+      const zb=tbox(t, fs, 0), nm=g.querySelector('text:not(.zLbl)');
+      let nameFront=-Infinity;                                     // 件名字框往正面一侧伸到哪（件的局部 y，+y = 正面）
+      if(nm){ const nb=tbox(nm, +nm.getAttribute('font-size')||10, +nm.getAttribute('y')||0); nameFront = flip ? -nb.top : nb.bot; }
+      const inBot=dp/2-2, inside = inBot-(zb.bot-zb.top) > Math.max(nameFront+1, -dp/2);
+      let Y;
+      if(inside) Y = flip ? -inBot-zb.top : inBot-zb.bot;
+      else { const e=Math.max(dp/2, nameFront)+1.5; Y = flip ? -e-zb.bot : e-zb.top; }
+      t.setAttribute('y', Y.toFixed(2));
+      if(flip) t.setAttribute('transform','rotate(180)');
     }
     boxes.push({it, spec});
   }
@@ -3402,7 +3462,7 @@ function vOverlapIt(ia,sa,ib,sb){
 function obbCorners(it,spec){
   // 圆形家具（圆桌/转椅/圆几）按内接方近似，避免方角误报碰撞
   // 实物是圆的（w===d）就要按圆算：方盒角比圆外凸 (√2−1)r ≈ 41% 半径，斜着摆会假报警
-  const round = spec.w===spec.d && ['tableRound','sideTable','lamp','officeChair','stool','ballPit','trampoline'].includes(spec.kind);
+  const round = spec.w===spec.d && ['tableRound','sideTable','lamp','officeChair','stool','ballPit','trampoline','plant'].includes(spec.kind);
   const k = round? 0.72 : 1;
   const wf=cm2ft(spec.w)/2*k, df=cm2ft(spec.d)/2*k, r=it.rot*Math.PI/180;
   const c=Math.cos(r), s=Math.sin(r);
@@ -6738,12 +6798,35 @@ const PANORAMA_GEN={
 };
 
 
+/* S19b：家具里的镜子（KNAPPER 落地镜：镜面 mesh 带 userData.mirrorFurn，材质每件一份）。
+   不进 three.mirrors（那是户型洁具镜子的清单，随静态重建收集）；烘焙时现找，只要当前显示着的（别的楼层不烘） */
+function furnMirrorMeshes(){
+  const out=[];
+  if(!three || !three.furnGroup) return out;
+  const shown=o=>{ for(let p=o;p;p=p.parent) if(!p.visible) return false; return true; };
+  three.furnGroup.traverse(o=>{ if(o.isMesh && o.userData.mirrorFurn && shown(o)) out.push(o); });
+  return out;
+}
+/* 家具镜子增删 / 挪动 / 转向 → 防抖重烘（拖动途中不烘，停手 400ms 后烘一次） */
+function scheduleMirrorBake(){
+  if(!three) return;
+  clearTimeout(three._mirBakeT);
+  three._mirBakeT=setTimeout(()=>{
+    if(three.photo){ scheduleMirrorBake(); return; }              // 光追累积中不动场景：等它结束再烘
+    if(three._furnMirBaked===three._furnMirSig) return;           // 静态重建那条路已经按当前位姿烘过了
+    try{ installMirrorProbes(); }catch(e){ console.warn(e); } }, 400);
+}
 /* 镜子的实景反射：给每面镜子在镜面前方烘一张立方体贴图当 envMap。
    平面镜用立方体贴图会有视差误差，但比"反射窗外城市全景"正确得多，
-   而且只在场景重建时烘一次（每面 6 张 128px）。光追走的是真反射，不用这个。 */
+   而且只在场景重建时烘一次（每面 6 张 128px；S19b 起家具镜子挪动 / 转向后防抖再烘）。光追走的是真反射，不用这个。 */
 function installMirrorProbes(){
-  if(!three || !three.mirrors || !three.mirrors.length) return;
-  const list = three.mirrors.slice(0, 4);                 // 封顶，别让烘焙拖慢重建
+  if(!three) return;
+  const furn = furnMirrorMeshes().slice(0, 2);
+  const list = (three.mirrors || []).slice(0, 4).concat(furn);   // 封顶，别让烘焙拖慢重建
+  three._furnMirBaked = three._furnMirSig;
+  if(!list.length) return;
+  // 家具镜子的朝向 = 镜面 mesh 的局部 +z 转到世界系（含整件的 rot 与镜板后倾），每次烘都现算（可能刚被挪 / 转过）
+  for(const m of furn){ const d=m.getWorldDirection(new THREE.Vector3()); m.userData.mirrorN=[d.x, 0, d.z]; }
   const NRM = {S:[0,0,1], N:[0,0,-1], E:[1,0,0], W:[-1,0,0]};
   const hidden = [];
   for(const m of list){ hidden.push([m, m.visible]); m.visible = false; }
@@ -9224,6 +9307,284 @@ function corduroyTexture(){
   t.wrapS=t.wrapT=THREE.RepeatWrapping; t.repeat.set(1,1);
   t.encoding=THREE.sRGBEncoding; t.anisotropy=8;
   _cordTex=t; return t;
+}
+/* ---------- S19b 通用件 / 绿植 / 挂画 / 落地镜 的贴图（种子 1033–1041，只增不改，§5.4） ---------- */
+/* 电视熄屏的玻璃面：近黑 + 极淡的竖向渐变 + 一道斜向反光带 + 细密像素网格（近看不是一块死黑塑料） */
+let _tvScrTex = null;
+function tvScreenTexture(){
+  if(_tvScrTex) return _tvScrTex;
+  srand(1033);
+  const N=512, c=document.createElement('canvas'); c.width=N; c.height=N;
+  const g=c.getContext('2d');
+  const gr=g.createLinearGradient(0,0,0,N); gr.addColorStop(0,'#17191d'); gr.addColorStop(1,'#0b0c0e');
+  g.fillStyle=gr; g.fillRect(0,0,N,N);
+  const sh=g.createLinearGradient(0,N*0.15,N,N*0.85);
+  sh.addColorStop(0,'rgba(255,255,255,0)'); sh.addColorStop(0.42,'rgba(255,255,255,0)');
+  sh.addColorStop(0.5,'rgba(255,255,255,0.045)'); sh.addColorStop(0.58,'rgba(255,255,255,0)'); sh.addColorStop(1,'rgba(255,255,255,0)');
+  g.fillStyle=sh; g.fillRect(0,0,N,N);
+  g.fillStyle='rgba(255,255,255,0.018)';
+  for(let y=0;y<N;y+=3) g.fillRect(0,y,N,1);
+  for(let x=0;x<N;x+=3) g.fillRect(x,0,1,N);
+  for(let i=0;i<900;i++){ g.fillStyle=`rgba(255,255,255,${(0.01+rnd01()*0.02).toFixed(3)})`; g.fillRect(rnd01()*N, rnd01()*N, 1, 1); }
+  const t=new THREE.CanvasTexture(c);
+  t.encoding=THREE.sRGBEncoding; t.anisotropy=8;
+  _tvScrTex=t; return t;
+}
+/* 洗衣机 / 烘干机内筒：不锈钢 + 六角排布的小圆孔（LG 实拍内筒满布冲孔） */
+let _drumTex = null;
+function drumTexture(){
+  if(_drumTex) return _drumTex;
+  srand(1034);
+  const N=512, c=document.createElement('canvas'); c.width=N; c.height=N;
+  const g=c.getContext('2d');
+  g.fillStyle='#dcdee0'; g.fillRect(0,0,N,N);
+  for(let i=0;i<1400;i++){ g.fillStyle=`rgba(${rnd01()<0.5?255:150},${rnd01()<0.5?255:152},${rnd01()<0.5?255:158},0.06)`; g.fillRect(0, rnd01()*N, N, 0.6+rnd01()); }
+  const P=16;
+  for(let row=0, y=P/2; y<N; y+=P*0.866, row++)
+    for(let x=(row%2?P/2:0)+P/4; x<N; x+=P){
+      g.beginPath(); g.arc(x,y,2.6,0,Math.PI*2); g.fillStyle='rgba(40,42,46,0.85)'; g.fill();
+      g.beginPath(); g.arc(x-0.6,y-0.6,3.4,Math.PI*1.05,Math.PI*1.6); g.strokeStyle='rgba(255,255,255,0.35)'; g.lineWidth=0.8; g.stroke();
+    }
+  const t=new THREE.CanvasTexture(c);
+  t.wrapS=t.wrapT=THREE.RepeatWrapping; t.repeat.set(3,2);
+  t.encoding=THREE.sRGBEncoding; t.anisotropy=8;
+  _drumTex=t; return t;
+}
+/* 琴叶榕叶面：深绿底 + 浅黄绿主脉 + 羽状侧脉 + 网状细脉（官方特写 pe997109）。UV 覆盖整张叶（v 沿主脉） */
+let _figLeafTex = null;
+function figLeafTexture(){
+  if(_figLeafTex) return _figLeafTex;
+  srand(1035);
+  const N=512, c=document.createElement('canvas'); c.width=N; c.height=N;
+  const g=c.getContext('2d');
+  g.fillStyle='#3f7a2c'; g.fillRect(0,0,N,N);
+  for(let i=0;i<60;i++){ g.fillStyle=`rgba(${rnd01()<0.5?20:120},${rnd01()<0.5?60:150},${rnd01()<0.5?20:60},0.06)`;
+    g.beginPath(); g.arc(rnd01()*N, rnd01()*N, 20+rnd01()*60, 0, Math.PI*2); g.fill(); }
+  // 网状细脉
+  g.strokeStyle='rgba(170,200,110,0.16)'; g.lineWidth=0.8;
+  for(let i=0;i<700;i++){ const x=rnd01()*N, y=rnd01()*N, a=rnd01()*Math.PI*2, l=6+rnd01()*12;
+    g.beginPath(); g.moveTo(x,y); g.lineTo(x+Math.cos(a)*l, y+Math.sin(a)*l); g.stroke(); }
+  // 侧脉：从主脉向两侧弧形伸出、指向叶尖（v 小 = 叶柄端）
+  const mid=N/2;
+  for(let k=0;k<9;k++){ const y0=N*(0.12+k*0.095);
+    for(const s of [-1,1]){
+      g.strokeStyle='rgba(205,220,120,0.55)'; g.lineWidth=2.2-k*0.12;
+      g.beginPath(); g.moveTo(mid, y0);
+      g.quadraticCurveTo(mid+s*N*0.22, y0+N*0.02, mid+s*N*0.43, y0+N*0.12); g.stroke(); } }
+  // 主脉
+  const gr=g.createLinearGradient(mid-6,0,mid+6,0);
+  gr.addColorStop(0,'rgba(205,220,120,0)'); gr.addColorStop(0.5,'rgba(215,225,130,0.95)'); gr.addColorStop(1,'rgba(205,220,120,0)');
+  g.fillStyle=gr; g.fillRect(mid-6,0,12,N);
+  const t=new THREE.CanvasTexture(c);
+  t.encoding=THREE.sRGBEncoding; t.anisotropy=8;
+  _figLeafTex=t; return t;
+}
+/* 虎尾兰叶面：灰绿底 + 墨绿与浅灰绿相间的横向波浪斑带（官方图 pe708273 / pe643688：斑带横跨叶宽只起伏 2–3 个波、
+   粗细不匀、在主脉处微微朝叶尖拱成 V；间距 1.5–2cm）。u 横跨叶宽、v 沿叶长（repeat.y=1.5 ≈ 叶长 40cm 时 512px ≈ 27cm）。 */
+let _snakeTex = null;
+function snakeLeafTexture(){
+  if(_snakeTex) return _snakeTex;
+  srand(1036);
+  const N=512, c=document.createElement('canvas'); c.width=N; c.height=N;
+  const g=c.getContext('2d');
+  g.fillStyle='#4c7a3e'; g.fillRect(0,0,N,N);
+  const band=(y, bh, col)=>{ const k1=1.2+rnd01()*1.5, k2=3+rnd01()*3, p1=rnd01()*6.3, p2=rnd01()*6.3, A=3+rnd01()*4, V=2+rnd01()*3;
+    const edge=(x,top)=>{ const u=x/N; return y + A*Math.sin(2*Math.PI*k1*u+p1) + 1.4*Math.sin(2*Math.PI*k2*u+p2) - V*(1-Math.abs(u-0.5)*2)
+      + (top?0 : bh*(0.55+0.45*Math.sin(2*Math.PI*(k1+0.7)*u+p2))); };
+    g.fillStyle=col; g.beginPath(); g.moveTo(0, edge(0,true));
+    for(let x=4;x<=N;x+=4) g.lineTo(x, edge(x,true));
+    for(let x=N;x>=0;x-=4) g.lineTo(x, edge(x,false));
+    g.closePath(); g.fill(); };
+  for(let y=-20; y<N+20; ){
+    const dh=8+rnd01()*14;                     // 墨绿带
+    band(y, dh, `rgba(${22+Math.round(rnd01()*14)},${52+Math.round(rnd01()*16)},${24+Math.round(rnd01()*10)},${(0.75+rnd01()*0.2).toFixed(2)})`);
+    const lh=5+rnd01()*9;                      // 夹在墨绿带之间的浅灰绿细带
+    band(y+dh+4+rnd01()*6, lh, `rgba(${140+Math.round(rnd01()*24)},${162+Math.round(rnd01()*22)},${126+Math.round(rnd01()*18)},${(0.35+rnd01()*0.2).toFixed(2)})`);
+    y += dh + lh + 14 + rnd01()*16;
+  }
+  for(let i=0;i<1600;i++){ g.fillStyle='rgba(20,40,18,0.10)'; g.fillRect(rnd01()*N, rnd01()*N, 1.2, 1.2); }
+  const t=new THREE.CanvasTexture(c);
+  t.wrapS=t.wrapT=THREE.RepeatWrapping; t.repeat.set(1,1.5);
+  t.encoding=THREE.sRGBEncoding; t.anisotropy=8;
+  _snakeTex=t; return t;
+}
+/* 盆土：深棕底 + 颗粒 + 碎树皮块（两张官方图里盆面都是粗颗粒基质） */
+let _soilTex = null;
+function soilTexture(){
+  if(_soilTex) return _soilTex;
+  srand(1037);
+  const N=256, c=document.createElement('canvas'); c.width=N; c.height=N;
+  const g=c.getContext('2d');
+  g.fillStyle='#3a2a1e'; g.fillRect(0,0,N,N);
+  for(let i=0;i<2600;i++){ const v=rnd01();
+    g.fillStyle = v<0.5 ? 'rgba(20,12,8,0.55)' : (v<0.85 ? 'rgba(110,80,55,0.45)' : 'rgba(160,120,80,0.5)');
+    const r=0.6+rnd01()*1.8; g.beginPath(); g.arc(rnd01()*N, rnd01()*N, r, 0, Math.PI*2); g.fill(); }
+  for(let i=0;i<70;i++){ g.fillStyle=`rgba(${120+Math.round(rnd01()*50)},${80+Math.round(rnd01()*30)},${50},0.6)`;
+    g.save(); g.translate(rnd01()*N, rnd01()*N); g.rotate(rnd01()*Math.PI); g.fillRect(-4,-1.5,8,3); g.restore(); }
+  const t=new THREE.CanvasTexture(c);
+  t.wrapS=t.wrapT=THREE.RepeatWrapping; t.repeat.set(1,1);
+  t.encoding=THREE.sRGBEncoding; t.anisotropy=4;
+  _soilTex=t; return t;
+}
+/* 画布画（PJÄTTERYD「森林童话」的配色口径：浅粉底 + 红 / 粉 / 蓝 / 棕的花叶围成一圈 + 中间一只灰色奔跑的鹿）。
+   不临摹原作，只取构图与配色（印刷品图案本来就因款而异） */
+let _artForestTex = null;
+function artForestTexture(){
+  if(_artForestTex) return _artForestTex;
+  srand(1038);
+  const W=384, H=538, c=document.createElement('canvas'); c.width=W; c.height=H;   // 50×70 的画幅比
+  const g=c.getContext('2d');
+  g.fillStyle='#ecd3cf'; g.fillRect(0,0,W,H);
+  for(let i=0;i<900;i++){ g.fillStyle='rgba(255,255,255,0.05)'; g.fillRect(rnd01()*W, rnd01()*H, 2, 2); }
+  const leaf=(x,y,l,a,col)=>{ g.save(); g.translate(x,y); g.rotate(a); g.fillStyle=col;
+    g.beginPath(); g.moveTo(0,0); g.bezierCurveTo(l*0.25,-l*0.34, l*0.7,-l*0.3, l,0); g.bezierCurveTo(l*0.7,l*0.3, l*0.25,l*0.34, 0,0); g.fill();
+    g.strokeStyle='rgba(255,255,255,0.22)'; g.lineWidth=1; g.beginPath(); g.moveTo(l*0.05,0); g.lineTo(l*0.92,0);
+    for(let k=1;k<4;k++){ const u=l*k/4.5; g.moveTo(u,0); g.lineTo(u+l*0.12,-l*0.13); g.moveTo(u,0); g.lineTo(u+l*0.12,l*0.13); } g.stroke(); g.restore(); };
+  // 花：外圈大瓣 + 内圈小瓣（同色系深浅两层）+ 黄色花心带深点（原作的牡丹 / 罂粟式团花）
+  const flower=(x,y,r,c1,c2)=>{ const n=9+Math.floor(rnd01()*3), ph=rnd01()*Math.PI;
+    for(let k=0;k<n;k++){ const a=ph+k*Math.PI*2/n;
+      g.fillStyle=c1; g.beginPath(); g.ellipse(x+Math.cos(a)*r*0.58, y+Math.sin(a)*r*0.58, r*0.46, r*0.3, a, 0, Math.PI*2); g.fill(); }
+    for(let k=0;k<7;k++){ const a=ph+0.4+k*Math.PI*2/7;
+      g.fillStyle=c2; g.beginPath(); g.ellipse(x+Math.cos(a)*r*0.3, y+Math.sin(a)*r*0.3, r*0.3, r*0.2, a, 0, Math.PI*2); g.fill(); }
+    g.fillStyle='#ecc23e'; g.beginPath(); g.arc(x,y,r*0.24,0,Math.PI*2); g.fill();
+    g.fillStyle='rgba(120,40,30,0.55)'; for(let k=0;k<6;k++){ const a=rnd01()*Math.PI*2, d=rnd01()*r*0.18; g.fillRect(x+Math.cos(a)*d-1, y+Math.sin(a)*d-1, 2, 2); } };
+  const bud=(x,y,r,a,c1,c2)=>{ g.save(); g.translate(x,y); g.rotate(a);
+    g.fillStyle=c1; g.beginPath(); g.moveTo(0,-r*1.2); g.bezierCurveTo(r*1.1,-r*0.6, r*0.9,r*0.8, 0,r); g.bezierCurveTo(-r*0.9,r*0.8, -r*1.1,-r*0.6, 0,-r*1.2); g.fill();
+    g.strokeStyle=c2; g.lineWidth=1.6; for(let k=-2;k<=2;k++){ g.beginPath(); g.moveTo(k*r*0.22,-r*0.9); g.quadraticCurveTo(k*r*0.35,0, k*r*0.18,r*0.9); g.stroke(); } g.restore(); };
+  // 花环：椭圆带（官方图：花几乎挨着花、缝里塞满叶；叶以深蓝 / 浅蓝为主、少量棕红；右上角一个粉色花苞）
+  const LEAF=['#2b4787','#2b4787','#24407a','#5d9bd6','#6aa6dd','#7c3b2c'], FL=[['#f08a98','#f6b7c0'],['#e64f4f','#b52a36'],['#8e1f35','#c43b4e'],['#f4a3ad','#ee7d8e']];
+  const spots=[]; const nS=20;
+  for(let k=0;k<nS;k++){ const a=k*Math.PI*2/nS + (rnd01()-0.5)*0.2, rr=1+(rnd01()-0.5)*0.16;
+    spots.push([W/2+Math.cos(a)*W*0.34*rr, H*0.5+Math.sin(a)*H*0.36*rr, a]); }
+  for(const [x,y,a] of spots) for(let j=0;j<4;j++)
+    leaf(x+(rnd01()-0.5)*22, y+(rnd01()-0.5)*22, 34+rnd01()*30, a+(rnd01()-0.5)*2.6, LEAF[Math.floor(rnd01()*LEAF.length)]);
+  spots.forEach(([x,y],k)=>{ if(k%4===3) return; const f=FL[Math.floor(rnd01()*FL.length)]; flower(x+(rnd01()-0.5)*12, y+(rnd01()-0.5)*12, 20+rnd01()*14, f[0], f[1]); });
+  bud(W*0.83, H*0.14, 15, 0.5, '#e98ea4', '#b8506c'); bud(W*0.8, H*0.8, 14, -0.6, '#6d2433', '#3d1219');
+  // 中间灰色的鹿：朝右上跃起（身体斜 30°、前腿前伸、后腿后蹬、颈抬头、一对分叉鹿角）。
+  // 先在离屏画布上拼剪影（几块形状的并集），再用 source-atop 只在剪影里画顺身体走向的深灰细纹（原作的木纹式毛）
+  const dc=document.createElement('canvas'); dc.width=W; dc.height=H; const d=dc.getContext('2d');
+  d.translate(W*0.5, H*0.5); d.rotate(-0.5); d.scale(1.15,1.15);
+  d.fillStyle=d.strokeStyle='#b9b9bc'; d.lineCap=d.lineJoin='round';
+  d.beginPath(); d.moveTo(-66,-6); d.bezierCurveTo(-62,-34, -6,-38, 30,-30); d.bezierCurveTo(56,-26, 66,-8, 62,8);     // 背 → 胸
+  d.bezierCurveTo(56,26, 18,30, -22,28); d.bezierCurveTo(-58,26, -70,14, -66,-6); d.fill();                           // 腹 → 臀
+  d.beginPath(); d.moveTo(28,-26); d.bezierCurveTo(46,-50, 60,-66, 72,-78); d.lineTo(92,-68); d.bezierCurveTo(80,-46, 70,-22, 62,4); d.fill();   // 颈
+  d.beginPath(); d.moveTo(70,-82); d.bezierCurveTo(86,-92, 104,-84, 116,-70); d.bezierCurveTo(106,-62, 92,-62, 82,-64); d.closePath(); d.fill(); // 头 → 吻
+  d.beginPath(); d.moveTo(78,-84); d.lineTo(66,-100); d.lineTo(84,-88); d.fill();                                     // 耳
+  const leg=(pts, w0, w1)=>{ for(let i=0;i<pts.length-1;i++){ d.lineWidth=w0+(w1-w0)*i/(pts.length-1);
+      d.beginPath(); d.moveTo(pts[i][0],pts[i][1]); d.lineTo(pts[i+1][0],pts[i+1][1]); d.stroke(); } };
+  leg([[46,12],[72,28],[100,22],[112,26]], 13, 5);  leg([[38,16],[58,36],[86,44],[96,50]], 12, 5);       // 前腿：前伸
+  leg([[-50,10],[-84,30],[-112,44],[-122,52]], 18, 5); leg([[-42,16],[-70,40],[-98,56],[-104,64]], 15, 5);   // 后腿：后蹬
+  d.beginPath(); d.moveTo(-64,-12); d.lineTo(-78,-22); d.lineTo(-66,-2); d.fill();                                    // 尾
+  d.lineWidth=3.4; d.strokeStyle='#a2a2a6';                                                                           // 鹿角：两根主枝往后上弯、各三个叉
+  for(const sx of [0,1]){ const bx=80-sx*6, by=-84;
+    d.beginPath(); d.moveTo(bx,by); d.bezierCurveTo(bx-8,by-28, bx-30,by-46, bx-60+sx*6,by-54); d.stroke();
+    for(const [u,dx,dy] of [[0.28,9,-18],[0.55,0,-22],[0.82,-9,-18]]){ const px=bx-60*u+sx*6*u, py=by-50*u; d.beginPath(); d.moveTo(px,py); d.lineTo(px+dx,py+dy); d.stroke(); } }
+  d.setTransform(1,0,0,1,0,0); d.globalCompositeOperation='source-atop';
+  d.strokeStyle='rgba(92,92,98,0.5)'; d.lineWidth=1.1;
+  for(let k=-60;k<H+60;k+=4.4){ d.beginPath(); d.moveTo(-20, k); d.bezierCurveTo(W*0.3, k-60+rnd01()*12, W*0.65, k-150+rnd01()*12, W+20, k-200); d.stroke(); }
+  d.globalCompositeOperation='source-over';
+  g.drawImage(dc, 0, 0);
+  flower(W*0.4, H*0.66, 15, '#f4a3ad', '#ee7d8e');     // 鹿后腿前面压一朵（原作里鹿后半身前有一朵粉花）
+  const t=new THREE.CanvasTexture(c);
+  t.encoding=THREE.sRGBEncoding; t.anisotropy=8;
+  _artForestTex=t; return t;
+}
+/* 印象派风景（BLODFLÄDER「吉维尼的塞纳河」的配色口径：晨雾里的米灰天光 + 右侧一大团、左侧两团紫灰 / 橄榄色树影 + 水面倒影）。
+   画法 = 成千上万道短笔触（印象派的决定性特征）；树团是几团不规则子团的并集、笔触越往外越稀越淡（雾里没有硬边），
+   最后整幅罩一层米灰薄雾压对比。不临摹原作 */
+let _artSeineTex = null;
+function artSeineTexture(){
+  if(_artSeineTex) return _artSeineTex;
+  srand(1039);
+  const W=768, H=508, c=document.createElement('canvas'); c.width=W; c.height=H;   // 118×78 的画幅比
+  const g=c.getContext('2d');
+  const sky=g.createLinearGradient(0,0,0,H); sky.addColorStop(0,'#ddd6c1'); sky.addColorStop(0.5,'#d5cdb6'); sky.addColorStop(1,'#dad2bd');
+  g.fillStyle=sky; g.fillRect(0,0,W,H);
+  const horizon=H*0.58;
+  // 天光笔触（先画：树团压在上面）
+  for(let i=0;i<2600;i++){ const x=rnd01()*W, y=rnd01()*horizon;
+    g.strokeStyle=rnd01()<0.5?'rgba(238,232,218,0.35)':'rgba(192,184,168,0.22)'; g.lineWidth=1.5+rnd01()*2.5;
+    g.beginPath(); g.moveTo(x,y); g.lineTo(x+8+rnd01()*12, y-3+rnd01()*6); g.stroke(); }
+  const HI=['#8c8a5a','#9a9868','#7c7f5a','#a4a07a'];   // 晨光打亮的左上侧（官方图树团左上缘泛橄榄黄绿）
+  const mass=(cx,cy,rx,ry,pal,n)=>{ const p1=rnd01()*6.3, p2=rnd01()*6.3;
+    for(let i=0;i<n;i++){ const a=rnd01()*Math.PI*2, r=Math.pow(rnd01(),0.65);
+      const wob=1+0.16*Math.sin(a*3+p1)+0.1*Math.sin(a*5+p2)+0.06*Math.sin(a*11+p1);      // 不规则轮廓
+      const x=cx+Math.cos(a)*rx*r*wob, y=cy+Math.sin(a)*ry*r*wob; if(y>horizon) continue;
+      const lit=Math.cos(a)<0.2 && Math.sin(a)<0 && r>0.45 && rnd01()<0.4;
+      g.strokeStyle=lit ? HI[Math.floor(rnd01()*HI.length)] : pal[Math.floor(rnd01()*pal.length)]; g.lineWidth=2+rnd01()*3.5; g.globalAlpha=(0.3+rnd01()*0.4)*(1-0.7*r*r);   // 越往外越淡
+      const b=rnd01()*Math.PI; g.beginPath(); g.moveTo(x,y); g.lineTo(x+Math.cos(b)*(6+rnd01()*10), y+Math.sin(b)*(4+rnd01()*8)); g.stroke(); }
+    g.globalAlpha=1; };
+  const PAL=['#4a4560','#5a5470','#3a3750','#6a6282','#2f2d40','#4d4e3c','#6e6d4a','#7b7393'], PALG=['#6f7350','#7c7f5a','#5f6a48','#8c8a6c','#5a5470'];
+  // 右侧大树团（官方图：横跨画幅 0.45–0.95、顶到 0.1H、底压水平线）= 五个子团
+  for(const [x,y,rx,ry,n] of [[0.62,0.30,0.13,0.21,4600],[0.73,0.24,0.10,0.15,2800],[0.55,0.46,0.12,0.13,2800],[0.76,0.46,0.12,0.13,2800],[0.86,0.5,0.07,0.08,1100]])
+    mass(W*x,H*y,W*rx,H*ry,PAL,n);
+  // 左侧两团（偏蓝紫）+ 中间一团偏橄榄绿 + 最右边一小团带亮绿
+  for(const [x,y,rx,ry,n] of [[0.1,0.44,0.12,0.16,3000],[0.22,0.47,0.1,0.12,1900],[0.38,0.44,0.09,0.15,2200]]) mass(W*x,H*y,W*rx,H*ry,PAL,n);
+  mass(W*0.42,H*0.5,W*0.07,H*0.08,PALG,900); mass(W*0.95,H*0.53,W*0.05,H*0.05,PALG,500);
+  // 薄雾：整幅上半罩一层米灰（压对比，晨雾感）
+  g.fillStyle='rgba(218,210,190,0.14)'; g.fillRect(0,0,W,horizon);
+  // 倒影：把水平线以上翻下来、略压淡（官方图倒影几乎和树一样深）、加横向抖动笔触
+  g.save(); g.globalAlpha=0.72; g.translate(0, horizon*2); g.scale(1,-1);
+  g.drawImage(c, 0, 0, W, horizon, 0, 0, W, horizon); g.restore();
+  for(let i=0;i<3600;i++){ const x=rnd01()*W, y=horizon+rnd01()*(H-horizon);
+    g.strokeStyle=rnd01()<0.6?'rgba(222,216,202,0.30)':'rgba(80,74,96,0.16)'; g.lineWidth=1+rnd01()*2;
+    g.beginPath(); g.moveTo(x,y); g.lineTo(x+10+rnd01()*16, y+rnd01()*2-1); g.stroke(); }
+  g.fillStyle='rgba(216,209,192,0.16)'; g.fillRect(0,horizon,W,H-horizon);
+  const t=new THREE.CanvasTexture(c);
+  t.encoding=THREE.sRGBEncoding; t.anisotropy=8;
+  _artSeineTex=t; return t;
+}
+/* 洗衣机 / 烘干机控制面板：白底 + 程序旋钮两侧的灰色刻字（短线示意，不写真字）+ 右侧深色显示窗 + 两枚按键圈。
+   UV 横跨整块面板（u 0..1 = 左..右），所以一张图同时给出所有印刷细节 */
+let _lPanelTex = {};
+function laundryPanelTexture(kind){
+  if(_lPanelTex[kind]) return _lPanelTex[kind];
+  srand(kind==='dryer' ? 1041 : 1040);
+  const W=1024, H=192, c=document.createElement('canvas'); c.width=W; c.height=H;
+  const g=c.getContext('2d');
+  g.fillStyle='#f6f6f4'; g.fillRect(0,0,W,H);
+  for(let i=0;i<500;i++){ g.fillStyle='rgba(0,0,0,0.02)'; g.fillRect(rnd01()*W, rnd01()*H, 2, 1); }
+  const kx=W*0.47, ky=H*0.44;
+  // 旋钮两侧 4 行程序名（灰色短线）
+  g.fillStyle='rgba(90,92,96,0.75)';
+  for(let r=0;r<4;r++){ const y=H*0.13+r*H*0.2;
+    const l1=40+rnd01()*30, l2=40+rnd01()*30;
+    g.fillRect(kx-130-l1, y, l1, 6); g.fillRect(kx+130, y, l2, 6);
+    g.fillRect(kx-128, y+3, 40, 1); g.fillRect(kx+88, y+3, 40, 1); }
+  // 两枚按键（电源 / 启停）
+  for(const bx of [kx-112, kx+112]){ g.strokeStyle='rgba(90,92,96,0.8)'; g.lineWidth=3; g.beginPath(); g.arc(bx, H*0.86, 13, 0, Math.PI*2); g.stroke(); }
+  // 显示窗：深色玻璃 + 七段数字 + 下沿一排功能字
+  const dx=W*0.70, dw=W*0.25, dy=H*0.07, dh=H*0.66;
+  g.fillStyle='#1d2024'; g.fillRect(dx,dy,dw,dh);
+  g.fillStyle='rgba(255,255,255,0.75)';
+  for(let i=0;i<6;i++) for(let j=0;j<3;j++) g.fillRect(dx+14+i*30, dy+14+j*22, 18, 4);
+  g.fillStyle='rgba(255,255,255,0.85)'; g.fillRect(dx+dw-62, dy+12, 16, 30); g.fillRect(dx+dw-40, dy+12, 16, 30);
+  g.fillStyle='rgba(255,255,255,0.6)';
+  for(let i=0;i<4;i++) g.fillRect(dx+10+i*dw/4, dy+dh-16, dw/4-22, 5);
+  // 左侧：洗衣机 = 洗涤剂抽屉的提手槽印刷；烘干机 = 一道细装饰线 + 「Sensor Dry」字样示意
+  g.fillStyle='rgba(90,92,96,0.55)';
+  if(kind==='dryer'){ g.fillRect(W*0.03, H*0.62, W*0.24, 2); g.fillRect(W*0.08, H*0.44, 70, 7); }
+  else { g.fillRect(W*0.08, H*0.34, 70, 7); }
+  g.fillRect(W*0.03, H*0.12, 34, 8);   // 左上角商标位（不写字）
+  const t=new THREE.CanvasTexture(c);
+  t.encoding=THREE.sRGBEncoding; t.anisotropy=8;
+  _lPanelTex[kind]=t; return t;
+}
+/* 大面板拉丝不锈钢（法式对开冰箱门 / 侧板）：竖向细拉丝，上下贯通 + 左右回绕 → 无缝。
+   现成的 brushedSteelTexture 是给小件用的（笔触不贯通，大门板上会露出一格一格的拼缝） */
+let _ssPanelTex = null;
+function stainlessPanelTexture(){
+  if(_ssPanelTex) return _ssPanelTex;
+  srand(1042);
+  const W=256, H=1024, c=document.createElement('canvas'); c.width=W; c.height=H;
+  const g=c.getContext('2d');
+  g.fillStyle='#eceef0'; g.fillRect(0,0,W,H);           // 近白基底：色调交给 material.color
+  for(let i=0;i<2400;i++){ const x=rnd01()*W, v=rnd01()<0.5?255:90, a=(0.012+rnd01()*0.03).toFixed(3), lw=0.3+rnd01()*0.6;
+    for(const xx of [x, x-W, x+W]){ g.strokeStyle=`rgba(${v},${v},${v},${a})`; g.lineWidth=lw; g.beginPath(); g.moveTo(xx,0); g.lineTo(xx,H); g.stroke(); } }
+  const t=new THREE.CanvasTexture(c);
+  t.wrapS=t.wrapT=THREE.RepeatWrapping; t.repeat.set(3,0.5);
+  t.encoding=THREE.sRGBEncoding; t.anisotropy=8;
+  _ssPanelTex=t; return t;
 }
 /* bouclé 绒圈织：密集的小绒圈（Henredon Murphy 这类桶形椅的面料）。
    基调接近白，颜色靠 material.color 相乘，所以一张图能服务所有配色。 */
@@ -16427,6 +16788,432 @@ MODELS['aldryn'] = (C) => {
   const off2=new T.Vector3(); new T.Box3().setFromObject(C.g).getCenter(off2);
   for(const ch of C.g.children){ ch.position.x-=off2.x; ch.position.z-=off2.z; }
 };
+/* ====================== S19b 通用件：电视 / 洗衣机 / 烘干机 / 冰箱 / 衣柜 ======================
+   通用件 = 按「尺寸档位」给的代表机型（noPrice：规划空间不看品牌；尺寸取一款主流机型的官方 / 零售商规格，note 里写明出处）。 */
+
+/* 侧视轮廓拉伸：pts = [[z, y], ...]（侧视图），沿 x 拉伸 width、x 居中。
+   直接对几何左乘矩阵（x' = −形状 z + width/2，y' = y，z' = 形状 x）：行列式 +1，三角形绕序不翻；不用复合欧拉角。 */
+function sideProfileMesh(C, pts, width, mat, bevel){
+  const T=C.THREE;
+  const sh=new T.Shape(pts.map(p=>new T.Vector2(p[0],p[1])));
+  const o={depth:width, bevelEnabled:!!bevel, curveSegments:8};
+  if(bevel){ o.bevelSize=bevel; o.bevelThickness=bevel; o.bevelSegments=2; o.depth=Math.max(0.004,width-2*bevel); }
+  const geo=new T.ExtrudeGeometry(sh,o);
+  const half=bevel ? (width-2*bevel)/2 : width/2;
+  geo.applyMatrix4(new T.Matrix4().set(0,0,-1,half, 0,1,0,0, 1,0,0,0, 0,0,0,1));
+  geo.computeVertexNormals();
+  const m=new T.Mesh(geo,mat); m.castShadow=m.receiveShadow=true; C.g.add(m); return m;
+}
+/* 竖着朝前（+z）的圆盘 / 圆环：Cylinder / Lathe 的轴是 y，绕 x 转 +90° → 轴朝 +z（单轴旋转，安全） */
+function faceZ(m){ m.rotation.x=Math.PI/2; return m; }
+/* 水平重心归零：按真实顶点求 bbox（含旋转件时 setFromObject 会过估，SKILL §3） */
+function centerXZ(C){
+  const T=C.THREE; C.g.updateMatrixWorld(true);
+  const bb=new T.Box3(), v=new T.Vector3();
+  C.g.traverse(o=>{ if(o.isMesh && o.geometry){ const pos=o.geometry.attributes.position;
+    for(let i=0;i<pos.count;i++){ v.fromBufferAttribute(pos,i).applyMatrix4(o.matrixWorld); bb.expandByPoint(v); } } });
+  const off=new T.Vector3(); bb.getCenter(off);
+  for(const ch of C.g.children){ ch.position.x-=off.x; ch.position.z-=off.z; }
+}
+
+/* 平板电视（壁挂，不含底座）：尺寸档位取 Samsung DU7200（43/55/65/75/85″，机身深 2.4″）。
+   官方图 work/ref/generic/tv_*：四边窄黑框（下框略宽、正中一枚小标）、熄屏近黑玻璃；
+   侧视 tv_cv13d：上部约 1/4 只有 1cm 薄板，往下斜收进后壳，下部 ~2/3 是满深的后壳。 */
+MODELS['tvFlat'] = (C) => {
+  const cm=C.cm, T=C.THREE, W=C.w, H=C.h, D=C.d;
+  const frameM = C.M(C.col, {metal:.35, rough:.42, envI:.45});
+  const backM = C.M('#1c1d20', {plastic:true, rough:.62});
+  const slotM = C.M('#0b0b0c', {flat:true, rough:.9});
+  const logoM = C.M('#b9bcc2', {metal:.8, rough:.3});
+  const scrM = new T.MeshPhysicalMaterial({map:tvScreenTexture(), color:0xffffff, roughness:.12, metalness:0,
+    clearcoat:.8, clearcoatRoughness:.08, envMapIntensity:.55});
+  const bz=Math.max(cm(0.9), W*0.006), bzB=Math.max(cm(1.5), W*0.012), slab=cm(1.0), lip=cm(0.22);
+  // 薄板背板（屏幕后面那 1cm）：前脸让出 lip 给边框与屏幕
+  C.rb(W, H, slab-lip, cm(0.3), backM, 0, 0, D/2-slab/2-lip/2, 3);
+  // 屏幕玻璃：比边框前脸凹 0.7mm
+  C.box(W-2*bz, H-bz-bzB, cm(0.08), scrM, 0, bzB, D/2-cm(0.07)-cm(0.04));
+  // 四边窄框（上 / 左 / 右 bz，下 bzB）
+  C.box(W, bz, lip, frameM, 0, H-bz, D/2-lip/2);
+  C.box(W, bzB, lip, frameM, 0, 0, D/2-lip/2);
+  for(const sx of [-1,1]) C.box(bz, H-bz-bzB, lip, frameM, sx*(W/2-bz/2), bzB, D/2-lip/2);
+  // 下框正中的小标 + 右下角遥控接收窗
+  C.box(Math.min(W*0.05, cm(5)), bzB*0.28, cm(0.02), logoM, 0, bzB*0.36, D/2-cm(0.005));
+  C.box(cm(3.2), bzB*0.45, cm(0.02), slotM, W*0.36, bzB*0.25, D/2-cm(0.005));
+  // 后壳：上缘斜收到薄板，下部满深（侧视轮廓）
+  // （倒角是向外扩的：轮廓先往里收一个倒角量，成品才正好贴满 D —— SKILL 症状表「成品比 spec 大一圈」）
+  const bv=cm(0.25), zb=D/2-slab-bv, zk=-D/2+bv, y0=H*0.05+bv, yTop=H*0.70, ySlope=H*0.84-bv;
+  sideProfileMesh(C, [[zb,y0],[zk+cm(0.9),y0],[zk,y0+cm(1.2)],[zk,yTop],[zb,ySlope]], W*0.92, backM, bv);
+  // 后壳细节：两排散热缝 + VESA 四个螺孔凸台 + 接口区凹槽
+  const zr=-D/2+cm(0.005);
+  for(const row of [0.58, 0.63]) for(let i=0;i<14;i++)
+    C.box(W*0.028, cm(0.5), cm(0.02), slotM, -W*0.30+i*W*0.046, H*row, zr);
+  const vesa=Math.min(W*0.36, cm(40));
+  for(const sx of [-1,1]) for(const sy of [-1,1])
+    faceZ(C.cyl(cm(1.1), cm(1.1), cm(0.1), slotM, sx*vesa/2, H*0.38+sy*vesa*0.35, zr, 18));
+  C.box(W*0.16, H*0.12, cm(0.02), slotM, W*0.30, H*0.12, zr);
+  centerXZ(C);
+};
+
+/* 滚筒洗衣机 / 烘干机的共用机身：27″ 美标（LG WM3400CW / DLE3400W）。
+   官方图 ap_*：白色箱体 + 顶部控制面板带（左抽屉 / 中旋钮 / 右显示窗）+ 大圆门（外白环、内深灰环、玻璃窗、可见内筒）+ 四只调平脚。
+   比例从官方正视图按机身宽 27″ 标定（门外径 ≈ 57–61cm、门心离地 ≈ 55cm、控制带 ≈ 13cm）。 */
+function laundryBody(C, kind){
+  const cm=C.cm, T=C.THREE, W=C.w, H=C.h, D=C.d;
+  const shellM = C.M(C.col, {plastic:true, rough:.35, clear:.35});
+  const ringM = C.M(C.col, {plastic:true, rough:.3, clear:.45});
+  const innerRingM = C.M(kind==='dryer' ? '#8f949a' : '#3b3f45', {metal:.45, rough:.35});
+  const footM = C.M('#55585e', {metal:.5, rough:.45});
+  const darkM = C.M('#2a2c30', {flat:true, rough:.8});
+  // 内筒在机身里：受不到直射光，颜色压暗（官方图里透过玻璃看到的洗衣机内筒是暗银色；烘干机内筒是白的、窗是磨砂淡蓝）
+  const drumM = new T.MeshStandardMaterial({map:drumTexture(), color:kind==='dryer'?0xd9dcdf:0x6b7076,
+    metalness:kind==='dryer'?.15:.7, roughness:.38, envMapIntensity:.35, side:T.DoubleSide});
+  // 玻璃的环境反射压低：反射天光会把整扇窗刷成浅灰，看不见里面的内筒
+  const glassM = new T.MeshPhysicalMaterial({color:kind==='dryer'?0xd4e4ec:0x1f262e, roughness:.06, metalness:0,
+    transparent:true, opacity:kind==='dryer'?0.6:0.42, clearcoat:.6, envMapIntensity:kind==='dryer'?.6:.25});
+  const panelM = new T.MeshStandardMaterial({map:laundryPanelTexture(kind), color:0xffffff, roughness:.4, envMapIntensity:.35});
+  const footH=cm(1.6), doorP=cm(5.2), Hc=H-footH, Dc=D-doorP, zf=-D/2+Dc;   // zf = 机身前脸
+  const ringR = kind==='dryer' ? cm(30.5) : cm(28.5), holeR=cm(20.5), yc=cm(55)-footH;
+  // 四只调平脚
+  for(const sx of [-1,1]) for(const sz of [-1,1])
+    C.cyl(cm(1.9), cm(1.6), footH, footM, sx*(W/2-cm(4.5)), 0, sz*(Dc/2-cm(4.5))-D/2+Dc/2, 16);
+  // 箱体：两侧 + 顶 + 背（前脸单独做，留出门洞看得见内筒）
+  C.rb(W, Hc, Dc-cm(1.0), cm(1.6), shellM, 0, footH, -D/2+(Dc-cm(1.0))/2, 3);
+  // 前脸：带圆孔的板（门洞）
+  const fs=new T.Shape([[-W/2,0],[W/2,0],[W/2,Hc],[-W/2,Hc]].map(p=>new T.Vector2(p[0],p[1])));
+  const hp=new T.Path(); hp.absarc(0, yc, holeR, 0, Math.PI*2, true); fs.holes.push(hp);
+  const fg=new T.ExtrudeGeometry(fs,{depth:cm(1.0), bevelEnabled:false, curveSegments:28}); fg.computeVertexNormals();
+  const front=new T.Mesh(fg, shellM); front.position.set(0, footH, zf-cm(1.0)); front.castShadow=front.receiveShadow=true; C.g.add(front);
+  // 顶盖接缝（俯视图上那一圈浅凹线）：四条细缝，不是一整块深色板
+  const seamM = C.M('#b9bcc0', {flat:true, rough:.6});
+  for(const sz of [-1,1]) C.box(W-cm(5), cm(0.06), cm(0.35), seamM, 0, H-cm(0.04), -D/2+Dc/2+sz*(Dc/2-cm(2.5)));
+  for(const sx of [-1,1]) C.box(cm(0.35), cm(0.06), Dc-cm(5), seamM, sx*(W/2-cm(2.5)), H-cm(0.04), -D/2+Dc/2);
+  // 内筒：开口圆筒 + 筒底冲孔板 + 三根提升筋（洗衣机）/ 筒内右上的绒毛过滤网（烘干机）
+  const drum=faceZ(new T.Mesh(new T.CylinderGeometry(holeR-cm(0.5), holeR-cm(1.5), cm(34), 36, 1, true), drumM));
+  drum.position.set(0, footH+yc, zf-cm(1.0)-cm(17)); C.g.add(drum);
+  const back=new T.Mesh(new T.CircleGeometry(holeR-cm(1.5), 36), drumM); back.position.set(0, footH+yc, zf-cm(35)); C.g.add(back);   // CircleGeometry 本来就朝 +z
+  if(kind==='washer'){
+    for(let k=0;k<3;k++){ const a=Math.PI/2+k*Math.PI*2/3, g2=new T.Group();
+      g2.position.set(0, footH+yc, zf-cm(18)); g2.rotation.z=a; C.g.add(g2);
+      const fin=new T.Mesh(new T.BoxGeometry(cm(3.5), cm(4.5), cm(28)), drumM); fin.position.set(0, holeR-cm(3.5), 0); g2.add(fin); }
+  } else {
+    const lint=new T.Mesh(new T.CircleGeometry(cm(9), 3, -0.2, 1.3), new T.MeshStandardMaterial({map:drumTexture(), color:0x8a8e94, metalness:.4, roughness:.5}));
+    lint.position.set(cm(4), footH+yc+cm(4), zf-cm(1.2)); C.g.add(lint);
+  }
+  // 门：外白环（旋转体：内缘 → 隆起 → 外缘）+ 内深灰环 + 玻璃
+  const R=ringR, r0=holeR+cm(0.5);
+  const prof=[[r0,0],[r0+cm(0.6),cm(3.2)],[r0+cm(3.5),doorP-cm(0.4)],[R-cm(3),doorP-cm(0.6)],[R-cm(0.8),cm(3.0)],[R,0]].map(p=>new T.Vector2(p[0],p[1]));
+  const ring=faceZ(new T.Mesh(new T.LatheGeometry(prof, 48), ringM)); ring.position.set(0, footH+yc, zf); ring.castShadow=true; C.g.add(ring);
+  const inner=new T.Mesh(new T.TorusGeometry(holeR+cm(0.4), cm(1.3), 10, 48), innerRingM); inner.position.set(0, footH+yc, zf+cm(2.4)); C.g.add(inner);   // Torus 本来就在 xy 平面
+  const glass=faceZ(new T.Mesh(new T.CylinderGeometry(holeR, holeR, cm(0.6), 48), glassM)); glass.position.set(0, footH+yc, zf+cm(2.0)); C.g.add(glass);
+  // 控制面板带：凸出 1.2cm 的白板 + 印刷面（显示窗 / 刻字 / 按键圈都在贴图里）
+  const Hp=cm(13);
+  C.rb(W-cm(0.8), Hp, cm(1.2), cm(0.5), shellM, 0, H-Hp-cm(0.6), zf+cm(0.6), 3);
+  C.box(W-cm(3), Hp-cm(1.6), cm(0.04), panelM, 0, H-Hp+cm(0.2), zf+cm(1.24));
+  // 程序旋钮：圆盘 + 外圈 + 握脊
+  const ky=H-Hp/2-cm(0.6), kx=-W*0.03;
+  const knob=faceZ(new T.Mesh(new T.CylinderGeometry(cm(4.6), cm(4.6), cm(2.4), 40), ringM)); knob.position.set(kx, ky, zf+cm(2.4)); knob.castShadow=true; C.g.add(knob);   // 不用 C.cyl：它按「底对齐」抬了半个高度
+  const kr=new T.Mesh(new T.TorusGeometry(cm(4.9), cm(0.35), 8, 40), innerRingM); kr.position.set(kx, ky, zf+cm(1.4)); C.g.add(kr);
+  C.box(cm(0.9), cm(6.2), cm(0.6), shellM, kx, ky-cm(3.1), zf+cm(3.5));
+  if(kind==='washer'){
+    // 左侧洗涤剂抽屉：微凸的抽屉面 + 下沿提手槽；左下角过滤器检修盖
+    C.rb(cm(19), cm(7.5), cm(0.9), cm(0.4), shellM, -W/2+cm(13), H-Hp-cm(0.1), zf+cm(1.6), 3);
+    C.box(cm(15), cm(0.5), cm(0.3), darkM, -W/2+cm(13), H-Hp-cm(0.2), zf+cm(2.0));
+    C.rb(cm(16), cm(11), cm(0.5), cm(0.6), shellM, -W/2+cm(14), cm(3)+footH, zf+cm(0.2), 3);
+    C.box(cm(1.6), cm(0.5), cm(0.3), darkM, -W/2+cm(14), cm(13.4)+footH, zf+cm(0.5));
+  }
+  centerXZ(C);
+}
+MODELS['washerFL'] = (C) => laundryBody(C, 'washer');
+MODELS['dryerFL'] = (C) => laundryBody(C, 'dryer');
+
+/* 上冷冻冰箱（24″ Frigidaire FFET1022 / 28″ GE GTE18GTN）：官方正视图 fr_6390237_sd：
+   上冷冻门 ≈ 28%、下冷藏门 ≈ 67%（中间一道镀铬缝条）、左侧两根竖把手（冷冻门下半段 / 冷藏门上段）、底部踢脚格栅、右上铰链帽 + 圆标。
+   深度口径：箱体 + 门 5.5cm + 把手 4cm = 官方「含门与把手」总深。 */
+MODELS['fridgeTop'] = (C) => {
+  const cm=C.cm, T=C.THREE, W=C.w, H=C.h, D=C.d;
+  const shellM = C.M(C.col, {plastic:true, rough:.32, clear:.3});
+  const doorM = C.M(C.col, {plastic:true, rough:.28, clear:.45});
+  const chromeM = C.M('#c9ccd0', {metal:.9, rough:.22});
+  const darkM = C.M('#2c2d30', {flat:true, rough:.85});
+  const doorT=cm(5.5), handT=cm(4.0), Dc=D-doorT-handT, zf=-D/2+Dc, hinge=cm(1.3), Hc=H-hinge;
+  const toe=H*0.05, gap=cm(0.6), Hf=(Hc-toe)*0.30, Hr=(Hc-toe)-Hf-gap;
+  // 箱体
+  C.rb(W, Hc, Dc, cm(1.2), shellM, 0, 0, -D/2+Dc/2, 3);
+  // 踢脚格栅（深色、略凹）+ 格栅横条
+  C.box(W-cm(2.4), toe-cm(1.2), cm(0.8), darkM, 0, cm(0.6), zf+cm(0.2));
+  for(let i=1;i<4;i++) C.box(W-cm(4), cm(0.35), cm(0.3), shellM, 0, cm(0.6)+i*(toe-cm(1.2))/4, zf+cm(0.7));
+  // 两扇门 + 门缝镀铬条
+  const yR=toe, yF=toe+Hr+gap;
+  C.rb(W-cm(0.3), Hr, doorT, cm(1.5), doorM, 0, yR, zf+doorT/2, 4);
+  C.rb(W-cm(0.3), Hf, doorT, cm(1.5), doorM, 0, yF, zf+doorT/2, 4);
+  C.box(W-cm(1.5), cm(0.35), cm(0.4), chromeM, 0, yR+Hr+gap/2-cm(0.17), zf+doorT-cm(0.5));
+  // 左侧竖把手：圆角条 + 上下两个支脚
+  const hx=-W/2+cm(3.6), hz=zf+doorT+handT/2+cm(0.3);
+  const handM = C.M(new T.Color(C.col).multiplyScalar(0.9).getStyle(), {plastic:true, rough:.3, clear:.5});
+  const handle=(y0,len)=>{ C.rb(cm(2.6), len, cm(2.4), cm(1.0), handM, hx, y0, hz, 4);
+    for(const yy of [y0+cm(2), y0+len-cm(4)]) C.rb(cm(2.0), cm(2), handT-cm(1.4), cm(0.5), handM, hx, yy, zf+doorT+(handT-cm(1.4))/2, 3); };
+  handle(yF+Hf*0.10, Hf*0.78);
+  handle(yR+Hr-cm(3)-Hr*0.40, Hr*0.40);
+  // 右上铰链帽 + 冷冻门右上圆标
+  C.rb(cm(6), hinge+cm(0.6), cm(5), cm(0.6), shellM, W/2-cm(4.5), Hc-cm(0.6), zf+cm(1.5), 3);
+  faceZ(C.cyl(cm(1.6), cm(1.6), cm(0.15), chromeM, W/2-cm(6), yF+Hf-cm(5), zf+doorT+cm(0.05), 24));
+  centerXZ(C);
+};
+
+/* 法式对开冰箱（36″ Samsung RF28T5001SR）：官方正视图 fr_6417767_sd：
+   上部两扇对开门 ≈ 61%、下部冷冻抽屉 ≈ 35%；中缝两侧各一根竖把手（离地 ≈ 86–158cm）、抽屉上沿一根横把手；拉丝不锈钢；
+   顶部两角黑色铰链帽、前角黑色调平脚。深度口径（官方规格）：箱体 28 7/8″ + 门 4″ + 把手 2½″ = 35 3/8″。 */
+MODELS['fridgeFD'] = (C) => {
+  const cm=C.cm, T=C.THREE, W=C.w, H=C.h, D=C.d;
+  const ssTex=stainlessPanelTexture();
+  const ssM = new T.MeshStandardMaterial({map:ssTex, normalMap:normalFromTexture(ssTex,0.08), color:new T.Color(C.col), metalness:.72, roughness:.36, envMapIntensity:.7});
+  const sideM = new T.MeshStandardMaterial({map:ssTex, normalMap:normalFromTexture(ssTex,0.06), color:new T.Color('#a7abb0'), metalness:.5, roughness:.45, envMapIntensity:.55});
+  const barM = C.M('#d5d8dc', {metal:.9, rough:.2});
+  const blackM = C.M('#141416', {plastic:true, rough:.5});
+  const Dc=cm(73.3), doorT=cm(10.2), handT=D-Dc-doorT, zf=-D/2+Dc, hinge=cm(2.9), Hc=H-hinge;
+  const base=cm(4), gap=cm(0.6), Hd=(Hc-base)*0.36, Hu=(Hc-base)-Hd-gap;
+  C.rb(W, Hc-base, Dc, cm(1.0), sideM, 0, base, -D/2+Dc/2, 3);
+  C.box(W-cm(6), base, Dc-cm(6), blackM, 0, 0, -D/2+Dc/2);
+  // 前角调平脚
+  for(const sx of [-1,1]) C.cyl(cm(1.8), cm(1.8), base, blackM, sx*(W/2-cm(4)), 0, zf-cm(3), 16);
+  // 冷冻抽屉 + 两扇上门（中缝 0.5cm）
+  C.rb(W-cm(0.3), Hd, doorT, cm(1.4), ssM, 0, base, zf+doorT/2, 4);
+  const yU=base+Hd+gap, dw=(W-cm(0.8))/2;
+  for(const sx of [-1,1]) C.rb(dw, Hu, doorT, cm(1.4), ssM, sx*(dw/2+cm(0.25)), yU, zf+doorT/2, 4);
+  // 门间缝隙里的深色密封条
+  C.box(W-cm(1), gap, cm(1), blackM, 0, base+Hd, zf+doorT-cm(1.2));
+  // 竖把手（中缝两侧）+ 支脚
+  const hz=zf+doorT+handT*0.55, hy0=cm(86), hLen=cm(72);
+  for(const sx of [-1,1]){ const hx=sx*cm(3.2);
+    C.rb(cm(3.0), hLen, cm(2.6), cm(1.1), barM, hx, hy0, hz, 4);
+    for(const yy of [hy0+cm(3), hy0+hLen-cm(6)]) C.rb(cm(2.2), cm(3), handT-cm(1.6), cm(0.5), barM, hx, yy, zf+doorT+(handT-cm(1.6))/2, 3); }
+  // 抽屉横把手（离地 ≈ 60cm，跨 ≈ 73cm）+ 两端支脚
+  C.rb(cm(73), cm(2.8), cm(2.6), cm(1.1), barM, 0, cm(58.6), hz, 4);
+  for(const sx of [-1,1]) C.rb(cm(3), cm(2.2), handT-cm(1.6), cm(0.5), barM, sx*cm(33), cm(58.9), zf+doorT+(handT-cm(1.6))/2, 3);
+  // 顶部两角铰链帽 + 右门右上角商标条
+  for(const sx of [-1,1]) C.rb(cm(7), hinge+cm(0.8), cm(9), cm(0.6), blackM, sx*(W/2-cm(5)), Hc-cm(0.8), zf+cm(3.5), 3);
+  C.box(cm(9), cm(1.2), cm(0.05), blackM, W/2-cm(9), H-cm(9), zf+doorT+cm(0.03));
+  centerXZ(C);
+};
+
+/* 衣柜（两门 100 / 三门 150 / 四门 200 × 60 × 201）：尺寸取 IKEA PAX 框体 + FORSAND 门（官方图 wd_pax_*）：
+   通高平板门、无把手、门缝细、底部内缩踢脚板；框体侧板 / 顶板 1.8cm，门板 1.9cm 盖住框体前沿。 */
+MODELS['wardrobe'] = (C) => {
+  const cm=C.cm, T=C.THREE, W=C.w, H=C.h, D=C.d;
+  const carcM = C.M(C.col, {rough:.55, envI:.3});
+  const doorM = C.M(C.col, {rough:.45, envI:.35, clear:.15});
+  const innerM = C.M('#d9d6cf', {rough:.8});
+  const darkM = C.M('#2a2a2a', {flat:true, rough:.9});
+  const th=cm(1.8), doorT=cm(1.9), Dc=D-doorT, zf=-D/2+Dc, plinth=cm(7), n=Math.max(2, Math.round(C.spec.w/50));
+  // 框体：两侧 + 顶 + 底 + 背板（每 50 宽一格还有中隔板）
+  for(const sx of [-1,1]) C.rb(th, H, Dc, cm(0.2), carcM, sx*(W/2-th/2), 0, -D/2+Dc/2, 2);
+  C.box(W-2*th, th, Dc, carcM, 0, H-th, -D/2+Dc/2);
+  C.box(W-2*th, th, Dc, carcM, 0, plinth, -D/2+Dc/2);
+  C.box(W-2*th, H-th, cm(0.5), innerM, 0, 0, -D/2+cm(0.25));
+  const bays=Math.max(1, Math.round(C.spec.w/100));
+  for(let k=1;k<bays;k++) C.box(th, H-th-plinth-th, Dc-cm(0.6), carcM, -W/2+W*k/bays, plinth+th, -D/2+Dc/2-cm(0.3));
+  // 内缩踢脚板（门下沿露出一条暗缝）
+  C.box(W-2*th, plinth, th, carcM, 0, 0, zf-cm(3));
+  C.box(W-2*th, cm(0.4), cm(2.6), darkM, 0, plinth-cm(0.4), zf-cm(1.4));
+  // 平板门：等分、门缝 0.3cm，盖住框体前沿（上沿与顶齐平）
+  const gapD=cm(0.3), dw=(W-(n-1)*gapD)/n, dh=H-plinth-cm(0.4);
+  for(let i=0;i<n;i++) C.rb(dw, dh, doorT, cm(0.25), doorM, -W/2+dw/2+i*(dw+gapD), plinth+cm(0.2), zf+doorT/2, 2);
+  // 门缝里的暗色（看得出一扇扇门）
+  for(let i=1;i<n;i++) C.box(gapD*0.9, dh-cm(1), cm(0.6), darkM, -W/2+i*(dw+gapD)-gapD/2, plinth+cm(0.7), zf+cm(0.4));
+  centerXZ(C);
+};
+
+/* ====================== S19b 绿植 / 挂画 / 落地镜（IKEA 实物，带当地实际标价） ====================== */
+
+/* 一片叶子的几何（网格：u 横跨叶宽、v 沿主脉）：halfW(v) 给半宽轮廓（0..1 → 叶长倍数），
+   fold = 沿主脉的 V 形下折、arch = 沿长度的弧（叶尖下垂）。叶柄端在原点，叶片沿 +z 伸出，叶面朝 +y。 */
+function leafGeo(T, L, halfW, nu, nv, fold, arch, twist){
+  const pos=[], uv=[], idx=[];
+  for(let j=0;j<=nv;j++){ const v=j/nv, hw=halfW(v)*L, tw=(twist||0)*v;
+    for(let i=0;i<=nu;i++){ const u=i/nu, s=(u-0.5)*2;
+      let x=s*hw, y=-Math.abs(s)*hw*fold - arch*L*v*v, z=v*L;
+      if(tw){ const c=Math.cos(tw), sn=Math.sin(tw); const x2=x*c-y*sn, y2=x*sn+y*c; x=x2; y=y2; }
+      pos.push(x,y,z); uv.push(u,v); } }
+  for(let j=0;j<nv;j++) for(let i=0;i<nu;i++){ const a=j*(nu+1)+i, b=a+1, c=a+nu+1, d=c+1; idx.push(a,c,b, b,c,d); }
+  const g=new T.BufferGeometry();
+  g.setAttribute('position', new T.Float32BufferAttribute(pos,3)); g.setAttribute('uv', new T.Float32BufferAttribute(uv,2));
+  g.setIndex(idx); g.computeVertexNormals(); return g;
+}
+/* 竖棱塑料育苗盆：圆台 + 每圈 ribs 道竖棱（径向位移）+ 盆沿 */
+function nurseryPot(C, rTop, rBot, h, ribs, mat){
+  const T=C.THREE, geo=new T.CylinderGeometry(rTop, rBot, h, Math.max(40, ribs*4), 1, false), p=geo.attributes.position, v=new T.Vector3();
+  if(ribs>0) for(let i=0;i<p.count;i++){ v.fromBufferAttribute(p,i); const r=Math.hypot(v.x,v.z); if(r<1e-6) continue;
+    const a=Math.atan2(v.z,v.x), k=1+0.028*Math.max(0, Math.cos(a*ribs)); p.setXYZ(i, v.x*k, v.y, v.z*k); }
+  geo.computeVertexNormals();
+  const m=new T.Mesh(geo, mat); m.position.y=h/2; m.castShadow=m.receiveShadow=true; C.g.add(m);
+  const rim=new T.Mesh(new T.TorusGeometry(rTop*1.01, C.cm(0.55), 8, 48), mat); rim.rotation.x=Math.PI/2; rim.position.y=h-C.cm(0.3); C.g.add(rim);
+  return m;
+}
+function soilDisc(C, r, y){ const T=C.THREE;
+  const m=new T.Mesh(new T.CircleGeometry(r, 36), new T.MeshStandardMaterial({map:soilTexture(), color:0xffffff, roughness:.95}));
+  m.rotation.x=-Math.PI/2; m.position.y=y; m.receiveShadow=true; C.g.add(m); return m; }
+
+/* IKEA FICUS LYRATA 琴叶榕（盆径 12″、株高 56″，官方图 pl_ficus_*）：
+   黑色竖棱育苗盆 + 单干（绑一根竹竿、三道绿色绑带）+ 上 60% 约 38 片大提琴形叶（深绿亮面、浅黄绿叶脉），
+   叶序按黄金角绕干螺旋（带抖动）、下部叶近平展略下垂、上部叶斜上近竖直、叶面各自侧转。冠幅按官方图以株高标定（≈ 75cm）。 */
+MODELS['ficusLyrata'] = (C) => {
+  const cm=C.cm, T=C.THREE, H=C.h, R=Math.min(C.w, C.d)/2;
+  const potM = C.M(C.col2 || '#1f1f22', {plastic:true, rough:.6, envI:.22});
+  const trunkM = C.M('#6e4d33', {wood:'walnut', rough:.85});
+  const stakeM = C.M('#c9a76c', {wood:'pine', rough:.7});
+  const tieM = C.M('#2f8f4e', {plastic:true, rough:.5});
+  const leafM = new T.MeshStandardMaterial({map:figLeafTexture(), normalMap:normalFromTexture(figLeafTexture(),0.6), color:new T.Color(C.col||'#2f5d2a').lerp(new T.Color('#ffffff'),0.55),
+    roughness:.32, metalness:0, side:T.DoubleSide, envMapIntensity:.6});
+  soilTexture();
+  srand(51003);   // 贴图都建好了再播种：贴图第一次建时自己会 srand，夹在中间会让同一件第二次建出来形状不同
+  const potH=cm(28), potR=cm(15.2);
+  nurseryPot(C, potR, cm(12.6), potH, 24, potM);
+  soilDisc(C, potR-cm(0.8), potH-cm(2.2));
+  // 叶：提琴形半宽轮廓（基部窄、中下腰收、上 3/4 最宽、顶端钝圆）。官方图：下 40% 是光干，叶从下往上由近平展渐变到斜上近竖直，
+  // 叶面各自侧转（正面看过去大多露出叶面，不是一层层水平薄片）
+  const fid=v=>Math.max(0.02, 0.16*Math.pow(Math.sin(Math.PI*Math.min(v,0.995)),0.55) + 0.17*Math.exp(-Math.pow((v-0.74)/0.2,2)) - 0.05*Math.exp(-Math.pow((v-0.42)/0.09,2)));
+  const nL=38, y0=H*0.42, y1=H*0.93, golden=137.508*Math.PI/180, rLim=R-cm(0.8), v3=new T.Vector3();
+  const extent=o=>{ o.updateMatrixWorld(true); let r=0, top=-1e9;   // 该组所有顶点离干轴的最远水平距离 + 最高点（组还没挂上 C.g：坐标即模型系）
+    o.traverse(m=>{ if(!m.isMesh) return; const p=m.geometry.attributes.position;
+      for(let i=0;i<p.count;i++){ v3.fromBufferAttribute(p,i).applyMatrix4(m.matrixWorld); r=Math.max(r, Math.hypot(v3.x,v3.z)); top=Math.max(top, v3.y); } });
+    return {r, top}; };
+  let yTop=potH;
+  for(let k=0;k<nL;k++){
+    const t=k/(nL-1), y=y0+(y1-y0)*Math.pow(t,0.8);
+    const L=cm(24+12*Math.sin(Math.PI*Math.min(1,t*1.1)))*(0.9+rnd01()*0.2);
+    const elev=(8+34*t+30*t*t*t+(rnd01()-0.5)*24)*Math.PI/180, roll=(rnd01()-0.5)*2.1;   // 冠最宽在中段（官方图）：中下部叶伸得开、顶上新叶近竖直
+    const geo=leafGeo(T, L, fid, 6, 12, 0.16, 0.06+0.12*(1-t), (rnd01()-0.5)*0.4);
+    const grp=new T.Group(); grp.position.set(0, y, 0); grp.rotation.y=k*golden+(rnd01()-0.5)*0.4;
+    const pet=new T.Group(); pet.rotation.x=-elev; grp.add(pet);
+    const leaf=new T.Mesh(geo, leafM); leaf.position.z=cm(3); leaf.rotation.z=roll; leaf.castShadow=true; pet.add(leaf);
+    const ps=new T.Mesh(new T.CylinderGeometry(cm(0.3), cm(0.45), cm(3.2), 6), trunkM); ps.rotation.x=Math.PI/2; ps.position.z=cm(1.5); pet.add(ps);
+    // 冠幅 / 株高按声明尺寸收：伸太远的叶以干为原点整片等比缩（伸出距离同比缩），顶上冒出去的叶沿干往下挪
+    let e=extent(grp); if(e.r>rLim){ pet.scale.setScalar(rLim/e.r); e=extent(grp); }
+    if(e.top>H-cm(0.5)) grp.position.y -= e.top-(H-cm(0.5));
+    yTop=Math.max(yTop, grp.position.y); C.g.add(grp);
+  }
+  // 干：略锥、顶端藏进最上面一簇叶里；竹竿贴在一侧、三道绿色绑带
+  const trunkTop=yTop+cm(2);
+  const tb=potH-cm(3), th=trunkTop-tb;   // 干根埋进土面（土面在 potH-2.2cm）
+  const tr=new T.Mesh(new T.CylinderGeometry(cm(0.7), cm(1.5), th, 12), trunkM); tr.position.set(0, tb+th/2, 0); tr.castShadow=true; C.g.add(tr);
+  C.cyl(cm(0.5), cm(0.5), H*0.62-potH, stakeM, cm(1.6), potH-cm(2), 0, 8);
+  for(const f of [0.40, 0.50, 0.58]){ const t=new T.Mesh(new T.TorusGeometry(cm(1.9), cm(0.35), 6, 14), tieM); t.rotation.x=Math.PI/2; t.position.set(cm(0.8), H*f, 0); C.g.add(t); }
+  centerXZ(C);
+};
+
+/* IKEA SANSEVIERIA 虎尾兰（盆径 8″、株高 23½″，官方图 pl_sans_*）：陶土色育苗盆 + 一丛 13 片剑形直立叶
+   （横向波浪斑带、叶面微凹成 U 形朝丛心、叶尖尖、略扭；内圈 5 片近直立、外圈 8 片外倾到丛宽外缘 = 花瓶形）。丛宽按官方图以盆径标定（≈ 25cm）。 */
+MODELS['sansevieria'] = (C) => {
+  const cm=C.cm, T=C.THREE, H=C.h, R=Math.min(C.w, C.d)/2;
+  // 盆：目录色按 sRGB 解（C.M 把 #hex 当线性值，中间调会被提亮成浅肉色；官方图是饱和的陶土橙红）
+  const potM = C.M(new T.Color(C.col2 || '#b8562e').convertSRGBToLinear(), {plastic:true, rough:.5, envI:.18});
+  const leafM = new T.MeshStandardMaterial({map:snakeLeafTexture(), normalMap:normalFromTexture(snakeLeafTexture(),0.5), color:new T.Color(C.col||'#4f7a3a').lerp(new T.Color('#ffffff'),0.75),
+    roughness:.45, side:T.DoubleSide, envMapIntensity:.4});
+  soilTexture();
+  srand(51004);
+  const potH=cm(16), potR=cm(10.1);
+  nurseryPot(C, potR, cm(7.8), potH, 0, potM);
+  soilDisc(C, potR-cm(0.7), potH-cm(1.5));
+  // 叶宽按绝对值（官方图：长短叶一样宽 ≈ 6cm，最宽在叶长 40–50% 处，末 15% 才收成尖）
+  const blade=L=>v=>Math.max(0.004, cm(3.0)/L*Math.pow(Math.sin(Math.PI*(0.12+0.88*v)),0.45)*(1-Math.pow(v,5)));
+  const n=13, base=potH-cm(1.5), rLim=R-cm(0.3), v3=new T.Vector3();
+  const extent=o=>{ o.updateMatrixWorld(true); let r=0, top=-1e9;   // 该组所有顶点离丛轴的最远水平距离 + 最高点（组还没挂上 C.g：坐标即模型系）
+    o.traverse(m=>{ if(!m.isMesh) return; const p=m.geometry.attributes.position;
+      for(let i=0;i<p.count;i++){ v3.fromBufferAttribute(p,i).applyMatrix4(m.matrixWorld); r=Math.max(r, Math.hypot(v3.x,v3.z)); top=Math.max(top, v3.y); } });
+    return {r, top}; };
+  for(let k=0;k<n;k++){
+    const outer=k>=5, a=(outer ? (k-5)*Math.PI/4 + (rnd01()-0.5)*0.25 : k*2.399+rnd01()*0.3), rr=k===0 ? cm(0.5) : outer ? cm(3.5)+rnd01()*cm(2.5) : cm(1.2)+rnd01()*cm(2.5);
+    const L=(H-base)*(k===0 ? 1 : outer ? 0.55+rnd01()*0.3 : 0.78+rnd01()*0.2);   // k=0：丛心最高的一片（株高由它定）；外圈矮
+    const geo=leafGeo(T, L, blade(L), 6, 16, -0.18, 0.02, (rnd01()-0.5)*1.0);   // fold<0：叶缘朝叶面（丛心）卷 = U 形开口朝里
+    const grp=new T.Group(); grp.position.set(Math.cos(a)*rr, base, Math.sin(a)*rr); grp.rotation.y=-a+Math.PI/2;
+    const up=new T.Group(); grp.add(up);                                       // 叶片沿局部 +z 伸出 → 绕 x 转到接近竖直
+    const leaf=new T.Mesh(geo, leafM); leaf.castShadow=true; up.add(leaf);
+    // 外倾角：内圈近直立；外圈（每 45° 一片，四个正方向都有）朝丛宽外缘倾（官方图的花瓶形：叶梢一圈比盆口宽 ~25%）。伸出丛宽就逐步收小；
+    // 还超（叶宽本身）就整片等比缩；顶部按株高压
+    let tilt = k===0 ? 2*Math.PI/180 : outer ? Math.min(26*Math.PI/180, Math.asin(Math.min(0.6, (rLim-rr)/L))) : (3+rnd01()*8)*Math.PI/180, e;
+    const setTilt=t=>{ up.rotation.x=-(Math.PI/2-t); return extent(grp); };
+    e=setTilt(tilt);
+    if(e.r>rLim){ let lo=0, hi=tilt; for(let i=0;i<12;i++){ const mid=(lo+hi)/2; if(setTilt(mid).r<=rLim) lo=mid; else hi=mid; } e=setTilt(lo); }   // 二分到刚好贴丛宽
+    if(e.r>rLim){ up.scale.setScalar(rLim/e.r); e=extent(grp); }
+    if(e.top>H-cm(0.3)){ const s=(H-cm(0.3)-base)/(e.top-base); up.scale.multiplyScalar(s); }
+    C.g.add(grp);
+  }
+  centerXZ(C);
+};
+
+/* IKEA PJÄTTERYD 画布画 50×70（官方图 pjaetteryd-*：无框，画布绷在木框上、四边包边可见）。
+   画面配色口径见 artForestTexture；厚度按包装厚 1″ 取上限 2.5cm。 */
+MODELS['canvasArt'] = (C) => {
+  const cm=C.cm, T=C.THREE, W=C.w, H=C.h, D=C.d;
+  const edgeM = C.M(C.col || '#ead2cf', {fabric:true, rough:.9});
+  const woodM = C.M('#cdb38f', {wood:'pine', rough:.75});
+  const artM = new T.MeshStandardMaterial({map:artForestTexture(), color:0xffffff, roughness:.85, envMapIntensity:.25});
+  // 画布折过木框边：四周软圆角（r 0.4cm）的包边壳 + 正面画面（最前 0.6mm，盖住壳的平面部分）
+  const r=cm(0.4), Db=D-cm(0.15);
+  C.rb(W, H, Db, r, edgeM, 0, 0, D/2-cm(0.1)-Db/2, 4);
+  C.box(W-2*r, H-2*r, cm(0.06), artM, 0, r, D/2-cm(0.03));
+  // 背面内框：四根边档 + 中横档（贴在壳背面外 0.5mm，从背后看得到）
+  const fb=cm(3.5), fd=cm(0.05), zb=-D/2+fd/2;
+  C.box(W-2*r, fb, fd, woodM, 0, r, zb); C.box(W-2*r, fb, fd, woodM, 0, H-r-fb, zb);
+  for(const sx of [-1,1]) C.box(fb, H-2*r-2*fb, fd, woodM, sx*(W/2-r-fb/2), r+fb, zb);
+  C.box(W-2*r-2*fb, cm(3), fd, woodM, 0, H/2-cm(1.5), zb);
+  centerXZ(C);
+};
+
+/* IKEA BLODFLÄDER 装框画 118×78（官方图 blodflaeder-*：细窄深金色画框、画心略凹；框深 1¼″ = 3.2cm）。
+   画面配色口径见 artSeineTexture。 */
+MODELS['framedArt'] = (C) => {
+  const cm=C.cm, T=C.THREE, W=C.w, H=C.h, D=C.d;
+  const frameM = C.M(C.col || '#5a5434', {metal:.55, rough:.38, envI:.6});
+  const backM = C.M('#8a7d68', {rough:.9});
+  const artM = new T.MeshStandardMaterial({map:artSeineTexture(), color:0xffffff, roughness:.8, envMapIntensity:.25});
+  const fw=cm(1.2);
+  // 四根框条（正面 1.2cm 宽、深 3.2cm）
+  C.rb(W, fw, D, cm(0.2), frameM, 0, H-fw, 0, 2); C.rb(W, fw, D, cm(0.2), frameM, 0, 0, 0, 2);
+  for(const sx of [-1,1]) C.rb(fw, H-2*fw, D, cm(0.2), frameM, sx*(W/2-fw/2), fw, 0, 2);
+  // 画心：比框前沿凹 0.8cm；后面一块背板
+  C.box(W-2*fw, H-2*fw, cm(0.3), artM, 0, fw, D/2-cm(0.8)-cm(0.15));
+  C.box(W-2*fw, H-2*fw, cm(0.4), backM, 0, fw, -D/2+cm(0.6));
+  centerXZ(C);
+};
+
+/* IKEA KNAPPER 立式穿衣镜（48×53×160，镜面宽 39，官方图 knapper-*）：
+   白色圆管框（圆角矩形）围着镜面、镜板后倾约 5°；背后一副白色管架 —— 两根后立柱 + 顶部横杆（挂衣杆）+ 两侧连到镜框的横撑 +
+   地面两根纵管；镜板背面一排 5 个小挂钩。镜面 = 高反射（与卫生间镜子同一套反射烘焙，userData.mirrorFurn）。 */
+MODELS['knapper'] = (C) => {
+  const cm=C.cm, T=C.THREE, W=C.w, H=C.h, D=C.d;
+  const tubeM = C.M(C.col || '#f2f2f0', {metal:.25, rough:.42});
+  const boardM = C.M(C.col || '#f2f2f0', {rough:.6});
+  const mirM = new T.MeshStandardMaterial({color:0xe9eef0, metalness:1, roughness:.03, envMapIntensity:1});
+  mirM.userData.noTex=true; mirM.userData.noNrm=true;
+  const r=cm(1.5), lean=5*Math.PI/180, panelH=H-cm(2.2), zFront=D/2-r-cm(0.6), zBack=-D/2+r, yRail=cm(100);
+  // 镜板：子组只绕 x 后倾（单轴旋转），底边压在前横管上
+  const panel=new T.Group(); panel.position.set(0, r*2, zFront); panel.rotation.x=-lean; C.g.add(panel);
+  const pw=W-2*r, ph=panelH-r*2, rc=cm(6);
+  const path=new T.CurvePath(), P=(x,y)=>new T.Vector3(x,y,0);
+  const x0=-pw/2, x1=pw/2, y0=0, y1=ph;
+  path.add(new T.LineCurve3(P(x0,y0), P(x1,y0)));
+  path.add(new T.LineCurve3(P(x1,y0), P(x1,y1-rc)));
+  path.add(new T.QuadraticBezierCurve3(P(x1,y1-rc), P(x1,y1), P(x1-rc,y1)));
+  path.add(new T.LineCurve3(P(x1-rc,y1), P(x0+rc,y1)));
+  path.add(new T.QuadraticBezierCurve3(P(x0+rc,y1), P(x0,y1), P(x0,y1-rc)));
+  path.add(new T.LineCurve3(P(x0,y1-rc), P(x0,y0)));
+  const fr=new T.Mesh(new T.TubeGeometry(path, 160, r, 10, true), tubeM); fr.castShadow=true; panel.add(fr);
+  const mir=new T.Mesh(new T.PlaneGeometry(pw-r*1.2, ph-r*1.2), mirM); mir.position.set(0, ph/2, cm(0.2)); mir.userData.mirrorFurn=true; panel.add(mir);
+  const board=new T.Mesh(new T.BoxGeometry(pw-r*0.6, ph-r*0.6, cm(0.8)), boardM); board.position.set(0, ph/2, -cm(0.5)); board.castShadow=true; panel.add(board);
+  for(let i=0;i<5;i++){ const hk=new T.Mesh(new T.BoxGeometry(cm(1.4), cm(2.4), cm(1.6)), tubeM); hk.position.set(-pw*0.36+i*pw*0.18, ph*0.68, -cm(1.6)); panel.add(hk); }
+  // 后管架：两根后立柱 + 顶横杆（挂衣杆）+ 两侧横撑连到镜框 + 地面两根纵管 + 前横管
+  const sxs=[-1,1], xr=W/2-r;
+  for(const sx of sxs){
+    C.tube(yRail, r, tubeM, sx*xr, yRail/2, zBack, 'y');
+    const zp=zFront-(yRail-r*2)*Math.tan(lean)-cm(0.5);          // 后倾的镜框在这个高度的 z
+    C.tube(zp-zBack+r*2, r, tubeM, sx*xr, yRail, (zp+zBack)/2, 'z');
+    C.tube(zFront-zBack+r*2, r, tubeM, sx*xr, r, (zFront+zBack)/2, 'z');
+  }
+  C.tube(W-r*0.2, r, tubeM, 0, yRail, zBack, 'x');
+  C.tube(W-r*0.2, r, tubeM, 0, r, zFront, 'x');
+  centerXZ(C);
+};
 /* ===== 性能：按材质合并 mesh，大幅减少 draw call（几何逐顶点保留，外观完全不变） ===== */
 function _concatGeos(list){
   let total=0;
@@ -16490,6 +17277,8 @@ function mergeByMaterial(root, minMeshes){
 /* 只释放本组自有的几何；材质与贴图是共享的，释放会导致反复重传 GPU */
 function disposeOwned(root){
   root.traverse(o=>{
+    // 镜子烘的立方体贴图是 GPU 显存、不跟几何走：镜子 mesh 被丢弃时一起释放（原先每次静态重建都漏一张）
+    if(o.isMesh && o.userData.mirrorEnv){ o.userData.mirrorEnv.dispose(); o.userData.mirrorEnv=null; }
     if(o.isMesh && o.geometry && o.userData.mergedOwned) o.geometry.dispose();
     else if(o.isMesh && o.geometry && o.geometry.userData && o.geometry.userData.owned) o.geometry.dispose();
   });
@@ -17270,6 +18059,11 @@ function sync3D(){
   if(changed) applyLightMode();                        // 只有增删/换件才需要重算照明
   requestShadowUpdate();
   if(changed) sceneBudgetCheck();                      // 场景预算：只在几何真变了时量（纯移动不量）
+  // S19b：家具镜子的位姿指纹变了（增删 / 挪 / 转 / 换层 / 离地）→ 防抖重烘反射
+  let ms='';
+  for(const it of state.items){ const sp=itemSpec(it); if(sp && sp.kind==='mirror') ms+=it.uid+':'+[it.x,it.y,it.rot||0,itemZ(it),itemLevel(it)||''].join(',')+';'; }
+  ms+='|'+(DOC.level||'');
+  if(ms!==three._furnMirSig){ three._furnMirSig=ms; if(furnMirrorMeshes().length) scheduleMirrorBake(); }
 }
 function sync3Dfull(){                                 // 强制全量重建（材质方案整体变化时用）
   if(!three) return;
@@ -17627,6 +18421,7 @@ function addItem(refId){
   const cx = (vb.x+vb.w/2)/S, cy=(vb.y+vb.h/2)/S;
   const it = {uid:uidSeq++, ref:refId, x:Math.round(cx*4)/4, y:Math.round(cy*4)/4, rot:0};
   if(hasLevelsNow()) it.lv = DOC.level;   // S17：摆在当前层
+  { const sp=itemSpec(it); if(sp && sp.z>0 && !isLight(sp)) it.z = FT4(cm2ft(sp.z)); }   // S19b：壁挂件（电视 / 挂画）放进来就挂在目录给的缺省高度
   pushUndo('addItem:'+refId, true);
   state.items.push(it); selected=it.uid;
   drawFurniture(); save();
