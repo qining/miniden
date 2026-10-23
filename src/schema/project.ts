@@ -57,6 +57,17 @@ export interface Window {
   userIndex?: number;
   thick?: number; // ft（物理厚度；wdPx/sc 换算）
   wdPx?: number; // 原 wd（图纸 px）：无损回投影用
+  /** S21：窗帘（缺省 = 没有）；side = 挂在窗的哪一侧（相对 geom 的左法线：+1 / -1），缺省 = 应用按室内侧推断 */
+  curtain?: Curtain;
+}
+
+/** S21 窗帘款式：drape 落地帘（两侧收拢的双幅）· sheer 纱帘（整幅半透）· drapeSheer 落地帘 + 纱帘 · roller 卷帘（盖住上半截玻璃） */
+export type CurtainStyle = 'drape' | 'sheer' | 'drapeSheer' | 'roller';
+export const CURTAIN_STYLES: CurtainStyle[] = ['drape', 'sheer', 'drapeSheer', 'roller'];
+export interface Curtain {
+  style: CurtainStyle;
+  color: string; // #hex
+  side?: 1 | -1;
 }
 
 export interface Door {
@@ -105,6 +116,8 @@ export interface Room {
   floor?: RoomFloor;
   /** S16：用户在「房间」工具里新建的（内置 / 导入的房间缺省） */
   src?: 'user';
+  /** S21：墙面颜色（#hex；只影响 3D：这个房间围合的墙面刷这个色）；缺省 = 原来的白墙 */
+  wallColor?: string;
 }
 
 export interface RoomFloor {
@@ -614,6 +627,7 @@ export function validate(doc: unknown): ValidationError[] {
   // S16：房间轮廓 + 地板（纯增量可选字段）。地板预设名只验「是一段短文本」：
   // 预设表在应用里（带程序化贴图），认不出的名字由消费端退回缺省地板并如实提示
   const matOk = (v: unknown) => isStr(v) && v.length >= 1 && v.length <= 40;
+  const hexOk = (v: unknown) => isStr(v) && /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(v);
   if (Array.isArray(d.rooms)) {
     (d.rooms as Array<Record<string, unknown>>).forEach((e, i) => {
       if (typeof e !== 'object' || e === null) return;
@@ -634,6 +648,7 @@ export function validate(doc: unknown): ValidationError[] {
           if (f.angle !== undefined && !isNum(f.angle)) fail(`rooms[${i}].floor.angle`, '铺贴方向必须是数（度）');
         }
       }
+      if (e.wallColor !== undefined && !hexOk(e.wallColor)) fail(`rooms[${i}].wallColor`, '墙色必须是 #rgb / #rrggbb');
     });
   }
   if (d.floorMat !== undefined && !matOk(d.floorMat)) fail('floorMat', '整层地板预设名必须是 1–40 字符的文本');
@@ -741,6 +756,19 @@ export function validate(doc: unknown): ValidationError[] {
           fail(`windows[${i}].style`, `style 非法: ${String(st)}`);
         if (w.glass != null && (!isNum(w.glass) || (w.glass as number) < 0 || (w.glass as number) > 1))
           fail(`windows[${i}].glass`, 'glass 必须在 0..1');
+        if (w.curtain !== undefined) {
+          const c = w.curtain as Record<string, unknown> | null;
+          if (typeof c !== 'object' || c === null)
+            fail(`windows[${i}].curtain`, 'curtain 必须是 {style, color, side?}');
+          else {
+            if (!CURTAIN_STYLES.includes(c.style as CurtainStyle))
+              fail(`windows[${i}].curtain.style`, `窗帘款式非法: ${String(c.style)}`);
+            if (!isStr(c.color) || !/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(c.color))
+              fail(`windows[${i}].curtain.color`, '窗帘颜色必须是 #rgb / #rrggbb');
+            if (c.side !== undefined && c.side !== 1 && c.side !== -1)
+              fail(`windows[${i}].curtain.side`, 'side 必须是 1 或 -1');
+          }
+        }
       } else {
         const dk = w.kind;
         if (dk !== 'swing' && dk !== 'double' && dk !== 'slide' && dk !== 'bifold')
@@ -1290,6 +1318,15 @@ export function projectSchema(): object {
           frame: { type: 'string' },
           glass: { type: 'number', minimum: 0, maximum: 1 },
           steel: { type: 'boolean' },
+          curtain: {
+            type: 'object',
+            required: ['style', 'color'],
+            properties: {
+              style: { enum: ['drape', 'sheer', 'drapeSheer', 'roller'] },
+              color: { type: 'string', pattern: '^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$' },
+              side: { enum: [1, -1] },
+            },
+          },
         },
       },
       door: {
@@ -1348,6 +1385,7 @@ export function projectSchema(): object {
             properties: { mat: { type: 'string', minLength: 1, maxLength: 40 }, angle: { type: 'number' } },
           },
           src: { enum: ['user'] },
+          wallColor: { type: 'string', pattern: '^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$' },
         },
       },
       fixture: {
