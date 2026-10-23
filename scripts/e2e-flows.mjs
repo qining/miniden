@@ -1523,6 +1523,159 @@ export const FLOWS = [
   },
 
   {
+    name: 'multi-select',
+    title:
+      '多选 + 采购清单导出：空白户型摆三件（真拖开）→ 点一件再 Shift+点一件 → 拖其中一件整组走、第三件不动 → R 整组转 → Ctrl+Z 退回 → Shift+在空白处拖框选三件 → Delete 一起删 → Ctrl+Z 回来 → 「导出 CSV」读真下载下来的文件 → 删户型',
+    run: async (t) => {
+      /* gap 审计 G12 / G13。真实鼠标（Shift = modifiers 8）+ 真实键盘；CSV 读的是 Chrome 真下载到磁盘的文件。 */
+      const blur = `(()=>{const a=document.activeElement;if(a&&a.blur)a.blur();})()`;
+      const posOf = (uid) =>
+        t.eval(`(()=>{const i=state.items.find(x=>x.uid===${uid});return i?{x:i.x,y:i.y,rot:i.rot}:null;})()`);
+      await t.step('新建空白户型，从目录摆三件、各自真拖开');
+      await ensureProTools(t);
+      await t.click('#btnPlanNew');
+      await t.waitFor(`PLAN_ID!==BUILTIN_PLAN_ID`, 8000, '切到空白户型');
+      const place = async (q, fx, fy) => {
+        await t.type('#catSearch', q);
+        await t.waitFor(`document.querySelectorAll('.catCard').length===1`, 5000, '搜到 ' + q);
+        const n0 = await t.eval(`state.items.length`);
+        await t.click('.catCard');
+        await t.waitFor(`state.items.length===${n0 + 1}`, 6000, '家具 +1');
+        const it = await t.eval(`(()=>{const i=state.items[state.items.length-1];return {uid:i.uid,x:i.x,y:i.y};})()`);
+        await t.drag(await t.planPoint(it.x, it.y), await t.planPoint(fx, fy), { steps: 10 });
+        return it.uid;
+      };
+      const uA = await place('knapper', 5, 5);
+      const uB = await place('sansevieria', 9, 5);
+      const uC = await place('ficus', 14, 9);
+      await t.eval(
+        `(()=>{const s=document.querySelector('#catSearch');s.value='';s.dispatchEvent(new Event('input',{bubbles:true}));})()`
+      );
+      const mods = (type, p, extra) => t.mouse(type, p.x, p.y, Object.assign({ modifiers: 8 }, extra || {}));
+      const shiftClick = async (uid) => {
+        const p0 = await posOf(uid);
+        const q = await t.planPoint(p0.x, p0.y);
+        await mods('mouseMoved', q);
+        await mods('mousePressed', q, { button: 'left', buttons: 1, clickCount: 1 });
+        await mods('mouseReleased', q, { button: 'left', buttons: 0, clickCount: 1 });
+      };
+
+      await t.step('点 KNAPPER，再 Shift+点虎尾兰');
+      const pa = await posOf(uA);
+      await t.click(await t.planPoint(pa.x, pa.y));
+      await shiftClick(uB);
+      await t.waitFor(`selUids().length===2`, 4000, '选了两件');
+      const ui = await t.eval(
+        `({title:document.querySelector('#pTitle').textContent, box:!!document.querySelector('#svg2d .selGroupBox'), lbl:(document.querySelector('#svg2d .selGroupLbl')||{}).textContent||''})`
+      );
+      t.assert(
+        'ms-shift-click',
+        ui.title === '已选 2 件' && ui.box && /已选 2 件/.test(ui.lbl),
+        `面板「${ui.title}」· 整组外包框=${ui.box} · 「${ui.lbl}」`
+      );
+      await t.shot('ms-two');
+
+      await t.step('拖虎尾兰：整组走，琴叶榕不动');
+      const a0 = await posOf(uA),
+        b0 = await posOf(uB),
+        c0 = await posOf(uC);
+      const fromB = await t.planPoint(b0.x, b0.y);
+      await t.drag(fromB, { x: fromB.x + 70, y: fromB.y + 45 }, { steps: 10 });
+      const a1 = await posOf(uA),
+        b1 = await posOf(uB),
+        c1 = await posOf(uC);
+      const dA = [a1.x - a0.x, a1.y - a0.y],
+        dB = [b1.x - b0.x, b1.y - b0.y];
+      t.assert(
+        'ms-group-drag',
+        Math.abs(dA[0] - dB[0]) < 1e-3 &&
+          Math.abs(dA[1] - dB[1]) < 1e-3 &&
+          dB[0] > 0.5 &&
+          c1.x === c0.x &&
+          c1.y === c0.y,
+        `KNAPPER 位移 (${dA.map((v) => v.toFixed(2))}) · 虎尾兰位移 (${dB.map((v) => v.toFixed(2))}) · 琴叶榕没动=${c1.x === c0.x}`
+      );
+
+      await t.step('R：整组转 15° → Ctrl+Z 退回');
+      await t.eval(blur);
+      await t.key('r', 'KeyR', 82);
+      const ar = await posOf(uA),
+        br = await posOf(uB);
+      const rotated = ar.rot === 15 && br.rot === 15 && (Math.abs(ar.x - a1.x) > 1e-3 || Math.abs(ar.y - a1.y) > 1e-3);
+      await t.key('z', 'KeyZ', 90, 2);
+      const au = await posOf(uA);
+      t.assert(
+        'ms-rotate-undo',
+        rotated && au.rot === 0 && Math.abs(au.x - a1.x) < 1e-9 && Math.abs(au.y - a1.y) < 1e-9,
+        `R 后两件朝向 ${ar.rot}° / ${br.rot}°、位置绕组中心转了=${rotated} · Ctrl+Z 回到 ${au.rot}°`
+      );
+
+      await t.step('Shift+在空白处拖框选三件');
+      const m0 = await t.planPoint(1, 1),
+        m1 = await t.planPoint(19, 13);
+      await mods('mouseMoved', m0);
+      await mods('mousePressed', m0, { button: 'left', buttons: 1, clickCount: 1 });
+      for (let i = 1; i <= 10; i++)
+        await mods(
+          'mouseMoved',
+          { x: m0.x + ((m1.x - m0.x) * i) / 10, y: m0.y + ((m1.y - m0.y) * i) / 10 },
+          { button: 'left', buttons: 1 }
+        );
+      const midMarq = await t.eval(`!!document.querySelector('#svg2d rect.marquee')`);
+      await t.shot('ms-marquee');
+      await mods('mouseReleased', m1, { button: 'left', buttons: 0, clickCount: 1 });
+      await t.waitFor(`selUids().length===3`, 4000, '框住三件');
+      t.assert(
+        'ms-marquee',
+        midMarq && (await t.eval(`document.querySelector('#pTitle').textContent`)) === '已选 3 件',
+        `拖动中有框=${midMarq} · 面板「已选 3 件」`
+      );
+
+      await t.step('Delete 一起删 → Ctrl+Z 回来');
+      await t.eval(blur);
+      await t.key('Delete', 'Delete', 46);
+      await t.waitFor(`state.items.length===0`, 5000, '三件一起删了');
+      await t.key('z', 'KeyZ', 90, 2);
+      await t.waitFor(`state.items.length===3`, 5000, '撤销回来');
+      t.assert('ms-delete-undo', (await t.eval(`state.items.length`)) === 3, 'Delete 一步删三件、Ctrl+Z 一步全回来');
+
+      await t.step('「导出 CSV」：读真下载下来的文件');
+      const fs = await import('node:fs');
+      if (fs.existsSync(t.downloads))
+        for (const n of fs.readdirSync(t.downloads))
+          if (n.endsWith('.csv')) fs.rmSync(t.downloads + '/' + n, { force: true });
+      await t.click('#plCsv');
+      let csvPath = null;
+      const t0 = Date.now();
+      while (Date.now() - t0 < 20000 && !csvPath) {
+        if (fs.existsSync(t.downloads)) {
+          const f = fs.readdirSync(t.downloads).find((n) => n.endsWith('采购清单.csv'));
+          if (f) csvPath = t.downloads + '/' + f;
+        }
+        if (!csvPath) await new Promise((r) => setTimeout(r, 300));
+      }
+      const csv = csvPath ? fs.readFileSync(csvPath, 'utf8') : '';
+      t.assert(
+        'ms-csv-downloaded',
+        !!csvPath &&
+          csv.charCodeAt(0) === 0xfeff &&
+          /KNAPPER/.test(csv) &&
+          /SANSEVIERIA/.test(csv) &&
+          /FICUS LYRATA/.test(csv) &&
+          /"合计","3"/.test(csv),
+        csvPath ? `${csvPath.split('/').pop()} · ${csv.split('\r\n').length - 1} 行` : '20s 内没有 CSV 下载文件'
+      );
+
+      await t.step('清除：删掉这份户型（两步）');
+      await ensureProTools(t);
+      await t.click('#btnPlanDel');
+      await t.click('#btnPlanDel');
+      await t.waitFor(`PLAN_ID===BUILTIN_PLAN_ID`, 8000, '删完切回内置');
+      t.assert('ms-cleaned', true, '回到内置户型');
+    },
+  },
+
+  {
     name: 'props-panel',
     title: '检视面板：改颜色能撤销、旋转口径一致、自定义件尺寸有上下限',
     run: async (t) => {

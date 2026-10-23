@@ -6502,6 +6502,498 @@ async function runPBTest() {
       );
     }
 
+    /* ===== 26. S20 多选（Shift+点 / 框选 / 整组拖 / 整组快捷键 / 面板 / 清单行）+ 采购清单导出 ===== */
+    {
+      /* gap 审计 G12 / G13。独立量：整组拖 = 每件位移都等于被拖那件的位移；整组转 = 每件到组中心的距离不变、
+         朝向都加同一个角；每个动作一步撤销；导出的合计 = 界面「合计约」那一行（四舍五入）；CSV 每格能还原。 */
+      await enterEdit();
+      await pbReset();
+      const p26Plans = PLAN_REG.plans.length;
+      Q('#btnPlanNew').click();
+      await tick();
+      const p26Plan = PLAN_ID;
+      if (wallEdit.on) {
+        Q('#btnWallEdit').click();
+        await tick();
+      }
+      const fp26 = floorPts();
+      const X = Math.min.apply(
+          null,
+          fp26.map((p) => p[0])
+        ),
+        Y = Math.min.apply(
+          null,
+          fp26.map((p) => p[1])
+        );
+      const mk = (ref, x, y) => {
+        const uid = uidSeq++;
+        state.items.push({ uid, ref, x, y, rot: 0 });
+        return uid;
+      };
+      const uA = mk('sansevieria-8', X + 3, Y + 3),
+        uB = mk('knapper', X + 6, Y + 3),
+        uC = mk('ficus-lyrata-12', X + 12, Y + 3),
+        uD = mk('tv-55', X + 4, Y + 9);
+      selOnly(null);
+      fit2DToContent();
+      drawFurniture();
+      await tick();
+      const it26 = (u) => state.items.find((i) => i.uid === u);
+      const pos = (u) => [it26(u).x, it26(u).y];
+      const srt = (a) => a.slice().sort((p, q) => p - q);
+      const same = (a, b) => JSON.stringify(srt(a)) === JSON.stringify(srt(b));
+      const clickItem = async (u, sh) => {
+        const [x, y] = SPT(...pos(u));
+        fire('pointerdown', x, y, { shiftKey: !!sh });
+        await tick();
+        fire('pointerup', x, y, { shiftKey: !!sh, buttons: 0 });
+        await tick();
+      };
+
+      /* 26.1 点一件 → 只选它；Shift+点另两件 → 三件；再 Shift+点中间那件 → 减掉它。多选时：每件一个选中框、
+         整组外包框 +「已选 N 件」、没有旋转手柄；检视面板「已选 2 件」+ 整组按钮 */
+      await clickItem(uA);
+      const s1 = selUids().slice();
+      await clickItem(uB, true);
+      await clickItem(uC, true);
+      const s3 = selUids().slice();
+      await clickItem(uB, true);
+      const s2 = selUids().slice();
+      const boxes = pbSvg.querySelectorAll('#ctxDims .selBox').length;
+      T(
+        'pb-ms-shift-click',
+        same(s1, [uA]) &&
+          same(s3, [uA, uB, uC]) &&
+          same(s2, [uA, uC]) &&
+          boxes === 2 &&
+          !!pbSvg.querySelector('.selGroupBox') &&
+          /已选 2 件/.test((pbSvg.querySelector('.selGroupLbl') || {}).textContent || '') &&
+          !pbSvg.querySelector('#ctxDims .rotHandle') &&
+          Q('#pTitle').textContent === '已选 2 件' &&
+          getComputedStyle(Q('#pGroup')).display !== 'none' &&
+          getComputedStyle(Q('#pFields')).display === 'none',
+        '点 A=' +
+          JSON.stringify(s1) +
+          ' · +B+C=' +
+          s3.length +
+          ' 件 · −B=' +
+          s2.length +
+          ' 件 · 选中框 ' +
+          boxes +
+          ' · 面板「' +
+          Q('#pTitle').textContent +
+          '」'
+      );
+
+      /* 26.2 拖组里的一件 = 整组走（位移逐件相等），组外的不动；一步撤销；4px 手抖不算拖 */
+      const a0 = pos(uA),
+        b0 = pos(uB),
+        c0 = pos(uC);
+      const r2 = undoRing.length;
+      const [cx, cy] = SPT(...c0);
+      fire('pointerdown', cx, cy);
+      await tick();
+      fire('pointermove', cx + 3, cy + 2);
+      await tick();
+      const jitterStill = pos(uC)[0] === c0[0] && pos(uC)[1] === c0[1] && undoRing.length === r2;
+      fire('pointermove', cx + 40, cy + 10);
+      await tick();
+      fire('pointermove', cx + 70, cy + 25);
+      await tick();
+      fire('pointerup', cx + 70, cy + 25, { buttons: 0 });
+      await tick();
+      const dA = [pos(uA)[0] - a0[0], pos(uA)[1] - a0[1]],
+        dC = [pos(uC)[0] - c0[0], pos(uC)[1] - c0[1]];
+      T(
+        'pb-ms-group-drag',
+        jitterStill &&
+          Math.abs(dA[0] - dC[0]) < 1e-3 &&
+          Math.abs(dA[1] - dC[1]) < 1e-3 &&
+          dC[0] > 1 &&
+          pos(uB)[0] === b0[0] &&
+          pos(uB)[1] === b0[1] &&
+          undoRing.length === r2 + 1 &&
+          same(selUids(), [uA, uC]),
+        '手抖 3px 不动=' +
+          jitterStill +
+          ' · A 位移 (' +
+          dA.map((v) => v.toFixed(2)) +
+          ') · C 位移 (' +
+          dC.map((v) => v.toFixed(2)) +
+          ') · B 没动=' +
+          (pos(uB)[0] === b0[0]) +
+          ' · 撤销环 +' +
+          (undoRing.length - r2)
+      );
+
+      /* 26.3 点组里的一件、没拖 → 塌缩成只选它 */
+      await clickItem(uA);
+      T(
+        'pb-ms-click-collapses',
+        same(selUids(), [uA]) && Q('#pTitle').textContent !== '已选 2 件',
+        '选择集 ' + JSON.stringify(selUids())
+      );
+
+      /* 26.4 Shift+在空白处拖 = 框选：框住中心的件，与现有选择取并集；拖动中有框、框住的件描出来；松手框消失；只选不改场景 */
+      // 摆回一排（A 比起点右 0.5ft：与撤销环顶上那份快照不同，下面「一步撤销」的计数才有意义）
+      Object.assign(it26(uA), { x: X + 3.5, y: Y + 3 });
+      Object.assign(it26(uB), { x: X + 6, y: Y + 3 });
+      Object.assign(it26(uC), { x: X + 12, y: Y + 3 });
+      selOnly(uD);
+      drawFurniture();
+      await tick();
+      const r4 = undoRing.length;
+      const [m0x, m0y] = SPT(X + 1.2, Y + 1.2),
+        [m1x, m1y] = SPT(X + 7.5, Y + 4.8);
+      fire('pointerdown', m0x, m0y, { shiftKey: true });
+      await tick();
+      fire('pointermove', (m0x + m1x) / 2, (m0y + m1y) / 2, { shiftKey: true });
+      await tick();
+      const marqShown = !!pbSvg.querySelector('rect.marquee');
+      fire('pointermove', m1x, m1y, { shiftKey: true });
+      await tick();
+      const hitMarked = pbSvg.querySelectorAll('.furn.marqHit').length;
+      fire('pointerup', m1x, m1y, { shiftKey: true, buttons: 0 });
+      await tick();
+      T(
+        'pb-ms-marquee',
+        same(selUids(), [uA, uB, uD]) &&
+          marqShown &&
+          hitMarked === 2 &&
+          !pbSvg.querySelector('rect.marquee') &&
+          !pbSvg.querySelector('.furn.marqHit') &&
+          undoRing.length === r4,
+        '选择集 ' +
+          JSON.stringify(srt(selUids())) +
+          '（期望 A B + 原来的 D）· 拖动中有框=' +
+          marqShown +
+          ' · 框住描出 ' +
+          hitMarked +
+          ' 件 · 撤销环 +' +
+          (undoRing.length - r4)
+      );
+
+      /* 26.5 R = 整组绕组中心转 15°：每件到中心的距离不变、方位角 +15°、朝向 +15°；一步撤销；Ctrl+Z 全回去 */
+      selSetMany([uA, uB], uB);
+      drawFurniture();
+      const grp = () => [it26(uA), it26(uB)];
+      let gx0 = Infinity,
+        gy0 = Infinity,
+        gx1 = -Infinity,
+        gy1 = -Infinity;
+      for (const g of grp())
+        for (const c of obbCorners(g, itemSpec(g))) {
+          gx0 = Math.min(gx0, c[0]);
+          gy0 = Math.min(gy0, c[1]);
+          gx1 = Math.max(gx1, c[0]);
+          gy1 = Math.max(gy1, c[1]);
+        }
+      const gc = [(gx0 + gx1) / 2, (gy0 + gy1) / 2];
+      const pol = (g) => [Math.hypot(g.x - gc[0], g.y - gc[1]), (Math.atan2(g.y - gc[1], g.x - gc[0]) * 180) / Math.PI];
+      const before5 = grp().map((g) => ({ p: pol(g), rot: g.rot }));
+      const r5 = undoRing.length;
+      key('r');
+      await tick();
+      const after5 = grp().map((g) => ({ p: pol(g), rot: g.rot }));
+      const dAng = (a, b) => ((b - a + 540) % 360) - 180;
+      const rotOk = after5.every(
+        (q, k) =>
+          Math.abs(q.p[0] - before5[k].p[0]) < 1e-3 &&
+          Math.abs(dAng(before5[k].p[1], q.p[1]) - 15) < 0.01 &&
+          Math.abs(q.rot - (before5[k].rot + 15)) < 1e-9
+      );
+      const step5 = undoRing.length - r5;
+      undoStep();
+      await tick();
+      const back5 =
+        Math.abs(it26(uA).x - (X + 3.5)) < 1e-9 && Math.abs(it26(uB).x - (X + 6)) < 1e-9 && it26(uA).rot === 0;
+      T(
+        'pb-ms-rotate-group',
+        rotOk && step5 === 1 && back5,
+        '半径 / 方位角 +15° / 朝向 +15°=' + rotOk + ' · 撤销环 +' + step5 + ' · Ctrl+Z 回原位=' + back5
+      );
+
+      /* 26.6 D = 整组复制（偏移 1.5ft，副本成为选择集、主选 = 主选的副本）；方向键 = 整组平移；Delete = 全删；各一步撤销 */
+      selSetMany([uA, uB], uB);
+      drawFurniture();
+      const n6 = state.items.length,
+        r6 = undoRing.length;
+      key('d');
+      await tick();
+      const cp = selItems();
+      const dupOk =
+        state.items.length === n6 + 2 &&
+        cp.length === 2 &&
+        cp.every((c) => c.uid !== uA && c.uid !== uB) &&
+        cp.some((c) => c.ref === 'knapper' && c.uid === selected && Math.abs(c.x - (X + 7.5)) < 1e-9) &&
+        undoRing.length === r6 + 1;
+      const r6b = undoRing.length,
+        cx6 = cp.map((c) => c.x);
+      key('ArrowRight');
+      key('ArrowRight');
+      await tick();
+      const nudgeOk = selItems().every((c, k) => Math.abs(c.x - (cx6[k] + 0.5)) < 1e-9) && undoRing.length === r6b + 1;
+      const r6c = undoRing.length;
+      key('Delete');
+      await tick();
+      const delOk = state.items.length === n6 && selected === null && undoRing.length === r6c + 1;
+      undoStep();
+      await tick();
+      const undelOk = state.items.length === n6 + 2;
+      undoStep();
+      undoStep();
+      await tick();
+      T(
+        'pb-ms-dup-nudge-delete',
+        dupOk && nudgeOk && delOk && undelOk && state.items.length === n6,
+        '复制 +2 且副本被选中=' +
+          dupOk +
+          ' · 方向键两下整组 +0.5ft 一步撤销=' +
+          nudgeOk +
+          ' · Delete 两件一起删=' +
+          delOk +
+          ' · 撤销回来=' +
+          undelOk
+      );
+
+      /* 26.7 旧坑：单选时 D 与方向键以前不进撤销环（复制完 Ctrl+Z 撤的是上一个动作） */
+      selOnly(uD);
+      drawFurniture();
+      const n7 = state.items.length,
+        r7 = undoRing.length;
+      key('d');
+      await tick();
+      const d7 = state.items.length === n7 + 1 && undoRing.length === r7 + 1;
+      undoStep();
+      await tick();
+      const d7back = state.items.length === n7;
+      selOnly(uD);
+      const x7 = it26(uD).x,
+        r7b = undoRing.length;
+      key('ArrowLeft');
+      await tick();
+      const a7 = Math.abs(it26(uD).x - (x7 - 0.25)) < 1e-9 && undoRing.length === r7b + 1;
+      undoStep();
+      await tick();
+      T(
+        'pb-ms-single-dup-nudge-undoable',
+        d7 && d7back && a7 && Math.abs(it26(uD).x - x7) < 1e-9,
+        'D 一步撤销=' + d7 + ' · 撤回=' + d7back + ' · 方向键一步撤销=' + a7
+      );
+
+      /* 26.8 面板整组按钮（+90° 一步撤销）、Esc / 「取消多选」全不选；清单行 Shift+点 = 加减、普通点 = 只选它 */
+      selSetMany([uA, uB], uA);
+      drawFurniture();
+      const r8 = undoRing.length,
+        rot8 = it26(uB).rot;
+      Q('#pgRot90').click();
+      await tick();
+      const rot90 = it26(uB).rot === (rot8 + 90) % 360 && undoRing.length === r8 + 1;
+      key('Escape');
+      await tick();
+      const escOk = selected === null && selUids().length === 0;
+      undoStep();
+      await tick();
+      const rowOf = (u) =>
+        [...Q('#plRows').querySelectorAll('.plRow')].find((r) => r.textContent.indexOf(itemName(it26(u))) >= 0);
+      rowOf(uA).dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      await tick();
+      rowOf(uC).dispatchEvent(new MouseEvent('click', { bubbles: true, shiftKey: true }));
+      await tick();
+      const rowsSel = [...Q('#plRows').querySelectorAll('.plRow.sel')].length;
+      const listOk = same(selUids(), [uA, uC]) && rowsSel === 2;
+      Q('#pgNone').click();
+      await tick();
+      T(
+        'pb-ms-panel-and-list',
+        rot90 && escOk && listOk && selUids().length === 0,
+        '整组 +90° 一步撤销=' + rot90 + ' · Esc 全不选=' + escOk + ' · 清单行 Shift+点 → ' + rowsSel + ' 行高亮'
+      );
+
+      /* 26.9 采购清单：同一件聚成一行；公寓自带灯具不进行；目录里没有的件单独成行；合计 = 界面那一行（四舍五入）；
+         通用件 / 自定义件没价也进件数；CSV 带 BOM、公式字符被转义；文本一件一行 */
+      mk('sansevieria-8', X + 15, Y + 9);
+      const light = CATALOG.find((c) => isBuiltIn(c));
+      mk(light.id, X + 10, Y + 10);
+      const uG = uidSeq++;
+      state.items.push({ uid: uG, ref: 'bench-gone-26', x: X + 16, y: Y + 6, rot: 0 });
+      const uE = uidSeq++;
+      state.items.push({
+        uid: uE,
+        custom: { name: '=1+1 自制柜', w: 80, d: 40, h: 90, color: '#888888' },
+        x: X + 8,
+        y: Y + 10,
+        rot: 0,
+      });
+      drawFurniture();
+      await tick();
+      const totNum = () => {
+        const m = (Q('#totals').textContent || '').match(/合计约\s*≈?\s*(?:US|CA)\$([\d,]+)/);
+        return m ? +m[1].replace(/,/g, '') : NaN;
+      };
+      const L = shoppingListNow();
+      const rowS = L.rows.find((r) => /SANSEVIERIA/.test(r.name));
+      const rowG = L.rows.find((r) => r.ghost);
+      const rowE = L.rows.find((r) => r.cat === '自定义');
+      const rowTv = L.rows.find((r) => /电视 55/.test(r.name));
+      const sumUsd = 24.99 * 2 + 129.99 + 69.99;
+      const csv = CATPACK.shoppingCSV(L, { currency: 'US$' });
+      const txt = CATPACK.shoppingText(L, { title: 'T', money: (v) => fmtMoney2(v) });
+      T(
+        'pb-shop-list',
+        !!rowS &&
+          rowS.qty === 2 &&
+          Math.abs(rowS.subtotal - 49.98) < 1e-9 &&
+          !L.rows.some((r) => r.name === light.name) &&
+          L.builtin === 1 &&
+          !!rowG &&
+          rowG.unit === null &&
+          L.ghost === 1 &&
+          !!rowE &&
+          rowE.why === '自定义件，无价' &&
+          !!rowTv &&
+          rowTv.why === '无独立售价' &&
+          L.buy === 6 &&
+          Math.abs(L.total - sumUsd) < 1e-6 &&
+          Math.round(L.total) === totNum(),
+        '虎尾兰 ×' +
+          (rowS && rowS.qty) +
+          ' · 行数 ' +
+          L.rows.length +
+          ' · 采购 ' +
+          L.buy +
+          ' 件 · 合计 ' +
+          L.total.toFixed(2) +
+          ' vs 界面 ' +
+          totNum() +
+          ' · 灯具不进行=' +
+          !L.rows.some((r) => r.name === light.name)
+      );
+      T(
+        'pb-shop-csv-text',
+        csv.charCodeAt(0) === 0xfeff &&
+          csv.indexOf('"\'=1+1 自制柜"') > 0 &&
+          csv.indexOf('"SANSEVIERIA 虎尾兰（盆径 20）","2","24.99","49.98"') > 0 &&
+          /"合计","6","","249\.96"/.test(csv) &&
+          txt.indexOf('· SANSEVIERIA 虎尾兰（盆径 20） — US$24.99 × 2 = US$49.98 ') > 0 &&
+          txt.split('\n').slice(-1)[0] ===
+            '采购 6 件 · 合计约 US$249.96（2 件无价、1 件固定灯具不计价、1 件目录里没有（不计价））',
+        'CSV ' + csv.length + ' 字 · 文本末行「' + txt.split('\n').slice(-1)[0] + '」'
+      );
+
+      /* 26.10 加元：琴叶榕加拿大无售 → 不计价、尾巴单数「加拿大无售」；合计仍与界面一致 */
+      setCurrency('cad');
+      await tick();
+      const Lc = shoppingListNow();
+      const sumCad = 24.99 * 2 + 74.99;
+      T(
+        'pb-shop-cad',
+        Lc.na === 1 &&
+          Math.abs(Lc.total - sumCad) < 1e-6 &&
+          Math.round(Lc.total) === totNum() &&
+          CATPACK.shoppingTail(Lc).indexOf('1 件加拿大无售') >= 0 &&
+          CATPACK.shoppingCSV(Lc, { currency: 'CA$' }).indexOf('单价（CA$）') > 0,
+        '加拿大无售 ' + Lc.na + ' · 合计 ' + Lc.total.toFixed(2) + ' vs 界面 ' + totNum()
+      );
+      setCurrency('usd');
+      await tick();
+
+      /* 26.11 按钮：「导出 CSV」下载的就是这份 CSV（文件名带户型名）；「复制清单」写进剪贴板的就是这份文本；
+         剪贴板被拒 → 弹出文本框全选（不能点了没反应） */
+      const origClick = HTMLAnchorElement.prototype.click;
+      let dl = null;
+      HTMLAnchorElement.prototype.click = function () {
+        dl = { name: this.download, href: this.href };
+      };
+      Q('#plCsv').click();
+      HTMLAnchorElement.prototype.click = origClick;
+      let dlText = '';
+      if (dl) dlText = await (await fetch(dl.href)).text();
+      const clip = navigator.clipboard;
+      const origWrite = clip && clip.writeText;
+      let copied = null;
+      if (clip)
+        clip.writeText = async (t) => {
+          copied = t;
+        };
+      Q('#plCopy').click();
+      for (let i = 0; i < 10 && copied === null; i++) await tick();
+      if (clip)
+        clip.writeText = async () => {
+          throw new Error('denied');
+        };
+      const origExec = document.execCommand;
+      document.execCommand = () => false;
+      Q('#plCopy').click();
+      for (let i = 0; i < 10 && getComputedStyle(Q('#shopModal')).display === 'none'; i++) await tick();
+      const modalShown = getComputedStyle(Q('#shopModal')).display !== 'none';
+      const ta = Q('#shopText');
+      const selAll = ta.selectionStart === 0 && ta.selectionEnd === ta.value.length && ta.value.length > 20;
+      document.execCommand = origExec;
+      if (clip) clip.writeText = origWrite;
+      Q('#shopClose').click();
+      await tick();
+      T(
+        'pb-shop-buttons',
+        !!dl &&
+          /-采购清单\.csv$/.test(dl.name) &&
+          dlText.replace(/^\uFEFF/, '') ===
+            CATPACK.shoppingCSV(shoppingListNow(), { currency: 'US$' }).replace(/^\uFEFF/, '') &&
+          typeof copied === 'string' &&
+          copied.split('\n').slice(1).join('\n') ===
+            CATPACK.shoppingText(shoppingListNow(), { title: '', money: (v) => fmtMoney2(v) })
+              .split('\n')
+              .slice(1)
+              .join('\n') &&
+          modalShown &&
+          selAll &&
+          getComputedStyle(Q('#shopModal')).display === 'none',
+        '下载 ' +
+          (dl ? dl.name : '没触发') +
+          ' · 内容一致=' +
+          (dlText.replace(/^\uFEFF/, '') ===
+            CATPACK.shoppingCSV(shoppingListNow(), { currency: 'US$' }).replace(/^\uFEFF/, '')) +
+          ' · 复制 ' +
+          (copied ? copied.split('\n').length + ' 行' : '没写') +
+          ' · 剪贴板被拒 → 文本框=' +
+          modalShown +
+          ' 全选=' +
+          selAll
+      );
+
+      /* 26.12 多层：清单按楼层分组（文本里【一层】/【二层】）；多选不跨楼层（切层后选择集塌掉） */
+      selSetMany([uA, uB], uA);
+      const up = addLevelUI('above');
+      await tick();
+      addItem('knapper');
+      await tick();
+      const Lm = shoppingListNow();
+      const tm = CATPACK.shoppingText(Lm, { title: 'T', money: (v) => fmtMoney2(v) });
+      const lvNames = LV.sortedLevels(DOC).map((l) => l.name);
+      T(
+        'pb-shop-levels',
+        !!up &&
+          Lm.levels === 2 &&
+          tm.indexOf('【' + lvNames[0] + '】') > 0 &&
+          tm.indexOf('【' + lvNames[1] + '】') > tm.indexOf('【' + lvNames[0] + '】') &&
+          Lm.rows.filter((r) => r.level === lvNames[1]).length === 1 &&
+          selUids().length === 1,
+        '楼层 ' + lvNames.join(' / ') + ' · 行数 ' + Lm.rows.length + ' · 切层后选择集 ' + selUids().length + ' 件'
+      );
+
+      /* 收尾：删掉这份户型 */
+      await enterEdit();
+      Q('#btnPlanDel').click();
+      await tick();
+      Q('#btnPlanDel').click();
+      await tick();
+      T(
+        'pb-ms-clean-exit',
+        PLAN_ID !== p26Plan && PLAN_REG.plans.length === p26Plans,
+        'plans ' + p26Plans + '→' + PLAN_REG.plans.length
+      );
+    }
+
     /* ===== 收尾：页面不得有未捕获异常 ===== */
     T('pb-no-page-errors', window.__ERRS.length === 0, window.__ERRS.slice(0, 3).join(' || '));
   } catch (e) {

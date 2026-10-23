@@ -194,6 +194,77 @@ async function run3DTest() {
       drawFurniture();
       await wait(120);
     }
+    /* ===== S20：3D 俯瞰里的多选 —— Shift+点 = 加 / 减（不挪、不转）；拖组里的一件 = 整组走（位移逐件相等、一步撤销）；
+       点组里的一件没拖 = 只选它 ===== */
+    {
+      const it0 = state.items.find((i) => i.uid === it.uid);
+      const twin = { uid: uidSeq++, ref: it0.ref, x: it0.x + 3, y: it0.y, rot: 0 };
+      state.items.push(twin);
+      selOnly(it0.uid);
+      drawFurniture();
+      await wait(200);
+      const live = (u) => state.items.find((i) => i.uid === u);
+      const tw0 = { x: twin.x, y: twin.y, rot: twin.rot };
+      let [tx, ty] = proj(twin.x, 1.2, twin.y);
+      PE('pointerdown', tx, ty, { shiftKey: true });
+      await wait(60);
+      PE('pointerup', tx, ty, { shiftKey: true, buttons: 0 });
+      await wait(120);
+      const ids = selUids()
+        .slice()
+        .sort((a, b) => a - b);
+      const still = live(twin.uid).x === tw0.x && live(twin.uid).y === tw0.y && live(twin.uid).rot === tw0.rot;
+      T(
+        '3d-ms-shift-click',
+        JSON.stringify(ids) === JSON.stringify([it0.uid, twin.uid].sort((a, b) => a - b)) && still,
+        '选择集 ' + JSON.stringify(ids) + ' · Shift+点没挪没转=' + still
+      );
+      const a0 = { x: live(it0.uid).x, y: live(it0.uid).y },
+        b0 = { x: live(twin.uid).x, y: live(twin.uid).y },
+        ring0 = undoRing.length;
+      lastGesture = null;
+      const [sx, sy] = proj(a0.x, 1.2, a0.y);
+      PE('pointerdown', sx, sy);
+      await wait(60);
+      PE('pointermove', sx + 30, sy + 10);
+      await wait(60);
+      PE('pointermove', sx + 70, sy + 30);
+      await wait(60);
+      PE('pointerup', sx + 70, sy + 30, { buttons: 0 });
+      await wait(150);
+      const dA = [live(it0.uid).x - a0.x, live(it0.uid).y - a0.y],
+        dB = [live(twin.uid).x - b0.x, live(twin.uid).y - b0.y];
+      T(
+        '3d-ms-group-drag',
+        Math.hypot(dA[0], dA[1]) > 0.3 &&
+          Math.abs(dA[0] - dB[0]) < 1e-3 &&
+          Math.abs(dA[1] - dB[1]) < 1e-3 &&
+          undoRing.length === ring0 + 1 &&
+          selUids().length === 2,
+        '被拖那件 (' +
+          dA.map((v) => v.toFixed(2)) +
+          ') · 另一件 (' +
+          dB.map((v) => v.toFixed(2)) +
+          ') · 撤销环 +' +
+          (undoRing.length - ring0)
+      );
+      [tx, ty] = proj(live(twin.uid).x, 1.2, live(twin.uid).y);
+      PE('pointerdown', tx, ty);
+      await wait(60);
+      PE('pointerup', tx, ty, { buttons: 0 });
+      await wait(120);
+      T(
+        '3d-ms-click-collapses',
+        JSON.stringify(selUids()) === JSON.stringify([twin.uid]),
+        '选择集 ' + JSON.stringify(selUids())
+      );
+      undoStep();
+      await wait(120);
+      state.items = state.items.filter((i) => i.uid !== twin.uid);
+      selOnly(it.uid);
+      drawFurniture();
+      await wait(150);
+    }
 
     /* ===== v3.3 新增件：卫生间镜子 / Lunix 沙发 / Honeywell 落地灯 ===== */
     // 镜子数量随户型（mine 3 面 / generic 1 面）→ 断言「投影里有、且 3D 建的数量与投影一致」，不写死
