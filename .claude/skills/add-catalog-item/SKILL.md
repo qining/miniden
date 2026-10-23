@@ -90,8 +90,13 @@ Length/reach 对应的**最大占地**，不是机身尺寸。如果录好的 sp
   `caVar`=同型号但面料/配置不同、`caNA`=加拿大不售
 - 固定在墙/天花的灯（`downlight/ceilingLight/vanityLight/pendant`）**不写价格**，公寓自带；
   可调光落地灯要计价但加 `dimmable:true` 才有色温/亮度控件
+- **通用件**（电视 / 洗衣机 / 冰箱 / 衣柜这类「规划空间只看尺寸档位、不看品牌」的）：`noPrice:true`
+  （显式声明没有独立售价——不计价、体检不报「漏采价格」），名字写「XX（通用尺寸）」，
+  尺寸取**一款主流机型的官方 / 零售商规格**、note 写明是哪款（S19b：Samsung DU7200 / LG WM3400 / PAX…）
+- **壁挂件**（电视 / 挂画）写 `z`：缺省离地 **cm**（0–300），摆进来就挂在这个高度（`it.z` 存 ft）；
+  口径写进 note（电视 = 屏幕中心 ≈ 107cm 坐姿视线高，挂画 = 画心 ≈ 145cm）
 - 商品名照写原文拼写（POÄNG / RÅSKOG），搜索层会自动折叠 ASCII
-- 分类不要合并性质不同的东西；加新 `kind` 要同时管
+- 分类不要合并性质不同的东西；加新分类顺手排进 `CAT_ORDER`（不排就掉到目录最末）；加新 `kind` 要同时管
   `furnMats()`（材质）、`furnShape()`（2D 图例）、`vSpan()`（高度区间）
 
 ### 3. 建模
@@ -133,6 +138,17 @@ const off = new C.THREE.Vector3(); bb.getCenter(off);
 for(const ch of C.g.children){ ch.position.x -= off.x; ch.position.z -= off.z; }
 ```
 
+**随机生成的叶片 / 叶丛（S19b 琴叶榕、虎尾兰）**：
+- 种子在**贴图建完之后**再 `srand()`（贴图第一次建时自己会 srand，夹在中间 = 同一件第二次建出来形状不同）
+- **按声明尺寸收，不手调余量**：每片叶建好（组还没挂 `C.g`）就逐顶点量「离轴最远水平距离 + 最高点」，
+  超了就**二分外倾角**到刚好贴边、还超再整片等比缩、冒顶就沿干下移。固定余量 + 粗步长回退会把冠幅收到 86–89%
+- 外圈叶的方位角按 45° 均布（±7° 抖动）：随机方位角凑不齐四个正方向，包围盒宽只到 91%
+- 叶面要有绕主脉的侧转（`leaf.rotation.z`，嵌套组、单轴），否则正面看全是水平薄片
+
+**镜子类家具**（S19b KNAPPER）：镜面 mesh 挂 `userData.mirrorFurn=true`，**材质每件 new 一份**
+（反射烘焙按 mesh 改 `material.envMap`），`metalness 1 / roughness ≤0.05` + `userData.noTex/noNrm`。
+没挂标记的镜面反射的是环境全景（窗外城市），室内一眼假；挂了之后摆放 / 挪动 / 转向会防抖重烘。
+
 ### 4. 材质贴图
 
 `C.M(color, {wood:'pine'|fabric|leather|plastic, rough, metal, clear, sheen, envI})`。
@@ -146,7 +162,7 @@ for(const ch of C.g.children){ ch.position.x -= off.x; ch.position.z -= off.z; }
 let _xxxTex = null;
 function xxxTexture(){
   if(_xxxTex) return _xxxTex;
-  srand(1016);                                  // 必须固定种子（1001~1015 已占用）
+  srand(1043);                                  // 必须固定种子（1001~1042 已占用：grep -o "srand(10[0-9][0-9])"）
   const N=512, c=document.createElement('canvas'); c.width=c.height=N;
   const g=c.getContext('2d');
   g.fillStyle='#fdfcfa'; g.fillRect(0,0,N,N);   // 基调接近白，靠 material.color 上色
@@ -162,6 +178,11 @@ function xxxTexture(){
 - `envMapIntensity` 默认 1 对彩色材质是灾难（饱和色会被白光冲成粉彩）：
   塑料 0.22–0.35 / 织物 0.12–0.20 / 木头 0.6 / 金属 0.8–0.95
 - `sheen` 给大了整块发白（0.2 上下即可）
+- **`C.M('#hex')` 把十六进制当线性值收**（three r147 legacy 色彩管理）：中间调被提亮、去饱和
+  （陶土盆 `#b8562e` 渲成浅肉色）。要对上照片里的颜色就 `C.M(new T.Color(hex).convertSRGBToLinear(), …)`；
+  贴图（`CanvasTexture` + sRGBEncoding）不受影响
+- **花纹频率按物理尺寸算，不按贴图像素算**：贴图横跨的是叶宽 / 板宽。虎尾兰斑带第一版每 32px 一个锯齿 →
+  6cm 叶宽塞了 16 个，渲出来是噪点；按「横跨叶宽 2–3 个波」重画才像
 - 贴图密度随尺寸变用 `texScaled()`，**不能按件 clone 纹理**
 
 ### 5. 2D 图例
@@ -270,7 +291,11 @@ python3 .claude/skills/add-catalog-item/check-item.py --regress
 | rboxGeo 薄板退化（r ≈ h/2） | 基形先缩 2r 后基形接近扁平，圆角形状病态，成品尺寸漂移（17cm 板渲出 20.5cm） | 厚度 < 2r+余量 时改用直角 `C.box`，或选 r < h/2 留足基形厚度 |
 | rbox 的 r 逼近最窄边的一半（r≈w/2） | 基形缩 2r 后剩 ~8mm 薄片，而 roundedRectShape 的圆角半径还是大值 → 形状病态，bevel 向外膨胀回 **2× 请求宽**（SC172 扶手 13.5cm 渲出 26.8cm，填充率 113%） | 胶囊型厚薄板（r ≥ 最窄边/4）改用 `C.ext`：把圆弧点画进轮廓（bevel=null）再拉伸；否则保持 r < 最窄边/4 |
 | C.box 的 x/z 也是中心点（同 C.rb） | 想让板从 0 延伸到 w 却把 ±w/2 写成 x → 整板偏半个板长，bbox 爆 1.46×（BARLAST 十字底座两板交叉处重叠出 48cm 宽） | 居中写 (0,0,0)；要偏置写 ±w/2 而不是 ±w |
-| 旋转件的 bbox 比名义尺寸高 | `Box3.setFromObject` 按局部包围盒 8 角点算旋转体（过度估计）：60cm 板倾 3.4° 的 bbox 竖直方向多 3.6cm | 倾垫/倾斜面板的正常现象，别当成建模错误；填充率余量本就吸收它 |
+| 旋转件的 bbox 比名义尺寸高 | `Box3.setFromObject` 不带 `precise` 时按局部包围盒 8 角点算旋转体（过度估计）：60cm 板倾 3.4° 的 bbox 竖直方向多 3.6cm | check-item 已改逐顶点量（`setFromObject(g, true)`，S19b）——与合并后用户看到的一致；自己写探针也要带 `true` |
+| check-item 报填充率 103% FAIL，三视图量出来才 95% | 旧 check-item 在 `?nomerge` 下用不精确包围盒：侧转的叶片每片都虚报（琴叶榕 101/103/102% vs 实际 96/95/100%） | 已修（同上）；两边对不上时以合并后的逐顶点量为准 |
+| 陶土盆 / 饱和色件渲成浅肉色、粉彩色 | `C.M('#hex')` 把 hex 当线性值（中间调被提亮去饱和） | 对照片取色的件用 `new T.Color(hex).convertSRGBToLinear()` 再进 `C.M` |
+| 落地镜里照出窗外的城市 | 镜面 mesh 没挂 `userData.mirrorFurn`，没进反射烘焙，反射的是环境全景 | 挂标记 + 每件独立材质（见第 3 步） |
+| 随机叶丛冠幅只到 86–91%（填充率 FAIL） | 固定余量夹外倾角 + 粗步长回退；方位角随机凑不齐四个正方向 | 逐顶点量 + 二分外倾角；外圈按 45° 均布 |
 | 抓到的价格离谱 | 命中系列落地页而非商品页 |
 | 两次渲染结果不一致 | 新贴图用了 `Math.random()` |
 | 手摆相机后画布是空的 | `OrbitControls.update()` 把相机拉回去了 → 先同步 `controls.target` 再 `update()` |
