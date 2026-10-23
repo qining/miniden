@@ -11,8 +11,14 @@ const root = dirname(dirname(fileURLToPath(import.meta.url)));
 // 预算（字节）。基线 2026-10-06：app.html 996,855 · dist/app.html 3,809,369（three 608KB +
 // dxf 25KB + pdf ~1MB 内联）。留 ~10-15% 余量吸收正常增长。
 const BUDGETS = [
-  { path: 'app.html', max: 1_250_000, note: '唯一事实来源（含 280 条目录 + 146 模型 + S10 目录扩展协议接线）' },
-  { path: 'dist/app.html', max: 4_200_000, note: '公开入口单文件（运行时库全部内联）' },
+  // 2026-10-23 上调（显式）：home-v2 一整轮（S15 点位 / S16 房间与地板 / S17 多层与楼梯 / S18–S21）。
+  // S15 + S16 已用掉 ~96KB（1,153KB → 1,249,888B，离旧预算只剩 112B）；S17–S21 预计再 +150–200KB。
+  {
+    path: 'app.html',
+    max: 1_450_000,
+    note: '唯一事实来源（含 280 条目录 + 146 模型 + S10 目录扩展协议 + home-v2 点位 / 房间地板 / 楼层）',
+  },
+  { path: 'dist/app.html', max: 4_400_000, note: '公开入口单文件（运行时库全部内联）' },
 ];
 
 let fail = 0;

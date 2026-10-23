@@ -15,6 +15,7 @@ import * as Dxf from './import-dxf';
 import * as Pdf from './import-pdf';
 import * as Trace from './image-trace';
 import * as Points from './points';
+import * as Regions from './regions';
 
 (globalThis as { MINIDEN_GEO?: unknown }).MINIDEN_GEO = {
   importDxf: Dxf.importDxf,
@@ -35,4 +36,10 @@ import * as Points from './points';
   pointBlockers: Points.pointBlockers,
   obbCorners: Points.obbCorners,
   pointInPoly: Points.pointInPoly,
+  // S16：点一下房间 → 轮廓 / 面积 / 标注点；房屋外轮廓
+  buildGrid: Regions.buildGrid,
+  regionAt: Regions.regionAt,
+  footprint: Regions.footprint,
+  polyArea: Regions.polyArea,
+  simplifyClosed: Regions.simplifyClosed,
 };

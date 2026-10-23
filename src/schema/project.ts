@@ -99,6 +99,17 @@ export interface Room {
   rot?: number;
   small?: boolean;
   chainIndex?: number; // 原 LABELS 数组下标
+  /** S16：房间轮廓（ft，「房间」工具点一下自动识别出来的）；缺省 = 只有名字的标签 */
+  poly?: Pt[];
+  /** S16：这个房间的地板（预设 id + 铺贴方向，度） */
+  floor?: RoomFloor;
+  /** S16：用户在「房间」工具里新建的（内置 / 导入的房间缺省） */
+  src?: 'user';
+}
+
+export interface RoomFloor {
+  mat: string;
+  angle?: number;
 }
 
 export interface Fixture {
@@ -408,6 +419,7 @@ export interface ProjectDoc {
   fixtures: Fixture[];
   runs?: Run[]; // S12：台面/柜体 run（纯增量可选字段，不进投影）
   outlets?: Outlet[]; // S14：电源插座（纯增量可选字段，不进投影）
+  floorMat?: string; // S16：整层的缺省地板（预设 id；缺省 = 应用自己的默认木地板）
   env: EnvState;
   baseImage?: BaseImage; // S7：用户底图（可选）
   floorOutline?: Pt[][]; // S11：地板轮廓（ft 多边形，导出/导入往返用）。纯增量可选字段，不进 docToLegacy 投影
@@ -537,6 +549,32 @@ export function validate(doc: unknown): ValidationError[] {
   checkEntities(d.solids, 'solids', []);
   checkEntities(d.rooms, 'rooms', []);
   checkEntities(d.fixtures, 'fixtures', []);
+  // S16：房间轮廓 + 地板（纯增量可选字段）。地板预设名只验「是一段短文本」：
+  // 预设表在应用里（带程序化贴图），认不出的名字由消费端退回缺省地板并如实提示
+  const matOk = (v: unknown) => isStr(v) && v.length >= 1 && v.length <= 40;
+  if (Array.isArray(d.rooms)) {
+    (d.rooms as Array<Record<string, unknown>>).forEach((e, i) => {
+      if (typeof e !== 'object' || e === null) return;
+      if (e.poly !== undefined) {
+        const p = e.poly;
+        if (!Array.isArray(p) || p.length < 3) fail(`rooms[${i}].poly`, 'poly 必须是 ≥3 个 [x, y]（ft）');
+        else
+          p.forEach((q, j) => {
+            if (!Array.isArray(q) || q.length !== 2 || !isNum(q[0]) || !isNum(q[1]))
+              fail(`rooms[${i}].poly[${j}]`, '必须是 [x, y]（ft）');
+          });
+      }
+      if (e.floor !== undefined) {
+        const f = e.floor as Record<string, unknown> | null;
+        if (typeof f !== 'object' || f === null) fail(`rooms[${i}].floor`, 'floor 必须是 {mat, angle?}');
+        else {
+          if (!matOk(f.mat)) fail(`rooms[${i}].floor.mat`, '地板预设名必须是 1–40 字符的文本');
+          if (f.angle !== undefined && !isNum(f.angle)) fail(`rooms[${i}].floor.angle`, '铺贴方向必须是数（度）');
+        }
+      }
+    });
+  }
+  if (d.floorMat !== undefined && !matOk(d.floorMat)) fail('floorMat', '整层地板预设名必须是 1–40 字符的文本');
   if (d.runs !== undefined) checkEntities(d.runs, 'runs', []); // S12：纯增量可选字段，旧文档无此字段 = 无 run
 
   // 台面/柜体 run（S12）：前沿折线 + 深度 + 台面高
@@ -781,6 +819,7 @@ export function validate(doc: unknown): ValidationError[] {
       if (!Array.isArray(hidden[k]) || !hidden[k].every(isStr)) fail(`hidden.${k}`, '必须是 id 字符串数组');
     }
   }
+
   return errs;
 }
 
@@ -1172,6 +1211,17 @@ export function projectSchema(): object {
           d: { type: 'string' },
           rot: { type: 'number' },
           small: { type: 'boolean' },
+          poly: {
+            type: 'array',
+            minItems: 3,
+            items: { type: 'array', minItems: 2, maxItems: 2, items: { type: 'number' } },
+          },
+          floor: {
+            type: 'object',
+            required: ['mat'],
+            properties: { mat: { type: 'string', minLength: 1, maxLength: 40 }, angle: { type: 'number' } },
+          },
+          src: { enum: ['user'] },
         },
       },
       fixture: {
