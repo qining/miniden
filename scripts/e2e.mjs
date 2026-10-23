@@ -304,11 +304,35 @@ async function runEntry(entry) {
     return red / (png.width * png.height);
   };
 
+  /* 一块屏幕区域的平均颜色（判断「这块地方的颜色真的变了」用） */
+  const meanColor = async (rect) => {
+    const clip = {
+      x: Math.max(0, rect.x),
+      y: Math.max(0, rect.y),
+      width: Math.max(1, rect.w),
+      height: Math.max(1, rect.h),
+      scale: 1,
+    };
+    const r = await cdp('Page.captureScreenshot', { format: 'png', clip });
+    const png = PNG.sync.read(Buffer.from(r.data, 'base64'));
+    let R = 0,
+      G = 0,
+      B = 0;
+    const n = png.width * png.height;
+    for (let i = 0; i < png.data.length; i += 4) {
+      R += png.data[i];
+      G += png.data[i + 1];
+      B += png.data[i + 2];
+    }
+    return [R / n, G / n, B / n];
+  };
+
   const t = {
     get flow() {
       return currentFlow;
     },
     redRatio,
+    meanColor,
     async step(label, note) {
       currentStep = label;
       await banner(`${currentFlow} · ${label}${note ? ' — ' + note : ''}`);

@@ -1876,6 +1876,23 @@ async function runPBTest() {
         calIt0.y = iw.y1 + 1.2;
         const calUid = calIt0.uid;
         const calP0 = [calIt0.x, calIt0.y];
+        /* 缩放的不动点 = 缩放**之前**的户型包络中心（在这里取，不在缩放后取）：
+           G16 之后自包含户型的地板轮廓是墙围出来的真实外轮廓，导入 DXF 墙角的细缝在原尺寸下封得住、
+           放大 2 倍后封不住（退回包围盒）——缩放后再用 floorPts() 反推中心，默认了「轮廓定义在缩放前后不变」 */
+        const calC = (() => {
+          const fp = floorPts();
+          let a = 1e9,
+            b = 1e9,
+            c = -1e9,
+            d = -1e9;
+          for (const p of fp) {
+            a = Math.min(a, p[0]);
+            b = Math.min(b, p[1]);
+            c = Math.max(c, p[0]);
+            d = Math.max(d, p[1]);
+          }
+          return [(a + c) / 2, (b + d) / 2];
+        })();
         drawFurniture();
         Q('#wLen').value = String(Math.round(L0 * 2 * 30.48));
         Q('#calBtn').click();
@@ -1926,21 +1943,7 @@ async function runPBTest() {
           'x 向包络=' + span0.toFixed(2) + ' → ' + span1.toFixed(2) + 'ft'
         );
         /* 家具跟着户型走（bug 猎 #22：以前它留在旧坐标，×2 之后跑到墙外 / 房间错位）。
-           缩放中心从 floorPts() 包络独立算，不照抄实现。 */
-        const calC = (() => {
-          const fp = floorPts();
-          let a = 1e9,
-            b = 1e9,
-            c = -1e9,
-            d = -1e9;
-          for (const p of fp) {
-            a = Math.min(a, p[0]);
-            b = Math.min(b, p[1]);
-            c = Math.max(c, p[0]);
-            d = Math.max(d, p[1]);
-          }
-          return [(a + c) / 2, (b + d) / 2];
-        })();
+           缩放中心（calC）在缩放之前从 floorPts() 包络独立算，不照抄实现。 */
         const calK = span1 / span0;
         const calIt1 = state.items.find((it) => it.uid === calUid);
         const expX = calC[0] + (calP0[0] - calC[0]) * calK;
@@ -4684,10 +4687,12 @@ async function runPBTest() {
         'pb-pt-reject-illegal-mount',
         floorDisabled &&
           snapFloor === null &&
+          wallDisabled &&
+          snapWall === null &&
           ol20().length === n6 &&
           undoRing.length === r6 &&
           /不能装在墙面上/.test(m6),
-        '上水「地面」灰=' + floorDisabled + ' · 地漏选墙面：' + m6.slice(0, 30)
+        '上水「地面」灰=' + floorDisabled + ' · 地漏「墙面」灰=' + wallDisabled + ' · 说明：' + m6.slice(0, 30)
       );
 
       /* 20.7 被挡住：自定义沙发（高 80cm）推到 30cm 的插座前 → 变红 + 晕 + 提示写出沙发名；挪开 → 恢复 */
@@ -4852,6 +4857,377 @@ async function runPBTest() {
         'pb-pt-clean-exit',
         PLAN_ID !== p20Plan && PLAN_REG.plans.length === p20Plans,
         'plans ' + p20Plans + '→' + PLAN_REG.plans.length
+      );
+    }
+
+    /* ===== 21. S16 房间与地板：点一下识别房间 → 命名 / 面积 / 地板（2D 底纹 + 3D 贴图）→ 整层地板 → 重标定 → 删除 ===== */
+    {
+      /* 用户 2026-10-22：「地板的品类，样式，也是要命的需求」。空白户型里画两间相邻的房
+         （隔墙中间一段门洞）；面积断言用独立量：净面积 = (轴线宽 − 画出来的墙厚) × (轴线深 − 墙厚)。 */
+      await enterEdit();
+      await pbReset();
+      const p21Plans = PLAN_REG.plans.length;
+      Q('#btnPlanNew').click();
+      await tick();
+      const p21Plan = PLAN_ID;
+      const fp21 = floorPts();
+      const A0 =
+          Math.min.apply(
+            null,
+            fp21.map((p) => p[0])
+          ) + 1,
+        B0 =
+          Math.min.apply(
+            null,
+            fp21.map((p) => p[1])
+          ) + 1;
+      const AW = 12,
+        BW = 7,
+        RH = 10;
+      const wd21 = cmToWd(12);
+      const wa = pushUserWall(A0, B0, A0 + AW + BW, B0, 'w', wd21);
+      pushUserWall(A0 + AW + BW, B0, A0 + AW + BW, B0 + RH, 'w', wd21);
+      pushUserWall(A0 + AW + BW, B0 + RH, A0, B0 + RH, 'w', wd21);
+      pushUserWall(A0, B0 + RH, A0, B0, 'w', wd21);
+      pushUserWall(A0 + AW, B0, A0 + AW, B0 + 4, 'w', wd21);
+      pushUserWall(A0 + AW, B0 + 4, A0 + AW, B0 + 7, 'd', wd21); // 门洞：算房间边界
+      pushUserWall(A0 + AW, B0 + 7, A0 + AW, B0 + RH, 'w', wd21);
+      geoChanged();
+      fit2DToContent();
+      drawWallEdit();
+      await tick();
+      const t21 = pbDrawnThick(effWalls().find((s) => s._id === wa.id));
+      const ring21 = () => undoRing.length;
+      const msg21 = () => (Q('#wMsg') || {}).textContent || '';
+      const rooms21 = () => DOC.rooms || [];
+      await setTool('room');
+
+      /* 21.1 悬停预览：房间里有黄虚线，墙上没有 */
+      const [hx, hy] = SPT(A0 + 3, B0 + 3);
+      fire('pointermove', hx, hy, { buttons: 0 });
+      await tick();
+      const pv1 = pbSvg.querySelectorAll('.rmPreview').length;
+      const [wx, wy] = SPT(A0 + 5, B0);
+      fire('pointermove', wx, wy, { buttons: 0 });
+      await tick();
+      const pv2 = pbSvg.querySelectorAll('.rmPreview').length;
+      T(
+        'pb-room-tool-preview',
+        Q('#wtoolSeg button[data-t="room"]').textContent.trim() === '房间' &&
+          vis('#roomCtl') === 'visible' &&
+          pv1 === 1 &&
+          pv2 === 0,
+        '房间里预览 ' + pv1 + ' 个 · 墙上 ' + pv2 + ' 个'
+      );
+
+      /* 21.2 点房间 A → 新建一个房间：4 个角、面积 = 净宽 × 净深（< 1%）、选中、一步撤销 */
+      const r0 = ring21(),
+        n0 = rooms21().length;
+      await tap(A0 + 3, B0 + 3);
+      const rA = rooms21()[rooms21().length - 1];
+      const wantA = (AW - t21) * (RH - t21);
+      const areaA = rA ? roomArea(rA) : 0;
+      T(
+        'pb-room-pick-area',
+        rooms21().length === n0 + 1 &&
+          !!rA &&
+          rA.src === 'user' &&
+          rA.poly.length === 4 &&
+          Math.abs(areaA - wantA) / wantA < 0.01 &&
+          !!wallEdit.sel &&
+          wallEdit.sel.kind === 'room' &&
+          ring21() === r0 + 1 &&
+          /面积/.test(Q('#rmArea').textContent),
+        '识别 ' +
+          areaA.toFixed(2) +
+          'ft² · 独立量 ' +
+          wantA.toFixed(2) +
+          'ft²（墙厚 ' +
+          t21.toFixed(3) +
+          '）· 撤销环 +' +
+          (ring21() - r0)
+      );
+
+      /* 21.3 再点同一间：不新建、不占撤销步（#44 死步） */
+      const r3 = ring21();
+      await tap(A0 + 8, B0 + 6);
+      T(
+        'pb-room-repick-no-dead-step',
+        rooms21().length === n0 + 1 && ring21() === r3 && wallEdit.sel.id === rA.id,
+        '房间数 ' + rooms21().length + ' · 撤销环 ' + r3 + '→' + ring21()
+      );
+
+      /* 21.4 命名：图上出现名字 + 面积 */
+      Q('#rmName').value = '客厅';
+      Q('#rmName').dispatchEvent(new Event('change'));
+      await tick();
+      const lbl = Array.from(pbSvg.querySelectorAll('text.roomlabel')).find((t) => /客厅/.test(t.textContent));
+      T(
+        'pb-room-named-with-area',
+        !!lbl && /m²|sq ft/.test(lbl.textContent) && rA.label === '客厅',
+        lbl ? '图上：' + lbl.textContent : '图上没有名字'
+      );
+
+      /* 21.5 换地板：人字拼 → 2D 底纹用对应的 pattern；转 45° 换成另一个 pattern；各一步撤销 */
+      const r5 = ring21();
+      Q('#rmFloor').value = 'oakHerring';
+      Q('#rmFloor').dispatchEvent(new Event('change'));
+      await tick();
+      const poly5 = () => pbSvg.querySelector('.roomFloor[data-room="' + rA.id + '"]');
+      const fill0 = poly5() ? poly5().getAttribute('fill') : '';
+      Q('#rmAngle').value = '45';
+      Q('#rmAngle').dispatchEvent(new Event('change'));
+      await tick();
+      const fill45 = poly5() ? poly5().getAttribute('fill') : '';
+      T(
+        'pb-room-floor-2d',
+        rA.floor &&
+          rA.floor.mat === 'oakHerring' &&
+          rA.floor.angle === 45 &&
+          fill0 === 'url(#flp-oakHerring-0)' &&
+          fill45 === 'url(#flp-oakHerring-45)' &&
+          !!pbSvg.querySelector('#flp-oakHerring-45') &&
+          ring21() === r5 + 2,
+        'fill ' + fill0 + ' → ' + fill45 + ' · 撤销环 +' + (ring21() - r5)
+      );
+
+      /* 21.6 隔壁那间（隔着门洞）是另一个房间，不并进来 */
+      await tap(A0 + AW + 3, B0 + 5);
+      const rB = rooms21()[rooms21().length - 1];
+      const wantB = (BW - t21) * (RH - t21);
+      T(
+        'pb-room-door-opening-separates',
+        !!rB && rB.id !== rA.id && Math.abs(roomArea(rB) - wantB) / wantB < 0.01,
+        rB ? 'B ' + roomArea(rB).toFixed(2) + 'ft²（独立量 ' + wantB.toFixed(2) + '）' : '没识别出 B'
+      );
+      Q('#rmFloor').value = 'tileWhite60';
+      Q('#rmFloor').dispatchEvent(new Event('change'));
+      await tick();
+
+      /* 21.7 墙上有缺口 → 如实说，不新建 */
+      // 拆掉顶边那整面外墙 → 房间 B 不再被围住（拆内墙不算：两间连成一块，外墙还围着）
+      const waSaved = DOC.walls.find((w) => w.id === wa.id);
+      DOC.walls = DOC.walls.filter((w) => w.id !== wa.id);
+      geoChanged();
+      drawWallEdit();
+      await tick();
+      const n7 = rooms21().length,
+        r7 = ring21();
+      wallEdit.sel = null;
+      await tap(A0 + AW + 3, B0 + 8.5);
+      T(
+        'pb-room-leak-told',
+        rooms21().length === n7 && ring21() === r7 && /没有被墙围起来/.test(msg21()),
+        msg21().slice(0, 30)
+      );
+      DOC.walls.push(waSaved);
+      geoChanged();
+      await tick();
+
+      /* 21.8 整层地板：没单独设地板的地方用它（2D 整层底纹 + 3D 地板贴图） */
+      wallEdit.sel = null;
+      updateWallBarFromSel();
+      const r8 = ring21();
+      Q('#lvFloor').value = 'concrete';
+      Q('#lvFloor').dispatchEvent(new Event('change'));
+      await tick();
+      T(
+        'pb-level-floor',
+        DOC.floorMat === 'concrete' && !!pbSvg.querySelector('polygon.levelFloor') && ring21() === r8 + 1,
+        'floorMat=' + DOC.floorMat
+      );
+
+      /* 21.9 3D：房间 A 中心向下的射线先打到「它自己的地板」，贴图是人字拼那张；房间外的整层地板是水泥那张 */
+      setView('3d');
+      await wait3D();
+      three.staticGroup.updateMatrixWorld(true);
+      const rc21 = new THREE.Raycaster();
+      const down = (x, y) => {
+        rc21.set(new THREE.Vector3(x, 1.0, y), new THREE.Vector3(0, -1, 0));
+        const hs = rc21.intersectObjects(three.staticGroup.children, true);
+        return hs.length ? hs[0] : null;
+      };
+      const hA = down(A0 + 3, B0 + 3),
+        hOut = down(A0 + AW, B0 + 5.5); // 两间房之间的门洞：两间的轮廓都在这里止住，露出来的是整层地板
+      T(
+        'pb-room-floor-3d',
+        !!hA &&
+          hA.object.userData.roomFloor === rA.id &&
+          hA.object.material.map === floorTexture('oakHerring').map &&
+          !!hOut &&
+          hOut.object.material.map === floorTexture('concrete').map,
+        '房间 A 射线打到 ' +
+          (hA ? (hA.object.userData.roomFloor || '?') + ' y=' + hA.point.y.toFixed(3) : '无') +
+          ' · 外圈 ' +
+          (hOut ? (hOut.object.material.map === floorTexture('concrete').map ? '水泥' : '别的') : '无')
+      );
+      setView('2d');
+      await tick();
+      await enterEdit();
+
+      /* 21.10 采购清单底部的地板用量（按预设汇总面积） */
+      const fu = Array.from(document.querySelectorAll('#plRows .floorRow')).map((r) => r.textContent);
+      T(
+        'pb-room-floor-usage',
+        fu.some((t) => /人字拼/.test(t) && /客厅/.test(t) && /m²|sq ft/.test(t)) && fu.length === 2,
+        fu.join(' | ').slice(0, 90)
+      );
+
+      /* 21.11 整图重标定 ×2：房间轮廓跟着墙走（面积 ×4） */
+      const a11 = roomArea(rA);
+      pushUndo('pb-rm-rescale', true);
+      rescaleDocPlan(2);
+      geoChanged();
+      await tick();
+      const a11b = roomArea(rooms21().find((r) => r.id === rA.id));
+      T('pb-room-rescale', Math.abs(a11b / a11 - 4) < 0.01, '面积 ' + a11.toFixed(1) + ' → ' + a11b.toFixed(1) + 'ft²');
+      undoStep();
+      await tick();
+
+      /* 21.12 删除（用户新建的房间整条删掉）+ 一步撤销回来；文档往返通过校验 */
+      wallEdit.sel = { kind: 'room', id: rA.id };
+      updateWallBarFromSel();
+      const n12 = rooms21().length;
+      key('Delete');
+      await tick();
+      const n12b = rooms21().length,
+        m12 = msg21().slice(0, 24);
+      const del12 = n12b === n12 - 1 && /已删除房间/.test(msg21());
+      undoStep();
+      await tick();
+      const back12 = rooms21().some((r) => r.id === rA.id && r.floor && r.floor.mat === 'oakHerring');
+      const v12 = SCHEMA.Project.validate(DOC);
+      T(
+        'pb-room-delete-undo-valid',
+        del12 && back12 && v12.length === 0,
+        '删=' + del12 + '（' + n12 + '→' + n12b + ' · ' + m12 + '）回=' + back12 + ' · validate 错误 ' + v12.length
+      );
+
+      /* 收尾：删掉这份户型 */
+      await enterEdit();
+      Q('#btnPlanDel').click();
+      await tick();
+      Q('#btnPlanDel').click();
+      await tick();
+
+      /* 21.13 内置户型：点一个有名字的房间 → 不新建房间，而是给那个房间挂上轮廓；名字固定（输入框禁用）；
+         Delete 只清轮廓与地板、名字留着 */
+      await enterEdit();
+      await setTool('room');
+      const L13 = LABELS.filter((l) => !l.small).find((l) => {
+        const res = roomRegionAt(l.p[0], l.p[1]);
+        return res.region && !LABELS.some((m) => m !== l && !m.small && GEO_PTS.pointInPoly(m.p, res.region.poly));
+      });
+      let ok13 = false,
+        info13 = '内置户型里没有被墙单独围住的房间';
+      if (L13) {
+        const n13 = rooms21().length;
+        await tap(L13.p[0], L13.p[1]);
+        const r13 = selRoom();
+        const nameLocked = Q('#rmName').disabled;
+        key('Delete');
+        await tick();
+        const r13b = r13 ? rooms21().find((r) => r.id === r13.id) : null;
+        ok13 = !!r13 && rooms21().length === n13 && nameLocked && !!r13b && !r13b.poly && !!r13b.label;
+        info13 =
+          '「' +
+          L13.t +
+          '」→ ' +
+          (r13 ? r13.id : '?') +
+          ' · 名字锁定=' +
+          nameLocked +
+          ' · Delete 后名字还在=' +
+          !!(r13b && r13b.label);
+      }
+      T('pb-room-builtin-label', ok13, info13);
+      await setTool('select');
+      T(
+        'pb-room-clean-exit',
+        PLAN_ID !== p21Plan && PLAN_REG.plans.length === p21Plans && !rooms21().some((r) => r.poly || r.floor),
+        'plans ' + p21Plans + '→' + PLAN_REG.plans.length
+      );
+    }
+
+    /* ===== 22. G16：自己画的 L 形房子，地板轮廓 = 真实外轮廓（不是墙体包围盒那块矩形） ===== */
+    {
+      await enterEdit();
+      await pbReset();
+      const p22Plans = PLAN_REG.plans.length;
+      Q('#btnPlanNew').click();
+      await tick();
+      const fp0 = floorPts();
+      const X =
+          Math.min.apply(
+            null,
+            fp0.map((p) => p[0])
+          ) + 1,
+        Y =
+          Math.min.apply(
+            null,
+            fp0.map((p) => p[1])
+          ) + 1;
+      // 轴线：(0,0)-(14,0)-(14,6)-(7,6)-(7,12)-(0,12)，右下角缺一块 7×6
+      const L = [
+        [0, 0],
+        [14, 0],
+        [14, 6],
+        [7, 6],
+        [7, 12],
+        [0, 12],
+      ].map(([a, b]) => [X + a, Y + b]);
+      const wd22 = cmToWd(12);
+      L.forEach((p, i) => pushUserWall(p[0], p[1], L[(i + 1) % L.length][0], L[(i + 1) % L.length][1], 'w', wd22));
+      geoChanged();
+      await tick();
+      const fp = floorPts();
+      const notch = [X + 10.5, Y + 9],
+        inside = [X + 3, Y + 9];
+      T(
+        'pb-footprint-l-shape',
+        fp.length === 6 && !insideFloorPt(notch[0], notch[1]) && insideFloorPt(inside[0], inside[1]),
+        '地板轮廓 ' +
+          fp.length +
+          ' 个角 · 缺口处 inside=' +
+          insideFloorPt(notch[0], notch[1]) +
+          ' · L 内 inside=' +
+          insideFloorPt(inside[0], inside[1])
+      );
+      setView('3d');
+      await wait3D();
+      three.staticGroup.updateMatrixWorld(true);
+      const rc22 = new THREE.Raycaster();
+      const hitFloor = (x, y) => {
+        rc22.set(new THREE.Vector3(x, 0.5, y), new THREE.Vector3(0, -1, 0));
+        const hs = rc22
+          .intersectObjects(three.staticGroup.children, true)
+          .filter((h) => h.point.y > -0.02 && h.point.y < 0.05);
+        return hs.length > 0;
+      };
+      T(
+        'pb-footprint-3d-floor',
+        hitFloor(inside[0], inside[1]) && !hitFloor(notch[0], notch[1]),
+        'L 内有地板=' + hitFloor(inside[0], inside[1]) + ' · 缺口处有地板=' + hitFloor(notch[0], notch[1])
+      );
+      setView('2d');
+      await tick();
+      // 对照组：墙没围合（拆掉一面）→ 退回包围盒（4 个角），不会因为算不出外轮廓而没有地板
+      DOC.walls = DOC.walls.slice(0, -1);
+      geoChanged();
+      await tick();
+      T(
+        'pb-footprint-open-falls-back',
+        floorPts().length === 4,
+        '墙没围合 → 地板轮廓 ' + floorPts().length + ' 个角（包围盒）'
+      );
+      await enterEdit();
+      Q('#btnPlanDel').click();
+      await tick();
+      Q('#btnPlanDel').click();
+      await tick();
+      T(
+        'pb-footprint-clean-exit',
+        PLAN_REG.plans.length === p22Plans,
+        'plans ' + p22Plans + '→' + PLAN_REG.plans.length
       );
     }
 

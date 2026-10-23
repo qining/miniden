@@ -828,6 +828,140 @@ export const FLOWS = [
   },
 
   {
+    name: 'room-floor',
+    title:
+      '房间与地板：房间工具 → 悬停看预览 → 点房间 → 换人字拼 / 转 45° → 整层地板 → 3D 核对贴图 → 真实刷新还在 → 清除',
+    run: async (t) => {
+      await t.step('进入编辑墙体 → 房间');
+      await t.click('#btnWallEdit');
+      await t.waitFor(`wallEdit.on`, 5000, 'wallEdit.on');
+      await t.click('#wtoolSeg button[data-t="room"]');
+      await t.waitFor(`wallEdit.tool==='room'`, 5000, 'tool=room');
+      /* 选一个被墙单独围住的房间（轮廓里没有别的房间名 = 不是开放式空间）。选点策略，不是断言。 */
+      const spot = await t.eval(
+        `(()=>{const labs=docImported()?(DOC.rooms||[]).map(r=>({t:r.label,p:r.pos})):LABELS.filter(l=>!l.small).map(l=>({t:l.t,p:l.p}));` +
+          `for(const L of labs){const res=roomRegionAt(L.p[0],L.p[1]);if(!res.region)continue;` +
+          `if(labs.some(M=>M!==L&&GEO_PTS.pointInPoly(M.p,res.region.poly)))continue;` +
+          `const fx=DOC.fixtures.some(f=>GEO_PTS.pointInPoly([(f.x1+f.x2)/2,(f.y1+f.y2)/2],res.region.poly));` +
+          `return {t:L.t,p:[L.p[0],L.p[1]+1.2],area:res.region.area,fx};}return null;})()`
+      );
+      t.assert(
+        'room-spot-found',
+        !!spot,
+        spot ? `「${spot.t}」 · ${spot.area.toFixed(0)}ft²` : '没有被墙单独围住的房间'
+      );
+      if (!spot) {
+        await t.click('#wDone');
+        return;
+      }
+      const at = await t.planPoint(spot.p[0], spot.p[1]);
+      await t.step('鼠标停在房间里：先看见黄色虚线预览');
+      await t.mouse('mouseMoved', at.x, at.y);
+      await t.waitFor(`document.querySelectorAll('#svg2d .rmPreview').length===1`, 5000, '出现预览');
+      await t.shot('room-preview');
+      /* 取样点：这间房里离家具、墙、房间名都远的一块空地（个人入口带内置布局，床会盖住地板）。
+         「换之前」在点选之前取（没有选中高亮、鼠标移开没有悬停预览），「换之后」也在同样的界面状态下取 */
+      const free = await t.eval(
+        `(()=>{const L=${JSON.stringify(spot)};const res=roomRegionAt(L.p[0],L.p[1]);const P=res.region.poly,boxes=furnBoxes();let best=null,bs=-1;` +
+          `const xs=P.map(p=>p[0]),ys=P.map(p=>p[1]);` +
+          `for(let x=Math.min(...xs);x<=Math.max(...xs);x+=0.4)for(let y=Math.min(...ys);y<=Math.max(...ys);y+=0.4){` +
+          `if(!GEO_PTS.pointInPoly([x,y],P))continue;` +
+          `if(boxes.some(b=>b.corners.length&&GEO_PTS.pointInPoly([x,y],b.corners)))continue;` +
+          `let d=1e9;for(let i=0;i<P.length;i++){const a=P[i],b=P[(i+1)%P.length],dx=b[0]-a[0],dy=b[1]-a[1],L2=dx*dx+dy*dy||1e-9;` +
+          `const t=Math.max(0,Math.min(1,((x-a[0])*dx+(y-a[1])*dy)/L2));d=Math.min(d,Math.hypot(x-a[0]-dx*t,y-a[1]-dy*t));}` +
+          `for(const b of boxes)for(const c of b.corners)d=Math.min(d,Math.hypot(x-c[0],y-c[1]));` +
+          `d=Math.min(d,Math.hypot(x-L.p[0],y-L.p[1]+1.2)-1.2);if(d>bs){bs=d;best=[x,y];}}return {p:best,clear:bs};})()`
+      );
+      const fpx = await t.planPoint(free.p[0], free.p[1]);
+      const patch = { x: fpx.x - 8, y: fpx.y - 8, w: 16, h: 16 };
+      const away = { x: 12, y: 12 }; // 画布外：不在任何房间上 → 没有悬停预览
+      await t.mouse('mouseMoved', away.x, away.y);
+      await new Promise((res) => setTimeout(res, 250));
+      const c0 = await t.meanColor(patch);
+      await t.step('点下去：识别这间房（轮廓 + 面积）');
+      await t.click(at);
+      await t.waitFor(`wallEdit.sel && wallEdit.sel.kind==='room'`, 6000, '选中房间');
+      const r = await t.eval(
+        `(()=>{const r=selRoom();return {id:r.id,n:r.poly?r.poly.length:0,area:document.querySelector('#rmArea').textContent};})()`
+      );
+      t.assert('room-picked', r.n >= 4 && /面积/.test(r.area), `${r.id} · ${r.n} 个角 · ${r.area}`);
+
+      await t.step('地板换成「自然橡木 · 人字拼」，再转 45°');
+      await t.eval(
+        `(()=>{const s=document.querySelector('#rmFloor');s.value='oakHerring';s.dispatchEvent(new Event('change',{bubbles:true}));})()`
+      );
+      await t.eval(
+        `(()=>{const s=document.querySelector('#rmAngle');s.value='45';s.dispatchEvent(new Event('change',{bubbles:true}));})()`
+      );
+      await t.waitFor(
+        `(()=>{const p=document.querySelector('#svg2d .roomFloor[data-room="${r.id}"]');return !!p && p.getAttribute('fill')==='url(#flp-oakHerring-45)';})()`,
+        6000,
+        '2D 底纹换成人字拼 45°'
+      );
+      await t.eval(`(()=>{const a=document.activeElement;if(a&&a.blur)a.blur();})()`);
+      await t.key('Escape', 'Escape', 27);
+      await t.mouse('mouseMoved', away.x, away.y);
+      await new Promise((res) => setTimeout(res, 300));
+      const selGone = await t.eval(
+        `!wallEdit.sel && !document.querySelector('#svg2d .rmSel') && !document.querySelector('#svg2d .rmPreview')`
+      );
+      const c1 = await t.meanColor(patch);
+      const dc = Math.abs(c1[0] - c0[0]) + Math.abs(c1[1] - c0[1]) + Math.abs(c1[2] - c0[2]);
+      t.assert(
+        'room-floor-visible-2d',
+        selGone && dc > 12,
+        `房间里一块空地（离家具 / 墙 ${free.clear.toFixed(1)}ft）的平均颜色 (${c0.map((v) => v.toFixed(0)).join(',')}) → (${c1.map((v) => v.toFixed(0)).join(',')})，差 ${dc.toFixed(0)}`
+      );
+      await t.shot('room-herringbone');
+
+      await t.step('3D：射线核对这间房的地板贴图就是人字拼那张');
+      await t.click('#btnDoll');
+      await t.waitFor(`state.view!=='2d' && three && three.staticGroup && !geoDirty3D`, 20000, '3D 建好');
+      const hit = await t.eval(
+        `(()=>{three.staticGroup.updateMatrixWorld(true);const rc=new THREE.Raycaster();` +
+          `rc.set(new THREE.Vector3(${spot.p[0]},1.0,${spot.p[1]}),new THREE.Vector3(0,-1,0));` +
+          `const hs=rc.intersectObjects(three.staticGroup.children,true);const h=hs[0];` +
+          `return h?{room:h.object.userData.roomFloor||null, herring:h.object.material.map===floorTexture('oakHerring').map}:null;})()`
+      );
+      t.assert(
+        'room-floor-3d',
+        !!hit && hit.room === r.id && hit.herring,
+        hit ? `打到 ${hit.room} · 人字拼贴图=${hit.herring}` : '没打到'
+      );
+      await t.shot('room-3d');
+      await t.click('#btn2d');
+      await t.waitFor(`state.view==='2d'`, 8000, '回到 2D');
+
+      await t.step('真实刷新：房间轮廓与地板都还在');
+      await t.reload();
+      await t.waitForReady();
+      const after = await t.eval(
+        `(()=>{const r=(DOC.rooms||[]).find(x=>x.id===${JSON.stringify(r.id)});return r?{poly:!!r.poly,mat:r.floor&&r.floor.mat,ang:r.floor&&r.floor.angle}:null;})()`
+      );
+      t.assert(
+        'room-survives-reload',
+        !!after && after.poly && after.mat === 'oakHerring' && after.ang === 45,
+        JSON.stringify(after)
+      );
+
+      await t.step('清除：选中这间 → Delete（内置 / 导入的房间只清轮廓与地板，名字留着）');
+      await t.click('#btnWallEdit');
+      await t.waitFor(`wallEdit.on`, 5000, 'wallEdit.on');
+      await t.click('#wtoolSeg button[data-t="room"]');
+      await t.click(await t.planPoint(spot.p[0], spot.p[1]));
+      await t.waitFor(`wallEdit.sel && wallEdit.sel.kind==='room'`, 6000, '选中房间');
+      await t.key('Delete', 'Delete', 46);
+      await t.waitFor(
+        `(()=>{const r=(DOC.rooms||[]).find(x=>x.id===${JSON.stringify(r.id)});return !r || (!r.poly && !r.floor);})()`,
+        6000,
+        '清掉了'
+      );
+      t.assert('room-cleared', true, '轮廓与地板已清除');
+      await t.click('#wDone');
+    },
+  },
+
+  {
     name: 'undo-redo',
     title: '撤销 / 重做：误删的洁具、画错的墙都能退回去（真实键盘）',
     run: async (t) => {

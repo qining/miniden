@@ -924,3 +924,88 @@ describe('点位类型表（S15）', () => {
     expect([...s.definitions.outlet.properties.host.enum].sort()).toEqual([...HOSTS].sort());
   });
 });
+
+/* =====================================================================
+   S16：房间轮廓与地板（rooms[].poly / rooms[].floor / 整层 floorMat）
+   ===================================================================== */
+describe('房间与地板（S16）', () => {
+  const good = () => {
+    const d = blankDoc('地板');
+    d.rooms = [
+      {
+        id: 'r01',
+        label: '客厅',
+        pos: [5, 4],
+        poly: [
+          [0.2, 0.2],
+          [11.8, 0.2],
+          [11.8, 9.8],
+          [0.2, 9.8],
+        ],
+        floor: { mat: 'oakHerring', angle: 45 },
+        src: 'user',
+      },
+      {
+        id: 'r02',
+        label: '',
+        pos: [15, 4],
+        poly: [
+          [12.2, 0.2],
+          [19.8, 0.2],
+          [19.8, 9.8],
+        ],
+        floor: { mat: 'tileWhite60' },
+      },
+    ] as never;
+    d.floorMat = 'oakNatural';
+    return d;
+  };
+
+  it('合法的房间轮廓 + 地板 + 整层缺省地板通过校验，JSON 往返逐字段相等', () => {
+    const d = good();
+    expect(validate(d)).toEqual([]);
+    const round = JSON.parse(JSON.stringify(d));
+    expect(validate(round)).toEqual([]);
+    expect(round).toEqual(d);
+  });
+
+  it('全是纯增量可选字段：旧文档没有它们照样合法；JSON Schema 里有定义、不在 required', () => {
+    const s = projectSchema() as Record<string, any>;
+    expect(s.properties.floorMat).toBeTruthy();
+    expect(s.definitions.room.properties.poly).toBeTruthy();
+    expect(s.definitions.room.properties.floor).toBeTruthy();
+    expect(s.required).not.toContain('floorMat');
+    expect(validate(blankDoc())).toEqual([]);
+  });
+
+  it('轮廓少于 3 点 / 点不是 [x, y] 被拒', () => {
+    const d = good();
+    (d.rooms[0] as any).poly = [
+      [0, 0],
+      [1, 1],
+    ];
+    (d.rooms[1] as any).poly = [
+      [0, 0],
+      [1, 'x'],
+      [2, 2],
+    ];
+    const errs = validate(d);
+    expect(errs.some((e) => e.path === 'rooms[0].poly')).toBe(true);
+    expect(errs.some((e) => e.path === 'rooms[1].poly[1]')).toBe(true);
+  });
+
+  it('地板：mat 必须是 1–40 字符的文本、angle 必须是数；整层 floorMat 同样', () => {
+    const d = good();
+    (d.rooms[0] as any).floor = { mat: '' };
+    (d.rooms[1] as any).floor = { mat: 'x', angle: 'a' };
+    (d as any).floorMat = 3;
+    const errs = validate(d);
+    expect(errs.some((e) => e.path === 'rooms[0].floor.mat')).toBe(true);
+    expect(errs.some((e) => e.path === 'rooms[1].floor.angle')).toBe(true);
+    expect(errs.some((e) => e.path === 'floorMat')).toBe(true);
+  });
+
+  it('rooms 的轮廓与地板不进 docToLegacy 投影（投影键集冻结）', () => {
+    expect(Object.keys(docToLegacy(good()))).toEqual(['walls', 'fixed', 'doors']);
+  });
+});
