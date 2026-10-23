@@ -142,10 +142,184 @@ export interface Run {
    这样拖台柜、改台面高、整图重标定时插座自己跟着走（不用每条路径各写一遍跟随）。
    side：墙 = ±1（哪一面墙皮）；台面 = 0 挡水墙 / 1 柜体正面（中岛）；台柜 = 0..3（局部 -y/+x/+y/-x 边）。
    纯增量可选字段：不进 docToLegacy 投影。 */
-export type OutletKind = 'std' | 'usb' | 'gfci';
-export const OUTLET_KINDS: OutletKind[] = ['std', 'usb', 'gfci'];
-export type OutletHost = 'wall' | 'run' | 'fx';
-const OUTLET_HOSTS: OutletHost[] = ['wall', 'run', 'fx'];
+/* S15：点位家族（用户 2026-10-22：同轴 / 网线口；洗衣机烘干机上下水、通风管道口、油烟机管道口）。
+   类型表是 schema 的数据：校验（能装在哪 / 最多几联）与界面（名称 / 缺省高度 / 面板尺寸 / 算不算被挡住）读同一份。 */
+export type OutletKind =
+  | 'std'
+  | 'usb'
+  | 'gfci'
+  | 'w240'
+  | 'switch'
+  | 'coax'
+  | 'lan'
+  | 'supply'
+  | 'drain'
+  | 'floorDrain'
+  | 'gas'
+  | 'supplyVent'
+  | 'returnVent'
+  | 'dryerVent'
+  | 'hood'
+  | 'exhaust';
+/** wall = 墙皮（at/side/h）· run = 台面（at/side/dh）· fx = 台柜（at/side/dh）· floor / ceiling = 平面坐标（x/y/rot 是事实来源） */
+export type OutletHost = 'wall' | 'run' | 'fx' | 'floor' | 'ceiling';
+const OUTLET_HOSTS: OutletHost[] = ['wall', 'run', 'fx', 'floor', 'ceiling'];
+export type PointCat = 'power' | 'data' | 'water' | 'gas' | 'air';
+export interface PointKindDef {
+  name: string;
+  cat: PointCat;
+  /** 允许的安装面；第一个是「自动」模式在房间中间点下时的落点优先级参考 */
+  hosts: OutletHost[];
+  /** 装在墙上时的缺省离地高（cm）；地面 = 0、天花 = 层高，不读这个数 */
+  h: number;
+  /** 面板 / 管口尺寸（cm，宽 × 高；圆形 = 直径 × 直径） */
+  plate: [number, number];
+  round?: boolean;
+  /** 最多几联（缺省 1） */
+  gang?: number;
+  /** 被不使用它的家具盖住时要不要高亮（上下水 / 燃气 / 排风口前面站着家电是正确的摆法，不算） */
+  blocks: boolean;
+}
+export const POINT_KINDS: Record<OutletKind, PointKindDef> = {
+  std: {
+    name: '普通插座',
+    cat: 'power',
+    hosts: ['wall', 'run', 'fx'],
+    h: 30,
+    plate: [7, 11.5],
+    gang: 3,
+    blocks: true,
+  },
+  usb: {
+    name: 'USB 插座',
+    cat: 'power',
+    hosts: ['wall', 'run', 'fx'],
+    h: 30,
+    plate: [7, 11.5],
+    gang: 3,
+    blocks: true,
+  },
+  gfci: {
+    name: '防水插座（GFCI）',
+    cat: 'power',
+    hosts: ['wall', 'run', 'fx'],
+    h: 30,
+    plate: [7, 11.5],
+    gang: 3,
+    blocks: true,
+  },
+  w240: {
+    name: '240V 大功率插座',
+    cat: 'power',
+    hosts: ['wall'],
+    h: 76,
+    plate: [10, 12],
+    blocks: true,
+  },
+  switch: {
+    name: '开关',
+    cat: 'power',
+    hosts: ['wall'],
+    h: 120,
+    plate: [7, 11.5],
+    gang: 3,
+    blocks: true,
+  },
+  coax: {
+    name: '同轴（有线电视）',
+    cat: 'data',
+    hosts: ['wall', 'run'],
+    h: 30,
+    plate: [7, 11.5],
+    gang: 2,
+    blocks: true,
+  },
+  lan: {
+    name: '网线口（RJ45）',
+    cat: 'data',
+    hosts: ['wall', 'run'],
+    h: 30,
+    plate: [7, 11.5],
+    gang: 2,
+    blocks: true,
+  },
+  supply: {
+    name: '上水（冷热水阀）',
+    cat: 'water',
+    hosts: ['wall'],
+    h: 110,
+    plate: [20, 15],
+    blocks: false,
+  },
+  drain: {
+    name: '下水（排水口）',
+    cat: 'water',
+    hosts: ['wall'],
+    h: 95,
+    plate: [5, 5],
+    round: true,
+    blocks: false,
+  },
+  floorDrain: {
+    name: '地漏',
+    cat: 'water',
+    hosts: ['floor'],
+    h: 0,
+    plate: [10, 10],
+    blocks: false,
+  },
+  gas: {
+    name: '燃气口',
+    cat: 'gas',
+    hosts: ['wall'],
+    h: 30,
+    plate: [8, 8],
+    blocks: false,
+  },
+  supplyVent: {
+    name: '送风口',
+    cat: 'air',
+    hosts: ['floor', 'wall', 'ceiling'],
+    h: 30,
+    plate: [25, 10],
+    blocks: true,
+  },
+  returnVent: {
+    name: '回风口',
+    cat: 'air',
+    hosts: ['wall', 'floor', 'ceiling'],
+    h: 30,
+    plate: [50, 30],
+    blocks: true,
+  },
+  dryerVent: {
+    name: '烘干机排风口',
+    cat: 'air',
+    hosts: ['wall'],
+    h: 40,
+    plate: [10, 10],
+    round: true,
+    blocks: false,
+  },
+  hood: {
+    name: '油烟机排风口',
+    cat: 'air',
+    hosts: ['wall', 'ceiling'],
+    h: 210,
+    plate: [15, 15],
+    round: true,
+    blocks: false,
+  },
+  exhaust: {
+    name: '排风扇',
+    cat: 'air',
+    hosts: ['ceiling', 'wall'],
+    h: 200,
+    plate: [25, 25],
+    blocks: false,
+  },
+};
+export const OUTLET_KINDS = Object.keys(POINT_KINDS) as OutletKind[];
 export const OUTLET_MAX_H = 12; // ft：比任何天花都高就是笔误（ceilingH 缺省 8.8ft）
 export interface Outlet {
   id: string;
@@ -208,7 +382,13 @@ export interface PlanExtras {
   islLabel?: { p: number[]; w: number; d: number; calib: string };
   isl?: { a: number[]; b: number[]; e: number[]; cp2: number[]; d: number[] }; // 图纸 px
   kitchen?: KitchenPart[];
-  inner?: Array<{ x1: number; y1: number; x2: number; y2: number; wd?: number }>; // 图纸 px（内部示意墙：投影范围外的特例，不经 effWalls）
+  inner?: Array<{
+    x1: number;
+    y1: number;
+    x2: number;
+    y2: number;
+    wd?: number;
+  }>; // 图纸 px（内部示意墙：投影范围外的特例，不经 effWalls）
 }
 
 export interface ProjectDoc {
@@ -232,7 +412,12 @@ export interface ProjectDoc {
   baseImage?: BaseImage; // S7：用户底图（可选）
   floorOutline?: Pt[][]; // S11：地板轮廓（ft 多边形，导出/导入往返用）。纯增量可选字段，不进 docToLegacy 投影
   plan?: PlanExtras; // S11b：户型专属构件/参考快照（同上，不进投影）
-  hidden: { walls: string[]; windows: string[]; doors: string[]; solids: string[] };
+  hidden: {
+    walls: string[];
+    windows: string[];
+    doors: string[];
+    solids: string[];
+  };
 }
 
 /* ---------------------------------------------------------------------
@@ -399,13 +584,19 @@ export function validate(doc: unknown): ValidationError[] {
     (d.outlets as Array<Record<string, unknown>>).forEach((e, i) => {
       if (typeof e !== 'object' || e === null) return;
       for (const k of ['x', 'y', 'rot']) if (!isNum(e[k])) fail(`outlets[${i}].${k}`, `${k} 必须是数`);
-      if (!isNum(e.h) || (e.h as number) <= 0 || (e.h as number) > OUTLET_MAX_H)
-        fail(`outlets[${i}].h`, `h 必须是 (0, ${OUTLET_MAX_H}] ft 的离地高度`);
-      if (OUTLET_KINDS.indexOf(e.kind as OutletKind) < 0) fail(`outlets[${i}].kind`, `非法插座类型: ${String(e.kind)}`);
-      if (e.n !== undefined && (!Number.isInteger(e.n) || (e.n as number) < 1 || (e.n as number) > 3))
-        fail(`outlets[${i}].n`, '联数必须是 1–3 的整数');
+      // 地面安装面的点位 h = 0；其余安装面的面板不能埋进地里
+      const onFloor = e.host === 'floor';
+      if (!isNum(e.h) || (e.h as number) < 0 || (!onFloor && (e.h as number) <= 0) || (e.h as number) > OUTLET_MAX_H)
+        fail(`outlets[${i}].h`, `h 必须是 ${onFloor ? '[0' : '(0'}, ${OUTLET_MAX_H}] ft 的离地高度`);
+      const def = OUTLET_KINDS.indexOf(e.kind as OutletKind) >= 0 ? POINT_KINDS[e.kind as OutletKind] : null;
+      if (!def) fail(`outlets[${i}].kind`, `非法点位类型: ${String(e.kind)}`);
+      const gang = def ? (def.gang ?? 1) : 3;
+      if (e.n !== undefined && (!Number.isInteger(e.n) || (e.n as number) < 1 || (e.n as number) > gang))
+        fail(`outlets[${i}].n`, `联数必须是 1–${gang} 的整数`);
       if (e.host !== undefined && OUTLET_HOSTS.indexOf(e.host as OutletHost) < 0)
-        fail(`outlets[${i}].host`, `非法宿主: ${String(e.host)}`);
+        fail(`outlets[${i}].host`, `非法安装面: ${String(e.host)}`);
+      else if (e.host !== undefined && def && def.hosts.indexOf(e.host as OutletHost) < 0)
+        fail(`outlets[${i}].host`, `${def.name}不能装在${String(e.host)}上（可装：${def.hosts.join(' / ')}）`);
       if (e.hostId !== undefined && !isStr(e.hostId)) fail(`outlets[${i}].hostId`, 'hostId 必须是字符串');
       if (e.at !== undefined && (!isNum(e.at) || (e.at as number) < 0))
         fail(`outlets[${i}].at`, 'at 必须是 ≥0 的数（ft）');
@@ -677,22 +868,35 @@ export function projectSchema(): object {
       patio: {
         oneOf: [
           { type: 'null' },
-          { type: 'object', required: ['geom'], properties: { geom: { $ref: '#/definitions/geom' } } },
+          {
+            type: 'object',
+            required: ['geom'],
+            properties: { geom: { $ref: '#/definitions/geom' } },
+          },
         ],
       },
       rooms: { type: 'array', items: { $ref: '#/definitions/room' } },
       fixtures: { type: 'array', items: { $ref: '#/definitions/fixture' } },
       runs: { type: 'array', items: { $ref: '#/definitions/run' } },
       outlets: { type: 'array', items: { $ref: '#/definitions/outlet' } },
+      floorMat: { type: 'string', minLength: 1, maxLength: 40 },
       env: {
         type: 'object',
         required: ['preset', 'mode'],
-        properties: { preset: { type: 'string' }, mode: { enum: ['day', 'night'] } },
+        properties: {
+          preset: { type: 'string' },
+          mode: { enum: ['day', 'night'] },
+        },
       },
       floorOutline: {
         type: 'array',
         minItems: 3,
-        items: { type: 'array', minItems: 2, maxItems: 2, items: { type: 'number' } },
+        items: {
+          type: 'array',
+          minItems: 2,
+          maxItems: 2,
+          items: { type: 'number' },
+        },
       },
       plan: {
         type: 'object',
@@ -708,17 +912,35 @@ export function projectSchema(): object {
               h: { type: 'number', exclusiveMinimum: 0 },
             },
           },
-          windowBand: { type: 'array', items: { type: 'array', minItems: 2, maxItems: 2, items: { type: 'number' } } },
+          windowBand: {
+            type: 'array',
+            items: {
+              type: 'array',
+              minItems: 2,
+              maxItems: 2,
+              items: { type: 'number' },
+            },
+          },
           patioPatch: {
             type: 'array',
             minItems: 3,
-            items: { type: 'array', minItems: 2, maxItems: 2, items: { type: 'number' } },
+            items: {
+              type: 'array',
+              minItems: 2,
+              maxItems: 2,
+              items: { type: 'number' },
+            },
           },
           islLabel: {
             type: 'object',
             required: ['p', 'w', 'd', 'calib'],
             properties: {
-              p: { type: 'array', minItems: 2, maxItems: 2, items: { type: 'number' } },
+              p: {
+                type: 'array',
+                minItems: 2,
+                maxItems: 2,
+                items: { type: 'number' },
+              },
               w: { type: 'number' },
               d: { type: 'number' },
               calib: { type: 'string' },
@@ -728,11 +950,36 @@ export function projectSchema(): object {
             type: 'object',
             required: ['a', 'b', 'e', 'cp2', 'd'],
             properties: {
-              a: { type: 'array', minItems: 2, maxItems: 2, items: { type: 'number' } },
-              b: { type: 'array', minItems: 2, maxItems: 2, items: { type: 'number' } },
-              e: { type: 'array', minItems: 2, maxItems: 2, items: { type: 'number' } },
-              cp2: { type: 'array', minItems: 2, maxItems: 2, items: { type: 'number' } },
-              d: { type: 'array', minItems: 2, maxItems: 2, items: { type: 'number' } },
+              a: {
+                type: 'array',
+                minItems: 2,
+                maxItems: 2,
+                items: { type: 'number' },
+              },
+              b: {
+                type: 'array',
+                minItems: 2,
+                maxItems: 2,
+                items: { type: 'number' },
+              },
+              e: {
+                type: 'array',
+                minItems: 2,
+                maxItems: 2,
+                items: { type: 'number' },
+              },
+              cp2: {
+                type: 'array',
+                minItems: 2,
+                maxItems: 2,
+                items: { type: 'number' },
+              },
+              d: {
+                type: 'array',
+                minItems: 2,
+                maxItems: 2,
+                items: { type: 'number' },
+              },
             },
           },
           kitchen: {
@@ -742,10 +989,25 @@ export function projectSchema(): object {
               required: ['m', 'p'],
               properties: {
                 m: { enum: ['cab', 'top', 'steel', 'chrome', 'seam', 'black'] },
-                box: { type: 'array', minItems: 3, maxItems: 3, items: { type: 'number' } },
-                cyl: { type: 'array', minItems: 2, maxItems: 2, items: { type: 'number' } },
+                box: {
+                  type: 'array',
+                  minItems: 3,
+                  maxItems: 3,
+                  items: { type: 'number' },
+                },
+                cyl: {
+                  type: 'array',
+                  minItems: 2,
+                  maxItems: 2,
+                  items: { type: 'number' },
+                },
                 seg: { type: 'integer', minimum: 3 },
-                p: { type: 'array', minItems: 3, maxItems: 3, items: { type: 'number' } },
+                p: {
+                  type: 'array',
+                  minItems: 3,
+                  maxItems: 3,
+                  items: { type: 'number' },
+                },
                 rz: { enum: [90] },
                 sh: { type: 'boolean' },
                 rc: { type: 'boolean' },
@@ -826,7 +1088,12 @@ export function projectSchema(): object {
               pts: {
                 type: 'array',
                 minItems: 3,
-                items: { type: 'array', minItems: 2, maxItems: 2, items: { type: 'number' } },
+                items: {
+                  type: 'array',
+                  minItems: 2,
+                  maxItems: 2,
+                  items: { type: 'number' },
+                },
               },
             },
           },
@@ -894,7 +1161,12 @@ export function projectSchema(): object {
         properties: {
           id: { type: 'string' },
           label: { type: 'string' },
-          pos: { type: 'array', minItems: 2, maxItems: 2, items: { type: 'number' } },
+          pos: {
+            type: 'array',
+            minItems: 2,
+            maxItems: 2,
+            items: { type: 'number' },
+          },
           wd: { type: 'number' },
           dp: { type: 'number' },
           d: { type: 'string' },
@@ -907,7 +1179,9 @@ export function projectSchema(): object {
         required: ['id', 't', 'x1', 'y1', 'x2', 'y2'],
         properties: {
           id: { type: 'string' },
-          t: { enum: ['counter', 'basin', 'toilet', 'tub', 'shower', 'mirror'] },
+          t: {
+            enum: ['counter', 'basin', 'toilet', 'tub', 'shower', 'mirror'],
+          },
           x1: { type: 'number' },
           y1: { type: 'number' },
           x2: { type: 'number' },
@@ -926,7 +1200,12 @@ export function projectSchema(): object {
           path: {
             type: 'array',
             minItems: 2,
-            items: { type: 'array', minItems: 2, maxItems: 2, items: { type: 'number' } },
+            items: {
+              type: 'array',
+              minItems: 2,
+              maxItems: 2,
+              items: { type: 'number' },
+            },
           },
           depth: { type: 'number', exclusiveMinimum: 0 },
           topH: { type: 'number', exclusiveMinimum: 0 },
@@ -938,7 +1217,9 @@ export function projectSchema(): object {
               required: ['at', 'type'],
               properties: {
                 at: { type: 'number', minimum: 0 },
-                type: { enum: ['sink', 'cooktop', 'fridge', 'dishwasher', 'open'] },
+                type: {
+                  enum: ['sink', 'cooktop', 'fridge', 'dishwasher', 'open'],
+                },
                 w: { type: 'number', exclusiveMinimum: 0 },
               },
             },
@@ -955,7 +1236,7 @@ export function projectSchema(): object {
           x: { type: 'number' },
           y: { type: 'number' },
           rot: { type: 'number' },
-          h: { type: 'number', exclusiveMinimum: 0, maximum: OUTLET_MAX_H },
+          h: { type: 'number', minimum: 0, maximum: OUTLET_MAX_H },
           kind: { enum: OUTLET_KINDS },
           n: { type: 'integer', minimum: 1, maximum: 3 },
           host: { enum: OUTLET_HOSTS },

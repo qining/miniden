@@ -14,6 +14,7 @@
 import * as Dxf from './import-dxf';
 import * as Pdf from './import-pdf';
 import * as Trace from './image-trace';
+import * as Points from './points';
 
 (globalThis as { MINIDEN_GEO?: unknown }).MINIDEN_GEO = {
   importDxf: Dxf.importDxf,
@@ -30,4 +31,8 @@ import * as Trace from './image-trace';
   // S7：图片底图特征提取（纯 JS Canny+Hough）与放置变换
   traceLines: Trace.traceLines,
   imgTransform: Trace.imgTransform,
+  // S15：点位被家具挡住的判据（单位 ft）
+  pointBlockers: Points.pointBlockers,
+  obbCorners: Points.obbCorners,
+  pointInPoly: Points.pointInPoly,
 };
