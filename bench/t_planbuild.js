@@ -7552,6 +7552,179 @@ async function runPBTest() {
       );
     }
 
+    /* ===== 29. bug 猎 ㉛：S17–S21 的新字段 × 已有的复制 / 搬移 / 改层高路径 ===== */
+    {
+      await enterEdit();
+      await pbReset();
+      const p29Plans = PLAN_REG.plans.length;
+      Q('#btnPlanNew').click();
+      await tick();
+      const p29Plan = PLAN_ID;
+      const fp29 = floorPts();
+      const X =
+          Math.min.apply(
+            null,
+            fp29.map((p) => p[0])
+          ) + 1,
+        Y =
+          Math.min.apply(
+            null,
+            fp29.map((p) => p[1])
+          ) + 1;
+      const wd = cmToWd(15);
+      pushUserWall(X, Y, X + 4, Y, 'w', wd);
+      const win29 = pushUserWindow(X + 4, Y, X + 9, Y, wd);
+      pushUserWall(X + 9, Y, X + 16, Y, 'w', wd);
+      pushUserWall(X + 16, Y, X + 16, Y + 12, 'w', wd);
+      pushUserWall(X + 16, Y + 12, X, Y + 12, 'w', wd);
+      pushUserWall(X, Y + 12, X, Y, 'w', wd);
+      win29.curtain = { style: 'drape', color: '#3b4250' };
+      geoChanged();
+      fit2DToContent();
+      await tick();
+      if (wallEdit.on) {
+        Q('#btnWallEdit').click();
+        await tick();
+      }
+
+      /* 29.1 #70「＋ 加一层」带上外墙与窗时，窗帘（这一层房间的软装）不跟着复制上去：新楼层的窗是光的 */
+      Q('#lvCopyShell').checked = true;
+      const up = addLevelUI('above');
+      await tick();
+      const upWins = DOC.windows || [];
+      T(
+        'pb-hunt31-shell-no-curtain',
+        !!up && upWins.length === 1 && !upWins[0].curtain && !!LV.levelContentOf(DOC, 'lv1').windows[0].curtain,
+        '新楼层的窗 ' +
+          upWins.length +
+          ' 扇 · 带着窗帘=' +
+          !!(upWins[0] && upWins[0].curtain) +
+          ' · 一层的窗帘还在=' +
+          !!LV.levelContentOf(DOC, 'lv1').windows[0].curtain
+      );
+
+      /* 29.2 #71 层高改低以后：顶到天花的件（离地 + 件高 > 层高）要标红并说清原因；没顶到的对照组不标 */
+      const mkC = (name, w, d, h, x, y, zCm) => {
+        const uid = uidSeq++;
+        const it = { uid, custom: { name, w, d, h, color: '#5a5f66' }, x, y, rot: 0, lv: DOC.level };
+        if (zCm) it.z = zCm / 30.48;
+        state.items.push(it);
+        return uid;
+      };
+      const uShelf = mkC('测试吊柜', 120, 40, 80, X + 4, Y + 3, 150); // 顶 230cm
+      const uWard = mkC('测试高柜', 100, 60, 240, X + 12, Y + 6, 0); // 顶 240cm
+      const uLow = mkC('测试矮柜', 100, 40, 80, X + 6, Y + 9, 0); // 顶 80cm（对照组）
+      drawFurniture();
+      await tick();
+      const ok0 = ![uShelf, uWard, uLow].some((u) => (furnWhy.get(u) || []).includes('tooTall'));
+      setLevelCeilUI(220);
+      await tick();
+      const ceilToast = (Q('#toast') || {}).textContent || '';
+      const why = (u) => furnWhy.get(u) || [];
+      const gShelf = pbSvg.querySelector('g.furn[data-uid="' + uShelf + '"]');
+      T(
+        'pb-hunt31-ceiling-too-tall-flagged',
+        ok0 &&
+          why(uShelf).includes('tooTall') &&
+          why(uWard).includes('tooTall') &&
+          !why(uLow).includes('tooTall') &&
+          !!gShelf &&
+          gShelf.classList.contains('tooTall') &&
+          /天花/.test((gShelf.querySelector('title') || {}).textContent || '') &&
+          /2 件.*顶到天花/.test(ceilToast),
+        '改层高前都不标=' +
+          ok0 +
+          ' · 提示「' +
+          ceilToast +
+          '」' +
+          ' · 层高 220cm 后：吊柜（顶 230）' +
+          JSON.stringify(why(uShelf)) +
+          ' · 高柜（顶 240）' +
+          JSON.stringify(why(uWard)) +
+          ' · 矮柜' +
+          JSON.stringify(why(uLow))
+      );
+      setLevelCeilUI(268);
+      state.items = state.items.filter((i) => ![uShelf, uWard, uLow].includes(i.uid));
+      drawFurniture();
+
+      /* 29.3 #72「移动这一层」：量尺寸标注跨的是这一层的几何，要跟着一起搬（与整图缩放 #48 同一条规则） */
+      meas.list = [
+        [
+          [X + 1, Y + 1],
+          [X + 6, Y + 1],
+        ],
+      ];
+      const m0 = JSON.stringify(meas.list);
+      setLvMove(true);
+      key('ArrowRight', document.body, true); // Shift+→ = 10cm
+      await tick();
+      const dx = 10 / 30.48;
+      const m1 = meas.list[0];
+      T(
+        'pb-hunt31-lvmove-moves-measurements',
+        Math.abs(m1[0][0] - (X + 1 + dx)) < 1e-3 &&
+          Math.abs(m1[1][0] - (X + 6 + dx)) < 1e-3 &&
+          Math.abs(m1[0][1] - (Y + 1)) < 1e-6,
+        '标注 ' + m0 + ' → ' + JSON.stringify(meas.list) + '（墙挪了 +' + (dx * 30.48).toFixed(0) + 'cm）'
+      );
+
+      /* 29.4 #73「移动这一层」不能把底图的特征线弄没：特征线存的是图片像素坐标、跟着底图的偏移走，搬一次不需要重算 */
+      const cv29 = document.createElement('canvas');
+      cv29.width = 100;
+      cv29.height = 100;
+      cv29.getContext('2d').fillRect(10, 10, 50, 4);
+      DOC.baseImage = { data: cv29.toDataURL('image/png'), w: 100, h: 100, mPerPx: 0.05, ox: X, oy: Y };
+      _traceCache = { key: DOC.baseImage.data, segs: [{ a: { x: 10, y: 10 }, b: { x: 60, y: 10 } }] };
+      showTrace = true;
+      const t0 = traceSegsDoc();
+      key('ArrowDown', document.body, true); // Shift+↓ = 10cm
+      await tick();
+      const t1 = traceSegsDoc();
+      T(
+        'pb-hunt31-lvmove-keeps-trace',
+        !!t0 &&
+          !!t1 &&
+          Math.abs(t1[0].a[1] - t0[0].a[1] - 10 / 30.48) < 1e-3 &&
+          Math.abs(t1[0].a[0] - t0[0].a[0]) < 1e-6,
+        '搬之前特征线 ' +
+          (t0 ? t0.length : 0) +
+          ' 条 · 搬之后 ' +
+          (t1
+            ? t1.length + ' 条、跟着下移 ' + ((t1[0].a[1] - t0[0].a[1]) * 30.48).toFixed(1) + 'cm'
+            : '没了（缓存被清掉）')
+      );
+
+      /* 29.5（防御性统一）「移动这一层」与「移动底图」只能开一个：两个都开着时按一下方向键，底图被挪两次（底图模式一次 + 整层一次） */
+      setImgMove(true);
+      const exA = !!imgMove && !lvMove;
+      setLvMove(true);
+      const exB = !!lvMove && !imgMove;
+      T(
+        'pb-hunt31-move-modes-exclusive',
+        exA && exB,
+        '开「移动底图」后「移动这一层」关了=' + exA + ' · 再开「移动这一层」后「移动底图」关了=' + exB
+      );
+      setLvMove(false);
+      if (imgMove) setImgMove(false);
+      showTrace = false;
+      _traceCache = null;
+      delete DOC.baseImage;
+      meas.list = [];
+
+      /* 收尾：删掉这份户型 */
+      await enterEdit();
+      Q('#btnPlanDel').click();
+      await tick();
+      Q('#btnPlanDel').click();
+      await tick();
+      T(
+        'pb-hunt31-clean-exit',
+        PLAN_ID !== p29Plan && PLAN_REG.plans.length === p29Plans,
+        'plans ' + p29Plans + '→' + PLAN_REG.plans.length
+      );
+    }
+
     /* ===== 收尾：页面不得有未捕获异常 ===== */
     T('pb-no-page-errors', window.__ERRS.length === 0, window.__ERRS.slice(0, 3).join(' || '));
   } catch (e) {
