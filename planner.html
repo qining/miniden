@@ -9126,23 +9126,45 @@ function scheduleMirrorBake(){
   clearTimeout(three._mirBakeT);
   three._mirBakeT=setTimeout(()=>{
     if(three.photo){ scheduleMirrorBake(); return; }              // 光追累积中不动场景：等它结束再烘
-    if(three._furnMirBaked===three._furnMirSig) return;           // 静态重建那条路已经按当前位姿烘过了
+    if(three._furnMirBaked===three._furnMirSig && three._mirCtxBaked===mirrorCtxSig()) return;   // 静态重建那条路已经按当前位姿 / 可见性烘过了
     try{ installMirrorProbes(); }catch(e){ console.warn(e); } }, 400);
+}
+/* 轮㉞：镜子里看见的是「烘的那一刻」的房间 —— 哪几层显示着、娃娃屋还是室内（背景 / 灯光两套）、昼夜、开没开灯。
+   这些一变就要重烘：以前只在静态重建 / 家具镜子挪动时烘，停在一层看娃娃屋时烘的二层镜子里一面墙都没有（二层藏着），
+   切到二层后它照样挂着那张。 */
+function mirrorCtxSig(){
+  if(!three) return '';
+  const lv = three.levelGroups ? [...three.levelGroups].map(([id,g])=>id+(g.visible?'+':'-')).join(',') : '';
+  return [three.camMode, !!three.night, three.lightsOn!==false, three.preset||'', lv].join('|');
+}
+function mirrorCtxCheck(){
+  if(!three || three._mirCtxBaked==null || three._mirCtxBaked===mirrorCtxSig()) return;   // 还没烘过（首次由静态重建烘）/ 没变
+  if((three.mirrors && three.mirrors.length) || furnMirrorMeshes().length) scheduleMirrorBake();
 }
 /* 镜子的实景反射：给每面镜子在镜面前方烘一张立方体贴图当 envMap。
    平面镜用立方体贴图会有视差误差，但比"反射窗外城市全景"正确得多，
-   而且只在场景重建时烘一次（每面 6 张 128px；S19b 起家具镜子挪动 / 转向后防抖再烘）。光追走的是真反射，不用这个。 */
+   而且只在场景重建时烘一次（每面 6 张 128px；S19b 起家具镜子挪动 / 转向后防抖再烘；轮㉞ 起可见性 / 视角 / 灯光变了也重烘）。光追走的是真反射，不用这个。
+   轮㉞：只烘看得见的镜子（藏着的楼层里那面烘出来没有墙）；一次最多烘 MIRROR_BAKE_MAX 面、离相机近的先烘，
+   其余的借最近那面烘好的贴图（同一套房子里的反射）。以前「洁具 4 面 + 家具 2 面」各自封顶，第三面落地镜的 envMap 是空的
+   → 退回环境全景，反射的是窗外城市（S19b 修的就是这个）。 */
+const MIRROR_BAKE_MAX = 6;
 function installMirrorProbes(){
   if(!three) return;
-  const furn = furnMirrorMeshes().slice(0, 2);
-  const list = (three.mirrors || []).slice(0, 4).concat(furn);   // 封顶，别让烘焙拖慢重建
+  const shown=o=>{ for(let p=o;p;p=p.parent) if(!p.visible) return false; return true; };
+  const furn = furnMirrorMeshes();
+  const all = (three.mirrors || []).filter(shown).concat(furn);
   three._furnMirBaked = three._furnMirSig;
-  if(!list.length) return;
+  three._mirCtxBaked = mirrorCtxSig();
+  if(!all.length) return;
   // 家具镜子的朝向 = 镜面 mesh 的局部 +z 转到世界系（含整件的 rot 与镜板后倾），每次烘都现算（可能刚被挪 / 转过）
   for(const m of furn){ const d=m.getWorldDirection(new THREE.Vector3()); m.userData.mirrorN=[d.x, 0, d.z]; }
   const NRM = {S:[0,0,1], N:[0,0,-1], E:[1,0,0], W:[-1,0,0]};
+  const at = new Map(all.map(m=>[m, m.getWorldPosition(new THREE.Vector3())]));
+  const cp = three.cam.position;
+  all.sort((a,b)=>at.get(a).distanceToSquared(cp)-at.get(b).distanceToSquared(cp));
+  const list = all.slice(0, MIRROR_BAKE_MAX), lend = all.slice(MIRROR_BAKE_MAX);
   const hidden = [];
-  for(const m of list){ hidden.push([m, m.visible]); m.visible = false; }
+  for(const m of all){ hidden.push([m, m.visible]); m.visible = false; }   // 镜子互相看不见（它们手里还是旧贴图）
   try{
     for(const m of list){
       if(m.userData.mirrorEnv){ m.userData.mirrorEnv.dispose(); m.userData.mirrorEnv = null; }
@@ -9162,6 +9184,14 @@ function installMirrorProbes(){
     }
   }catch(e){ console.warn('镜子反射烘焙失败，退回环境贴图:', e.message); }
   for(const [m, v] of hidden) m.visible = v;
+  // 超出上限的：借离它最近、烘好了的那面（贴图归烘它的那面所有，借的一方不持有、不释放）
+  for(const m of lend){
+    if(m.userData.mirrorEnv){ m.userData.mirrorEnv.dispose(); m.userData.mirrorEnv = null; }
+    let best=null, bd=Infinity;
+    for(const b of list){ if(!b.userData.mirrorEnv) continue; const d=at.get(b).distanceToSquared(at.get(m)); if(d<bd){ bd=d; best=b; } }
+    m.material.envMap = best ? best.userData.mirrorEnv.texture : null;   // 一面都没烘成（烘焙失败）：退回环境贴图，别留着已释放的那张
+    m.material.envMapIntensity = 1.0; m.material.needsUpdate = true;
+  }
   requestRender();
 }
 
@@ -9224,6 +9254,7 @@ function applyLightMode(){
       o.material.emissiveIntensity = on ? o.material.userData.emisBase : 0.0;
   });
   requestShadowUpdate();
+  mirrorCtxCheck();   // 轮㉞：镜子里的房间是按烘那一刻的灯光烘的
 }
 function setLights(on){
   if(!three) return;
@@ -10083,6 +10114,7 @@ function applyLevelVisibility(){
   if(three.levelGroups) for(const [id,g] of three.levelGroups) g.visible = !multi || fp || levelElev(id) <= cur+1e-6;
   if(three.furnMap) for(const [uid,rec] of three.furnMap){ const it=state.items.find(i=>i.uid===uid); if(it) rec.g.visible = !multi || fp || levelElev(itemLevel(it)) <= cur+1e-6; }
   requestRender();
+  mirrorCtxCheck();   // 轮㉞：哪几层显示着变了 → 镜子里的房间跟着变
 }
 /* =====================================================================
    照片级渲染：渐进式累积
