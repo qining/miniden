@@ -3807,6 +3807,7 @@ function switchPlan(id, quiet){
 }
 function createBlankPlan(){
   if(CALIB || IMGONLY) return null;
+  if(photoFrozen('新建户型')) return null;
   pushUndo();
   const id = PLANS.newPlanId(Date.now(), Math.random);
   const n = PLAN_REG.plans.filter(p=>p.origin==='blank').length + 1;
@@ -3844,6 +3845,7 @@ function applyPlanRename(){
 }
 function deleteCurrentPlan(){
   if(CALIB || IMGONLY) return false;
+  if(photoFrozen('删户型')) return false;
   const cur = PLANS.planById(PLAN_REG, PLAN_ID);
   if(!cur || cur.origin==='builtin'){ wMsg('内置户型不可删除；想回到出厂户型用「编辑墙体」里的重置内置', true); return false; }
   if(!planDelArmed){
@@ -3977,6 +3979,7 @@ function restoreState(s){
 }
 function undoStep(){
   if(CALIB || IMGONLY) return;
+  if(photoFrozen('撤销')) return;   // 轮㉜：回滚整份状态 = 换掉光追正在累积的那份场景（键盘与顶栏按钮都走这里）
   const cur = pruneDeadRing();
   if(!undoRing.length){ toast('没有可撤销的改动'); return; }
   lastGesture = null;
@@ -3985,6 +3988,7 @@ function undoStep(){
 }
 function redoStep(){
   if(CALIB || IMGONLY) return;
+  if(photoFrozen('重做')) return;
   const cur = pruneDeadRing();
   if(!redoRing.length){ toast('没有可重做的改动'); return; }
   lastGesture = null;
@@ -5728,6 +5732,7 @@ $('#btnMore').onclick=()=>{ $('#btnMore').blur(); setProTools(!proToolsOpen); };
 setProTools(!CALIB && (function(){ try{ return STORE.get(PRO_TOOLS_KEY)==='1'; }catch(e){ return false; } })());
 /* ---------- E26：户型管理 UI ---------- */
 $('#planSel').onchange=(ev)=>{ const id=ev.target.value;
+  if(id!==PLAN_ID && photoFrozen('切换户型')){ planSelectUI(); return; }   // 下拉回到当前户型
   if(id!==PLAN_ID && !switchPlan(id)) planSelectUI();     // 切失败（不存在的 id）→ 下拉回到当前户型
 };
 $('#btnPlanNew').onclick=()=>{ $('#btnPlanNew').blur(); createBlankPlan(); };
@@ -6744,6 +6749,7 @@ function addLevelUI(where){
 }
 function deleteLevelUI(id){
   if(!hasLevelsNow()) return false;
+  if(photoFrozen('删楼层')) return false;
   if(DOC.levels.length<=1){ toast('只剩这一层，不能删', 4000); return false; }
   const n=state.items.filter(it=>itemLevel(it)===id).length;
   if(_lvDelArm!==id){
@@ -6766,6 +6772,7 @@ function deleteLevelUI(id){
   return true;
 }
 function setLevelCeilUI(cm){
+  if(photoFrozen('改层高')){ levelBarUI(); return false; }   // 输入框回到当前层高
   const h=cm/30.48;
   // 下限 213cm：门扇 207cm（6.8ft），再低门就戳出天花；按 cm 比（610/30.48 = 20.013ft，按 ft 比会把输入框允许的最大值拒掉）
   if(!(cm>=213 && cm<=610)){ toast('层高要在 213–610cm 之间', 4000); return false; }
@@ -20864,7 +20871,7 @@ function updatePlacedList(){
     const lvTag = hasLevelsNow() ? '<span class="plLv">'+escHtml(levelName(itemLevel(it)))+'</span> ' : '';   // S17：一栋房子一张单，标明在哪一层
     row.innerHTML=`<div class="dot" style="background:${itemColor(it)}"></div><span>${lvTag}${label || s.name}</span>`+
       (p?`<span class="plPrice">${p}</span>`:'')+`<span class="x" title="删除">✕</span>`;
-    row.onclick=(e)=>{ if(e.target.classList.contains('x')){ pushUndo('listDel:'+it.uid, true); state.items=state.items.filter(i=>i.uid!==it.uid); if(selected===it.uid)selected=null; drawFurniture(); save(); }
+    row.onclick=(e)=>{ if(e.target.classList.contains('x')){ if(photoFrozen('删家具')) return; pushUndo('listDel:'+it.uid, true); state.items=state.items.filter(i=>i.uid!==it.uid); if(selected===it.uid)selected=null; drawFurniture(); save(); }
       else if(e.shiftKey && onCurLevel(it)){ selToggle(it.uid); drawFurniture(); }   // S20：Shift+点行 = 加 / 减（只收当前层：多选不跨楼层）
       else { if(!onCurLevel(it)) switchLevel(itemLevel(it));   // S17：点的是别的楼层的家具 → 先切到它那一层（不然选中马上被「不在本层」清掉，点了没反应）
         selOnly(it.uid); drawFurniture(); } };
@@ -22109,6 +22116,7 @@ $('#dxfCancel').onclick=()=>{ _dxfPending=null; $('#dxfModal').style.display='no
 $('#dxfModal').onclick=e=>{ if(e.target.id==='dxfModal'){ _dxfPending=null; $('#dxfModal').style.display='none'; } };
 $('#dxfOk').onclick=()=>{
   if(!_dxfPending){ $('#dxfModal').style.display='none'; return; }
+  if(photoFrozen('导入户型')) return;
   const sel=$('#dxfUnitSel').value, det=_dxfPending.info.unit;
   if(sel!=='auto' && sel!==det){   // 换了单位 → 用指定单位重算
     try{ _dxfPending=window.MINIDEN_GEO.importDxf(_dxfPending.dxf, {name:_dxfPending.doc.name, unit:sel}); }
@@ -22201,6 +22209,7 @@ $('#pdfCancel').onclick = () => { _pdfPending = null; $('#pdfModal').style.displ
 $('#pdfModal').onclick = e => { if(e.target.id === 'pdfModal'){ _pdfPending = null; $('#pdfModal').style.display = 'none'; } };
 $('#pdfOk').onclick = () => {
   if(!_pdfPending){ $('#pdfModal').style.display = 'none'; return; }
+  if(photoFrozen('导入户型')) return;
   let res = _pdfPending.res;
   const sel = $('#pdfScaleSel').value;
   if(sel !== 'auto' && Number(sel) !== res.info.scale){   // 换了比例 → 重算
@@ -22388,6 +22397,7 @@ $('#imgCancel').onclick=()=>{ _imgPending=null; $('#imgModal').style.display='no
 $('#imgModal').onclick=e=>{ if(e.target.id==='imgModal'){ _imgPending=null; $('#imgModal').style.display='none'; } };
 $('#imgOk').onclick=()=>{
   const p=_imgPending; if(!p){ $('#imgModal').style.display='none'; return; }
+  if(photoFrozen('导入底图')) return;
   let mpp, calibDone=true;
   if(p.pts.length>=2){
     const d=Number($('#imgDist').value);
@@ -22524,6 +22534,7 @@ $('#btnSaveJson').onclick=()=>{
 $('#btnLoadJson').onclick=()=>$('#fileJson').click();
 $('#fileJson').addEventListener('change', ev=>{
   const f=ev.target.files[0]; if(!f) return;
+  if(photoFrozen('导入布局')){ ev.target.value=''; return; }
   f.text().then(t=>{
     /* 导入布局是「整体替换这份户型的家具」：原先它一个字的反馈都没有（34 件 → 0 件，
        界面只是安静地变空）。替换本身可以撤销，但「发生了替换」必须说出来（R10：零反馈 = 设计缺陷）。 */
@@ -22634,6 +22645,7 @@ $('#docModal').onclick=e=>{ if(e.target.id==='docModal'){ _docPending=null; $('#
 $('#docCancel').onclick=()=>{ _docPending=null; $('#docModal').style.display='none'; };
 $('#docOk').onclick=()=>{
   if(!_docPending){ $('#docModal').style.display='none'; return; }
+  if(photoFrozen('导入户型')) return;
   const d = _docPending; _docPending = null;
   $('#docModal').style.display = 'none';
   try{ applyImportedDoc(d, { source:'projectdoc' }); toast('户型已导入（家具布局为空，可用「导入布局」导入）'); }
@@ -22851,10 +22863,11 @@ $('#filePack').addEventListener('change', ev=>{
 });
 $('#packModal').onclick=e=>{ if(e.target.id==='packModal'){ _packPending=null; $('#packModal').style.display='none'; } };
 $('#packCancel').onclick=()=>{ _packPending=null; $('#packModal').style.display='none'; };
-$('#packOk').onclick=()=>{ $('#packModal').style.display='none'; commitPendingPack(); };
+$('#packOk').onclick=()=>{ if(photoFrozen('导入目录包')) return; $('#packModal').style.display='none'; commitPendingPack(); };
 /* 移除 = 两步确认（它会让已摆好的家具失去规格，不是一句撤销能兑的） */
 let _packRemoveArm = '';
 $('#btnPackRemove').onclick=()=>{
+  if(photoFrozen('移除目录包')) return;
   const id = $('#packSel').value;
   if(!id){ toast('没有可移除的目录包'); return; }
   if(_packRemoveArm !== id){
