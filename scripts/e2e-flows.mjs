@@ -2724,7 +2724,7 @@ export const FLOWS = [
 
   {
     name: 'photo-freeze',
-    title: '光追进行中那份场景被冻结（切视角 / 走动 / 删家具被拒并给出提示）· 3D 里点住家具手抖不挪',
+    title: '光追进行中那份场景被冻结（切视角 / 走动 / 删家具 / 撤销被拒并给出提示）· 3D 里点住家具手抖不挪',
     async run(t) {
       const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
       await t.step('先保证 3D 里有家具：公开入口开局不预置家具 → 从目录点一件（真实点击卡片）');
@@ -2819,6 +2819,29 @@ export const FLOWS = [
       await sleep(600);
       const itemsNow = await t.eval(`state.items.length`);
       t.assert('freeze-pt-blocks-delete', itemsNow === before.items, `按 Delete → 家具 ${before.items}→${itemsNow}`);
+      await t.step('中途按 Ctrl+Z / Ctrl+Shift+Z → 也被拒（撤销 / 重做会把整份状态换掉）');
+      /* E19 轮㉜：撤销 / 重做是另一条「整份状态换掉」的入口。前面那一拖 + Ctrl+Z 让重做环里正好有一步
+         （个人入口开局就带内置布局、不点卡片 → 撤销环可能是空的，所以两个方向都按） */
+      const rs = `JSON.stringify({u:undoRing.length, r:redoRing.length, at:state.items.map(i=>[i.uid,i.x,i.y,i.rot||0])})`;
+      const r0 = await t.eval(rs);
+      await t.key('z', 'KeyZ', 90, 2);
+      await sleep(500);
+      const r1 = await t.eval(rs); // 每个键各比一次：一撤一重在修前会互相抵消，合起来比就看不出来
+      await t.key('Z', 'KeyZ', 90, 2 | 8);
+      await sleep(600);
+      const r2 = await t.eval(rs);
+      const o0 = JSON.parse(r0);
+      const said = (a, b, k) => {
+        if (b === a) return k + ' 没变';
+        const p = JSON.parse(a),
+          q = JSON.parse(b);
+        return k + ' 后撤销环 ' + p.u + '→' + q.u + ' · 重做环 ' + p.r + '→' + q.r;
+      };
+      t.assert(
+        'freeze-pt-blocks-undo',
+        o0.u + o0.r > 0 && r1 === r0 && r2 === r1,
+        `撤销环 ${o0.u} 步 / 重做环 ${o0.r} 步 · ` + said(r0, r1, 'Ctrl+Z') + ' · ' + said(r1, r2, 'Ctrl+Shift+Z')
+      );
 
       await t.step('点「取消」→ 光追真的提前停下，之后切视角照常');
       await t.click('#photoCancel');

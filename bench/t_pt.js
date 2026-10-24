@@ -695,6 +695,130 @@ async function runPT() {
       );
     }
 
+    /* ===== E19 轮㉜：光追冻结的其余入口 =====
+       轮㉖ 守了视角 / 相机 / 走动 / 快捷键 / 检视面板 / 目录加件。光追只在室内视角里跑，
+       而室内视角里照样摸得到的还有：撤销 / 重做（键盘与顶栏按钮）、已摆清单的 ✕、楼层条 ⚙ 改层高、
+       「工具」里的新建户型 / 导入户型 / 导入布局。任何一个改了场景，交出来的图就属于一个已经不存在的房间。 */
+    {
+      const labK = (LABELS.find((l) => /客厅/.test(l.t)) || {}).p || [20, 26];
+      state.items = [{ uid: 9299, ref: 'kallax-a-0', x: labK[0], y: labK[1], rot: 0 }];
+      selOnly(null);
+      drawFurniture();
+      // 撤销环里先放两步真改动：不然「撤销被挡住」与「没有可撤销的」分不开（键盘与按钮各撤一步）
+      for (const k of [1, 2]) {
+        pushUndo('pt32-probe-' + k, true);
+        state.items[0].x += 1;
+      }
+      drawFurniture();
+      await wait(400);
+      const plan0 = PLAN_ID;
+      const snap = () =>
+        JSON.stringify({
+          d: DOC,
+          i: state.items,
+          p: PLAN_ID,
+          u: undoRing.length,
+          r: redoRing.length,
+          n: PLAN_REG.plans.length,
+        });
+      const s0 = snap();
+      ptRender(400, { size: [73, 97], bounces: 2, denoise: false });
+      await wait(1500);
+      const running = !!three.photo;
+      const res = [];
+      const probe = async (key, name, fn, ms) => {
+        const tEl = document.getElementById('toast');
+        if (tEl) tEl.textContent = '';
+        let threw = '';
+        const before = snap();
+        try {
+          await fn();
+        } catch (e) {
+          threw = String(e.message || e);
+        }
+        await wait(ms || 80);
+        const msg = (document.getElementById('toast') || {}).textContent || '';
+        const same = snap() === before; // 每条跟自己动手之前比：前一条没挡住不连累后一条
+        res.push({ key, name, ok: running && same && /取消/.test(msg) && !threw, same, msg, threw });
+      };
+      await probe('ctrl-z', 'Ctrl+Z', () =>
+        document.body.dispatchEvent(
+          new KeyboardEvent('keydown', { key: 'z', ctrlKey: true, metaKey: true, bubbles: true, cancelable: true })
+        )
+      );
+      await probe('undo-btn', '顶栏「撤销」', () => document.getElementById('btnUndo').click());
+      await probe('list-del', '已摆清单的 ✕', () => {
+        const x = document.querySelector('#plRows .plRow .x');
+        if (!x) throw new Error('清单里找不到 ✕（测试前提没成立）');
+        x.click();
+      });
+      await probe('level-ceil', '楼层条改层高', () => setLevelCeilUI(250));
+      await probe('plan-new', '新建空白户型', () => document.getElementById('btnPlanNew').click());
+      await probe('doc-import', '导入户型（确认框「导入」）', () => {
+        _docPending = SCHEMA.Project.blankDoc('pt32-导入');
+        document.getElementById('docOk').click();
+      });
+      _docPending = null;
+      document.getElementById('docModal').style.display = 'none';
+      await probe(
+        'layout-import',
+        '导入布局（选了文件）',
+        () => {
+          const inp = document.getElementById('fileJson');
+          const dt = new DataTransfer();
+          dt.items.add(
+            new File([JSON.stringify({ items: [], customCat: [] })], 'pt32.json', { type: 'application/json' })
+          );
+          inp.files = dt.files;
+          inp.dispatchEvent(new Event('change', { bubbles: true }));
+        },
+        300
+      );
+      if (three.photo && three.photo.cancel) three.photo.cancel();
+      await wait(700);
+      for (const r of res)
+        T(
+          'hunt32-pt-frozen-' + r.key,
+          r.ok,
+          !running
+            ? '光追没在跑，测不到'
+            : r.name +
+                (r.threw
+                  ? '：抛错 ' + r.threw
+                  : !r.same
+                    ? '：场景被改了'
+                    : /取消/.test(r.msg)
+                      ? '：拒接，提示「' + r.msg.slice(0, 26) + '…」'
+                      : '：没改，但也没说为什么（toast「' + r.msg + '」）')
+        );
+      // 对照组：光追停了之后撤销照常（挡的是「光追进行中」，不是撤销本身）
+      const xU0 = state.items[0] ? state.items[0].x : NaN;
+      undoStep();
+      await wait(150);
+      const xU1 = state.items[0] ? state.items[0].x : NaN;
+      T(
+        'hunt32-pt-unfrozen-undo-works',
+        !three.photo && Math.abs(xU0 - xU1 - 1) < 1e-9,
+        '光追停了=' + !three.photo + ' · 撤销一步后 x ' + xU0.toFixed(2) + '→' + xU1.toFixed(2) + '（期望退 1ft）'
+      );
+      // 收尾：万一哪条没挡住（修前），把户型 / 场景拉回测试开始时，别把后面的断言拖红
+      const d0 = JSON.stringify(JSON.parse(s0).d);
+      if (PLAN_ID !== plan0 || JSON.stringify(DOC) !== d0) {
+        for (let k = 0; PLAN_ID !== plan0 && k < 6; k++) {
+          deleteCurrentPlan();
+          deleteCurrentPlan();
+        }
+        const o = JSON.parse(s0);
+        DOC = o.d;
+        CEIL_H = DOC.ceilingH || CEIL_H;
+        geoChanged();
+      }
+      state.items = [];
+      selOnly(null);
+      drawFurniture();
+      await wait(200);
+    }
+
     T('pt-cleanup', PT === null, PT === null ? '已释放' : '仍占用');
     T(
       'pt-quality-presets',
