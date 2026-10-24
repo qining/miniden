@@ -5326,10 +5326,12 @@ function furnShape(it, spec){
   return g;
 }
 
-/* 目录里没有这件：画一个中性占位（虚线框 + ?），它照样带 data-uid，所以点得中、能删 */
+/* 目录里没有这件：画一个中性占位（虚线框 + ?），点得中、拖得动、能删。
+   2D 的点选 / 拖动 / 框选高亮认的是 .furn —— 以前它只有 data-uid 而没有 .furn：点上去 = 平移画布并取消选择，
+   而 3D 里同一件点得中（轮㉝）。没有尺寸的件不做贴墙吸附（snapItemPos 认 spec 为空） */
 function ghostShape(it){
   const wf=cm2ft(GHOST_CM), df=cm2ft(GHOST_CM);
-  const g = el('g',{'data-uid':it.uid, class:'ghostItem', transform:`translate(${it.x*S} ${it.y*S}) rotate(${it.rot||0})`});
+  const g = el('g',{'data-uid':it.uid, class:'furn ghostItem', transform:`translate(${it.x*S} ${it.y*S}) rotate(${it.rot||0})`});
   el('rect',{x:-wf/2*S, y:-df/2*S, width:wf*S, height:df*S, fill:'rgba(150,158,172,.16)', stroke:'#9aa4b4', 'stroke-width':1.5, 'stroke-dasharray':'4 3'},g);
   const t = el('text',{x:0, y:4, 'text-anchor':'middle', 'font-size':11, fill:'#9aa4b4'},g);
   t.textContent = '?';
