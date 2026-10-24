@@ -7792,6 +7792,141 @@ async function runPBTest() {
       drawFurniture();
     }
 
+    /* ===== 31. bug 猎 ㉞：镜子的实景反射 × 楼层显隐 / 数量上限 =====
+       镜子在光栅视图里靠「镜面前烘一张立方体贴图」反射房间（S6 / S19b）。判据（与实现无关）：
+       每面看得见的镜子，贴图都要是「按现在这份可见性烘出来的那张」——拿它与当场重烘一张比；
+       一张都没有 = 退回环境全景（窗外城市），那正是 S19b 修过的那个 bug。 */
+    {
+      const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+      await enterEdit();
+      await pbReset();
+      const p31Plans = PLAN_REG.plans.length;
+      Q('#btnPlanNew').click();
+      await tick();
+      const p31Plan = PLAN_ID;
+      const fp31 = floorPts();
+      const X =
+          Math.min.apply(
+            null,
+            fp31.map((p) => p[0])
+          ) + 1,
+        Y =
+          Math.min.apply(
+            null,
+            fp31.map((p) => p[1])
+          ) + 1;
+      const wd = cmToWd(15);
+      pushUserWall(X, Y, X + 16, Y, 'w', wd);
+      pushUserWall(X + 16, Y, X + 16, Y + 12, 'w', wd);
+      pushUserWall(X + 16, Y + 12, X, Y + 12, 'w', wd);
+      pushUserWall(X, Y + 12, X, Y, 'w', wd);
+      geoChanged();
+      if (wallEdit.on) {
+        Q('#btnWallEdit').click();
+        await tick();
+      }
+      Q('#lvCopyShell').checked = true;
+      addLevelUI('above');
+      await tick();
+      const lv2 = DOC.level;
+      // 二层北墙上挂一面镜子（真实放置路径：贴墙吸附 → 朝向房间里）
+      const sn = fixtureWallSnap(X + 8, Y + 0.6, 'mirror');
+      pushUserFixture('mirror', sn ? sn.cx : X + 8, sn ? sn.cy : Y + 0.6, sn ? sn.rot : 0);
+      geoChanged();
+      // 回一层看 3D 娃娃屋：二层（连同它的镜子）这时是藏着的
+      Q('#lvBtns button[data-lv="lv1"]').click();
+      await tick();
+      setView('3d');
+      await wait3D(80);
+      await sleep(600);
+      const faceOf = (n) => (Math.abs(n[0]) > Math.abs(n[2]) ? (n[0] > 0 ? 0 : 1) : n[2] > 0 ? 4 : 5);
+      const meanOf = (m) => {
+        const rt = m && m.userData.mirrorEnv;
+        if (!rt) return null;
+        const N = rt.width,
+          buf = new Uint8Array(N * N * 4);
+        three.renderer.readRenderTargetPixels(rt, 0, 0, N, N, buf, faceOf(m.userData.mirrorN || [0, 0, 1]));
+        let s = 0,
+          k = 0;
+        for (let y = N / 4; y < (3 * N) / 4; y++)
+          for (let x = N / 4; x < (3 * N) / 4; x++) {
+            const i = (y * N + x) * 4;
+            s += 0.2126 * buf[i] + 0.7152 * buf[i + 1] + 0.0722 * buf[i + 2];
+            k++;
+          }
+        return s / k;
+      };
+
+      /* 31.1 #76 切到镜子所在的那一层：它的反射要按「这一层看得见」重烘（以前它停在一层视角时烘的那张：
+         二层的墙都藏着，镜子里只有背景色） */
+      Q('#lvBtns button[data-lv="' + lv2 + '"]').click();
+      await sleep(900);
+      const mm = (three.mirrors || [])[0];
+      const shownNow =
+        !!mm &&
+        (() => {
+          for (let p = mm; p; p = p.parent) if (!p.visible) return false;
+          return true;
+        })();
+      const lumNow = meanOf(mm);
+      installMirrorProbes();
+      const lumFresh = meanOf(mm);
+      T(
+        'pb-hunt34-mirror-rebaked-when-level-shown',
+        shownNow && lumNow != null && lumFresh != null && lumFresh > 40 && Math.abs(lumNow - lumFresh) < lumFresh * 0.2,
+        '镜子在显示=' +
+          shownNow +
+          ' · 镜面朝向那一面的平均亮度：现在 ' +
+          (lumNow == null ? '无贴图' : lumNow.toFixed(1)) +
+          ' / 当场重烘 ' +
+          (lumFresh == null ? '无贴图' : lumFresh.toFixed(1))
+      );
+
+      /* 31.2 #77 七面落地镜（家具）+ 一面洁具镜子：每面都要有房间的反射，不能退回环境全景（窗外城市）。
+         以前洁具 4 面 + 家具 2 面各自封顶 → 第三面落地镜起 envMap 是空的；现在超出烘焙预算的借最近那面烘好的 */
+      const n0 = state.items.length;
+      for (let k = 0; k < 7; k++)
+        state.items.push({ uid: uidSeq++, ref: 'knapper', x: X + 2 + k * 2, y: Y + 9, rot: 180, lv: lv2 });
+      drawFurniture();
+      await sleep(1500);
+      const all31 = (three.mirrors || []).concat(furnMirrorMeshes());
+      const owners = all31.filter((m) => m.userData.mirrorEnv).map((m) => m.userData.mirrorEnv.texture);
+      const noEnv = all31.filter((m) => !(m.material.envMap && m.material.envMap.isCubeTexture));
+      const dangling = all31.filter((m) => m.material.envMap && !owners.includes(m.material.envMap));
+      T(
+        'pb-hunt34-every-mirror-reflects-room',
+        all31.length === 8 && noEnv.length === 0 && dangling.length === 0,
+        '镜子 ' +
+          all31.length +
+          ' 面（洁具 ' +
+          (three.mirrors || []).length +
+          ' + 落地镜 ' +
+          furnMirrorMeshes().length +
+          '）· 自己烘的 ' +
+          owners.length +
+          ' · 没有房间反射（退回环境全景）的 ' +
+          noEnv.length +
+          ' · 贴图不归任何一面镜子（已释放 / 悬空）的 ' +
+          dangling.length
+      );
+      state.items.splice(n0);
+      drawFurniture();
+      setView('2d');
+      await tick();
+
+      /* 收尾：删掉这份户型 */
+      await enterEdit();
+      Q('#btnPlanDel').click();
+      await tick();
+      Q('#btnPlanDel').click();
+      await tick();
+      T(
+        'pb-hunt34-clean-exit',
+        PLAN_ID !== p31Plan && PLAN_REG.plans.length === p31Plans,
+        'plans ' + p31Plans + '→' + PLAN_REG.plans.length
+      );
+    }
+
     /* ===== 收尾：页面不得有未捕获异常 ===== */
     T('pb-no-page-errors', window.__ERRS.length === 0, window.__ERRS.slice(0, 3).join(' || '));
   } catch (e) {
