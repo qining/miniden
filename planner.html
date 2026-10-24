@@ -5389,7 +5389,9 @@ function drawDistGuides(it, spec){
 }
 const WALL_TOL = 0.1;    // ft²：插进墙里的面积容差（≈93cm²：贴墙放、取整误差都远小于它；推进去 3cm × 30cm 就算）
 const DOOR_TOL = 0.1;    // ft²：占了门扇扫过的扇形多少才算挡门
-const BLOCK_WHY = {overlap:'与其他家具重叠', onStair:'压在楼梯 / 楼梯口上', inWall:'插进墙里', blocksDoor:'挡住门（门扇开不开）'};
+const CEIL_TOL = 1/30.48; // ft：顶到天花的容差 1cm（离地框按「顶 ≤ 层高」夹，取整误差远小于它）
+const BLOCK_WHY = {overlap:'与其他家具重叠', onStair:'压在楼梯 / 楼梯口上', inWall:'插进墙里', blocksDoor:'挡住门（门扇开不开）',
+  tooTall:'顶到天花了（离地 + 件高 超过层高）'};
 const furnWhy = new Map();   // uid → 红框的原因（drawFurniture 算，检视面板读）
 function drawFurniture(){
   if(!gFurn) return;
@@ -5461,6 +5463,9 @@ function drawFurniture(){
       const hitD = sweeps.filter(d=>GEO_PTS.convexClipArea(d.poly, c) > DOOR_TOL);
       if(hitD.length){ why.push('blocksDoor'); for(const d of hitD) if(!blockedSweeps.includes(d)) blockedSweeps.push(d); }
     }
+    /* 离地框把「顶 ≤ 层高」夹住了，但改低层高 / 放进一件比层高还高的柜子 / 改自定义件的高度都绕得过去：
+       3D 里它就穿出天花、戳进楼上的地板（bug 猎 #71）。灯具按天花定位，不算 */
+    if(c && !CALIB && vSpanIt(a.it, a.spec)[1] > CEIL_H + CEIL_TOL) why.push('tooTall');
     if(why.length){
       const g=gFurn.querySelector(`[data-uid="${a.it.uid}"]`);
       if(g) g.querySelector('rect,circle').setAttribute('stroke','#e05656'),
@@ -6686,8 +6691,9 @@ function exteriorShell(){
   });
   const wallIds=new Set(walls.map(w=>w.id));
   // 窗的 wallId 指向它的宿主墙：宿主没被一起带上（DXF 导入的长墙常被判成「不是外墙」）就断开引用 ——
-  // 留着悬空引用，validate 会拒这份文档，下次 loadDoc 就把整栋房子当成读不动
-  const windows=(DOC.windows||[]).filter(w=>ids.has(w.id)).map(clone).map(w=>{ if(w.wallId && !wallIds.has(w.wallId)) w.wallId=null; return w; });
+  // 留着悬空引用，validate 会拒这份文档，下次 loadDoc 就把整栋房子当成读不动。
+  // 窗帘（S21）是这一层那个房间的软装（与墙色同类，房间本来就不复制）：楼上同一列窗不该自动挂上楼下的帘（bug 猎 #70）
+  const windows=(DOC.windows||[]).filter(w=>ids.has(w.id)).map(clone).map(w=>{ delete w.curtain; if(w.wallId && !wallIds.has(w.wallId)) w.wallId=null; return w; });
   return {walls, windows, filled};
 }
 function switchLevel(id, quiet){
@@ -6769,6 +6775,9 @@ function setLevelCeilUI(cm){
   CEIL_H=h; saveGeo(); geoDirty3D=true; build2D(); levelBarUI();
   shiftCamElev(curElev()-elev0);   // 地下室改层高时它自己的标高会变（地面层永远在 0）
   if(is3D()) schedule3DRebuild();
+  // 改低了层高：顶到天花的件已经标了红框（drawFurniture 同一个判据），这里把件数说出来（bug 猎 #71）
+  let nHit=0; for(const w of furnWhy.values()) if(w.includes('tooTall')) nHit++;
+  if(nHit) toast('层高改成 '+Math.round(cm)+'cm 后，这一层有 '+nHit+' 件家具顶到天花了（标了红框）：把离地调低，或换矮一点的', 7000);
   return true;
 }
 /* ---------- S17：楼梯（属于它起步的那一层，升到上一层；几何在 src/geo/stairs.ts） ---------- */
@@ -22261,6 +22270,7 @@ function vectorToLevel(src, where){
 let lvMove = null;   // {drag: null | {last:[x,y], cX, cY, moved, gestureSeq}}
 function setLvMove(on){
   if(on && !hasLevelsNow()) return;
+  if(on && imgMove) setImgMove(false);   // 两个「移动」模式只开一个：都开着时方向键一下，底图被挪两次
   lvMove = on ? {drag:null} : null;
   const b=$('#lvMove'); if(b){ b.classList.toggle('on', !!on); b.textContent = on ? '完成移动' : '移动这一层'; }
   svg.classList.toggle('lvMoving', !!on);
@@ -22270,8 +22280,13 @@ function shiftCurLevel(dx, dy){
   if(!dx && !dy) return;
   LV.translateLevelContent(DOC, dx, dy);
   for(const it of state.items) if(onCurLevel(it)){ it.x=FT4(it.x+dx); it.y=FT4(it.y+dy); }
-  _traceCache=null;
-  geoChanged(); drawFurniture(); save();
+  /* 量尺寸标注跨的是这一层的几何（切层就作废，见 measDropForGeometry）：跟着一起搬，读数不变（与整图缩放 #48 同一条规则，bug 猎 #72）。
+     特征线不用动：它存的是图片像素坐标，跟着底图的偏移走（以前在这里清了缓存，搬一下特征线就没了、按钮却还亮着，bug 猎 #73） */
+  const mv=(p)=> p ? [FT4(p[0]+dx), FT4(p[1]+dy)] : p;
+  meas.list = meas.list.map(m=>[mv(m[0]), mv(m[1])]);
+  if(meas.p0) meas.p0=mv(meas.p0);
+  if(meas.hover) meas.hover=mv(meas.hover);
+  geoChanged(); save();   // geoChanged → build2D 最后会重画家具，不用再画一遍（拖动时每个 pointermove 都走这里）
 }
 $('#lvMove').onclick=()=>{ $('#lvMove').blur(); setLvMove(!lvMove); };
 /* ---------- S7：底图导入（照片/扫描件 → 标定 → 替换底图户型 + 特征线磁性描摹） ----------
@@ -22444,6 +22459,7 @@ $('#btnTrace').onclick=()=>{ $('#btnTrace').blur();
 function setImgMove(on){
   if(on && (!docImported() || !DOC.baseImage)){ toast('只有带底图的导入户型可以移动底图'); on=false; }
   if(on && wallEdit.on) $('#btnWallEdit').click();
+  if(on && lvMove) setLvMove(false);   // 与「移动这一层」互斥（见 setLvMove）
   imgMove = on?{last:null, sx:DOC.baseImage.ox, sy:DOC.baseImage.oy, moved:false}:null;
   $('#btnImgMove').classList.toggle('on', !!imgMove);
   if(on) toast('移动底图：按住拖动；←↑↓→ = 10cm，Shift = 2.5cm，Esc 结束');
