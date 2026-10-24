@@ -7725,6 +7725,73 @@ async function runPBTest() {
       );
     }
 
+    /* ===== 30. bug 猎 ㉝：2D 的点选 / 拖动 × 目录里没有了的件（幽灵件） ===== */
+    {
+      await pbReset();
+      if (wallEdit.on) {
+        Q('#btnWallEdit').click();
+        await tick();
+      }
+      fit2DToContent();
+      await tick();
+      const [gx, gy] = pbFree;
+      const uG = uidSeq++;
+      const keep30 = state.items; // 这一节只摆这一件：别让前面几节留下的家具盖在落点上
+      state.items = [{ uid: uG, ref: 'pb-hunt33-no-such-item', x: gx, y: gy, rot: 0 }];
+      selOnly(null);
+      drawFurniture();
+      await tick();
+
+      /* 30.1 #75 幽灵件（目录条目被移除 / 旧布局引用了下架的条目）在 2D 里点得中：
+         代码注释与 3D 都承诺「还能看见、能选、能删」，2D 的占位符号却不接点击（点上去 = 平移画布 + 取消选择） */
+      await tap(gx, gy);
+      const picked = selected === uG;
+      const title = Q('#pTitle').textContent;
+      T(
+        'pb-hunt33-ghost-click-selects',
+        picked && /目录里没有这件/.test(title),
+        '点占位符号后选中=' + picked + '（selected=' + selected + '）· 面板「' + title + '」'
+      );
+
+      /* 30.2 #75 拖得动、一步撤销（没有尺寸的件不做贴墙吸附，不报错）。撤销环可能已经满了（50 步）：
+         「压了一步」按栈顶换没换判，「只一步」按撤销一次就回到原位判 */
+      const top0 = undoRing[undoRing.length - 1];
+      const [sx, sy] = SPT(gx, gy);
+      fire('pointerdown', sx, sy);
+      await tick();
+      fire('pointermove', sx + 20, sy);
+      await tick();
+      fire('pointermove', sx + 44, sy + 10);
+      await tick();
+      fire('pointerup', sx + 44, sy + 10, { buttons: 0 });
+      await tick();
+      const itG = state.items.find((i) => i.uid === uG);
+      const want = 44 / pxPerFtNow(),
+        moved = itG ? itG.x - gx : NaN;
+      const pushed = undoRing[undoRing.length - 1] !== top0;
+      if (pushed) {
+        undoStep(); // 没压步就别撤：撤掉的会是前面几节的某一步
+        await tick();
+      }
+      const back = state.items.find((i) => i.uid === uG);
+      const oneStep = pushed && !!back && Math.abs(back.x - gx) < 1e-6;
+      T(
+        'pb-hunt33-ghost-drag-moves',
+        Math.abs(moved - want) < 0.08 && pushed && oneStep,
+        '拖 44px（≈' +
+          want.toFixed(2) +
+          'ft）→ 挪了 ' +
+          moved.toFixed(2) +
+          'ft · 进撤销环=' +
+          pushed +
+          ' · 撤销一次回到原位=' +
+          oneStep
+      );
+      state.items = keep30;
+      selOnly(null);
+      drawFurniture();
+    }
+
     /* ===== 收尾：页面不得有未捕获异常 ===== */
     T('pb-no-page-errors', window.__ERRS.length === 0, window.__ERRS.slice(0, 3).join(' || '));
   } catch (e) {
