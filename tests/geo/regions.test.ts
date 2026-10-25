@@ -199,6 +199,69 @@ describe('底层件', () => {
   });
 });
 
+describe('buildGrid 的地板轮廓：逐行扫描与逐格 pointInPolygon 逐格一致（轮㊱ 的性能改写）', () => {
+  /* 独立量：同一份输入、只给地板轮廓不给墙 → 障碍格 = 格心不在轮廓里的格子。按逐格 pointInPolygon 现算一遍对表 */
+  const brute = (bounds: Pt2[]) => {
+    const g = buildGrid({ segs: [], bounds })!;
+    let diff = 0,
+      outside = 0;
+    for (let j = 0; j < g.h; j++)
+      for (let i = 0; i < g.w; i++) {
+        const want = pointInPolygon([g.x0 + (i + 0.5) * g.cell, g.y0 + (j + 0.5) * g.cell], bounds) ? 0 : 1;
+        if (want) outside++;
+        if (g.block[j * g.w + i] !== want) diff++;
+      }
+    return { diff, outside, cells: g.w * g.h };
+  };
+  it('L 形、带斜边的、顶点正好落在格心上的、凹进去的多段（含共线点）：一个格子都不差', () => {
+    const shapes: Pt2[][] = [
+      [
+        [0, 0],
+        [20, 0],
+        [20, 8],
+        [9, 8],
+        [9, 15],
+        [0, 15],
+      ],
+      [
+        [0, 0],
+        [14, 0],
+        [18, 6],
+        [11, 13],
+        [-3, 9],
+      ],
+      // 顶点 / 水平边正好压在格心那一行（格 1/12ft、留白 2ft：格心 y = 网格起点 + (j + 0.5)/12）
+      [
+        [1 / 24, 1 / 24],
+        [6 + 1 / 24, 1 / 24],
+        [6 + 1 / 24, 3 + 1 / 24],
+        [3 + 1 / 24, 3 + 1 / 24],
+        [3 + 1 / 24, 6 + 1 / 24],
+        [1 / 24, 6 + 1 / 24],
+      ],
+      [
+        [0, 0],
+        [5, 0],
+        [10, 0],
+        [10, 10],
+        [7, 4],
+        [3, 10],
+        [0, 10],
+      ],
+    ];
+    for (const b of shapes) {
+      const r = brute(b);
+      expect(r.diff).toBe(0);
+      expect(r.outside).toBeGreaterThan(0);
+      expect(r.outside).toBeLessThan(r.cells);
+    }
+  });
+  it('入库的通用户型地板轮廓：一个格子都不差', () => {
+    const plan = JSON.parse(readFileSync(new URL('../../data/plans/generic.json', import.meta.url), 'utf8'));
+    expect(brute(plan.floorpts).diff).toBe(0);
+  });
+});
+
 describe('通用户型（入库的 generic.json，不含个人数据）', () => {
   const plan = JSON.parse(readFileSync(new URL('../../data/plans/generic.json', import.meta.url), 'utf8'));
   const half = 6.5 / 22 / 2; // 缺省墙厚（viewBox px 6.5 / S=22）的一半

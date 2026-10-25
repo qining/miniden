@@ -8013,6 +8013,152 @@ async function runPBTest() {
       );
     }
 
+    /* ===== 33. bug 猎 ㊱：房间轮廓 × 改墙（S16 的轮廓是点选那一刻按墙算出来的快照） =====
+       轮廓有六个消费端：2D 地板底纹、面积、采购清单的地板用量、3D 地板、墙色（roomPaintRuns）、这间房有哪几扇窗（窗帘）。
+       墙挪了轮廓不动 = 六处一起按旧墙算。判据（独立量）：面积 = 墙皮围成的净宽 × 净深。 */
+    {
+      await enterEdit();
+      await pbReset();
+      const p33Plans = PLAN_REG.plans.length;
+      Q('#btnPlanNew').click();
+      await tick();
+      const p33Plan = PLAN_ID;
+      const fp33 = floorPts();
+      const X =
+          Math.min.apply(
+            null,
+            fp33.map((p) => p[0])
+          ) + 1,
+        Y =
+          Math.min.apply(
+            null,
+            fp33.map((p) => p[1])
+          ) + 1;
+      const AW = 12,
+        BW = 7,
+        RH = 10,
+        wd = cmToWd(12);
+      pushUserWall(X, Y, X + AW + BW, Y, 'w', wd);
+      pushUserWall(X + AW + BW, Y, X + AW + BW, Y + RH, 'w', wd);
+      pushUserWall(X + AW + BW, Y + RH, X, Y + RH, 'w', wd);
+      const wWest = pushUserWall(X, Y + RH, X, Y, 'w', wd);
+      const wMid = pushUserWall(X + AW, Y, X + AW, Y + RH, 'w', wd);
+      geoChanged();
+      fit2DToContent();
+      drawWallEdit();
+      await tick();
+      const t = pbDrawnThick(effWalls().find((s) => s._id === wMid.id));
+      await setTool('room');
+      await tap(X + 3, Y + 3);
+      const rA = (DOC.rooms || [])[(DOC.rooms || []).length - 1];
+      if (rA) {
+        rA.floor = { mat: 'oakHerring' };
+        rA.wallColor = '#b9c2b2';
+      }
+      const areaOf = () => (rA ? roomArea(rA) : 0);
+      const use = () => (floorUsage().get('oakHerring') || {}).area || 0;
+      const a0 = areaOf(),
+        want0 = (AW - t) * (RH - t);
+
+      /* 33.1 #79 选中隔墙、Shift+→ ×6（往 B 那边挪 30cm）：A 的轮廓 / 面积 / 地板用量跟着变大 */
+      await setTool('select');
+      await tap(X + AW, Y + RH / 2);
+      const selOk = !!wallEdit.sel && wallEdit.sel.id === wMid.id;
+      for (let k = 0; k < 6; k++) key('ArrowRight', document.body, true);
+      await tick();
+      const d = 30 / 30.48,
+        want1 = (AW + d - t) * (RH - t);
+      const a1 = areaOf();
+      const paintAtNewFace = rA
+        ? roomPaintRuns(rA).some(
+            (q) => Math.abs(q.a[0] - (X + AW + d - t / 2)) < 0.05 && Math.abs(q.b[0] - (X + AW + d - t / 2)) < 0.05
+          )
+        : false;
+      T(
+        'pb-hunt36-room-follows-moved-wall',
+        !!rA &&
+          Math.abs(a0 - want0) / want0 < 0.01 &&
+          selOk &&
+          Math.abs(a1 - want1) / want1 < 0.01 &&
+          Math.abs(use() - a1) < 1e-6 &&
+          paintAtNewFace,
+        '点选时 ' +
+          a0.toFixed(2) +
+          'ft²（独立量 ' +
+          want0.toFixed(2) +
+          '）· 选中隔墙=' +
+          selOk +
+          ' · 隔墙挪 30cm 后 ' +
+          a1.toFixed(2) +
+          'ft²（独立量 ' +
+          want1.toFixed(2) +
+          '）· 地板用量 ' +
+          use().toFixed(2) +
+          ' · 挪过去的墙皮上有漆=' +
+          paintAtNewFace
+      );
+
+      /* 33.2 撤销：墙与轮廓一起回去（一步） */
+      undoStep();
+      await tick();
+      const rA2 = (DOC.rooms || []).find((r) => rA && r.id === rA.id);
+      T(
+        'pb-hunt36-room-undo-with-wall',
+        !!rA2 && Math.abs(roomArea(rA2) - a0) < 1e-6,
+        '撤销一步后面积 ' + (rA2 ? roomArea(rA2).toFixed(2) : '?') + 'ft²（挪之前 ' + a0.toFixed(2) + '）'
+      );
+
+      /* 33.3 对照：两间都点过（都有轮廓）之后拆掉它们之间的隔墙 → 一块被两间同时认领 → 两间都留着原来的轮廓 */
+      await setTool('room');
+      await tap(X + AW + 3, Y + 5);
+      const rB = (DOC.rooms || []).find((r) => rA && r.id !== rA.id && r.poly);
+      const keepA = rA2 ? JSON.stringify(rA2.poly) : '',
+        keepB = rB ? JSON.stringify(rB.poly) : '';
+      const midSaved = DOC.walls.find((w) => w.id === wMid.id);
+      DOC.walls = DOC.walls.filter((w) => w.id !== wMid.id);
+      geoChanged();
+      await tick();
+      const nowA = (DOC.rooms || []).find((r) => rA && r.id === rA.id),
+        nowB = (DOC.rooms || []).find((r) => rB && r.id === rB.id);
+      T(
+        'pb-hunt36-room-kept-when-merged',
+        !!rB && !!nowA && !!nowB && JSON.stringify(nowA.poly) === keepA && JSON.stringify(nowB.poly) === keepB,
+        '两间都有轮廓=' +
+          !!rB +
+          ' · 拆隔墙后 A 没变=' +
+          (!!nowA && JSON.stringify(nowA.poly) === keepA) +
+          ' · B 没变=' +
+          (!!nowB && JSON.stringify(nowB.poly) === keepB)
+      );
+      DOC.walls.push(midSaved);
+      geoChanged();
+      await tick();
+
+      /* 33.4 对照：墙上开了缺口（删掉西墙，这块漏到室外）→ 轮廓保留原样，不替用户猜 */
+      const keep = rA2 ? JSON.stringify(rA2.poly) : '';
+      DOC.walls = DOC.walls.filter((w) => w.id !== wWest.id);
+      geoChanged();
+      await tick();
+      const rA3 = (DOC.rooms || []).find((r) => rA && r.id === rA.id);
+      T(
+        'pb-hunt36-room-kept-when-leaking',
+        !!rA3 && JSON.stringify(rA3.poly) === keep,
+        '删掉西墙后轮廓没变=' + (!!rA3 && JSON.stringify(rA3.poly) === keep)
+      );
+
+      /* 收尾：删掉这份户型 */
+      await enterEdit();
+      Q('#btnPlanDel').click();
+      await tick();
+      Q('#btnPlanDel').click();
+      await tick();
+      T(
+        'pb-hunt36-clean-exit',
+        PLAN_ID !== p33Plan && PLAN_REG.plans.length === p33Plans,
+        'plans ' + p33Plans + '→' + PLAN_REG.plans.length
+      );
+    }
+
     /* ===== 收尾：页面不得有未捕获异常 ===== */
     T('pb-no-page-errors', window.__ERRS.length === 0, window.__ERRS.slice(0, 3).join(' || '));
   } catch (e) {
