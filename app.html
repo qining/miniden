@@ -4090,6 +4090,9 @@ function setSegType(ent, t){ // 墙族类型互转（wType 面板）；'g' = 窗
   const cur = ent.kind? (KIND2T[ent.kind]||'w') : 'g';
   if(t===cur) return;
   pushUndo('segType:'+ent.id, true);
+  /* 轮㊳：点位只挂得在实墙 / 细墙上（outletWallSegs 只认这两种）。换成窗 / 开口 / 门洞之后宿主就没了，派生位姿算不出来、
+     缓存坐标原地不动 —— 插座悬在窗洞里（2D / 3D 都是）。与删墙同一条规则：一起去掉、提示里说出个数，撤销连它们一起回来 */
+  if(t!=='w' && t!=='i') dropOutletsOn(ent.id);
   if(t==='g'){ winFromWall(ent); return; }
   if(cur==='g'){ winToWall(ent, t); return; }
   ent.kind = T2KIND[t] || 'wall';
@@ -19647,7 +19650,9 @@ $('#runTopH').onchange=()=>{ const r=selRun(); if(!r) return;
   const v=(+$('#runTopH').value||90)/30.48; pushUndo('runTopH:'+r.id, true); r.topH=FT2(v);
   geoChanged(); updateWallBarFromSel(); wMsg('台面高 '+Math.round(v*30.48)+'cm'); };
 $('#wType').onchange=()=>{ const s=wallEdit.sel; if(s&&s.kind==='w'){
-  const seg=selWallSeg(); if(seg){ seg.t=$('#wType').value; geoChanged(); } } };
+  const seg=selWallSeg(); if(seg){ const n0=effOutlets().length; seg.t=$('#wType').value; geoChanged();
+    const nd=n0-effOutlets().length, nm=($('#wType').selectedOptions[0]||{}).textContent||'';
+    if(nd) wMsg('已改成「'+nm+'」，连同上面的 '+nd+' 个点位一起去掉了（窗 / 开口 / 门洞上挂不了点位；「撤销」可以找回）'); } } };
 $('#wThick').onchange=()=>{ const s=wallEdit.sel; if(s&&s.kind==='w'){
   const seg=selWallSeg(); if(seg){ pushUndo('thick:'+s.id, true); seg.wd=cmToWd(+$('#wThick').value||9); geoChanged(); } } };
 function doorLenUnit(){ return state.unit==='ft' ? 'in' : 'cm'; }
