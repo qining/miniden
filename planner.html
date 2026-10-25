@@ -6508,8 +6508,8 @@ function roomRegionAt(x, y){
    3D 地板、墙色（roomPaintRuns）、这间房有哪几扇窗（窗帘）。以前墙挪了它不动，六处一起按旧墙算（隔墙往外挪 30cm：
    面积 / 用量还是旧的、挪过去的那面墙皮上没有漆）。现在墙一变（geoChanged）就按点选时的同一个判据（regionAt）重算：
    - 锚点 = 房间标签点（在旧轮廓里时），否则旧轮廓里的一个点；
-   - 找到的那块要与旧轮廓是「同一间」（旧轮廓的取样点过半落在新块里，或新块的取样点过半落在旧轮廓里）——
-     隔墙挪过了标签点、锚点落进了隔壁那间时不会把隔壁认成自己；
+   - 找到的那块要与旧轮廓是「同一间」（一个方向装得下：旧轮廓的取样点 ≥ 90% 落在新块里，或反过来；见 sameRoomShape）——
+     隔墙挪过了标签点、锚点落进了隔壁那块时不会把隔壁认成自己，而是从旧轮廓剩下的部分再找（轮㊴）；
    - 墙上有缺口（泄漏到室外）/ 一块被两间房同时认领（拆了它们之间的隔墙）→ 保留旧轮廓，不替用户猜。
    墙没变（栅格键没变）就不算：改窗帘 / 墙色 / 地板这类 geoChanged 不付这笔账。 */
 let _roomFitKey='', _roomFitSkip=false;
@@ -6523,9 +6523,11 @@ function roomSamplePts(poly, n){
   }
   return out;
 }
+/* 同一间 = 一个方向「装得下」：挪一面墙，变大时旧轮廓整个落在新块里、变小时新块整个落在旧轮廓里（取样点 ≥ 90%）。
+   轮㊴：以前是「过半互相落在对方里」——隔墙挪过了标签点，标签点落进隔壁那块，旧轮廓正好一半在隔壁的新块里 → 把隔壁认成了自己 */
 function sameRoomShape(a, b){
   const frac=(P, poly)=>{ const s=roomSamplePts(P, 7); return s.length ? s.filter(q=>ptInPoly(q, poly)).length/s.length : 0; };
-  return frac(a, b) >= 0.5 || frac(b, a) >= 0.5;
+  return frac(a, b) >= 0.9 || frac(b, a) >= 0.9;
 }
 function refitRoomPolys(){
   if(CALIB || IMGONLY) return 0;
@@ -6540,19 +6542,29 @@ function refitRoomPolys(){
   const g=roomGrid(); if(!g) return 0;
   const found=[];
   for(const r of rooms){
-    const anchor = (r.pos && ptInPoly(r.pos, r.poly)) ? r.pos : roomSamplePts(r.poly, 7)[0];
-    if(!anchor) continue;
-    const res=GEO_PTS.regionAt(g, anchor[0], anchor[1]);
-    if(!res.region || res.leaked) continue;
-    const poly=res.region.poly.map(p=>[FT4(p[0]), FT4(p[1])]);
-    if(!sameRoomShape(r.poly, poly)) continue;
-    found.push([r, poly, JSON.stringify(poly)]);
+    /* 锚点：标签点（在旧轮廓里时）优先，再按旧轮廓里的取样点逐个试——标签点落进了隔壁那块时，还能从旧轮廓剩下的那部分
+       找回这间（轮㊴）。试过的块里的点不再试；最多试 4 块；一块漏到室外就停（这间没围住，再试也是把室外泛洪一遍） */
+    const anchors = (r.pos && ptInPoly(r.pos, r.poly) ? [r.pos] : []).concat(roomSamplePts(r.poly, 7));
+    const tried=[]; let hit=null;
+    for(const a of anchors){
+      if(tried.length>=4) break;
+      if(tried.some(P=>ptInPoly(a, P))) continue;
+      const res=GEO_PTS.regionAt(g, a[0], a[1]);
+      if(res.leaked) break;
+      if(!res.region) continue;   // 这个点在墙 / 柱里
+      const poly=res.region.poly.map(p=>[FT4(p[0]), FT4(p[1])]);
+      if(sameRoomShape(r.poly, poly)){ hit={poly, label:res.region.label}; break; }
+      tried.push(poly);
+    }
+    if(hit) found.push([r, hit.poly, JSON.stringify(hit.poly), hit.label]);
   }
   const claims=new Map(); for(const f of found) claims.set(f[2], (claims.get(f[2])||0)+1);
   let n=0;
-  for(const [r, poly, k] of found){
+  for(const [r, poly, k, label] of found){
     if(claims.get(k)>1 || k===JSON.stringify(r.poly)) continue;
     r.poly=poly; n++;
+    // 用户建的房间：标签点出了新轮廓才跟着挪（还在里面就不动，名字不会每挪一下墙就跳）；内置户型的房间名位置是常量，不动
+    if(r.src==='user' && !(r.pos && ptInPoly(r.pos, poly))) r.pos=[FT4(label[0]), FT4(label[1])];
   }
   return n;
 }
