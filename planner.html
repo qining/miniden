@@ -21974,12 +21974,16 @@ function groundAt(ev, y){
     if(three.camMode==='fp') return;              // 室内视角只走动/看，不动家具（会误触）
     const hit=pickFurniture(ev); if(!hit) return;
     const it=state.items.find(i=>i.uid===hit.uid); if(!it) return;
-    const g0=groundAt(ev); if(!g0) return;
+    /* 轮㊵：拖动平面 = 这件所在的那个水平面（当前层地面 + 离地 z）。3D 拖动比 S19 早，一直按地面算：挂在 2m 高的搁板，
+       光标打到地面的那一点在它身后老远，鼠标挪一点、地面上那一点挪得多一大截 → 件跑得比光标快、越拖离光标越远。
+       落地件 z = 0，平面就是地面（与以前一致）；灯具不带 z，同样按地面 */
+    const planeY=curElev()+itemZ(it);
+    const g0=groundAt(ev, planeY); if(!g0) return;
     // S20：Shift+点 = 加 / 减（松手时没拖才算；Shift+拖 照旧 = 转）；点组里的一件 = 拖整组，松手没动 = 只选它
     const inGroup = selUids().length>1 && selUids().includes(hit.uid);
     if(!ev.shiftKey){ if(inGroup) selected=hit.uid; else selOnly(hit.uid); drawFurniture(); updateProps(); }
     const grp = inGroup ? selItems() : [it];
-    d3={uid:hit.uid, dx:it.x-g0.x, dy:it.y-g0.z, rot0:it.rot||0, shift:ev.shiftKey, inGroup,
+    d3={uid:hit.uid, dx:it.x-g0.x, dy:it.y-g0.z, planeY, rot0:it.rot||0, shift:ev.shiftKey, inGroup,
         others: grp.filter(m=>m.uid!==hit.uid).map(m=>({it:m, ox:m.x-it.x, oy:m.y-it.y})),
         start: grp.map(m=>({it:m, x:m.x, y:m.y, rot:m.rot||0})),
         sx:ev.clientX, sy:ev.clientY, moved:false, undoKey:'drag3d:'+hit.uid, wasCtl:three.controls.enabled};
@@ -21994,7 +21998,7 @@ function groundAt(ev, y){
     // 点击 vs 拖动用屏幕像素阈值（AGENTS §8.2，与 2D 同一口径）。以前没有：
     // 实测 1px 手抖就把家具挪走 1~4cm 并落盘（bug 猎 #52）。
     if(!d3.moved && Math.hypot(ev.clientX-d3.sx, ev.clientY-d3.sy) < 5) return;
-    const gp = ev.shiftKey ? null : groundAt(ev);
+    const gp = ev.shiftKey ? null : groundAt(ev, d3.planeY);
     if(!ev.shiftKey && !gp) return;
     markDragGesture(d3, d3.undoKey);              // 先记「动之前」的状态，再改（快照必须在变异前）
     if(ev.shiftKey){                               // Shift 拖动 = 就地旋转（S20：整组 = 从起手姿态绕组中心转同一角度）
