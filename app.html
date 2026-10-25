@@ -19980,10 +19980,11 @@ function groundAt(ev, y){
     if(three.camMode==='fp') return;              // 室内视角只走动/看，不动家具（会误触）
     const hit=pickFurniture(ev); if(!hit) return;
     const it=state.items.find(i=>i.uid===hit.uid); if(!it) return;
-    /* 轮㊵：拖动平面 = 这件所在的那个水平面（当前层地面 + 离地 z）。3D 拖动比 S19 早，一直按地面算：挂在 2m 高的搁板，
-       光标打到地面的那一点在它身后老远，鼠标挪一点、地面上那一点挪得多一大截 → 件跑得比光标快、越拖离光标越远。
-       落地件 z = 0，平面就是地面（与以前一致）；灯具不带 z，同样按地面 */
-    const planeY=curElev()+itemZ(it);
+    /* 拖动平面 = 抓住的那一点所在的水平面：被抓住的那一点一直待在光标底下。3D 拖动比 S19 早，一直按地面算——
+       挂在 2m 高的搁板（轮㊵）、吊在天花上的灯（轮㊶，灯不带 z，按「件底 + z」它的平面还是地面），光标打到地面的那一点
+       在它身后老远，鼠标挪一点、地面上那一点挪得多一大截 → 件跑得比光标快（吸顶灯快到两倍多）、越拖离光标越远。
+       拾取没给出抓点时（理论上不会）退回件底所在的那个面 */
+    const planeY = (hit.point && isFinite(hit.point.y)) ? hit.point.y : curElev()+itemZ(it);
     const g0=groundAt(ev, planeY); if(!g0) return;
     // S20：Shift+点 = 加 / 减（松手时没拖才算；Shift+拖 照旧 = 转）；点组里的一件 = 拖整组，松手没动 = 只选它
     const inGroup = selUids().length>1 && selUids().includes(hit.uid);
