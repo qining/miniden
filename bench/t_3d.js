@@ -2233,7 +2233,8 @@ async function run3DTest() {
     // ===== E19 轮㊵：3D 里拖离地件（S19 的 z）—— 拖动平面在它挂着的那个高度 =====
     // 3D 拖动比 S19 早：拖的是「光标射线打到当前层地面的那一点」。挂在 2m 高的搁板，光标点在它身上，地面上那一点在它身后老远，
     // 鼠标挪一点、地面上那一点挪得比搁板所在的那个高度多一大截 → 件跑得比光标快、越拖离光标越远。
-    // 独立量：同样两个屏幕点，各自打到「件底所在的那个水平面」的交点之差。
+    // 独立量：同样两个屏幕点，各自打到「抓住的那一点所在的水平面」的交点之差（轮㊶ 起规则统一成抓点；离地件抓在它身上，
+    // 平面就在它那个高度）。
     {
       setView('3d');
       setCamMode('doll');
@@ -2298,7 +2299,9 @@ async function run3DTest() {
         );
       const it40 = state.items[0];
       const [sx, sy] = proj40(it40.x, curElev() + zFt + hFt / 2, it40.y);
-      const picked = (pickFurniture({ clientX: sx, clientY: sy }) || {}).uid === u40;
+      const hit40 = pickFurniture({ clientX: sx, clientY: sy });
+      const picked = !!hit40 && hit40.uid === u40;
+      const hy40 = picked ? hit40.point.y : curElev() + zFt;
       const x0 = it40.x,
         y0 = it40.y;
       PE40('pointerdown', sx, sy);
@@ -2309,8 +2312,8 @@ async function run3DTest() {
       await wait(80);
       PE40('pointerup', sx + 60, sy + 40, { buttons: 0 });
       await wait(150);
-      const a = onPlane(sx, sy, curElev() + zFt),
-        b = onPlane(sx + 60, sy + 40, curElev() + zFt);
+      const a = onPlane(sx, sy, hy40),
+        b = onPlane(sx + 60, sy + 40, hy40);
       const g0 = onPlane(sx, sy, curElev()),
         g1 = onPlane(sx + 60, sy + 40, curElev());
       const want = a && b ? Math.hypot(b.x - a.x, b.z - a.z) : NaN,
@@ -2323,7 +2326,9 @@ async function run3DTest() {
           picked +
           ' · 拖 (60,40)px：挪了 ' +
           got.toFixed(2) +
-          'ft · 件底那个高度上的光标位移 ' +
+          'ft · 抓点那个高度（y=' +
+          hy40.toFixed(2) +
+          'ft）上的光标位移 ' +
           want.toFixed(2) +
           'ft（按地面算是 ' +
           floorWay.toFixed(2) +
@@ -2332,6 +2337,104 @@ async function run3DTest() {
       undoStep();
       await wait(150);
       state.items = keep40;
+      selOnly(null);
+      drawFurniture();
+      sync3D();
+      await wait(200);
+    }
+    // ===== E19 轮㊶：3D 里拖吸顶灯 —— 同一条「拖动平面」规则（轮㊵ 只照顾了离地件） =====
+    // 灯具不带 z，轮㊵ 的平面对它还是地面；而吸顶灯挂在天花上，光标打到地面的那一点在它身后更远 → 跑得比光标快得多。
+    // 规则统一成「抓住的那一点所在的水平面」：被抓住的那一点一直待在光标底下。独立量：两个屏幕点各自打到那个水平面的交点之差。
+    {
+      setView('3d');
+      setCamMode('doll');
+      await wait(300);
+      three.controls.target.set(CX3, 1, CY3);
+      three.cam.position.set(CX3, 14, CY3 + 14);
+      three.cam.fov = 45;
+      three.cam.updateProjectionMatrix();
+      three.controls.update();
+      const keep41 = state.items;
+      const dl = CATALOG.find((c) => c.id === 'cl-flush') || CATALOG.find((c) => c.kind === 'ceilingLight');
+      const u41 = uidSeq++;
+      state.items = [{ uid: u41, ref: dl.id, x: CX3, y: CY3 + 1, rot: 0 }];
+      selOnly(null);
+      drawFurniture();
+      sync3D();
+      await wait(400);
+      const cv41 = document.querySelector('#c3d'),
+        r41 = cv41.getBoundingClientRect();
+      const proj41 = (x, y, z) => {
+        three.cam.updateMatrixWorld(true);
+        const v = new THREE.Vector3(x, y, z).project(three.cam);
+        return [r41.left + (v.x * 0.5 + 0.5) * r41.width, r41.top + (-v.y * 0.5 + 0.5) * r41.height];
+      };
+      const onPlane41 = (sx, sy, yPlane) => {
+        three.cam.updateMatrixWorld(true);
+        const ndc = new THREE.Vector2(((sx - r41.left) / r41.width) * 2 - 1, -((sy - r41.top) / r41.height) * 2 + 1);
+        const rc = new THREE.Raycaster();
+        rc.setFromCamera(ndc, three.cam);
+        const p = new THREE.Vector3();
+        return rc.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), -yPlane), p) ? p : null;
+      };
+      const PE41 = (t, x, y, o) =>
+        cv41.dispatchEvent(
+          new PointerEvent(
+            t,
+            Object.assign(
+              {
+                bubbles: true,
+                cancelable: true,
+                clientX: x,
+                clientY: y,
+                pointerId: 1,
+                pointerType: 'mouse',
+                button: 0,
+                buttons: 1,
+                isPrimary: true,
+              },
+              o || {}
+            )
+          )
+        );
+      const it41 = state.items[0];
+      const vs = vSpan(itemSpec(it41));
+      const [sx, sy] = proj41(it41.x, curElev() + (vs[0] + vs[1]) / 2, it41.y);
+      const hit = pickFurniture({ clientX: sx, clientY: sy });
+      const picked = !!hit && hit.uid === u41;
+      const hy = picked ? hit.point.y : NaN;
+      const x0 = it41.x,
+        y0 = it41.y;
+      PE41('pointerdown', sx, sy);
+      await wait(80);
+      PE41('pointermove', sx + 30, sy + 10);
+      await wait(80);
+      PE41('pointermove', sx + 60, sy + 20);
+      await wait(80);
+      PE41('pointerup', sx + 60, sy + 20, { buttons: 0 });
+      await wait(150);
+      const a = onPlane41(sx, sy, hy),
+        b = onPlane41(sx + 60, sy + 20, hy);
+      const want = a && b ? Math.hypot(b.x - a.x, b.z - a.z) : NaN,
+        got = Math.hypot(it41.x - x0, it41.y - y0);
+      T(
+        'hunt41-3d-drag-ceiling-light-follows-cursor',
+        picked && hy > CEIL_H * 0.8 && Math.abs(got - want) < Math.max(0.06, want * 0.03),
+        '拾取=' +
+          picked +
+          '（抓在 y=' +
+          (picked ? hy.toFixed(2) : '?') +
+          'ft，层高 ' +
+          CEIL_H.toFixed(2) +
+          '）· 拖 (60,20)px：挪了 ' +
+          got.toFixed(2) +
+          'ft · 那个高度上的光标位移 ' +
+          want.toFixed(2) +
+          'ft'
+      );
+      undoStep();
+      await wait(150);
+      state.items = keep41;
       selOnly(null);
       drawFurniture();
       sync3D();
