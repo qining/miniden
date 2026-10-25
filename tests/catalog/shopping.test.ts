@@ -181,3 +181,33 @@ describe('纯文本', () => {
     expect(shoppingText(l, { title: 'T', money })).toContain('· KIVIK 三人沙发 × 2（无价）');
   });
 });
+
+describe('地板用量（E19 轮㊲：界面上是同一张清单的最后一节，导出不能少了它）', () => {
+  const floors = [
+    { name: '自然橡木 · 人字拼', area: 10.43, unit: 'm²', areaText: '10.4 m²', rooms: ['客厅', '卧室'] },
+    { name: '白色哑光砖 60×60', area: 5.9, unit: 'm²', areaText: '5.9 m²', rooms: ['卫生间'] },
+  ];
+  it('CSV：合计行之前，每种地板一行（分类 =「地板」、数量 = 面积、备注写单位与用在哪几间）；合计行不变', () => {
+    const l = buildShoppingList([buy()]);
+    const lines = shoppingCSV(l, { currency: 'US$', floors }).slice(1).split('\r\n');
+    expect(lines[2]).toBe(
+      '"","地板","自然橡木 · 人字拼","10.43","","","","","按房间面积（m²），不含损耗；用在：客厅、卧室"'
+    );
+    expect(lines[3]).toBe('"","地板","白色哑光砖 60×60","5.9","","","","","按房间面积（m²），不含损耗；用在：卫生间"');
+    expect(lines[4]).toBe('"","","合计","1","","899","","",""');
+  });
+  it('纯文本：合计行之后单独一节，标题与界面同一说法', () => {
+    const t = shoppingText(buildShoppingList([buy()]), { title: 'T', money, floors }).split('\n');
+    expect(t.slice(-4)).toEqual([
+      '',
+      '地板用量（按房间面积，不含损耗）',
+      '· 自然橡木 · 人字拼 — 10.4 m²（客厅、卧室）',
+      '· 白色哑光砖 60×60 — 5.9 m²（卫生间）',
+    ]);
+  });
+  it('没铺地板（不传 / 空数组）：两种输出与以前逐字一致', () => {
+    const l = buildShoppingList([buy()]);
+    expect(shoppingCSV(l, { currency: 'US$', floors: [] })).toBe(shoppingCSV(l, { currency: 'US$' }));
+    expect(shoppingText(l, { title: 'T', money, floors: [] })).toBe(shoppingText(l, { title: 'T', money }));
+  });
+});

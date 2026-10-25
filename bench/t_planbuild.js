@@ -8159,6 +8159,159 @@ async function runPBTest() {
       );
     }
 
+    /* ===== 34. bug 猎 ㊲：采购清单导出 × 界面上同一张清单的「地板用量」那一节 ===== */
+    {
+      await enterEdit();
+      await pbReset();
+      const p34Plans = PLAN_REG.plans.length;
+      Q('#btnPlanNew').click();
+      await tick();
+      const p34Plan = PLAN_ID;
+      const fp34 = floorPts();
+      const X =
+          Math.min.apply(
+            null,
+            fp34.map((p) => p[0])
+          ) + 1,
+        Y =
+          Math.min.apply(
+            null,
+            fp34.map((p) => p[1])
+          ) + 1;
+      const wd = cmToWd(12);
+      pushUserWall(X, Y, X + 12, Y, 'w', wd);
+      pushUserWall(X + 12, Y, X + 12, Y + 10, 'w', wd);
+      pushUserWall(X + 12, Y + 10, X, Y + 10, 'w', wd);
+      pushUserWall(X, Y + 10, X, Y, 'w', wd);
+      geoChanged();
+      fit2DToContent();
+      drawWallEdit();
+      await tick();
+      await setTool('room');
+      await tap(X + 3, Y + 3);
+      Q('#rmFloor').value = 'oakHerring';
+      Q('#rmFloor').dispatchEvent(new Event('change'));
+      await tick();
+      if (wallEdit.on) {
+        Q('#btnWallEdit').click();
+        await tick();
+      }
+      const rowTxt = Array.from(document.querySelectorAll('#plRows .floorRow')).map((r) => r.textContent);
+      // 界面上那一行写的面积（独立读界面，不调实现）
+      const uiArea = (rowTxt[0] || '').match(/([\d.]+) m²/);
+      const grab = async () => {
+        const origClick = HTMLAnchorElement.prototype.click;
+        let dl = null;
+        HTMLAnchorElement.prototype.click = function () {
+          dl = { name: this.download, href: this.href };
+        };
+        Q('#plCsv').click();
+        HTMLAnchorElement.prototype.click = origClick;
+        const csv = dl ? await (await fetch(dl.href)).text() : '';
+        const clip = navigator.clipboard;
+        const origWrite = clip && clip.writeText;
+        let copied = null;
+        if (clip)
+          clip.writeText = async (t) => {
+            copied = t;
+          };
+        Q('#plCopy').click();
+        for (let i = 0; i < 10 && copied === null; i++) await tick();
+        if (clip) clip.writeText = origWrite;
+        return { csv, copied: copied || '' };
+      };
+
+      /* 34.1 #80 只铺了地板、还没摆家具：两个按钮都不能说「清单是空的」，导出里有那一行地板 */
+      const g1 = await grab();
+      const okEmpty = /自然橡木/.test(g1.csv) && /自然橡木/.test(g1.copied);
+
+      /* 34.2 #80 摆一件家具：CSV 里地板那一行（分类「地板」、数量 = 界面上那个面积）在合计行之前；纯文本最后一节是地板用量 */
+      addItem('kivik3');
+      await tick();
+      const g2 = await grab();
+      const lines = g2.csv.replace(/^\uFEFF/, '').split('\r\n');
+      const fl = lines.findIndex((l) => /^"","地板","自然橡木/.test(l)),
+        tot = lines.findIndex((l) => /^"","","合计"/.test(l));
+      const flArea = fl >= 0 ? (lines[fl].split('","')[3] || '').replace(/"/g, '') : '';
+      const tl = g2.copied.split('\n');
+      T(
+        'pb-hunt37-export-has-floor-usage',
+        rowTxt.length === 1 &&
+          !!uiArea &&
+          okEmpty &&
+          fl > 0 &&
+          tot > fl &&
+          +flArea === +uiArea[1] &&
+          /用在：/.test(lines[fl]) &&
+          tl.indexOf('地板用量（按房间面积，不含损耗）') > tl.findIndex((l) => /^采购 1 件/.test(l)) &&
+          /· 自然橡木.* — [\d.]+ m²（/.test(g2.copied),
+        '界面 ' +
+          JSON.stringify(rowTxt) +
+          ' · 只有地板时两个按钮都导出了=' +
+          okEmpty +
+          ' · CSV 地板行 #' +
+          fl +
+          '（数量 ' +
+          flArea +
+          '）合计行 #' +
+          tot +
+          ' · 文本最后几行 ' +
+          JSON.stringify(tl.slice(-3))
+      );
+
+      /* 34.3 #81 多层：家具是整栋一张单（每行标楼层），地板用量却只算当前这一层——加一层（带外壳）、二层那间也铺同一种，
+         在哪一层看都是两间的面积之和、两间都列出来（标楼层） */
+      const area1 = (floorUsage().get('oakHerring') || {}).area || 0;
+      Q('#lvCopyShell').checked = true;
+      addLevelUI('above');
+      await tick();
+      await enterEdit();
+      await setTool('room');
+      await tap(X + 3, Y + 3);
+      Q('#rmFloor').value = 'oakHerring';
+      Q('#rmFloor').dispatchEvent(new Event('change'));
+      await tick();
+      const onUp = floorUsage().get('oakHerring') || { area: 0, rooms: [] };
+      Q('#lvBtns button[data-lv="lv1"]').click();
+      await tick();
+      const onDown = floorUsage().get('oakHerring') || { area: 0, rooms: [] };
+      const rowDown = Array.from(document.querySelectorAll('#plRows .floorRow')).map((r) => r.textContent);
+      T(
+        'pb-hunt37-floor-usage-whole-house',
+        area1 > 0 &&
+          Math.abs(onUp.area - 2 * area1) < 1e-6 &&
+          Math.abs(onDown.area - 2 * area1) < 1e-6 &&
+          onDown.rooms.length === 2 &&
+          /一层/.test(onDown.rooms.join()) &&
+          /二层/.test(onDown.rooms.join()) &&
+          rowDown.length === 1 &&
+          /二层/.test(rowDown[0]),
+        '一层那间 ' +
+          area1.toFixed(2) +
+          'ft² · 在二层看 ' +
+          onUp.area.toFixed(2) +
+          ' · 回一层看 ' +
+          onDown.area.toFixed(2) +
+          '（' +
+          onDown.rooms.join('、') +
+          '）· 界面「' +
+          (rowDown[0] || '') +
+          '」'
+      );
+
+      /* 收尾：删掉这份户型 */
+      await enterEdit();
+      Q('#btnPlanDel').click();
+      await tick();
+      Q('#btnPlanDel').click();
+      await tick();
+      T(
+        'pb-hunt37-clean-exit',
+        PLAN_ID !== p34Plan && PLAN_REG.plans.length === p34Plans,
+        'plans ' + p34Plans + '→' + PLAN_REG.plans.length
+      );
+    }
+
     /* ===== 收尾：页面不得有未捕获异常 ===== */
     T('pb-no-page-errors', window.__ERRS.length === 0, window.__ERRS.slice(0, 3).join(' || '));
   } catch (e) {
