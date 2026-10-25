@@ -1061,7 +1061,13 @@ export const FLOWS = [
 
       await t.step('3D 俯瞰：两层叠起来，二层楼板在楼梯处开洞');
       await t.click('#btnDoll');
-      await t.waitFor(`state.view!=='2d' && three && three.staticGroup && !geoDirty3D`, 20000, '3D 建好');
+      /* 紧接着要点画布左上角的楼层条：加载遮罩（#loading3d 盖住整个画布区）在建完 80ms 后才撤，
+         只等 !geoDirty3D 会正好点在遮罩上（个人入口实测一次「点击目标不可达：最上层=loading3d」） */
+      await t.waitFor(
+        `state.view!=='2d' && three && three.staticGroup && !geoDirty3D && document.getElementById('loading3d').style.display==='none'`,
+        20000,
+        '3D 建好、加载遮罩已撤'
+      );
       await t.click(`#lvBtns button[data-lv="${up.id}"]`);
       await t.waitFor(`DOC.level===${JSON.stringify(up.id)}`, 6000, '3D 里切到二层');
       const g3 = await t.eval(

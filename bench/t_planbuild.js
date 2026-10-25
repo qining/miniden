@@ -7927,6 +7927,92 @@ async function runPBTest() {
       );
     }
 
+    /* ===== 32. bug 猎 ㉟：改层高 × 墙面点位的离地高（轮㉛ #71 的同一类：一条上限只写在点位面板一个入口上） ===== */
+    {
+      await enterEdit();
+      await pbReset();
+      const p32Plans = PLAN_REG.plans.length;
+      Q('#btnPlanNew').click();
+      await tick();
+      const p32Plan = PLAN_ID;
+      const fp32 = floorPts();
+      const X =
+          Math.min.apply(
+            null,
+            fp32.map((p) => p[0])
+          ) + 1,
+        Y =
+          Math.min.apply(
+            null,
+            fp32.map((p) => p[1])
+          ) + 1;
+      const wd = cmToWd(15);
+      const wTop = pushUserWall(X, Y, X + 16, Y, 'w', wd);
+      pushUserWall(X + 16, Y, X + 16, Y + 12, 'w', wd);
+      pushUserWall(X + 16, Y + 12, X, Y + 12, 'w', wd);
+      pushUserWall(X, Y + 12, X, Y, 'w', wd);
+      geoChanged();
+      fit2DToContent();
+      await tick();
+      const faceTop = Y + pbDrawnThick(effWalls().find((s) => s._id === wTop.id)) / 2;
+      // 北墙上：一个 30cm 的插座（对照组）+ 一个装在 250cm 的送风口（层高 268cm 时合法：点位面板的上限是 层高 − 6cm）
+      const oLow = pushUserOutlet(pointSnap(X + 5, faceTop + 0.2, 'std', 'auto'), 'std', 1, null);
+      const oHigh = pushUserOutlet(
+        pointSnap(X + 11, faceTop + 0.2, 'supplyVent', 'wall'),
+        'supplyVent',
+        1,
+        250 / 30.48
+      );
+      syncOutlets();
+      geoChanged();
+      if (wallEdit.on) {
+        Q('#btnWallEdit').click();
+        await tick();
+      }
+      drawFurniture();
+      await tick();
+      const symOf = (o) => pbSvg.querySelector('[data-outlet="' + o.id + '"].outletSym');
+      const flagged = (o) => !!symOf(o) && symOf(o).classList.contains('olTooHigh');
+      const pre = !!oLow && !!oHigh && Math.abs(oHigh.h * 30.48 - 250) < 1 && !flagged(oLow) && !flagged(oHigh);
+
+      /* 32.1 #78 层高 268→220cm：250cm 的送风口高过天花（3D 里面板飘在墙顶之上）→ 标出来、悬停说清、改层高的提示说出个数；
+         30cm 的插座不标 */
+      setLevelCeilUI(220);
+      await tick();
+      const msg = (Q('#toast') || {}).textContent || '';
+      const tt = symOf(oHigh) ? (symOf(oHigh).querySelector('title') || {}).textContent || '' : '';
+      T(
+        'pb-hunt35-points-above-ceiling-flagged',
+        pre && flagged(oHigh) && !flagged(oLow) && /天花/.test(tt) && /1 个点位.*天花/.test(msg),
+        '前提（两个点位都放上了、改之前都不标）=' +
+          pre +
+          ' · 层高 220cm 后：送风口（250cm）标了=' +
+          flagged(oHigh) +
+          '、插座（30cm）标了=' +
+          flagged(oLow) +
+          ' · 悬停「' +
+          tt +
+          '」· 提示「' +
+          msg +
+          '」'
+      );
+      setLevelCeilUI(268);
+      await tick();
+      T('pb-hunt35-flag-clears', !flagged(oHigh), '层高改回 268cm 后送风口还标着=' + flagged(oHigh));
+
+      /* 收尾：删掉这份户型 */
+      await enterEdit();
+      Q('#btnPlanDel').click();
+      await tick();
+      Q('#btnPlanDel').click();
+      await tick();
+      T(
+        'pb-hunt35-clean-exit',
+        PLAN_ID !== p32Plan && PLAN_REG.plans.length === p32Plans,
+        'plans ' + p32Plans + '→' + PLAN_REG.plans.length
+      );
+    }
+
     /* ===== 收尾：页面不得有未捕获异常 ===== */
     T('pb-no-page-errors', window.__ERRS.length === 0, window.__ERRS.slice(0, 3).join(' || '));
   } catch (e) {
