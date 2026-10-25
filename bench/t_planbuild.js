@@ -8509,6 +8509,124 @@ async function runPBTest() {
       );
     }
 
+    /* ===== 37. bug 猎 ㊷：换过类型的墙 / 窗（id 跨数组保留）× 编辑层按 id 前缀找实体 ===== */
+    {
+      await enterEdit();
+      await pbReset();
+      const p37Plans = PLAN_REG.plans.length;
+      Q('#btnPlanNew').click();
+      await tick();
+      const p37Plan = PLAN_ID;
+      const fp37 = floorPts();
+      const X =
+          Math.min.apply(
+            null,
+            fp37.map((p) => p[0])
+          ) + 1,
+        Y =
+          Math.min.apply(
+            null,
+            fp37.map((p) => p[1])
+          ) + 1;
+      const wd = cmToWd(15);
+      const wN = pushUserWall(X, Y, X + 16, Y, 'w', wd);
+      pushUserWall(X + 16, Y, X + 16, Y + 12, 'w', wd);
+      const wS1 = pushUserWall(X + 16, Y + 12, X + 10, Y + 12, 'w', wd);
+      const nS = pushUserWindow(X + 10, Y + 12, X + 5, Y + 12, wd);
+      pushUserWall(X + 5, Y + 12, X, Y + 12, 'w', wd);
+      pushUserWall(X, Y + 12, X, Y, 'w', wd);
+      geoChanged();
+      fit2DToContent();
+      await tick();
+      await setTool('select');
+      const vis37 = (sel) => {
+        const el = Q(sel);
+        return !!el && getComputedStyle(el).display !== 'none' && getComputedStyle(el).visibility !== 'hidden';
+      };
+
+      /* 37.1 #86 北墙换成窗（winFromWall 保留 id「w…」、实体搬进 windows 数组）→ 再点它：选得中、窗的工具条在、
+         「窗帘」按钮挂得上帘、Delete 真的删掉（以前 entById 按 id 前缀去 walls 里找 → 找不到：工具条空的、
+         窗的按钮全不起作用、Delete 什么都没删却说「已删除」） */
+      await tap(X + 8, Y);
+      Q('#wType').value = 'g';
+      Q('#wType').dispatchEvent(new Event('change'));
+      await tick();
+      wallEdit.sel = null;
+      updateWallBarFromSel();
+      await tap(X + 8, Y);
+      const selOk = !!wallEdit.sel && wallEdit.sel.id === wN.id && !!selWallSeg();
+      const winCtl = vis37('#winCtl');
+      Q('#wWinCurtain').click();
+      await tick();
+      const wEnt = (DOC.windows || []).find((w) => w.id === wN.id);
+      const curtained = !!(wEnt && wEnt.curtain);
+      key('Delete');
+      await tick();
+      const gone = !(DOC.windows || []).some((w) => w.id === wN.id) && !(DOC.walls || []).some((w) => w.id === wN.id);
+      T(
+        'pb-hunt42-converted-window-editable',
+        selOk && winCtl && curtained && gone,
+        '选得中=' + selOk + ' · 窗工具条在=' + winCtl + ' · 挂上窗帘=' + curtained + ' · Delete 真删掉=' + gone
+      );
+
+      /* 37.2 #86 反过来：画的窗（id「n…」）换成实墙 → 再点它：选得中、改厚度生效、Delete 真的删掉 */
+      await tap(X + 7.5, Y + 12);
+      Q('#wType').value = 'w';
+      Q('#wType').dispatchEvent(new Event('change'));
+      await tick();
+      wallEdit.sel = null;
+      updateWallBarFromSel();
+      await tap(X + 7.5, Y + 12);
+      const selOk2 = !!wallEdit.sel && wallEdit.sel.id === nS.id && !!selWallSeg();
+      Q('#wThick').value = '24';
+      Q('#wThick').dispatchEvent(new Event('change'));
+      await tick();
+      const wEnt2 = (DOC.walls || []).find((w) => w.id === nS.id);
+      const thickOk = !!wEnt2 && Math.abs(wEnt2.thick * 30.48 - 24) < 0.6;
+      key('Delete');
+      await tick();
+      const gone2 = !(DOC.walls || []).some((w) => w.id === nS.id) && !(DOC.windows || []).some((w) => w.id === nS.id);
+      T(
+        'pb-hunt42-converted-wall-editable',
+        selOk2 && thickOk && gone2,
+        '选得中=' + selOk2 + ' · 改厚度 24cm 生效=' + thickOk + ' · Delete 真删掉=' + gone2
+      );
+
+      /* 37.3 #87 墙换成窗之后再画一段墙：新墙的 id 不能与那扇（还叫「w…」的）窗撞上——nextId 以前只查本数组，
+         换走的正好是编号最大的那段墙时，下一段新墙就拿到同一个 id（之后两个实体按 id 互相遮挡：选中 / 删除 / 撤销键都串） */
+      const wLast = DOC.walls[DOC.walls.length - 1];
+      const lastId = wLast.id;
+      setSegType(wLast, 'g');
+      geoChanged();
+      await tick();
+      const wNew = pushUserWall(X + 2, Y + 3, X + 6, Y + 3, 'w', wd);
+      const allIds = DOC.walls.map((w) => w.id).concat(DOC.windows.map((w) => w.id));
+      T(
+        'pb-hunt42-next-wall-id-unique',
+        (DOC.windows || []).some((w) => w.id === lastId) &&
+          wNew.id !== lastId &&
+          new Set(allIds).size === allIds.length,
+        '换成窗的那段 ' +
+          lastId +
+          ' · 新墙 ' +
+          wNew.id +
+          ' · 墙 + 窗的 id 有重复=' +
+          (new Set(allIds).size !== allIds.length)
+      );
+
+      /* 收尾：删掉这份户型 */
+      await enterEdit();
+      Q('#btnPlanDel').click();
+      await tick();
+      Q('#btnPlanDel').click();
+      await tick();
+      T(
+        'pb-hunt42-clean-exit',
+        PLAN_ID !== p37Plan && PLAN_REG.plans.length === p37Plans,
+        'plans ' + p37Plans + '→' + PLAN_REG.plans.length
+      );
+    }
+
     /* ===== 收尾：页面不得有未捕获异常 ===== */
     T('pb-no-page-errors', window.__ERRS.length === 0, window.__ERRS.slice(0, 3).join(' || '));
   } catch (e) {

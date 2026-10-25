@@ -22,6 +22,26 @@ describe('blankDoc / nextId', () => {
     doc.walls.push({ id: 'w1', kind: 'wall', geom: seg(2) });
     expect(nextId(doc, 'wall')).toBe('w03');
   });
+
+  it('墙 ↔ 窗互转保留 id：新墙避开窗里那个「w…」、新窗避开墙里那个「n…」（E19 轮㊷）', () => {
+    const doc = blankDoc();
+    doc.walls.push({ id: 'w01', kind: 'wall', geom: seg() }, { id: 'w02', kind: 'wall', geom: seg(2) });
+    // w03 被换成了窗（winFromWall 把实体搬进 windows、id 不变）
+    doc.windows.push({
+      id: 'w03',
+      geom: seg(4),
+      wallId: null,
+      pos: 0.5,
+      width: 1,
+      sill: 2,
+      head: 7,
+      style: 'fixed',
+    } as never);
+    expect(nextId(doc, 'wall')).toBe('w04');
+    // 反过来：n01 被换成了墙
+    doc.walls.push({ id: 'n01', kind: 'wall', geom: seg(6) });
+    expect(nextId(doc, 'window')).toBe('n02');
+  });
 });
 
 describe('validate —— 拒绝非法文档', () => {
