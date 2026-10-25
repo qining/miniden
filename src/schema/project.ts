@@ -546,6 +546,10 @@ export function nextId(
                     : doc.runs) ?? [];
   let n = list.length + 1;
   const used = new Set(list.map((e) => e.id));
+  /* 墙 ↔ 窗互转在两个数组之间搬实体、保留 id（换成窗的那段墙还叫「w…」）：这两类的 id 要一起避开，
+     否则换走的正好是编号最大的那段墙时，下一段新墙拿到同一个 id，两个实体按 id 互相遮挡（E19 轮㊷） */
+  if (kind === 'wall') for (const e of doc.windows ?? []) used.add(e.id);
+  if (kind === 'window') for (const e of doc.walls ?? []) used.add(e.id);
   while (used.has(`${p}${String(n).padStart(2, '0')}`)) n++;
   return `${p}${String(n).padStart(2, '0')}`;
 }
