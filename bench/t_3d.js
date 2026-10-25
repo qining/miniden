@@ -2230,6 +2230,113 @@ async function run3DTest() {
         sm ? (smHad ? '旧镜面贴图已释放 · 新镜面已重烘' : '旧镜面没烘过') : '户型没有镜子（跳过）'
       );
     }
+    // ===== E19 轮㊵：3D 里拖离地件（S19 的 z）—— 拖动平面在它挂着的那个高度 =====
+    // 3D 拖动比 S19 早：拖的是「光标射线打到当前层地面的那一点」。挂在 2m 高的搁板，光标点在它身上，地面上那一点在它身后老远，
+    // 鼠标挪一点、地面上那一点挪得比搁板所在的那个高度多一大截 → 件跑得比光标快、越拖离光标越远。
+    // 独立量：同样两个屏幕点，各自打到「件底所在的那个水平面」的交点之差。
+    {
+      setView('3d');
+      setCamMode('doll');
+      await wait(300);
+      three.controls.target.set(CX3, 1, CY3);
+      three.cam.position.set(CX3, 14, CY3 + 14);
+      three.cam.fov = 45;
+      three.cam.updateProjectionMatrix();
+      three.controls.update();
+      const keep40 = state.items;
+      const u40 = uidSeq++;
+      const zFt = 200 / 30.48,
+        hFt = 30 / 30.48;
+      state.items = [
+        {
+          uid: u40,
+          custom: { name: '高处搁板', w: 80, d: 25, h: 30, color: '#8a7d6b' },
+          x: CX3,
+          y: CY3 + 1,
+          rot: 0,
+          z: zFt,
+        },
+      ];
+      selOnly(null);
+      drawFurniture();
+      sync3D();
+      await wait(400);
+      const cv40 = document.querySelector('#c3d'),
+        r40 = cv40.getBoundingClientRect();
+      const proj40 = (x, y, z) => {
+        three.cam.updateMatrixWorld(true);
+        const v = new THREE.Vector3(x, y, z).project(three.cam);
+        return [r40.left + (v.x * 0.5 + 0.5) * r40.width, r40.top + (-v.y * 0.5 + 0.5) * r40.height];
+      };
+      const onPlane = (sx, sy, yPlane) => {
+        three.cam.updateMatrixWorld(true);
+        const ndc = new THREE.Vector2(((sx - r40.left) / r40.width) * 2 - 1, -((sy - r40.top) / r40.height) * 2 + 1);
+        const rc = new THREE.Raycaster();
+        rc.setFromCamera(ndc, three.cam);
+        const p = new THREE.Vector3();
+        return rc.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), -yPlane), p) ? p : null;
+      };
+      const PE40 = (t, x, y, o) =>
+        cv40.dispatchEvent(
+          new PointerEvent(
+            t,
+            Object.assign(
+              {
+                bubbles: true,
+                cancelable: true,
+                clientX: x,
+                clientY: y,
+                pointerId: 1,
+                pointerType: 'mouse',
+                button: 0,
+                buttons: 1,
+                isPrimary: true,
+              },
+              o || {}
+            )
+          )
+        );
+      const it40 = state.items[0];
+      const [sx, sy] = proj40(it40.x, curElev() + zFt + hFt / 2, it40.y);
+      const picked = (pickFurniture({ clientX: sx, clientY: sy }) || {}).uid === u40;
+      const x0 = it40.x,
+        y0 = it40.y;
+      PE40('pointerdown', sx, sy);
+      await wait(80);
+      PE40('pointermove', sx + 30, sy + 20);
+      await wait(80);
+      PE40('pointermove', sx + 60, sy + 40);
+      await wait(80);
+      PE40('pointerup', sx + 60, sy + 40, { buttons: 0 });
+      await wait(150);
+      const a = onPlane(sx, sy, curElev() + zFt),
+        b = onPlane(sx + 60, sy + 40, curElev() + zFt);
+      const g0 = onPlane(sx, sy, curElev()),
+        g1 = onPlane(sx + 60, sy + 40, curElev());
+      const want = a && b ? Math.hypot(b.x - a.x, b.z - a.z) : NaN,
+        floorWay = g0 && g1 ? Math.hypot(g1.x - g0.x, g1.z - g0.z) : NaN,
+        got = Math.hypot(it40.x - x0, it40.y - y0);
+      T(
+        'hunt40-3d-drag-elevated-follows-cursor',
+        picked && Math.abs(got - want) < Math.max(0.06, want * 0.03),
+        '拾取=' +
+          picked +
+          ' · 拖 (60,40)px：挪了 ' +
+          got.toFixed(2) +
+          'ft · 件底那个高度上的光标位移 ' +
+          want.toFixed(2) +
+          'ft（按地面算是 ' +
+          floorWay.toFixed(2) +
+          'ft）'
+      );
+      undoStep();
+      await wait(150);
+      state.items = keep40;
+      selOnly(null);
+      drawFurniture();
+      sync3D();
+      await wait(200);
+    }
     // ===== S12：用户画的台面 run（3D 柜体 + 台面石板）=====
     // 按材质分桶会把 mesh 合并（parameters 消失、position 不可靠），所以用顶点数 + 桶包围盒。
     {
