@@ -4497,24 +4497,32 @@ function furnBoxes(){
   return out;
 }
 let ptBlocked=new Map();   // outletId → [挡住它的家具名]（bench / E2E 读它，界面读 class 与悬停提示）
+/* 轮㉟：高过天花的墙面类点位。点位面板把离地夹在「层高 − 6cm」以内（outletHeightOk），而改低层高 / 换成缺省更高的类型 /
+   台面改高都绕得过去，3D 里面板就飘在墙顶之上。与家具的「顶到天花」（#71）同一个落点：判据 + 如实标出，不替用户挪 */
+let ptTooHigh=new Set();
+function outletTooHigh(o){ return o.host!=='floor' && o.host!=='ceiling' && o.h > CEIL_H-0.2+0.02; }
 function updatePointBlocked(){
   if(!gPts || CALIB) return;
   if(gPtBlk) gPtBlk.innerHTML='';
   const boxes=furnBoxes(), byId=new Map(boxes.map(b=>[b.id,b]));
-  const next=new Map();
+  const next=new Map(), nextHigh=new Set();
   for(const o of effOutlets()){
     const def=ptDef(o.kind);
     const g=gPts.querySelector('[data-outlet="'+o.id+'"].outletSym');
     const ids = def && def.blocks ? GEO_PTS.pointBlockers({x:o.x, y:o.y, rot:o.rot||0, h:o.h, host:o.host,
       plateW:cmFt(def.plate[0]), plateH:cmFt(def.plate[1]), blocks:def.blocks}, boxes) : [];
+    const high=outletTooHigh(o);
     if(g){
       g.classList.toggle('olBlocked', ids.length>0);
+      g.classList.toggle('olTooHigh', high);
       const t=g.querySelector('title');
       const base=ptName(o.kind)+' · '+OUTLET_HOST_NAMES[o.host]+(o.host==='floor'||o.host==='ceiling' ? '' : ' · 离地 '+Math.round(o.h*30.48)+'cm');
-      if(t) t.textContent = ids.length ? base+' · 被「'+ids.map(id=>(byId.get(id)||{}).name||'?').join('」「')+'」挡住' : base;
+      if(t) t.textContent = base+(ids.length ? ' · 被「'+ids.map(id=>(byId.get(id)||{}).name||'?').join('」「')+'」挡住' : '')
+        +(high ? ' · 高过天花了（层高 '+Math.round(CEIL_H*30.48)+'cm，墙面点位最高 '+Math.round((CEIL_H-0.2)*30.48)+'cm）' : '');
     }
-    if(!ids.length) continue;
-    next.set(o.id, ids.map(id=>(byId.get(id)||{}).name||'?'));
+    if(high) nextHigh.add(o.id);
+    if(!ids.length && !high) continue;
+    if(ids.length) next.set(o.id, ids.map(id=>(byId.get(id)||{}).name||'?'));
     // 晕：红色描边 + 半透明红底，画在家具之上（沙发盖住插座时图例本身就被盖住了，晕必须看得见）
     if(gPtBlk){
       const sc=outletSymbolCenters(o);
@@ -4525,7 +4533,7 @@ function updatePointBlocked(){
       drawPointSymbol(gg, o, {col:'#ff4d4f', sw:1.4});
     }
   }
-  ptBlocked=next;
+  ptBlocked=next; ptTooHigh=nextHigh;
 }
 /* S12：台面/柜体 run 的 2D 图例（柜体带 + 前沿线 + 模块符号）。
    CALIB 不画（新视觉元素不进校准视图，§1.1）。 */
@@ -6784,9 +6792,11 @@ function setLevelCeilUI(cm){
   CEIL_H=h; saveGeo(); geoDirty3D=true; build2D(); levelBarUI();
   shiftCamElev(curElev()-elev0);   // 地下室改层高时它自己的标高会变（地面层永远在 0）
   if(is3D()) schedule3DRebuild();
-  // 改低了层高：顶到天花的件已经标了红框（drawFurniture 同一个判据），这里把件数说出来（bug 猎 #71）
+  // 改低了层高：顶到天花的件 / 高过天花的墙面点位已经标了红框（drawFurniture / updatePointBlocked 同一个判据），这里把个数说出来（bug 猎 #71 / #78）
   let nHit=0; for(const w of furnWhy.values()) if(w.includes('tooTall')) nHit++;
-  if(nHit) toast('层高改成 '+Math.round(cm)+'cm 后，这一层有 '+nHit+' 件家具顶到天花了（标了红框）：把离地调低，或换矮一点的', 7000);
+  const nPt=ptTooHigh.size;
+  if(nHit || nPt) toast('层高改成 '+Math.round(cm)+'cm 后，这一层有 '+[nHit ? nHit+' 件家具顶到天花' : '', nPt ? nPt+' 个点位高过天花' : ''].filter(Boolean).join('、')
+    +'了（标了红框）：把离地调低'+(nHit ? '，或换矮一点的' : ''), 7000);
   return true;
 }
 /* ---------- S17：楼梯（属于它起步的那一层，升到上一层；几何在 src/geo/stairs.ts） ---------- */
