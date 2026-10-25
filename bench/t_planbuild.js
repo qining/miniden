@@ -8415,6 +8415,100 @@ async function runPBTest() {
       );
     }
 
+    /* ===== 36. bug 猎 ㊴：房间轮廓重算（轮㊱）× 隔墙挪过了标签点 ===== */
+    {
+      await enterEdit();
+      await pbReset();
+      const p36Plans = PLAN_REG.plans.length;
+      Q('#btnPlanNew').click();
+      await tick();
+      const p36Plan = PLAN_ID;
+      const fp36 = floorPts();
+      const X =
+          Math.min.apply(
+            null,
+            fp36.map((p) => p[0])
+          ) + 1,
+        Y =
+          Math.min.apply(
+            null,
+            fp36.map((p) => p[1])
+          ) + 1;
+      const AW = 12,
+        BW = 7,
+        RH = 10,
+        wd = cmToWd(12);
+      pushUserWall(X, Y, X + AW + BW, Y, 'w', wd);
+      pushUserWall(X + AW + BW, Y, X + AW + BW, Y + RH, 'w', wd);
+      pushUserWall(X + AW + BW, Y + RH, X, Y + RH, 'w', wd);
+      pushUserWall(X, Y + RH, X, Y, 'w', wd);
+      const wMid = pushUserWall(X + AW, Y, X + AW, Y + RH, 'w', wd);
+      geoChanged();
+      fit2DToContent();
+      drawWallEdit();
+      await tick();
+      const t = pbDrawnThick(effWalls().find((s) => s._id === wMid.id));
+      await setTool('room');
+      await tap(X + 3, Y + 3);
+      const rA = (DOC.rooms || [])[(DOC.rooms || []).length - 1];
+      const pos0 = rA ? rA.pos.slice() : null;
+      const moveMid = (x) => {
+        const w = DOC.walls.find((e) => e.id === wMid.id);
+        w.geom.x1 = x;
+        w.geom.x2 = x;
+        geoChanged();
+      };
+
+      /* 36.1 对照：隔墙往 A 里挪 2ft（标签点还在 A 里）→ 轮廓变小，名字不跳 */
+      moveMid(X + AW - 2);
+      await tick();
+      const a1 = rA ? roomArea(rA) : 0,
+        want1 = (AW - 2 - t) * (RH - t);
+      T(
+        'pb-hunt39-shrink-keeps-label',
+        !!rA && Math.abs(a1 - want1) / want1 < 0.01 && JSON.stringify(rA.pos) === JSON.stringify(pos0),
+        '面积 ' +
+          a1.toFixed(2) +
+          'ft²（独立量 ' +
+          want1.toFixed(2) +
+          '）· 标签点没动=' +
+          (rA && JSON.stringify(rA.pos) === JSON.stringify(pos0))
+      );
+
+      /* 36.2 #83 隔墙一直挪到 A 的标签点另一边（A 只剩 3ft 宽）：标签点落进了隔壁那块。A 要收成剩下那 3ft，
+         不能把隔壁（变成 16ft 宽的那块）认成自己——以前「过半落在对方里」就算同一间：上一步 10ft 宽的 A 有 7/10 在隔壁那块里；
+         也不能停在旧轮廓上不动。用户建的房间标签点跟着挪进新轮廓 */
+      moveMid(X + 3);
+      await tick();
+      const a2 = rA ? roomArea(rA) : 0,
+        want2 = (3 - t) * (RH - t),
+        wrong = (AW + BW - 3 - t) * (RH - t);
+      T(
+        'pb-hunt39-wall-past-label-no-neighbor-capture',
+        !!rA && Math.abs(a2 - want2) / want2 < 0.01 && ptInPoly(rA.pos, rA.poly),
+        '面积 ' +
+          a2.toFixed(2) +
+          'ft²（剩下那块的独立量 ' +
+          want2.toFixed(2) +
+          '；隔壁那块 ' +
+          wrong.toFixed(2) +
+          '）· 标签点在轮廓里=' +
+          (rA && ptInPoly(rA.pos, rA.poly))
+      );
+
+      /* 收尾：删掉这份户型 */
+      await enterEdit();
+      Q('#btnPlanDel').click();
+      await tick();
+      Q('#btnPlanDel').click();
+      await tick();
+      T(
+        'pb-hunt39-clean-exit',
+        PLAN_ID !== p36Plan && PLAN_REG.plans.length === p36Plans,
+        'plans ' + p36Plans + '→' + PLAN_REG.plans.length
+      );
+    }
+
     /* ===== 收尾：页面不得有未捕获异常 ===== */
     T('pb-no-page-errors', window.__ERRS.length === 0, window.__ERRS.slice(0, 3).join(' || '));
   } catch (e) {
