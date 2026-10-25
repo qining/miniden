@@ -8312,6 +8312,109 @@ async function runPBTest() {
       );
     }
 
+    /* ===== 35. bug 猎 ㊳：墙换类型（窗 / 开口 / 门洞）× 挂在它上面的点位 ===== */
+    {
+      await enterEdit();
+      await pbReset();
+      const p35Plans = PLAN_REG.plans.length;
+      Q('#btnPlanNew').click();
+      await tick();
+      const p35Plan = PLAN_ID;
+      const fp35 = floorPts();
+      const X =
+          Math.min.apply(
+            null,
+            fp35.map((p) => p[0])
+          ) + 1,
+        Y =
+          Math.min.apply(
+            null,
+            fp35.map((p) => p[1])
+          ) + 1;
+      const wd = cmToWd(15);
+      const wN = pushUserWall(X, Y, X + 16, Y, 'w', wd);
+      const wE = pushUserWall(X + 16, Y, X + 16, Y + 12, 'w', wd);
+      pushUserWall(X + 16, Y + 12, X, Y + 12, 'w', wd);
+      pushUserWall(X, Y + 12, X, Y, 'w', wd);
+      geoChanged();
+      fit2DToContent();
+      await tick();
+      const tN = pbDrawnThick(effWalls().find((s) => s._id === wN.id)) / 2,
+        tE = pbDrawnThick(effWalls().find((s) => s._id === wE.id)) / 2;
+      const oN = pushUserOutlet(pointSnap(X + 8, Y + tN + 0.2, 'std', 'wall'), 'std', 1, null);
+      const oE = pushUserOutlet(pointSnap(X + 16 - tE - 0.2, Y + 6, 'std', 'wall'), 'std', 1, null);
+      syncOutlets();
+      geoChanged();
+      await tick();
+      const ids = () => (DOC.outlets || []).map((o) => o.id);
+      const pre = !!oN && !!oE && oN.hostId === wN.id && oE.hostId === wE.id;
+
+      /* 35.1 #82 北墙改成「窗」：挂在它上面的插座不能留在窗洞里（以前留着：宿主不再是实墙 → 派生位姿算不出来，
+         缓存坐标原地不动，2D / 3D 里它悬在窗上）；隔壁那面墙上的不动；提示说出去掉了几个；一步撤销连插座一起回来 */
+      await setTool('select');
+      await tap(X + 4, Y);
+      const selN = !!wallEdit.sel && wallEdit.sel.id === wN.id;
+      Q('#wType').value = 'g';
+      Q('#wType').dispatchEvent(new Event('change'));
+      await tick();
+      const after = ids();
+      const msg = (Q('#wMsg') || {}).textContent || '';
+      const isWin = (DOC.windows || []).some((w) => w.id === wN.id);
+      undoStep();
+      await tick();
+      const back = ids();
+      T(
+        'pb-hunt38-wall-to-window-drops-its-points',
+        pre &&
+          selN &&
+          isWin &&
+          !after.includes(oN.id) &&
+          after.includes(oE.id) &&
+          /1 个点位/.test(msg) &&
+          back.includes(oN.id) &&
+          back.includes(oE.id) &&
+          (DOC.walls || []).some((w) => w.id === wN.id),
+        '前提=' +
+          pre +
+          ' · 选中北墙=' +
+          selN +
+          ' · 改成窗=' +
+          isWin +
+          ' · 之后点位 ' +
+          JSON.stringify(after) +
+          ' · 提示「' +
+          msg.slice(0, 40) +
+          '」· 撤销后 ' +
+          JSON.stringify(back)
+      );
+
+      /* 35.2 #82 改成「开口」也一样（开口上挂不了插座）；撤销回来 */
+      await tap(X + 4, Y);
+      Q('#wType').value = 'o';
+      Q('#wType').dispatchEvent(new Event('change'));
+      await tick();
+      const afterO = ids();
+      undoStep();
+      await tick();
+      T(
+        'pb-hunt38-wall-to-opening-drops-its-points',
+        !afterO.includes(oN.id) && afterO.includes(oE.id) && ids().includes(oN.id),
+        '改成开口后点位 ' + JSON.stringify(afterO) + ' · 撤销后 ' + JSON.stringify(ids())
+      );
+
+      /* 收尾：删掉这份户型 */
+      await enterEdit();
+      Q('#btnPlanDel').click();
+      await tick();
+      Q('#btnPlanDel').click();
+      await tick();
+      T(
+        'pb-hunt38-clean-exit',
+        PLAN_ID !== p35Plan && PLAN_REG.plans.length === p35Plans,
+        'plans ' + p35Plans + '→' + PLAN_REG.plans.length
+      );
+    }
+
     /* ===== 收尾：页面不得有未捕获异常 ===== */
     T('pb-no-page-errors', window.__ERRS.length === 0, window.__ERRS.slice(0, 3).join(' || '));
   } catch (e) {
