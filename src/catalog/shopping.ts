@@ -178,9 +178,25 @@ export function csvCell(v: string | number | null | undefined): string {
   return '"' + s.replace(/"/g, '""') + '"';
 }
 
+/** 地板用量（S16：按地板预设汇总的房间面积）。界面上它是同一张清单的最后一节，导出不能少了它（E19 轮㊲） */
+export interface ShopFloor {
+  /** 预设名（「自然橡木 · 人字拼」） */
+  name: string;
+  /** 面积（数，单位见 unit）——CSV 的「数量」列放它，表格里能直接加 */
+  area: number;
+  /** 面积单位（'m²' / 'sq ft'） */
+  unit: string;
+  /** 与界面同一种写法的面积（「10.4 m²」），纯文本用 */
+  areaText: string;
+  /** 用在哪几间 */
+  rooms: string[];
+}
+
 export interface CsvOpts {
   /** 单价列的币种标签（'US$' / 'CA$'） */
   currency: string;
+  /** 地板用量（可选）：排在合计行之前，分类 =「地板」、数量 = 面积 */
+  floors?: readonly ShopFloor[];
 }
 
 /** CSV：带 BOM（Excel 打开中文不乱码）、CRLF 行尾；最后一行是合计（备注列 = 合计尾巴） */
@@ -203,6 +219,12 @@ export function shoppingCSV(list: ShopList, opts: CsvOpts): string {
       .join('；');
     lines.push([r.level, r.cat, r.name, r.qty, r.unit, r.subtotal, r.dims, r.url, note].map(csvCell).join(','));
   }
+  for (const f of opts.floors || [])
+    lines.push(
+      ['', '地板', f.name, f.area, '', '', '', '', `按房间面积（${f.unit}），不含损耗；用在：${f.rooms.join('、')}`]
+        .map(csvCell)
+        .join(',')
+    );
   lines.push(['', '', '合计', list.buy, '', list.total, '', '', shoppingTail(list).join('；')].map(csvCell).join(','));
   return '\uFEFF' + lines.join('\r\n') + '\r\n';
 }
@@ -211,6 +233,8 @@ export interface TextOpts {
   title: string;
   /** 金额格式化（调用方给，带币种符号，如 US$69.99） */
   money: (v: number) => string;
+  /** 地板用量（可选）：合计行之后单独一节，与界面同一个标题 */
+  floors?: readonly ShopFloor[];
 }
 
 /** 纯文本（贴进聊天 / 备忘录）：一件一行，多层时按楼层分组；≈ / * 的含义写在合计尾巴里 */
@@ -238,5 +262,9 @@ export function shoppingText(list: ShopList, opts: TextOpts): string {
     `采购 ${list.buy} 件 · 合计约 ${list.approx ? '≈' : ''}${opts.money(list.total)}` +
       (tail.length ? `（${tail.join('、')}）` : '')
   );
+  if (opts.floors && opts.floors.length) {
+    L.push('', '地板用量（按房间面积，不含损耗）');
+    for (const f of opts.floors) L.push(`· ${f.name} — ${f.areaText}（${f.rooms.join('、')}）`);
+  }
   return L.join('\n');
 }
