@@ -241,9 +241,28 @@ export function buildGrid(inp: RegionInput): Grid | null {
       for (let i = i0; i <= i1; i++) if (pointInPolygon([cx(i), cy(j)], poly)) block[j * w + i] = 1;
   }
   if (inp.bounds && inp.bounds.length >= 3) {
+    /* 逐行扫描：与逐格 pointInPolygon 同一个奇偶判据、同一个交点公式（逐格结果一致，vitest 守着），
+       但每行只算一次交点。逐格判是 格数 × 边数：内置户型（1 英寸一格、地板轮廓 20 来条边）一次建栅格
+       ~70ms，墙一改就要重建（轮㊱ 房间轮廓跟着墙走），这一步占了九成。 */
     const b = inp.bounds;
-    for (let j = 0; j < h; j++)
-      for (let i = 0; i < w; i++) if (!pointInPolygon([cx(i), cy(j)], b)) block[j * w + i] = 1;
+    const xs: number[] = [];
+    for (let j = 0; j < h; j++) {
+      const y = cy(j);
+      xs.length = 0;
+      for (let a = 0, c = b.length - 1; a < b.length; c = a++) {
+        const [xa, ya] = b[a],
+          [xc, yc] = b[c];
+        if (ya > y !== yc > y) xs.push(((xc - xa) * (y - ya)) / (yc - ya) + xa);
+      }
+      xs.sort((p, q) => p - q);
+      // 格心在多边形里 ⇔ 格心右边（x < 交点）的交点个数为奇数；k = 已经不在格心右边的交点个数
+      let k = 0;
+      for (let i = 0; i < w; i++) {
+        const x = cx(i);
+        while (k < xs.length && !(x < xs[k])) k++;
+        if ((xs.length - k) % 2 === 0) block[j * w + i] = 1;
+      }
+    }
   }
   return { x0, y0, cell, w, h, block, lines: faceLines(inp.segs, inp.bounds) };
 }
