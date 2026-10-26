@@ -241,6 +241,7 @@
   #hint{
     position:absolute; left:12px; bottom:10px; font-size:12px; color:var(--muted);
     background:var(--hint-bg); padding:6px 10px; border-radius:6px; pointer-events:none; line-height:1.6;
+    max-width:calc(100% - 280px);   /* S23：别伸到右下角「采购 N 件」底下（提示行末尾的「? 全部快捷键」被盖住 = 看不见） */
   }
   /* 编辑墙体的提示 / 错误：与 #hint 共用画布左下角那一个位（两者不会同时需要）。
      以前它挤在工具条末尾 flex:1，1700px 窗口下被压成 9px 宽 —— 错误提示等于没有（R10：零反馈 = 缺陷）。 */
@@ -290,6 +291,15 @@
   #plExport{display:flex; gap:6px; margin:0 0 6px;}
   #plExport .btn{padding:2px 8px; font-size:11px;}
   #shopModal{position:fixed; inset:0; background:rgba(8,9,12,var(--o-dim)); z-index:62; align-items:center; justify-content:center;}
+  #keysModal{position:fixed; inset:0; background:rgba(8,9,12,var(--o-dim)); z-index:63; align-items:center; justify-content:center;}
+  #keysDlg{width:760px; max-width:94vw; max-height:88vh; overflow:auto; background:var(--dlg-bg); border:1px solid var(--dlg-line); border-radius:10px; padding:16px 24px; font-size:13px; color:var(--dlg-text); box-shadow:0 14px 60px rgba(0,0,0,.55);}
+  #keysDlg h3{margin:0 0 4px; font-size:14px; color:var(--dlg-title);}
+  #keysBody{display:grid; grid-template-columns:1fr 1fr; gap:4px 28px; margin:8px 0;}
+  #keysBody h4{grid-column:1/-1; margin:10px 0 2px; font-size:12px; color:var(--muted); font-weight:600;}
+  #keysBody .kr{display:flex; gap:10px; align-items:baseline; line-height:1.55;}
+  #keysBody .kk{flex:0 0 136px; text-align:right; white-space:nowrap;}
+  #keysBody kbd{display:inline-block; min-width:14px; padding:0 5px; margin-left:2px; border:1px solid var(--line); border-bottom-width:2px; border-radius:4px; background:var(--panel2); font:11px/1.6 ui-monospace,Menlo,monospace; text-align:center;}
+  #hint a.keysLink{color:var(--accent,#e0a458); cursor:pointer; text-decoration:underline; pointer-events:auto; white-space:nowrap;}   /* #hint 整块 pointer-events:none，链接自己要接点击 */
   #shopDlg{width:560px; max-width:92vw; background:var(--dlg-bg); border:1px solid var(--dlg-line); border-radius:10px; padding:16px 24px; font-size:13px; color:var(--dlg-text); box-shadow:0 14px 60px rgba(0,0,0,.55);}
   #shopDlg h3{margin:0 0 8px; font-size:14px; color:var(--dlg-title);}
   #shopText{width:100%; height:300px; margin:8px 0; font:12px/1.5 ui-monospace,Menlo,monospace; background:var(--panel2); color:var(--text); border:1px solid var(--line); border-radius:6px; padding:8px; box-sizing:border-box; resize:vertical;}
@@ -601,6 +611,12 @@
     <button class="btn" id="imgOk">导入并替换户型</button>
   </div>
 </div></div>
+<div id="keysModal" style="display:none"><div id="keysDlg">
+  <h3>键盘 / 鼠标</h3>
+  <div class="muted">平面图、3D 俯瞰、室内三个视图一个口径：WASD 管镜头，方向键挪选中的东西；Shift = 约束 / 大一步，Alt = 不吸附，Ctrl/⌘ = 命令。按 <kbd>?</kbd> 打开 / 关闭这张表。</div>
+  <div id="keysBody"></div>
+  <div class="dxfBtns"><button class="btn" id="keysClose">关闭</button></div>
+</div></div>
 <div id="shopModal" style="display:none"><div id="shopDlg">
   <h3>采购清单</h3>
   <div class="muted" id="shopWhy"></div>
@@ -683,7 +699,7 @@
         <button class="btn danger" id="lvDel">删除这一层</button>
       </div>
     </div>
-    <div id="hint">拖动=移动 · 圆点手柄/R键=旋转（按住Shift自由角度）· D=复制 · Delete=删除 · 滚轮=缩放 · 拖空白=平移<br><b>Shift+点 / Shift+拖空白 = 多选</b> · 红色描边 = 与其他家具重叠</div>
+    <div id="hint">拖家具 = 移动（Shift 锁横竖 · Alt 不贴墙）· R / [ ] = 转 · Ctrl/⌘+D = 复制 · Delete = 删除 · 方向键 = 挪 1cm<br>WASD / 右键拖 = 平移 · 滚轮 = 缩放 · <b>Shift+点 / Shift+拖空白 = 多选</b> · 红色描边 = 重叠 · <a class="keysLink">? 全部快捷键</a></div>
     <div id="wMsg"></div>
     <div id="totals"></div>
     <div id="loading3d" style="display:none">
@@ -3958,6 +3974,10 @@ svg.addEventListener('pointerdown', ev=>{
   if(lvMove && ev.button===0){ lvMove.drag={last:svgPoint(ev), cX:ev.clientX, cY:ev.clientY, moved:false}; svg.setPointerCapture(ev.pointerId); ev.preventDefault(); return; }   // S17b
   if(imgMove && ev.button===0){ imgMoveDown(ev); ev.preventDefault(); return; }
   if(meas.on && ev.button===0){ measClick(svgPoint(ev), ev.shiftKey); ev.preventDefault(); return; }
+  if(!wallEdit.on && (ev.button===1 || ev.button===2)){   // S23 K8：右键 / 中键拖 = 平移（以前摆家具时右键弹浏览器菜单）
+    drag={mode:'pan', px:ev.clientX, py:ev.clientY, vx:vb.x, vy:vb.y, k:1/svg.getScreenCTM().a};
+    svg.setPointerCapture(ev.pointerId); ev.preventDefault(); return;
+  }
   if(wallEdit.on){ wallEditDown(ev); return; }
   const rh = ev.target.closest('.rotHandle');
   const fg = ev.target.closest('.furn');
@@ -3974,7 +3994,7 @@ svg.addEventListener('pointerdown', ev=>{
     const inGroup = selUids().length>1 && selUids().includes(uid);
     if(inGroup) selected=uid; else selOnly(uid);
     const others = inGroup ? selItems().filter(m=>m.uid!==uid).map(m=>({it:m, ox:m.x-it.x, oy:m.y-it.y})) : [];
-    drag={mode:'move', uid, dx:it.x-p[0], dy:it.y-p[1], moved:false, undoKey:'drag:move:'+uid, others, collapse:inGroup, cX:ev.clientX, cY:ev.clientY};
+    drag={mode:'move', uid, dx:it.x-p[0], dy:it.y-p[1], x0:it.x, y0:it.y, moved:false, undoKey:'drag:move:'+uid, others, collapse:inGroup, cX:ev.clientX, cY:ev.clientY};
     fg.classList.add('dragging');
     svg.setPointerCapture(ev.pointerId);
     drawFurniture();
@@ -4027,15 +4047,17 @@ svg.addEventListener('pointermove', ev=>{
     if(!drag.moved && drag.cX!=null && Math.hypot(ev.clientX-drag.cX, ev.clientY-drag.cY) < 5) return;
     markDragGesture(drag, drag.undoKey);
     // S18：贴墙吸附（Alt 按住 = 不吸）；吸上了就用精确坐标（取到 0.05ft 网格会离开墙皮）。拖整组时只按被拖的这件吸，其余同位移跟着走
-    const sn=snapItemPos(it, itemSpec(it), p[0]+drag.dx, p[1]+drag.dy, SNAP_PX/pxPerFt(), ev.altKey);
+    let tx=p[0]+drag.dx, ty=p[1]+drag.dy;
+    if(ev.shiftKey){ if(Math.abs(tx-drag.x0) >= Math.abs(ty-drag.y0)) ty=drag.y0; else tx=drag.x0; }   // S23：Shift = 锁横 / 竖（锁住时不贴墙，免得被吸离那条线）
+    const sn=snapItemPos(it, itemSpec(it), tx, ty, SNAP_PX/pxPerFt(), ev.altKey || ev.shiftKey);
     if(sn.faces.length){ it.x=sn.x; it.y=sn.y; }
-    else { it.x = Math.round((p[0]+drag.dx)*20)/20; it.y = Math.round((p[1]+drag.dy)*20)/20; }
+    else { it.x = (ev.shiftKey && tx===drag.x0) ? drag.x0 : Math.round(tx*20)/20; it.y = (ev.shiftKey && ty===drag.y0) ? drag.y0 : Math.round(ty*20)/20; }   // 锁住的那一维原样不动（不取到 0.05ft 网格）
     drag.snapFaces = sn.faces;
     for(const o of drag.others||[]){ o.it.x=FT4(it.x+o.ox); o.it.y=FT4(it.y+o.oy); }
   } else if(drag.mode==='rotate'){
     markDragGesture(drag, drag.undoKey);
     let a = Math.atan2(p[0]-drag.cx, -(p[1]-drag.cy))*180/Math.PI; // handle在-y方向
-    if(!ev.shiftKey) a = Math.round(a);          // 默认 1° 吸附；按住 Shift 完全连续（0.1°）
+    a = ev.altKey ? a : ev.shiftKey ? Math.round(a/15)*15 : Math.round(a);   // S23：默认 1° 一格；Shift = 15° 一格；Alt = 自由（0.1°）。以前 Shift = 自由
     it.rot = Math.round(a*10)/10;
   }
   drawFurniture();
@@ -4142,6 +4164,11 @@ window.addEventListener('keydown', ev=>{
   if(proToolsOpen && ev.key==='Escape' && !['INPUT','SELECT','TEXTAREA'].includes(tag)){ setProTools(false); $('#btnMore').focus(); return; }
   const frEl=$('#firstRun');
   if(frEl && frEl.style.display!=='none' && ev.key==='Escape'){ closeFirstRun(); return; }
+  // S23：快捷键面板（? 开关；它开着时键盘归它）；镜头 / 视图 / 楼层键三个视图一个口径（输入框里、对话框开着时不作用）
+  const inField=['INPUT','SELECT','TEXTAREA'].includes(tag);
+  if(!inField && ev.key==='?'){ toggleKeysPanel(); ev.preventDefault(); return; }
+  if(keysPanelOpen()){ if(ev.key==='Escape') toggleKeysPanel(false); return; }
+  if(!inField && !modalOpen() && navKey(ev)){ ev.preventDefault(); return; }
   if(wallEdit.on && state.view==='2d'){
     if(['INPUT','SELECT','TEXTAREA'].includes(tag)) return; // 输入框正常输入；按钮焦点不挡编辑快捷键
     ev.stopPropagation();
@@ -4159,7 +4186,7 @@ window.addEventListener('keydown', ev=>{
       return;
     }
     if(ev.key.startsWith('Arrow') && wallEdit.sel){
-      const stepFt=(ev.shiftKey?5:1)/30.48;   // 1cm / 5cm
+      const stepFt=(ev.shiftKey?10:1)/30.48;   // S23：1cm / Shift 10cm（家具、墙、窗、门、洁具、点位、整层、底图一个步长；以前墙这边 Shift = 5cm）
       if(wallEdit.sel.kind==='door'){
         const sign=(ev.key==='ArrowRight'||ev.key==='ArrowDown')?1:-1;
         if(nudgeDoor(sign, stepFt)){ ev.preventDefault(); return; }
@@ -4200,6 +4227,15 @@ window.addEventListener('keydown', ev=>{
           f.x1+=dx; f.x2+=dx; f.y1+=dy; f.y2+=dy; geoChanged(); ev.preventDefault(); return; }
       }
     }
+    // S23 K6：洁具也吃 R / [ ]（以前只能在框里输角度）；整数度，一次一步撤销
+    if(wallEdit.sel && wallEdit.sel.kind==='fx' && !ev.metaKey && !ev.ctrlKey && (rotKey(ev) || bracketKey(ev))){
+      const f=selFixture();
+      if(f){ const d = rotKey(ev) ? (ev.shiftKey?-15:15) : bracketKey(ev)*(ev.shiftKey?15:1);
+        const v=(((f.rot||0)+d)%360+360)%360;
+        pushUndo('fxRot:'+f.id, true); if(v===0){ if(f.rot) delete f.rot; } else f.rot=v;
+        geoChanged(); updateWallBarFromSel(); wMsg('旋转 '+v+'°（R = 15°，[ ] = 1°）'); }
+      ev.preventDefault(); return;
+    }
     if(ev.key==='Backspace' && wallEdit.drawPts.length){ wallEdit.drawPts.pop(); wallEdit.hover=null; drawWallEdit(); ev.preventDefault(); return; }
     if(ev.key==='Enter'){
       ev.preventDefault(); // 防止焦点按钮被回车再次触发
@@ -4225,25 +4261,84 @@ window.addEventListener('keydown', ev=>{
   if(tag==='BUTTON' && ['dxfModal','pdfModal','imgModal','docModal','ptModal','photoModal','shopModal']
       .some((id)=>{ const m = document.getElementById(id); return m && m.style.display && m.style.display!=='none'; })) return;
   if(ev.key==='Escape' && selected!=null){ selOnly(null); drawFurniture(); return; }   // S20：Esc = 全不选（不改场景，光追中也允许）
+  /* S23 K1：室内视角里改家具的快捷键一律不作用——方向键 / WASD 在走路，以前按 D（向右走）同时在复制选中的家具（按住不放复制一串），
+     方向键边走边挪它，R / Delete 作用在可能根本看不见的那件上 */
+  if(state.view==='fp') return;
+  if(ev.metaKey || ev.ctrlKey){ if(!((ev.key==='d'||ev.key==='D') && selected!=null)) return; }   // Ctrl/⌘ 只认复制（Ctrl+R 是浏览器刷新，不该顺手转了家具）
   if(photoFrozen('改家具')) return;   // 删 / 转 / 复制 / 微调都会换掉它正在累积的那份场景
   if(selected==null) return;
   const items = selItems(); if(!items.length) return;
   const ids = items.map(i=>i.uid).join(',');   // S20：快捷键作用于整组（单选 = 那一件），每个动作一步撤销
   if(ev.key==='Delete'||ev.key==='Backspace'){ pushUndo('key:del:'+ids, true); groupDelete(items); drawFurniture(); save(); }
-  else if(ev.key==='r'||ev.key==='R'){ pushUndo('key:rot:'+ids, true); groupRotate(items, ev.shiftKey?-15:15, false); drawFurniture(); save(); }
-  else if(ev.key==='['||ev.key===']'){ const st=ev.shiftKey?0.1:0.5;
+  else if(rotKey(ev)){ pushUndo('key:rot:'+ids, true); groupRotate(items, ev.shiftKey?-15:15, false); drawFurniture(); save(); }
+  else if(bracketKey(ev)){ const st=ev.altKey?0.1:ev.shiftKey?15:1;   // S23：1°（Shift 15° · Alt 0.1°）；以前 0.5° / Shift 0.1°
     pushUndo('key:rot:'+ids, true);
-    groupRotate(items, ev.key===']'?st:-st, true); drawFurniture(); save(); }
-  // D / 方向键以前不进撤销环（漏了 pushUndo）：复制完按 Ctrl+Z 撤掉的是上一个动作，复制出来的那件还在
-  else if(ev.key==='d'||ev.key==='D'){ pushUndo('key:dup:'+ids, true); groupDuplicate(items); drawFurniture(); save(); }
+    groupRotate(items, bracketKey(ev)*st, true); drawFurniture(); save(); ev.preventDefault(); }
+  // S23：复制 = Ctrl/⌘+D（D 让给「镜头往右」）。D / 方向键以前不进撤销环（漏了 pushUndo）：复制完按 Ctrl+Z 撤掉的是上一个动作
+  else if((ev.key==='d'||ev.key==='D') && (ev.metaKey||ev.ctrlKey)){ ev.preventDefault(); pushUndo('key:dup:'+ids, true); groupDuplicate(items); drawFurniture(); save(); }
   else if(ev.key.startsWith('Arrow')){
-    const st = ev.shiftKey? 1/12 : 0.25;
+    const st = (ev.shiftKey? 10 : 1)/30.48;   // S23：1cm / Shift 10cm（以前 7.6cm / Shift 2.5cm：方向反了，还和墙那边不是一套）
     const dx=(ev.key==='ArrowLeft'?-st:ev.key==='ArrowRight'?st:0), dy=(ev.key==='ArrowUp'?-st:ev.key==='ArrowDown'?st:0);
     pushUndo('key:nudge:'+ids);                 // 连着按方向键 = 一步撤销（与墙体微调同一口径）
     for(const m of items){ m.x+=dx; m.y+=dy; }
     drawFurniture(); save(); ev.preventDefault();
   }
 });
+/* ---------- S23：键判定 + 镜头 / 视图 / 楼层键 ---------- */
+const rotKey=(ev)=> ev.key==='r'||ev.key==='R';
+/* [ / ]：按 code 认（Shift+[ 打出来的是「{」、Mac 上 Alt+[ 是「“」）；返回 -1 / +1 / 0 */
+const bracketKey=(ev)=> (ev.code==='BracketRight'||ev.key===']'||ev.key==='}') ? 1 : (ev.code==='BracketLeft'||ev.key==='['||ev.key==='{') ? -1 : 0;
+function modalOpen(){
+  return ['dxfModal','pdfModal','imgModal','docModal','ptModal','photoModal','shopModal','packModal','keysModal']
+    .some(id=>{ const m=document.getElementById(id); return m && m.style.display && m.style.display!=='none'; });
+}
+/* 吃掉了 = true。WASD：平面图平移图纸 / 俯瞰平移镜头（室内走路由 fpKeys 那一路管）；Q / E：俯瞰绕着转 / 室内原地转；
+   1 2 3 换视图；F 全貌；PageUp / PageDown 换楼层。带 Ctrl / ⌘ / Alt 的一律不认（留给命令与浏览器） */
+function navKey(ev){
+  if(ev.metaKey || ev.ctrlKey || ev.altKey) return false;
+  const k=ev.key, lk=k.length===1 ? k.toLowerCase() : k, fast=ev.shiftKey;
+  if(k==='1'||k==='2'||k==='3'){ setView(k==='1' ? '2d' : k==='2' ? 'doll' : 'fp'); return true; }
+  if(k==='PageUp'||k==='PageDown'){ stepLevel(k==='PageUp' ? 1 : -1); return true; }
+  if(lk==='f'){ frameAll(); return true; }
+  if(state.view==='2d' && ['w','a','s','d'].includes(lk)){
+    const st=(fast?180:60)/(((svg.getScreenCTM()||{a:1}).a)||1);   // 屏幕像素 → viewBox
+    vb.x += lk==='d' ? st : lk==='a' ? -st : 0; vb.y += lk==='s' ? st : lk==='w' ? -st : 0;
+    svg.setAttribute('viewBox',`${vb.x} ${vb.y} ${vb.w} ${vb.h}`); return true;
+  }
+  if(state.view==='doll' && three && ['w','a','s','d','q','e'].includes(lk)){ dollNav(lk, fast); return true; }
+  if(state.view==='fp' && three && (lk==='q'||lk==='e')){
+    if(!three.photo){ three.fpYaw=(three.fpYaw||0)+(lk==='q'?1:-1)*(fast?0.18:0.06); fpAim(); }
+    return true;
+  }
+  return false;
+}
+/* 俯瞰镜头：W / S 沿视线（投到地面）前后、A / D 左右平移（目标点一起走，步长按离目标的距离）；Q / E 绕目标转（与室内同向：Q = 往左转） */
+function dollNav(lk, fast){
+  if(three.photo) return;
+  const {cam, controls}=three, t=controls.target;
+  if(lk==='q'||lk==='e'){
+    const a=(lk==='q'?1:-1)*(fast?15:5)*Math.PI/180, c=Math.cos(a), sn=Math.sin(a), ox=cam.position.x-t.x, oz=cam.position.z-t.z;
+    cam.position.x=t.x+ox*c+oz*sn; cam.position.z=t.z-ox*sn+oz*c;
+  } else {
+    const f=new THREE.Vector3(t.x-cam.position.x, 0, t.z-cam.position.z); if(f.lengthSq()<1e-9) f.set(0,0,-1); f.normalize();
+    const r=new THREE.Vector3(-f.z, 0, f.x), st=Math.max(0.3, cam.position.distanceTo(t)*(fast?0.12:0.04)), m=new THREE.Vector3();
+    if(lk==='w') m.addScaledVector(f, st); else if(lk==='s') m.addScaledVector(f, -st);
+    else if(lk==='d') m.addScaledVector(r, st); else if(lk==='a') m.addScaledVector(r, -st);
+    cam.position.add(m); t.add(m);
+  }
+  controls.update(); requestRender();
+}
+function stepLevel(dir){
+  if(!hasLevelsNow()){ toast('这份户型只有一层（楼层条「＋ 加一层」可以加）'); return; }
+  const lvs=(DOC.levels||[]).slice().sort((a,b)=>a.elev-b.elev), i=lvs.findIndex(l=>l.id===DOC.level), n=lvs[i+dir];
+  if(!n){ toast(dir>0 ? '已经是最上面一层' : '已经是最下面一层'); return; }
+  switchLevel(n.id);
+}
+function frameAll(){
+  if(state.view==='2d'){ fit2DToContent(); if(wallEdit.on) drawWallEdit(); if(meas.on) drawMeasure(); return; }
+  if(state.view==='doll' && three){ if(three.photo){ photoBusy('视角'); return; } setCamMode('doll'); return; }
+  toast('室内视角没有「全貌」：按 2 回到 3D 俯瞰');
+}
 /* S20：整组操作（选择集 = selItems()；单选时就是那一件，行为与以前逐字一致） */
 function groupDelete(items){
   const ids=new Set(items.map(i=>i.uid));
@@ -4315,9 +4410,16 @@ function traceSnap(p){
   }
   return bE;
 }
-function snapPt(p, ev, exclude){
+function snapPt(p, ev, exclude, anchor){
   // 精密模式：基础量化 0.01ft(≈3mm)；磁吸半径随缩放收缩（按屏幕像素算），放大后可精确到毫米级
-  if(ev && ev.shiftKey) return [FT2(p[0]),FT2(p[1])];   // Shift = 关闭一切吸附
+  // S23：Alt = 关闭一切吸附（以前是 Shift）；Shift = 约束：相对上一点（画线）/ 墙的另一端（拖端点）锁 0° / 45° / 90°
+  if(ev && ev.altKey) return [FT2(p[0]),FT2(p[1])];
+  if(ev && ev.shiftKey){
+    const a = anchor || ((['wall','poly','stair','run'].includes(wallEdit.tool) && wallEdit.drawPts.length) ? wallEdit.drawPts[wallEdit.drawPts.length-1] : null);
+    if(!a) return [FT2(p[0]),FT2(p[1])];
+    const dx=p[0]-a[0], dy=p[1]-a[1], ang=Math.round(Math.atan2(dy,dx)/(Math.PI/4))*(Math.PI/4), ux=Math.cos(ang), uy=Math.sin(ang), t=dx*ux+dy*uy;
+    return [FT2(a[0]+ux*t), FT2(a[1]+uy*t)];
+  }
   const ppf=pxPerFt();
   const rEnd=Math.min(0.28, 10/ppf);   // 端点磁吸 ≈10 屏幕px
   const rEdge=Math.min(0.18, 7/ppf);   // 墙中心线垂足磁吸 ≈7 屏幕px
@@ -5876,7 +5978,7 @@ function updateWallBarFromSel(){
     }
   } else if(s && s.kind==='p'){
     wMsg((srcU(s.id)?'自定义柱/异形墙':'内置结构（柱/厚墙块）')+' ｜ 拖圆点=移顶点 · 拖黄方块=插入顶点 · Alt+点顶点=删顶点 · Delete=删除');
-  } else wMsg(wallEdit.tool==='wall'?'连续点击画墙（磁吸端点/墙线，放大后更精密，Shift=完全自由）；双击/回车/再点末点=结束；Backspace=撤销上一点':
+  } else wMsg(wallEdit.tool==='wall'?'连续点击画墙（磁吸端点 / 墙线，放大后更精密；Shift = 锁 0° / 45° / 90°，Alt = 不吸附）；双击 / 回车 / 再点末点 = 结束；Backspace = 撤掉上一个点':
               wallEdit.tool==='poly'?'连续点击放顶点；点回起点 / 双击 / 回车 = 闭合；Esc 取消':wallEdit.tool==='door'?'点门洞 / 开口放门；点在实墙上 = 先开一个 80cm 的门洞再放门（会让开接过来的墙）；点已有的门 = 选中（换平开 / 双开 / 推拉、铰链侧、开向）':'悬停会亮出墙体；点击选中（含门扇），拖空白平移，滚轮缩放');
 }
 /* ── E24：数值改选中这段的长度 + 按已知长度重标定整图 ─────────────────
@@ -6191,7 +6293,7 @@ function startWinDrag(ev, p0){
 function wallEditDown(ev){
  try{
   if(CALIB || IMGONLY) return;
-  if(ev.button===2){ // 右键=平移（画墙中也可用）
+  if(ev.button===2 || ev.button===1){ // 右键 / 中键 = 平移（画墙中也可用）
     drag={mode:'pan', px:ev.clientX, py:ev.clientY, vx:vb.x, vy:vb.y, k:1/svg.getScreenCTM().a};
     svg.setPointerCapture(ev.pointerId); return;
   }
@@ -6516,7 +6618,7 @@ function wallEditMove(ev){
   }
   if(drag.mode==='wEnd'){
     markDragGesture(drag, drag.undoKey);
-    const p=snapPt(p0,ev,wallEdit.sel||undefined);
+    const p=snapPt(p0,ev,wallEdit.sel||undefined, drag.end===0 ? [drag.o.x2,drag.o.y2] : [drag.o.x1,drag.o.y1]);   // Shift = 锁角度（相对另一端）
     if(drag.end===0){ drag.seg.x1=p[0]; drag.seg.y1=p[1]; } else { drag.seg.x2=p[0]; drag.seg.y2=p[1]; }
     const L=Math.hypot(drag.seg.x2-drag.seg.x1,drag.seg.y2-drag.seg.y1);
     wMsg('长 '+lenLabel(L));
@@ -6603,7 +6705,7 @@ svg.addEventListener('pointerleave', ()=>{
   if(!wallEdit.on || drag) return;
   if(wallEdit.rmHover || wallEdit.olPreview || wallEdit.winPreview){ wallEdit.rmHover=null; wallEdit.olPreview=null; wallEdit.olPrevKey=''; wallEdit.winPreview=null; drawWallEdit(); }
 });
-svg.addEventListener('contextmenu', ev=>{ if(wallEdit.on) ev.preventDefault(); });
+svg.addEventListener('contextmenu', ev=>{ ev.preventDefault(); });   // S23：平面图上右键 = 平移，任何模式都不弹浏览器菜单
 /* 2D 地面双击 → 直接站到该处的室内视角 */
 /* 站内点 + 视线方向：纯几何（地板轮廓内「离所有墙最远」的点，朝背离最近墙的方向看）。
    自包含户型（空白 / 导入）没有历史锚点：以前第一人称一律落在硬编码的 (22,27)ft——
@@ -19737,6 +19839,54 @@ $('#plCsv').onclick=()=>{ $('#plCsv').blur();
   toast('采购清单已导出 CSV（'+L.rows.length+' 行 · '+L.buy+' 件'+(F.length?' · 地板 '+F.length+' 种':'')+'；Excel / Numbers 能直接打开）', 5000);
 };
 $('#shopClose').onclick=()=>{ $('#shopModal').style.display='none'; };
+/* ---------- S23 键鼠统一：一张表（INPUT_MAP）= 快捷键面板的唯一来源；行为在各自的处理器里，bench 按这张表逐条验 ----------
+   规则（research/12 §B.4）：WASD = 镜头（三个视图一样，Shift 快）；Q / E = 转镜头；方向键 = 挪选中的东西（1cm，Shift 10cm）；
+   Shift = 约束 / 大一步；Alt = 不吸附 / 自由；Ctrl/⌘ = 命令；右键 / 中键拖 = 平移；1 / 2 / 3 换视图、F 全貌、PageUp / PageDown 换楼层 */
+const INPUT_MAP=[
+  {g:'镜头', k:['W','A','S','D'], a:'平面图 = 平移图纸 · 3D 俯瞰 = 平移镜头 · 室内 = 走路（Shift = 快 / 跑）'},
+  {g:'镜头', k:['Q','E'], a:'转镜头：俯瞰 = 绕着转 · 室内 = 原地左右转（Shift = 转得快）'},
+  {g:'镜头', k:['右键拖','中键拖'], a:'平移（平面图任何模式 · 3D 俯瞰）；3D 里右键拖家具 = 转它'},
+  {g:'镜头', k:['滚轮'], a:'缩放（以光标为中心）· 室内 = 前后走'},
+  {g:'镜头', k:['F'], a:'回到全貌（平面图 = 框住整个户型 · 俯瞰 = 回到起始机位）'},
+  {g:'视图', k:['1','2','3'], a:'平面图 / 3D 俯瞰 / 室内'},
+  {g:'视图', k:['V'], a:'3D 里：俯瞰 ↔ 室内'},
+  {g:'视图', k:['PageUp','PageDown'], a:'上一层 / 下一层（有楼层的户型）'},
+  {g:'视图', k:['双击地面'], a:'站到那儿看（室内视角）· 室内 = 走过去'},
+  {g:'选中的东西', k:['←','→','↑','↓'], a:'挪 1cm（Shift = 10cm）；墙上的窗 / 门 = 沿着墙挪'},
+  {g:'选中的东西', k:['R'], a:'转 15°（Shift+R = 反方向）——家具与洁具'},
+  {g:'选中的东西', k:['[',']'], a:'转 1°（Shift = 15° · Alt = 0.1°）'},
+  {g:'选中的东西', k:['Ctrl/⌘','D'], a:'复制'},
+  {g:'选中的东西', k:['Delete'], a:'删除（墙上的窗 = 墙封回去）'},
+  {g:'选中的东西', k:['Esc'], a:'一层一层退：取消正在拖 / 画的 → 取消选中'},
+  {g:'鼠标', k:['左键'], a:'选 / 拖动 / 画；拖空白 = 平移（平面图）· 绕着转（俯瞰）· 转头（室内）'},
+  {g:'鼠标', k:['Shift','点'], a:'加选 / 减选'},
+  {g:'鼠标', k:['Shift','拖空白'], a:'框选（平面图）'},
+  {g:'修饰键', k:['Shift'], a:'约束：拖家具锁横 / 竖 · 画墙 / 拖墙端点锁 0° / 45° / 90° · 旋转手柄 15° 一格 · 量尺寸锁横 / 竖'},
+  {g:'修饰键', k:['Alt'], a:'不吸附：贴墙、端点 / 墙线、中点吸附全关 · 旋转手柄自由角度'},
+  {g:'画线（墙 / 柱 / 台面 / 楼梯）', k:['Enter'], a:'结束（双击 / 点回起点也行）'},
+  {g:'画线（墙 / 柱 / 台面 / 楼梯）', k:['Backspace'], a:'撤掉上一个点'},
+  {g:'命令', k:['Ctrl/⌘','Z'], a:'撤销'},
+  {g:'命令', k:['Ctrl/⌘','Shift','Z'], a:'重做（Ctrl/⌘+Y 也行）'},
+  {g:'帮助', k:['?'], a:'打开 / 关闭这张表'},
+];
+function buildKeysPanel(){
+  const body=$('#keysBody'); if(!body || body.childElementCount) return;
+  let g='';
+  for(const r of INPUT_MAP){
+    if(r.g!==g){ g=r.g; const h=document.createElement('h4'); h.textContent=g; body.appendChild(h); }
+    const row=document.createElement('div'); row.className='kr';
+    const kk=document.createElement('span'); kk.className='kk';
+    r.k.forEach((t,i)=>{ if(i){ kk.appendChild(document.createTextNode(['W','A','S','D','Q','E','1','2','3','←','→','↑','↓','[',']','PageUp','PageDown','右键拖','中键拖'].includes(t)?' ':'+')); }
+      const b=document.createElement('kbd'); b.textContent=t; kk.appendChild(b); });
+    const a=document.createElement('span'); a.textContent=r.a;
+    row.append(kk, a); body.appendChild(row);
+  }
+}
+function keysPanelOpen(){ return $('#keysModal').style.display==='flex'; }
+function toggleKeysPanel(on){ const v = on==null ? !keysPanelOpen() : !!on; if(v) buildKeysPanel(); $('#keysModal').style.display = v ? 'flex' : 'none'; }
+$('#keysClose').onclick=()=>toggleKeysPanel(false);
+$('#keysModal').onclick=e=>{ if(e.target.id==='keysModal') toggleKeysPanel(false); };
+document.addEventListener('click', e=>{ const a=e.target && e.target.closest && e.target.closest('.keysLink'); if(a){ e.preventDefault(); toggleKeysPanel(true); } });
 $('#shopModal').onclick=e=>{ if(e.target.id==='shopModal') $('#shopModal').style.display='none'; };
 $('#shopModal').addEventListener('keydown', e=>{ if(e.key==='Escape'){ e.stopPropagation(); $('#shopModal').style.display='none'; } });
 
@@ -19894,9 +20044,9 @@ function setView(v){
   $('#svg2d').style.display = v==='2d'?'block':'none';
   $('#c3d').style.display = in3?'block':'none';
   $('#hint').innerHTML = v==='2d'
-    ? '拖动=移动 · 圆点手柄/R键=旋转（Shift自由/[ ]微调）· D=复制 · Delete=删除 · 滚轮=缩放 · 拖空白=平移<br><b>Shift+点 / Shift+拖空白 = 多选</b> · <b>双击地面 = 站到该处看（室内视角）</b> · 红色描边 = 与其他家具重叠'
-    : (fp ? '室内视角：左键拖动=<b>原地转头</b> · <b>双击地面=走过去</b> · W/A/S/D=走动 · 滚轮=前后（摆家具请切 3D 俯瞰）'
-          : '左键拖动=环绕 · <b>Shift+左键 / 右键 = 平移</b> · 滚轮=缩放 · <b>拖动家具=移动（Shift 拖=旋转 · Shift+点=多选）</b> · <b>双击地面=站到那儿看</b>');
+    ? '拖家具 = 移动（Shift 锁横竖 · Alt 不贴墙）· R / [ ] = 转 · Ctrl/⌘+D = 复制 · Delete = 删除 · 方向键 = 挪 1cm<br>WASD / 右键拖 = 平移 · 滚轮 = 缩放 · <b>Shift+点 / Shift+拖空白 = 多选</b> · 红色描边 = 重叠 · <a class="keysLink">? 全部快捷键</a>'
+    : (fp ? '室内视角：左键拖动 = <b>原地转头</b> · <b>双击地面 = 走过去</b> · WASD = 走（Shift 跑）· Q E = 转 · 2 = 回俯瞰 · <a class="keysLink">? 全部快捷键</a>'
+          : '左键拖空白 = 环绕 · 右键拖空白 / WASD = 平移 · Q E = 转 · <b>拖家具 = 移动 · 右键拖家具 = 转 · Shift+点 = 多选</b> · <a class="keysLink">? 全部快捷键</a>');
   $('#dnSeg').style.display = in3?'flex':'none';
   $('#envSeg').style.display = in3?'flex':'none';
   $('#lampSeg').style.display = in3?'flex':'none';
@@ -20427,7 +20577,7 @@ function setCamMode(m){
     controls.enabled=false;
     cam.fov=68; cam.updateProjectionMatrix();
     fpAim();
-    $('#hint').innerHTML='室内视角：左键拖动=<b>原地转头</b> · <b>双击地面=走过去</b> · W/A/S/D=走动 · 滚轮=前后（摆家具请切娃娃屋视角）';
+    $('#hint').innerHTML='室内视角：左键拖动 = <b>原地转头</b> · <b>双击地面 = 走过去</b> · WASD = 走（Shift 跑）· Q E = 转 · 2 = 回俯瞰 · <a class="keysLink">? 全部快捷键</a>';
   } else {
     if(three.camMode!=='doll'){ three.fpPos=cam.position.clone();
       three.fpDir=controls.target.clone().sub(cam.position).normalize(); }
@@ -20448,7 +20598,7 @@ function setCamMode(m){
     } else {
       cam.position.set(28, 42, 50); controls.target.set(26,0,20);
     }
-    $('#hint').innerHTML='左键拖动=环绕 · <b>Shift+左键 / 右键 = 平移</b> · 滚轮=缩放 · <b>拖动家具=移动（Shift 拖=旋转）</b>';
+    $('#hint').innerHTML='左键拖空白 = 环绕 · 右键拖空白 / WASD = 平移 · Q E = 转 · <b>拖家具 = 移动 · 右键拖家具 = 转 · Shift+点 = 多选</b> · <a class="keysLink">? 全部快捷键</a>';
   }
   applyBackdrop(); applyLightMode(); applyLevelVisibility();
   controls.update(); requestRender();
@@ -20544,9 +20694,9 @@ function groundAt(ev, y){
   const canvas=$('#c3d'); if(!canvas) return;
   let d3=null;
   canvas.addEventListener('pointerdown', ev=>{
-    if(!three || !is3D() || wallEdit.on || ev.button!==0) return;
+    if(!three || !is3D() || wallEdit.on || (ev.button!==0 && ev.button!==2)) return;
     if(three.camMode==='fp') return;              // 室内视角只走动/看，不动家具（会误触）
-    const hit=pickFurniture(ev); if(!hit) return;
+    const hit=pickFurniture(ev); if(!hit) return; // 右键拖空白 = 平移镜头（OrbitControls 照旧）
     const it=state.items.find(i=>i.uid===hit.uid); if(!it) return;
     /* 拖动平面 = 抓住的那一点所在的水平面：被抓住的那一点一直待在光标底下。3D 拖动比 S19 早，一直按地面算——
        挂在 2m 高的搁板（轮㊵）、吊在天花上的灯（轮㊶，灯不带 z，按「件底 + z」它的平面还是地面），光标打到地面的那一点
@@ -20555,10 +20705,10 @@ function groundAt(ev, y){
     const planeY = (hit.point && isFinite(hit.point.y)) ? hit.point.y : curElev()+itemZ(it);
     const g0=groundAt(ev, planeY); if(!g0) return;
     // S20：Shift+点 = 加 / 减（松手时没拖才算；Shift+拖 照旧 = 转）；点组里的一件 = 拖整组，松手没动 = 只选它
-    const inGroup = selUids().length>1 && selUids().includes(hit.uid);
-    if(!ev.shiftKey){ if(inGroup) selected=hit.uid; else selOnly(hit.uid); drawFurniture(); updateProps(); }
+    const inGroup = selUids().length>1 && selUids().includes(hit.uid), rotDrag = ev.button===2;   // S23：右键拖家具 = 转（以前 Shift+拖）
+    if(!ev.shiftKey || rotDrag){ if(inGroup) selected=hit.uid; else selOnly(hit.uid); drawFurniture(); updateProps(); }
     const grp = inGroup ? selItems() : [it];
-    d3={uid:hit.uid, dx:it.x-g0.x, dy:it.y-g0.z, planeY, rot0:it.rot||0, shift:ev.shiftKey, inGroup,
+    d3={uid:hit.uid, dx:it.x-g0.x, dy:it.y-g0.z, x0:it.x, y0:it.y, planeY, rot0:it.rot||0, shift:ev.shiftKey && !rotDrag, rotDrag, inGroup,
         others: grp.filter(m=>m.uid!==hit.uid).map(m=>({it:m, ox:m.x-it.x, oy:m.y-it.y})),
         start: grp.map(m=>({it:m, x:m.x, y:m.y, rot:m.rot||0})),
         sx:ev.clientX, sy:ev.clientY, moved:false, undoKey:'drag3d:'+hit.uid, wasCtl:three.controls.enabled};
@@ -20573,19 +20723,21 @@ function groundAt(ev, y){
     // 点击 vs 拖动用屏幕像素阈值（AGENTS §8.2，与 2D 同一口径）。以前没有：
     // 实测 1px 手抖就把家具挪走 1~4cm 并落盘（bug 猎 #52）。
     if(!d3.moved && Math.hypot(ev.clientX-d3.sx, ev.clientY-d3.sy) < 5) return;
-    const gp = ev.shiftKey ? null : groundAt(ev, d3.planeY);
-    if(!ev.shiftKey && !gp) return;
+    const gp = d3.rotDrag ? null : groundAt(ev, d3.planeY);
+    if(!d3.rotDrag && !gp) return;
     markDragGesture(d3, d3.undoKey);              // 先记「动之前」的状态，再改（快照必须在变异前）
-    if(ev.shiftKey){                               // Shift 拖动 = 就地旋转（S20：整组 = 从起手姿态绕组中心转同一角度）
-      const ang = Math.round((ev.clientX-d3.sx)*0.5*10)/10;
+    if(d3.rotDrag){                                // S23：右键拖 = 就地旋转（整组 = 从起手姿态绕组中心转同一角度）；Shift = 15° 一格
+      let ang = (ev.clientX-d3.sx)*0.5; ang = ev.shiftKey ? Math.round(ang/15)*15 : Math.round(ang*10)/10;
       if(d3.start.length>1){ for(const s0 of d3.start){ s0.it.x=s0.x; s0.it.y=s0.y; s0.it.rot=s0.rot; } groupRotate(d3.start.map(s0=>s0.it), ang, true); }
-      else { if(d3.shift && selected!==d3.uid){ selOnly(d3.uid); updateProps(); }   // Shift+拖一件没选中的 = 选中它并转（与以前一致）
-        it.rot = Math.round((d3.rot0 + (ev.clientX-d3.sx)*0.5)*10)/10; }
+      else it.rot = Math.round((d3.rot0 + ang)*10)/10;
     } else {
       // S18：3D 里拖同样贴墙（半径按 10cm：3D 没有统一的「屏幕像素 ↔ ft」比例）；Alt = 不吸。拖整组时只按被拖的这件吸
-      const sn=snapItemPos(it, itemSpec(it), gp.x+d3.dx, gp.z+d3.dy, 0.35, ev.altKey);
+      // S23：Shift = 锁横 / 竖（与平面图同一口径；锁住时不贴墙）
+      let tx=gp.x+d3.dx, ty=gp.z+d3.dy;
+      if(ev.shiftKey){ if(Math.abs(tx-d3.x0) >= Math.abs(ty-d3.y0)) ty=d3.y0; else tx=d3.x0; }
+      const sn=snapItemPos(it, itemSpec(it), tx, ty, 0.35, ev.altKey || ev.shiftKey);
       if(sn.faces.length){ it.x=sn.x; it.y=sn.y; }
-      else { it.x = Math.round((gp.x+d3.dx)*100)/100; it.y = Math.round((gp.z+d3.dy)*100)/100; }
+      else { it.x = (ev.shiftKey && tx===d3.x0) ? d3.x0 : Math.round(tx*100)/100; it.y = (ev.shiftKey && ty===d3.y0) ? d3.y0 : Math.round(ty*100)/100; }
       for(const o of d3.others){ o.it.x=FT4(it.x+o.ox); o.it.y=FT4(it.y+o.oy); }
     }
     drawFurniture();                               // 内部会 sync3D（增量，约 4ms）
@@ -20676,9 +20828,12 @@ window.addEventListener('keydown', e=>{
   if(!three || three.camMode!=='fp' || !is3D()) return;
   if(three.photo) return;                        // 光追进行中不接走动（进度条上已经写了「取消」这条路）
   const k=e.key.toLowerCase();
+  fpKeys.shift = e.shiftKey;                     // S23 K2：Shift = 跑（以前走动按键表里没有 Shift，fpKeys.shift 永远是空的）
+  if(e.metaKey || e.ctrlKey || e.altKey) return; // Ctrl/⌘+D 之类是命令，不是走路
   if(['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright'].includes(k)){ fpKeys[k]=true; e.preventDefault(); }
 });
-window.addEventListener('keyup', e=>{ fpKeys[e.key.toLowerCase()]=false; });
+window.addEventListener('keyup', e=>{ fpKeys[e.key.toLowerCase()]=false; fpKeys.shift=e.shiftKey; });
+window.addEventListener('blur', ()=>{ for(const k of Object.keys(fpKeys)) fpKeys[k]=false; });   // 切走窗口时松开的键收不到 keyup：别一直走
 function fpStep(){
   if(!three || three.camMode!=='fp') return;
   const any=['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright'].some(k=>fpKeys[k]);
@@ -21203,7 +21358,7 @@ function imgMoveUp(){
 document.addEventListener('keydown', e=>{
   if(!imgMove) return;
   if(e.key==='Escape'){ setImgMove(false); if(DOC.baseImage) save(); return; }
-  const step=(e.shiftKey?2.5:10)/100/0.3048;   // 2.5/10cm → ft
+  const step=(e.shiftKey?10:1)/100/0.3048;   // S23：1cm / Shift 10cm（以前 10cm / Shift 2.5cm：方向反了）
   let d=null;
   if(e.key==='ArrowLeft') d=[-step,0];
   else if(e.key==='ArrowRight') d=[step,0];
