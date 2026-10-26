@@ -11231,6 +11231,185 @@ async function runPBTest() {
       await tick();
     }
 
+    /* ===== 45. S24b（research/13 U5–U7）：目录卡片拖进平面图、拖动时标到旁边家具的距离 + 对齐线、斜墙自动转平行 ===== */
+    {
+      await enterEdit();
+      await pbReset();
+      const p45Plans = PLAN_REG.plans.length;
+      Q('#btnPlanNew').click();
+      await tick();
+      const p45Plan = PLAN_ID;
+      const fp45 = floorPts();
+      const X =
+          Math.min.apply(
+            null,
+            fp45.map((p) => p[0])
+          ) + 1,
+        Y =
+          Math.min.apply(
+            null,
+            fp45.map((p) => p[1])
+          ) + 1;
+      const wd = cmToWd(15);
+      const near = (a, b, tol) => Math.abs(a - b) < (tol || 1e-6);
+      // 北墙、东墙、南墙一截 + 西南一道 30° 的斜墙（(0, 12−6·tan30°) → (6, 12)）+ 西墙
+      const yS = Y + 12 - 6 * Math.tan(Math.PI / 6);
+      pushUserWall(X, Y, X + 16, Y, 'w', wd);
+      pushUserWall(X + 16, Y, X + 16, Y + 12, 'w', wd);
+      pushUserWall(X + 16, Y + 12, X + 6, Y + 12, 'w', wd);
+      pushUserWall(X + 6, Y + 12, X, yS, 'w', wd);
+      pushUserWall(X, yS, X, Y, 'w', wd);
+      geoChanged();
+      fit2DToContent();
+      await tick();
+      if (wallEdit.on) Q('#btnWallEdit').click();
+      await tick();
+      const ppf = pxPerFtNow();
+
+      /* 45.1 U5 目录卡片拖进平面图：拖动中画出占地虚框；松手 = 放在松手处（贴墙照旧）、选中、一步撤销；拖完虚框没了 */
+      const nsSpec =
+        CATALOG.find((c) => c.kind === 'nightstand') || CATALOG.find((c) => c.w <= 60 && c.d <= 50 && !isLight(c));
+      const card = Array.from(Q('#catalog').querySelectorAll('.catCard')).find((c) =>
+        c.querySelector('[data-thumb="' + nsSpec.id + '"]')
+      );
+      let ghost = false,
+        dropped = null;
+      const n0 = state.items.length,
+        r0 = undoRing.length;
+      if (card) {
+        const dt = new DataTransfer();
+        card.dispatchEvent(new DragEvent('dragstart', { bubbles: true, cancelable: true, dataTransfer: dt }));
+        const [dx, dy] = SPT(X + 8, Y + 6);
+        pbSvg.dispatchEvent(
+          new DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer: dt, clientX: dx, clientY: dy })
+        );
+        await tick();
+        ghost = !!pbSvg.querySelector('.dndGhost');
+        pbSvg.dispatchEvent(
+          new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer: dt, clientX: dx, clientY: dy })
+        );
+        card.dispatchEvent(new DragEvent('dragend', { bubbles: true, cancelable: true, dataTransfer: dt }));
+        await tick();
+        dropped = state.items.length === n0 + 1 ? state.items[state.items.length - 1] : null;
+      }
+      T(
+        'pb-s24b-drag-card-onto-plan',
+        !!card &&
+          ghost &&
+          !!dropped &&
+          near(dropped.x, X + 8, 0.06) &&
+          near(dropped.y, Y + 6, 0.06) &&
+          selected === dropped.uid &&
+          undoRing.length === r0 + 1 &&
+          !pbSvg.querySelector('.dndGhost'),
+        '卡片=' +
+          !!card +
+          ' · 拖动中虚框=' +
+          ghost +
+          ' · 落在 ' +
+          (dropped ? '(' + (dropped.x - X).toFixed(2) + ', ' + (dropped.y - Y).toFixed(2) + ')' : '没放上') +
+          ' · 选中=' +
+          (dropped && selected === dropped.uid) +
+          ' · 撤销 +' +
+          (undoRing.length - r0)
+      );
+
+      /* 45.2 U6 拖动中标到旁边家具的距离（以前只标到墙皮）；上沿和旁边那件差 < 6 屏幕像素 = 对齐（画一条对齐线），Alt 不对齐 */
+      const bedSpec = CATALOG.find((c) => c.kind === 'bed' && c.w >= 140);
+      addItem(bedSpec.id);
+      const bed = state.items[state.items.length - 1];
+      const BW = cm2ft(bedSpec.w),
+        BD = cm2ft(bedSpec.d);
+      Object.assign(bed, { x: X + 7, y: Y + 0.25 + BD / 2 + 0.6, rot: 0 });
+      const ns = dropped || (addItem(nsSpec.id), state.items[state.items.length - 1]);
+      const NW = cm2ft(nsSpec.w),
+        ND = cm2ft(nsSpec.d);
+      const gap = 1.0; // 床右沿 → 床头柜左沿 1ft
+      Object.assign(ns, { x: bed.x + BW / 2 + gap + NW / 2, y: bed.y - BD / 2 + ND / 2 + 0.4, rot: 0 });
+      selOnly(ns.uid);
+      drawFurniture();
+      await tick();
+      const [sx, sy] = SPT(ns.x, ns.y);
+      fire('pointerdown', sx, sy);
+      await tick();
+      fire('pointermove', sx, sy - 6, {});
+      await tick();
+      const lbl = Array.from(pbSvg.querySelectorAll('.distLbl')).map((t) => t.textContent);
+      const want = fmtLen(gap);
+      // 量到床的那条（琥珀色）：读数与 1ft 间距差不到 2cm（拖动时位置取 0.05ft 网格）
+      const furnLbl = Array.from(pbSvg.querySelectorAll('.distLbl.toFurn')).map((t) => t.textContent);
+      const sawFurnDist = furnLbl.some((t) => Math.abs(parseFloat(t) - gap * 30.48) < 2);
+      // 往上挪：床头柜上沿离床上沿只差 0.4ft − 拖上去的量；拖到差 3 屏幕像素以内
+      const target = bed.y - BD / 2 + ND / 2 + 3 / ppf;
+      const [, ty] = SPT(ns.x, target);
+      fire('pointermove', sx, ty, {});
+      await tick();
+      const aligned = near(ns.y - ND / 2, bed.y - BD / 2, 1e-6) && !!pbSvg.querySelector('.alignGuide');
+      fire('pointermove', sx, ty, { altKey: true });
+      await tick();
+      const altFree = !near(ns.y - ND / 2, bed.y - BD / 2, 1e-4);
+      fire('pointerup', sx, ty, { altKey: true, buttons: 0 });
+      await tick();
+      T(
+        'pb-s24b-furniture-distance-and-align',
+        sawFurnDist && aligned && altFree,
+        '拖动中的距离标注 ' +
+          JSON.stringify(lbl) +
+          '（要有到床的 ' +
+          want +
+          '）· 差 3px 对齐上沿=' +
+          aligned +
+          ' · Alt 不对齐=' +
+          altFree
+      );
+
+      /* 45.3 U7 斜墙：朝向与墙差 ≤ 12° 拖到墙边 = 自动转到与墙平行并贴上；拖离开 = 转回原来的角度；Alt = 不转 */
+      Object.assign(ns, { x: X + 4, y: Y + 7, rot: 25 });
+      selOnly(ns.uid);
+      drawFurniture();
+      await tick();
+      // 斜墙方向 +30°（平面坐标 y 朝下）；室内在它的东北侧：内法线 (sin30, −cos30)。离墙皮 ~2 屏幕像素的地方
+      const wallDir = [Math.cos(Math.PI / 6), Math.sin(Math.PI / 6)],
+        inN = [Math.sin(Math.PI / 6), -Math.cos(Math.PI / 6)];
+      const onWall = [X + wallDir[0] * 3.46, yS + wallDir[1] * 3.46];
+      const half = wd / S / 2;
+      const dropAt = [onWall[0] + inN[0] * (half + ND / 2 + 2 / ppf), onWall[1] + inN[1] * (half + ND / 2 + 2 / ppf)];
+      const [nx, ny] = SPT(ns.x, ns.y),
+        [wx, wy] = SPT(dropAt[0], dropAt[1]);
+      fire('pointerdown', nx, ny);
+      await tick();
+      fire('pointermove', (nx + wx) / 2, (ny + wy) / 2, {});
+      await tick();
+      fire('pointermove', wx, wy, {});
+      await tick();
+      const rotNear = ns.rot;
+      fire('pointermove', nx, ny, {});
+      await tick();
+      const rotAway = ns.rot;
+      fire('pointermove', wx, wy, { altKey: true });
+      await tick();
+      const rotAlt = ns.rot;
+      fire('pointerup', wx, wy, { altKey: true, buttons: 0 });
+      await tick();
+      const dRot = (a, b) => ((((a - b) % 90) + 135) % 90) - 45;
+      T(
+        'pb-s24b-slanted-wall-auto-align',
+        Math.abs(dRot(rotNear, 30)) < 0.01 && near(rotAway, 25, 1e-9) && near(rotAlt, 25, 1e-9),
+        '25° 拖到 30° 斜墙边 → ' + rotNear + '° · 拖离开 → ' + rotAway + '° · Alt → ' + rotAlt + '°'
+      );
+
+      /* 收尾 */
+      Q('#btnPlanDel').click();
+      await tick();
+      Q('#btnPlanDel').click();
+      await tick();
+      T(
+        'pb-s24b-clean-exit',
+        PLAN_ID !== p45Plan && PLAN_REG.plans.length === p45Plans,
+        'plans ' + p45Plans + '→' + PLAN_REG.plans.length
+      );
+    }
+
     /* ===== 收尾：页面不得有未捕获异常 ===== */
     T('pb-no-page-errors', window.__ERRS.length === 0, window.__ERRS.slice(0, 3).join(' || '));
   } catch (e) {

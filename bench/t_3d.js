@@ -4345,6 +4345,73 @@ async function run3DTest() {
       await wait(300);
     }
 
+    /* ===== S24b：目录卡片拖进 3D 俯瞰 = 落在光标下的地面上；室内视角不收 ===== */
+    {
+      setView('doll');
+      await wait(900);
+      const spec =
+        CATALOG.find((c) => c.kind === 'nightstand') || CATALOG.find((c) => c.w <= 60 && c.d <= 50 && !isLight(c));
+      const card = Array.from(document.querySelectorAll('#catalog .catCard')).find((c) =>
+        c.querySelector('[data-thumb="' + spec.id + '"]')
+      );
+      const [gx, gy] = proj(CX3, curElev(), CY3);
+      const n0 = state.items.length;
+      const dt = new DataTransfer();
+      if (card) card.dispatchEvent(new DragEvent('dragstart', { bubbles: true, cancelable: true, dataTransfer: dt }));
+      const ov = new DragEvent('dragover', {
+        bubbles: true,
+        cancelable: true,
+        dataTransfer: dt,
+        clientX: gx,
+        clientY: gy,
+      });
+      cv.dispatchEvent(ov);
+      cv.dispatchEvent(
+        new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer: dt, clientX: gx, clientY: gy })
+      );
+      if (card) card.dispatchEvent(new DragEvent('dragend', { bubbles: true, cancelable: true, dataTransfer: dt }));
+      await wait(150);
+      const it = state.items.length === n0 + 1 ? state.items[state.items.length - 1] : null;
+      // 室内视角：不收（dragover 不 preventDefault = 浏览器显示「不能放」）
+      setCamMode('fp');
+      await wait(300);
+      if (card)
+        card.dispatchEvent(
+          new DragEvent('dragstart', { bubbles: true, cancelable: true, dataTransfer: new DataTransfer() })
+        );
+      const ovFp = new DragEvent('dragover', {
+        bubbles: true,
+        cancelable: true,
+        dataTransfer: new DataTransfer(),
+        clientX: gx,
+        clientY: gy,
+      });
+      cv.dispatchEvent(ovFp);
+      if (card) card.dispatchEvent(new DragEvent('dragend', { bubbles: true, cancelable: true }));
+      T(
+        's24b-drag-card-into-3d',
+        !!card &&
+          ov.defaultPrevented &&
+          !!it &&
+          Math.hypot(it.x - CX3, it.y - CY3) < 0.6 &&
+          selected === it.uid &&
+          !ovFp.defaultPrevented,
+        '俯瞰收=' +
+          ov.defaultPrevented +
+          ' · 落在离光标下地面 ' +
+          (it ? Math.hypot(it.x - CX3, it.y - CY3).toFixed(2) + 'ft' : '没放上') +
+          ' · 选中=' +
+          (it && selected === it.uid) +
+          ' · 室内不收=' +
+          !ovFp.defaultPrevented
+      );
+      if (it) state.items.splice(state.items.indexOf(it), 1);
+      selOnly(null);
+      drawFurniture();
+      setView('2d');
+      await wait(300);
+    }
+
     T('t3d-bench-done', true, __E3.length + ' tests', 'done');
   } catch (e) {
     log.push('EXC ' + e.message + ' | ' + (e.stack || '').split('\n')[1]);
