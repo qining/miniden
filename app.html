@@ -3743,23 +3743,94 @@ function doorSweeps(){
 }
 /* 拖动时贴墙：盒子某条边与墙皮平行（±3°）且离它不到 12 屏幕像素 → 贴齐；Alt 按住 = 不吸附。灯具不吸（吊在天花上） */
 const SNAP_PX = 12;
-function snapItemPos(it, spec, x, y, rFt, noSnap){
-  if(noSnap || !spec || isLight(spec)) return {x, y, faces:[]};
-  const sn=GEO_PTS.snapBox({cx:x, cy:y, w:cm2ft(spec.w), d:cm2ft(spec.d), rot:it.rot||0}, placementObstacles().faces, rFt);
-  return sn.faces.length ? {x:FT4(x+sn.dx), y:FT4(y+sn.dy), faces:sn.faces} : {x, y, faces:[]};
+/* S24b（research/13 U7）：拖到墙边、朝向与那面墙差 ≤ WALL_ALIGN_DEG（按 90° 折）= 先转到与墙平行，再贴墙。
+   斜墙（个人户型客厅西北 / 阳台）以前要靠旋转手柄 1° 一格去凑；只认 ±3° 的贴墙判据从来吸不上。
+   opt.rot0 = 拖动起手时的角度（离开墙边就转回它）；opt.noRotate = 整组拖动（组不转） */
+const WALL_ALIGN_DEG = 12;
+function wallAlignRot(spec, x, y, rot, rFt){
+  const faces=placementObstacles().faces, W=cm2ft(spec.w), D=cm2ft(spec.d);
+  const c=GEO_PTS.obbCorners(x, y, W, D, rot);
+  let best=null;
+  for(const f of faces){
+    const fa=Math.atan2(f.b[1]-f.a[1], f.b[0]-f.a[0])*180/Math.PI;
+    let diff=(((fa-rot)%90)+90)%90; if(diff>45) diff-=90;          // 墙的方向折到 (−45°, 45°]
+    if(Math.abs(diff)<0.05 || Math.abs(diff)>WALL_ALIGN_DEG) continue;
+    const ex=f.b[0]-f.a[0], ey=f.b[1]-f.a[1], L2=ex*ex+ey*ey; if(L2<1e-6) continue;
+    let dmin=Infinity;
+    for(const p of c){
+      const t=((p[0]-f.a[0])*ex+(p[1]-f.a[1])*ey)/L2; if(t<0 || t>1) continue;   // 投影落在这段墙皮上
+      const dn=(p[0]-f.a[0])*f.n[0]+(p[1]-f.a[1])*f.n[1];                        // 室内一侧为正
+      if(dn > -rFt && dn < rFt*1.5) dmin=Math.min(dmin, Math.abs(dn));
+    }
+    if(dmin<Infinity && (!best || dmin<best.d)) best={d:dmin, rot:rot+diff};
+  }
+  return best ? Math.round(normDeg(best.rot)*100)/100 : null;
+}
+function snapItemPos(it, spec, x, y, rFt, noSnap, opt){
+  if(noSnap || !spec || isLight(spec)) return {x, y, faces:[], rot:null};
+  const r0 = opt && opt.rot0!=null ? opt.rot0 : (it.rot||0);
+  const rr = (opt && opt.noRotate) ? null : wallAlignRot(spec, x, y, r0, rFt);
+  const sn=GEO_PTS.snapBox({cx:x, cy:y, w:cm2ft(spec.w), d:cm2ft(spec.d), rot: rr!=null ? rr : r0}, placementObstacles().faces, rFt);
+  return sn.faces.length ? {x:FT4(x+sn.dx), y:FT4(y+sn.dy), faces:sn.faces, rot:rr} : {x, y, faces:[], rot:rr};
+}
+/* S24b（research/13 U6）：旁边家具 / 固定构件的「迎面」——拖动中的距离标注以前只到墙皮（床头柜离床多远要自己量）。
+   exclude = 正在拖的这一件 / 这一组 */
+function neighborFaces(exclude){
+  const boxes=[];
+  for(const o of state.items){
+    if(exclude && exclude.has(o.uid)) continue;
+    if(!onCurLevel(o)) continue;
+    const sp=itemSpec(o); if(!sp || isLight(sp) || sp.kind==='rug') continue;
+    boxes.push(GEO_PTS.obbCorners(o.x, o.y, cm2ft(sp.w), cm2ft(sp.d), o.rot||0));
+  }
+  for(const f of fixedObstacles()) boxes.push(f.poly);
+  return GEO_PTS.wallFaces(boxes, 0.3, true);
+}
+/* 对齐线：拖的这件和旁边那件横平竖直时，左 / 中 / 右（上 / 中 / 下）任何一对差不到 6 屏幕像素就对齐那一维（Figma 的 smart guides）。
+   lock = 已经被贴墙定住的那一维（不改它） */
+function alignSnap(it, spec, exclude, lock){
+  if(!spec) return null;   // 目录里没有这件（幽灵件）：没有尺寸可对
+  const fold=(r)=>((normDeg(r)%90)+90)%90, ax=(r)=>{ const m=fold(r); return m<0.01 || m>89.99; };
+  if(!ax(it.rot||0)) return null;
+  const sw=(r)=>Math.round(normDeg(r)/90)%2===1;
+  const W=cm2ft(sw(it.rot||0)?spec.d:spec.w), D=cm2ft(sw(it.rot||0)?spec.w:spec.d), tol=6/pxPerFt();
+  const mx=[it.x-W/2, it.x, it.x+W/2], my=[it.y-D/2, it.y, it.y+D/2];
+  let bx=null, by=null;
+  for(const o of state.items){
+    if(exclude.has(o.uid) || !onCurLevel(o)) continue;
+    const sp=itemSpec(o); if(!sp || isLight(sp) || !ax(o.rot||0)) continue;
+    const ow=cm2ft(sw(o.rot||0)?sp.d:sp.w), od=cm2ft(sw(o.rot||0)?sp.w:sp.d);
+    const ox=[o.x-ow/2, o.x, o.x+ow/2], oy=[o.y-od/2, o.y, o.y+od/2];
+    for(let i=0;i<3;i++) for(let j=0;j<3;j++){
+      const dx=ox[j]-mx[i], dy=oy[j]-my[i];
+      if(!lock.x && Math.abs(dx)<tol && (!bx || Math.abs(dx)<Math.abs(bx.d))) bx={d:dx, at:ox[j], lo:oy[0], hi:oy[2]};
+      if(!lock.y && Math.abs(dy)<tol && (!by || Math.abs(dy)<Math.abs(by.d))) by={d:dy, at:oy[j], lo:ox[0], hi:ox[2]};
+    }
+  }
+  if(!bx && !by) return null;
+  const x=it.x+(bx?bx.d:0), y=it.y+(by?by.d:0), guides=[];
+  if(bx) guides.push([[bx.at, Math.min(bx.lo, y-D/2)], [bx.at, Math.max(bx.hi, y+D/2)]]);
+  if(by) guides.push([[Math.min(by.lo, x-W/2), by.at], [Math.max(by.hi, x+W/2), by.at]]);
+  return {x, y, guides};
 }
 function drawDistGuides(it, spec){
   const obsP=placementObstacles();
   const box={cx:it.x, cy:it.y, w:cm2ft(spec.w), d:cm2ft(spec.d), rot:it.rot||0};
   const g=el('g',{class:'distGuides','pointer-events':'none'},gSel);
+  // S24b：距离标注也量到旁边的家具 / 固定构件（琥珀色，与到墙皮的蓝色分开）；对齐线（拖动中对齐上的那一维）
+  const ex=new Set([it.uid].concat(((drag && drag.others)||[]).map(o=>o.it.uid)));
+  const nf=neighborFaces(ex), nW=obsP.faces.length;
+  for(const ln of (drag && drag.alignGuides) || [])
+    el('line',{x1:ln[0][0]*S, y1:ln[0][1]*S, x2:ln[1][0]*S, y2:ln[1][1]*S, stroke:'#f5c542', 'stroke-width':1, 'stroke-dasharray':'5 3', class:'alignGuide'}, g);
   for(const fi of (drag && drag.snapFaces) || []){ const f=obsP.faces[fi]; if(!f) continue;
     el('line',{x1:f.a[0]*S, y1:f.a[1]*S, x2:f.b[0]*S, y2:f.b[1]*S, stroke:'#26e0a8', 'stroke-width':2.4, 'stroke-linecap':'round', class:'snapFace'}, g); }
-  for(const c of GEO_PTS.clearances(box, obsP.faces, 12)){
+  for(const c of GEO_PTS.clearances(box, obsP.faces.concat(nf), 12)){
     if(c.dist < 0.02) continue;   // 贴着的那面：已经描绿了
+    const furn = c.face >= nW, col = furn ? '#f5c542' : '#7fb8ff';
     const a=c.from, b=c.to, mx=(a[0]+b[0])/2*S, my=(a[1]+b[1])/2*S;
-    el('line',{x1:a[0]*S, y1:a[1]*S, x2:b[0]*S, y2:b[1]*S, stroke:'#7fb8ff', 'stroke-width':1, 'stroke-dasharray':'3 2', class:'distGuide'}, g);
-    for(const q of [a,b]) el('circle',{cx:q[0]*S, cy:q[1]*S, r:1.6, fill:'#7fb8ff'}, g);
-    const t=el('text',{x:mx, y:my-3, 'text-anchor':'middle', 'font-size':10, fill:'#cfe3ff', stroke:'#101215', 'stroke-width':3, 'paint-order':'stroke', class:'distLbl'}, g);
+    el('line',{x1:a[0]*S, y1:a[1]*S, x2:b[0]*S, y2:b[1]*S, stroke:col, 'stroke-width':1, 'stroke-dasharray':'3 2', class:'distGuide'+(furn?' toFurn':'')}, g);
+    for(const q of [a,b]) el('circle',{cx:q[0]*S, cy:q[1]*S, r:1.6, fill:col}, g);
+    const t=el('text',{x:mx, y:my-3, 'text-anchor':'middle', 'font-size':10, fill: furn ? '#ffe7a8' : '#cfe3ff', stroke:'#101215', 'stroke-width':3, 'paint-order':'stroke', class:'distLbl'+(furn?' toFurn':'')}, g);
     t.textContent=fmtLen(c.dist);
   }
 }
@@ -4047,7 +4118,7 @@ svg.addEventListener('pointerdown', ev=>{
     if(!ev.shiftKey){ if(inGroup) selected=uid; else selOnly(uid); }
     const grpNow = ev.shiftKey ? (selUids().includes(uid) && selUids().length>1) : inGroup;
     const others = grpNow ? selItems().filter(m=>m.uid!==uid).map(m=>({it:m, ox:m.x-it.x, oy:m.y-it.y})) : [];
-    drag={mode:'move', uid, dx:it.x-p[0], dy:it.y-p[1], x0:it.x, y0:it.y, moved:false, undoKey:'drag:move:'+uid, others, collapse:inGroup && !ev.shiftKey, cX:ev.clientX, cY:ev.clientY,
+    drag={mode:'move', uid, dx:it.x-p[0], dy:it.y-p[1], x0:it.x, y0:it.y, rot0:it.rot||0, moved:false, undoKey:'drag:move:'+uid, others, collapse:inGroup && !ev.shiftKey, cX:ev.clientX, cY:ev.clientY,
           shiftToggle: ev.shiftKey};
     fg.classList.add('dragging');
     svg.setPointerCapture(ev.pointerId);
@@ -4110,10 +4181,19 @@ svg.addEventListener('pointermove', ev=>{
     // S18：贴墙吸附（Alt 按住 = 不吸）；吸上了就用精确坐标（取到 0.05ft 网格会离开墙皮）。拖整组时只按被拖的这件吸，其余同位移跟着走
     let tx=p[0]+drag.dx, ty=p[1]+drag.dy;
     if(ev.shiftKey){ if(Math.abs(tx-drag.x0) >= Math.abs(ty-drag.y0)) ty=drag.y0; else tx=drag.x0; }   // S23：Shift = 锁横 / 竖（锁住时不贴墙，免得被吸离那条线）
-    const sn=snapItemPos(it, itemSpec(it), tx, ty, SNAP_PX/pxPerFt(), ev.altKey || ev.shiftKey);
+    const group = !!(drag.others && drag.others.length);
+    const sn=snapItemPos(it, itemSpec(it), tx, ty, SNAP_PX/pxPerFt(), ev.altKey || ev.shiftKey, {rot0:drag.rot0, noRotate:group});
+    if(!group && !ev.shiftKey) it.rot = sn.rot!=null ? sn.rot : drag.rot0;   // S24b：靠到斜墙边转平行；离开就转回起手的角度
     if(sn.faces.length){ it.x=sn.x; it.y=sn.y; }
     else { it.x = (ev.shiftKey && tx===drag.x0) ? drag.x0 : Math.round(tx*20)/20; it.y = (ev.shiftKey && ty===drag.y0) ? drag.y0 : Math.round(ty*20)/20; }   // 锁住的那一维原样不动（不取到 0.05ft 网格）
     drag.snapFaces = sn.faces;
+    drag.alignGuides = null;
+    if(!ev.altKey && !ev.shiftKey){   // S24b：对齐线（贴墙定住的那一维不动）
+      const fs=placementObstacles().faces, lock={x:false, y:false};
+      for(const fi of sn.faces){ const f=fs[fi]; if(!f) continue; if(Math.abs(f.n[0])>0.9) lock.x=true; if(Math.abs(f.n[1])>0.9) lock.y=true; }
+      const al=alignSnap(it, itemSpec(it), new Set([it.uid].concat((drag.others||[]).map(o=>o.it.uid))), lock);
+      if(al){ it.x=al.x; it.y=al.y; drag.alignGuides=al.guides; }
+    }
     for(const o of drag.others||[]){ o.it.x=FT4(it.x+o.ox); o.it.y=FT4(it.y+o.oy); }
   } else if(drag.mode==='rotate'){
     markDragGesture(drag, drag.undoKey);
@@ -4331,7 +4411,7 @@ window.addEventListener('keydown', ev=>{
       .some((id)=>{ const m = document.getElementById(id); return m && m.style.display && m.style.display!=='none'; })) return;
   if(ev.key==='Escape' && drag && (drag.mode==='move' || drag.mode==='rotate')){   // S23：Esc 一层一层退——先取消正在拖的
     const it=state.items.find(i=>i.uid===drag.uid);
-    if(it && drag.mode==='move'){ it.x=drag.x0; it.y=drag.y0; for(const o of drag.others||[]){ o.it.x=FT4(it.x+o.ox); o.it.y=FT4(it.y+o.oy); } }
+    if(it && drag.mode==='move'){ it.x=drag.x0; it.y=drag.y0; if(drag.rot0!=null) it.rot=drag.rot0; for(const o of drag.others||[]){ o.it.x=FT4(it.x+o.ox); o.it.y=FT4(it.y+o.oy); } }
     if(it && drag.mode==='rotate') it.rot=drag.rot0;
     document.querySelectorAll('.furn.dragging').forEach(e=>e.classList.remove('dragging'));
     drag=null; drawFurniture(); pruneDeadRing(); return;
@@ -6800,6 +6880,21 @@ svg.addEventListener('pointerleave', ()=>{
   if(wallEdit.rmHover || wallEdit.olPreview || wallEdit.winPreview){ wallEdit.rmHover=null; wallEdit.olPreview=null; wallEdit.olPrevKey=''; wallEdit.winPreview=null; drawWallEdit(); }
 });
 svg.addEventListener('contextmenu', ev=>{ ev.preventDefault(); });   // S23：平面图上右键 = 平移，任何模式都不弹浏览器菜单
+/* S24b：目录卡片拖进平面图（编辑墙体时不收：那是画墙的地方） */
+svg.addEventListener('dragover', ev=>{
+  const spec=dndSpec(); if(!spec || wallEdit.on || CALIB) return;
+  ev.preventDefault(); if(ev.dataTransfer) ev.dataTransfer.dropEffect='copy';
+  drawDndGhost(spec, dndPlace(spec, svgPoint(ev), ev));
+});
+svg.addEventListener('dragleave', ev=>{ if(!ev.relatedTarget || !svg.contains(ev.relatedTarget)) clearDndGhost(); });
+svg.addEventListener('drop', ev=>{
+  let ref=null; try{ ref=ev.dataTransfer && ev.dataTransfer.getData('text/x-miniden-ref'); }catch(_){}
+  ref = ref || dndRef; const spec = ref ? itemSpec({ref}) : null;
+  clearDndGhost(); dndRef=null;
+  if(!spec || wallEdit.on || CALIB) return;
+  ev.preventDefault();
+  addItem(ref, dndPlace(spec, svgPoint(ev), ev));
+});
 /* 2D 地面双击 → 直接站到该处的室内视角 */
 /* 站内点 + 视线方向：纯几何（地板轮廓内「离所有墙最远」的点，朝背离最近墙的方向看）。
    自包含户型（空白 / 导入）没有历史锚点：以前第一人称一律落在硬编码的 (22,27)ft——
@@ -19586,6 +19681,10 @@ function buildCatalog(filter=''){
           <div class="sub"><span>${fmtLen(cm2ft(c.w))}×${fmtLen(cm2ft(c.d))}</span>${p?`<b class="${isBuiltIn(c)?'builtin':''}"${typeof c.caVar==='string'?` title="${c.caVar.replace(/"/g,'&quot;')}"`:''}>${p}</b>`:''}${c.sourcePack?`<i class="packTag" title="来自目录包 ${c.sourcePack}">包</i>`:''}</div>
         </div>`;
       card.onclick=()=>addItem(c.id);
+      // S24b（research/13 U5）：卡片能拖：拖到平面图 / 3D 俯瞰上松手 = 放在松手处（以前只能点一下落到中间、再拖过去）
+      card.draggable=true;
+      card.addEventListener('dragstart', e=>{ dndRef=c.id; try{ e.dataTransfer.setData('text/x-miniden-ref', c.id); e.dataTransfer.setData('text/plain', c.name); e.dataTransfer.effectAllowed='copy'; }catch(_){} });
+      card.addEventListener('dragend', ()=>{ dndRef=null; clearDndGhost(); });
       items.appendChild(card);
     }
     grp.appendChild(items); listEl.appendChild(grp);
@@ -19685,13 +19784,29 @@ function freeSpotFor(spec, cx, cy){
   }
   return null;
 }
-function addItem(refId){
+/* S24b：从目录拖出来的那件（dragover 读不到 dataTransfer 里的内容，只能记在这里）+ 平面图上的占地虚框 */
+let dndRef=null;
+function dndSpec(){ return dndRef ? itemSpec({ref:dndRef}) : null; }
+function dndPlace(spec, p, ev){   // 松手处：贴墙吸附 + 斜墙转平行（Alt 不吸）
+  const sn=snapItemPos({rot:0}, spec, p[0], p[1], SNAP_PX/pxPerFt(), !!(ev && ev.altKey), {rot0:0});
+  return {x: sn.faces.length ? sn.x : Math.round(p[0]*20)/20, y: sn.faces.length ? sn.y : Math.round(p[1]*20)/20, rot: sn.rot!=null ? sn.rot : 0};
+}
+function clearDndGhost(){ const g=svg.querySelector('#dndLayer'); if(g) g.remove(); }
+function drawDndGhost(spec, at){
+  let g=svg.querySelector('#dndLayer'); if(!g){ g=document.createElementNS('http://www.w3.org/2000/svg','g'); g.id='dndLayer'; g.setAttribute('pointer-events','none'); svg.appendChild(g); }
+  g.innerHTML='';
+  const c=GEO_PTS.obbCorners(at.x, at.y, cm2ft(spec.w), cm2ft(spec.d), at.rot||0);
+  el('polygon',{points:c.map(q=>(q[0]*S)+','+(q[1]*S)).join(' '), fill:'rgba(245,197,66,0.16)', stroke:'#f5c542', 'stroke-width':1.4, 'stroke-dasharray':'5 3', class:'dndGhost'}, g);
+  el('text',{x:at.x*S, y:at.y*S+4, 'text-anchor':'middle', 'font-size':10, fill:'#ffe7a8', stroke:'#101215', 'stroke-width':3, 'paint-order':'stroke'}, g).textContent=spec.name.split('·')[0].trim();
+}
+function addItem(refId, at){
   if(photoFrozen('加家具')) return;
-  // 放到当前视图中心附近（S24a：附近放得下的地方）
+  // 放到当前视图中心附近（S24a：附近放得下的地方）；at = 拖进来松手的位置（S24b：用户指定的地方，不另找空位）
   const cx = (vb.x+vb.w/2)/S, cy=(vb.y+vb.h/2)/S;
   const it = {uid:uidSeq++, ref:refId, x:Math.round(cx*4)/4, y:Math.round(cy*4)/4, rot:0};
-  { const sp=itemSpec(it);
-    if(sp && !CALIB && !isLight(sp) && !(sp.z>0) && sp.kind!=='rug'){ const at=freeSpotFor(sp, cx, cy); if(at){ it.x=at[0]; it.y=at[1]; } } }
+  if(at){ it.x=at.x; it.y=at.y; it.rot=at.rot||0; }
+  else { const sp=itemSpec(it);
+    if(sp && !CALIB && !isLight(sp) && !(sp.z>0) && sp.kind!=='rug'){ const fr=freeSpotFor(sp, cx, cy); if(fr){ it.x=fr[0]; it.y=fr[1]; } } }
   if(hasLevelsNow()) it.lv = DOC.level;   // S17：摆在当前层
   { const sp=itemSpec(it); if(sp && sp.z>0 && !isLight(sp)) it.z = FT4(cm2ft(sp.z)); }   // S19b：壁挂件（电视 / 挂画）放进来就挂在目录给的缺省高度
   pushUndo('addItem:'+refId, true);
@@ -20886,7 +21001,8 @@ function groundAt(ev, y){
       // S23：Shift = 锁横 / 竖（与平面图同一口径；锁住时不贴墙）
       let tx=gp.x+d3.dx, ty=gp.z+d3.dy;
       if(ev.shiftKey){ if(Math.abs(tx-d3.x0) >= Math.abs(ty-d3.y0)) ty=d3.y0; else tx=d3.x0; }
-      const sn=snapItemPos(it, itemSpec(it), tx, ty, 0.35, ev.altKey || ev.shiftKey);
+      const sn=snapItemPos(it, itemSpec(it), tx, ty, 0.35, ev.altKey || ev.shiftKey, {rot0:d3.rot0, noRotate:d3.start.length>1});
+      if(d3.start.length<=1 && !ev.shiftKey) it.rot = sn.rot!=null ? sn.rot : d3.rot0;   // S24b：靠到斜墙边转平行
       if(sn.faces.length){ it.x=sn.x; it.y=sn.y; }
       else { it.x = (ev.shiftKey && tx===d3.x0) ? d3.x0 : Math.round(tx*100)/100; it.y = (ev.shiftKey && ty===d3.y0) ? d3.y0 : Math.round(ty*100)/100; }
       for(const o of d3.others){ o.it.x=FT4(it.x+o.ox); o.it.y=FT4(it.y+o.oy); }
@@ -20908,6 +21024,17 @@ function groundAt(ev, y){
   };
   canvas.addEventListener('pointerup', endDrag, true);
   canvas.addEventListener('pointercancel', endDrag, true);
+  // S24b：目录卡片拖进 3D 俯瞰：落在光标下的地面上（贴墙 / 斜墙转平行照旧；室内视角不收）
+  canvas.addEventListener('dragover', ev=>{ if(!dndSpec() || !three || !is3D() || three.camMode!=='doll') return; ev.preventDefault(); if(ev.dataTransfer) ev.dataTransfer.dropEffect='copy'; });
+  canvas.addEventListener('drop', ev=>{
+    let ref=null; try{ ref=ev.dataTransfer && ev.dataTransfer.getData('text/x-miniden-ref'); }catch(_){}
+    ref = ref || dndRef; dndRef=null;
+    const spec = ref ? itemSpec({ref}) : null; if(!spec || !three || !is3D() || three.camMode!=='doll') return;
+    const gp=groundAt(ev, curElev()); if(!gp) return;
+    ev.preventDefault();
+    const sn=snapItemPos({rot:0}, spec, gp.x, gp.z, 0.35, ev.altKey, {rot0:0});
+    addItem(ref, {x: sn.faces.length ? sn.x : Math.round(gp.x*100)/100, y: sn.faces.length ? sn.y : Math.round(gp.z*100)/100, rot: sn.rot!=null ? sn.rot : 0});
+  });
   // S23：拖动中按 Esc = 回到起手姿态、拖动结束（与平面图 / 编辑墙体同一口径）；撤销环不留死步
   window.addEventListener('keydown', e=>{
     if(e.key!=='Escape' || !d3) return;
