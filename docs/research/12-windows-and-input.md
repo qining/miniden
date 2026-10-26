@@ -176,3 +176,6 @@ S22a 的新交互（沿墙滑动的方向键步长、Alt 不吸附）一开始�
   TheGamer《All Build Mode Hot Keys》https://www.thegamer.com/the-sims-4-building-shortcuts-explained/
 - Figma：论坛《Hold Ctrl to temporarily disable all snapping》https://forum.figma.com/t/launched-hold-ctrl-to-temporarily-disable-all-snapping/3358 、
   Envato Tuts+《Essential Figma Shortcuts》https://webdesign.tutsplus.com/essential-figma-shortcuts--cms-35478t
+
+**落地（2026-10-25）**：S22a（W1–W6、W9 + 做的过程中补上的 W12 删窗封墙、T 口避让）、S22b（W7、W8）、S23（K1–K10）完成，规格与门禁读数见
+`docs/design/home-v2.md` §S22 / §S23；S22c 飘窗台（W10）仍是候选。
