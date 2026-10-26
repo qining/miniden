@@ -163,7 +163,7 @@
   /* ---------- main layout ---------- */
   #main{flex:1; display:flex; min-height:0; position:relative;}
   #catalog{
-    width:400px; min-width:240px; max-width:70vw;
+    width:clamp(260px, 24vw, 400px); min-width:240px; max-width:70vw;   /* S24a：笔记本屏幕上别吃掉一半宽度（1700 宽仍是 400） */
     background:var(--panel); border-right:1px solid var(--line);
     display:flex; flex-direction:column; min-height:0; position:relative;
   }
@@ -190,7 +190,7 @@
   #catalog .search input{width:100%;}
   #catList{flex:1; overflow-y:auto; padding-bottom:20px;}
   /* 卡片网格：挑家具靠的是看图，列表里塞小图根本挑不动 */
-  .catGrid{display:grid; grid-template-columns:repeat(auto-fill, minmax(150px, 1fr));
+  .catGrid{display:grid; grid-template-columns:repeat(auto-fill, minmax(min(150px, calc(50% - 6px)), 1fr));   /* S24a：窄目录（笔记本屏幕）也保持两列，不变成一列大卡片 */
     gap:8px; padding:8px 10px 12px 10px;}
   .catCard{background:var(--card); border:1px solid var(--line); border-radius:10px;
     overflow:hidden; cursor:pointer; display:flex; flex-direction:column;
@@ -277,7 +277,7 @@
   }
   /* ---------- right props ---------- */
   #props{
-    width:300px; min-width:220px; max-width:50vw;
+    width:clamp(240px, 21vw, 300px); min-width:220px; max-width:50vw;   /* S24a：同上（1700 宽仍是 300） */
     background:var(--panel); border-left:1px solid var(--line);
     padding:0 12px 12px; overflow-y:auto; display:flex; flex-direction:column; gap:10px;
   }
@@ -300,6 +300,10 @@
   #keysBody .kk{flex:0 0 136px; text-align:right; white-space:nowrap;}
   #keysBody kbd{display:inline-block; min-width:14px; padding:0 5px; margin-left:2px; border:1px solid var(--line); border-bottom-width:2px; border-radius:4px; background:var(--panel2); font:11px/1.6 ui-monospace,Menlo,monospace; text-align:center;}
   #hint a.keysLink{color:var(--accent,#e0a458); cursor:pointer; text-decoration:underline; pointer-events:auto; white-space:nowrap;}   /* #hint 整块 pointer-events:none，链接自己要接点击 */
+  /* S24a（research/13 U4）：提示行能收起（只留「? 全部快捷键」，记住）；窄屏只留第一行（第二行是次要的，都在快捷键表里） */
+  #hint a.hintX{margin-left:8px; cursor:pointer; pointer-events:auto; color:var(--muted); text-decoration:none; padding:0 3px;}
+  #hint.hintMin .h1, #hint.hintMin .h2, #hint.hintMin .hsep{display:none;}
+  @media (max-width:1500px){ #hint .h2{display:none;} }
   #shopDlg{width:560px; max-width:92vw; background:var(--dlg-bg); border:1px solid var(--dlg-line); border-radius:10px; padding:16px 24px; font-size:13px; color:var(--dlg-text); box-shadow:0 14px 60px rgba(0,0,0,.55);}
   #shopDlg h3{margin:0 0 8px; font-size:14px; color:var(--dlg-title);}
   #shopText{width:100%; height:300px; margin:8px 0; font:12px/1.5 ui-monospace,Menlo,monospace; background:var(--panel2); color:var(--text); border:1px solid var(--line); border-radius:6px; padding:8px; box-sizing:border-box; resize:vertical;}
@@ -699,7 +703,7 @@
         <button class="btn danger" id="lvDel">删除这一层</button>
       </div>
     </div>
-    <div id="hint">拖家具 = 移动（Shift 锁横竖 · Alt 不贴墙）· R / [ ] = 转 · Ctrl/⌘+D = 复制 · Delete = 删除 · 方向键 = 挪 1cm<br>WASD / 右键拖 = 平移 · 滚轮 = 缩放 · <b>Shift+点 / Shift+拖空白 = 多选</b> · 红色描边 = 重叠 · <a class="keysLink">? 全部快捷键</a></div>
+    <div id="hint"><span class="h1">拖家具 = 移动（Shift 锁横竖 · Alt 不贴墙）· R / [ ] = 转 · Ctrl/⌘+D = 复制 · Delete = 删除 · 方向键 = 挪 1cm</span><span class="h2"><br>WASD / 右键拖 = 平移 · 滚轮 = 缩放 · <b>Shift+点 / Shift+拖空白 = 多选</b> · 红色描边 = 重叠</span><span class="hsep"> · </span><a class="keysLink">? 全部快捷键</a><a class="hintX" title="收起 / 展开这行提示（按 ? 照样能打开快捷键表）">×</a></div>
     <div id="wMsg"></div>
     <div id="totals"></div>
     <div id="loading3d" style="display:none">
@@ -724,8 +728,8 @@
     <div id="pFields" style="display:none; flex-direction:column; gap:8px;">
       <div class="field"><label>宽×深×高</label><span id="pDims" style="font-size:12px"></span></div>
       <div class="field"><label>旋转</label><input id="pRot" type="number" step="0.1" style="width:64px"> °
-        <input id="pRotSlider" type="range" min="0" max="359.5" step="0.5" style="width:104px;vertical-align:middle">
-        <button class="btn" id="pRot90" style="padding:2px 8px">+90°</button></div>
+        <input id="pRotSlider" type="range" min="0" max="359.5" step="0.5" style="flex:1 1 60px;min-width:36px;width:auto;vertical-align:middle">
+        <button class="btn" id="pRot90" style="padding:2px 8px;flex:none">+90°</button></div>
       <div class="field" id="pZRow"><label>离地</label><input id="pZ" type="number" min="0" step="1" style="width:64px" title="壁挂电视 / 吊柜 / 挂画 / 墙上的搁板：底边离地多高（0 = 落地）"> cm</div>
       <div class="field"><label>颜色</label><input id="pColor" type="color" style="width:50px;padding:2px;height:28px"></div>
       <div id="pLightRow" style="display:none">
@@ -3763,7 +3767,54 @@ const WALL_TOL = 0.1;    // ft²：插进墙里的面积容差（≈93cm²：贴
 const DOOR_TOL = 0.1;    // ft²：占了门扇扫过的扇形多少才算挡门
 const CEIL_TOL = 1/30.48; // ft：顶到天花的容差 1cm（离地框按「顶 ≤ 层高」夹，取整误差远小于它）
 const BLOCK_WHY = {overlap:'与其他家具重叠', onStair:'压在楼梯 / 楼梯口上', inWall:'插进墙里', blocksDoor:'挡住门（门扇开不开）',
-  tooTall:'顶到天花了（离地 + 件高 超过层高）'};
+  tooTall:'顶到天花了（离地 + 件高 超过层高）', onFixture:'压在固定构件上（洁具 / 台面 / 中岛 / 厨房）'};
+const FX_TOL = 0.05;   // ft²：压在固定构件上多少才算（≈46cm²：贴着台面放、取整误差都远小于它）
+/* S24a（research/13 U1）：固定构件的占地 + 高度区间——家具压上去 = 红。以前冲突只认家具、墙 / 窗 / 柱、楼梯、门扇：
+   沙发压在马桶 / 中岛上照样白框。高度按 3D 建模的同一组数（镜子挂在 93–194cm：下面放矮柜不算）；台面 / 中岛 / 台柜标 counter：
+   椅子 / 凳子塞进去不算（与「椅子塞进桌下」同一条规则） */
+const FX_SPAN={counter:[0,2.59], basin:[0,2.63], toilet:[0,2.55], tub:[0,1.62], shower:[0,6.4], mirror:[3.05,6.35]};
+let _fixObs=null, _fixObsKey='';
+function fixedObstacles(){
+  if(CALIB) return [];
+  let key=''; try{ key=JSON.stringify([DOC.fixtures, DOC.runs, DOC.level||'', PLAN_ID]); }catch(e){ return []; }
+  if(_fixObs && key===_fixObsKey) return _fixObs;
+  const out=[];
+  for(const f of effFixtures()){
+    const sp=FX_SPAN[f.t]; if(!sp) continue;
+    const w=f.x2-f.x1, d=f.y2-f.y1; if(!(w>0.01 && d>0.01)) continue;
+    out.push({poly:GEO_PTS.obbCorners((f.x1+f.x2)/2, (f.y1+f.y2)/2, w, d, f.rot||0), z0:sp[0], z1:sp[1], counter:f.t==='counter'||f.t==='basin'});
+  }
+  for(const r of effRuns()){
+    const z1=Math.max(r.h||0, (r.topH||2.95)+0.05), path=r.path||[];
+    for(let i=0;i<path.length-1;i++){
+      const a=path[i], b=path[i+1], dx=b[0]-a[0], dy=b[1]-a[1]; if(Math.hypot(dx,dy)<1e-6) continue;
+      const n=runNormal(dx,dy,a[0],a[1]);
+      out.push({poly:[a, b, [b[0]+n[0]*r.depth, b[1]+n[1]*r.depth], [a[0]+n[0]*r.depth, a[1]+n[1]*r.depth]], z0:0, z1, counter:true});
+    }
+    for(const m of (r.modules||[])){
+      if(m.type!=='fridge') continue;
+      const q=runPointAt(r, m.at); if(!q) continue;
+      const w=m.w||2.0, u=[Math.cos(q.th), Math.sin(q.th)], dd=r.depth*0.92, P=(su,sn)=>[q.p[0]+u[0]*su+q.n[0]*sn, q.p[1]+u[1]*su+q.n[1]*sn];
+      out.push({poly:[P(-w/2,0),P(w/2,0),P(w/2,dd),P(-w/2,dd)], z0:0, z1:6.56, counter:false});
+    }
+  }
+  const isl=ISL();   // 内置户型的中岛：船形（直边 + 二次曲线）——与 2D / 3D 同一条轮廓，高 3ft（3D 拉伸深度）
+  if(isl){
+    const pts=[isl.a, isl.b, isl.e];
+    for(let k=1;k<=16;k++){ const t=k/16, m1=1-t; pts.push([m1*m1*isl.e[0]+2*m1*t*isl.cp2[0]+t*t*isl.d[0], m1*m1*isl.e[1]+2*m1*t*isl.cp2[1]+t*t*isl.d[1]]); }
+    out.push({poly:pts, z0:0, z1:3.1, counter:true});
+  }
+  for(const kp of (planOf('kitchen')||[])){   // 内置厨房：3D 的每一个盒子（细杆 / 缝线这类装饰件跳过）
+    if(!kp.box || kp.m==='chrome' || kp.m==='seam') continue;
+    const [bx,by,bz]=kp.box, [px,py,pz]=kp.p; if(bx*bz < 0.1) continue;
+    out.push({poly:[[px-bx/2,pz-bz/2],[px+bx/2,pz-bz/2],[px+bx/2,pz+bz/2],[px-bx/2,pz+bz/2]], z0:py-by/2, z1:py+by/2, counter:kp.m==='top'||kp.m==='cab'});
+  }
+  _fixObsKey=key; _fixObs=out; return out;
+}
+function hitsFixed(spec, corners, vs, fobs){
+  const tuckable=['chair','stool','officeChair'].includes(spec.kind);
+  return fobs.some(o=> vs[0] < o.z1-0.02 && vs[1] > o.z0+0.02 && !(tuckable && o.counter) && GEO_PTS.convexClipArea(o.poly, corners) > FX_TOL);
+}
 const furnWhy = new Map();   // uid → 红框的原因（drawFurniture 算，检视面板读）
 function drawFurniture(){
   if(!gFurn) return;
@@ -3814,6 +3865,7 @@ function drawFurniture(){
   const stObs = CALIB ? [] : stairOwnHoles().concat(hasLevelsNow() ? stairHolesFor(DOC.level) : []);
   const obsP = CALIB ? null : placementObstacles();
   const sweeps = CALIB ? [] : doorSweeps();
+  const fobs = CALIB ? [] : fixedObstacles();
   const blockedSweeps = [];
   furnWhy.clear();
   const tuck=(x,y)=>['chair','stool','officeChair'].includes(x)&&['tableRound','tableRect','desk','coffeeTable'].includes(y);
@@ -3831,6 +3883,7 @@ function drawFurniture(){
     }
     if(c && !high && stObs.length && stObs.some(P=>GEO_PTS.convexClipArea(P, c) > 0.05)) why.push('onStair');
     if(c && obsP && obsP.polys.some(P=>GEO_PTS.convexClipArea(P, c) > WALL_TOL)) why.push('inWall');
+    if(c && fobs.length && hitsFixed(a.spec, c, vSpanIt(a.it, a.spec), fobs)) why.push('onFixture');
     if(c && !high && sweeps.length){
       const hitD = sweeps.filter(d=>GEO_PTS.convexClipArea(d.poly, c) > DOOR_TOL);
       if(hitD.length){ why.push('blocksDoor'); for(const d of hitD) if(!blockedSweeps.includes(d)) blockedSweeps.push(d); }
@@ -19604,11 +19657,41 @@ function syncCurUI(){
   if(f && document.activeElement !== f) f.value = fxRate();
 }
 
+/* S24a（research/13 U2）：新加的家具落在视图中心附近**放得下**的地方：从中心往外一圈一圈找（0.5ft 一圈、最远 14ft）——
+   在地板里、不插墙、不压家具 / 固定构件 / 楼梯、不挡门扇。以前原样落在正中：个人户型一开就压在中岛上。
+   找不到才落正中（照旧标红）；壁挂件 / 灯具照旧落正中（它们挂在墙上 / 天花上，地上有什么不相干） */
+function freeSpotFor(spec, cx, cy){
+  const W=cm2ft(spec.w), D=cm2ft(spec.d);
+  if(!(W>0 && D>0)) return null;
+  const obsP=placementObstacles(), fobs=fixedObstacles(), sweeps=doorSweeps();
+  const stObs=stairOwnHoles().concat(hasLevelsNow() ? stairHolesFor(DOC.level) : []);
+  const others=state.items.filter(i=>onCurLevel(i)).map(i=>({i, sp:itemSpec(i)})).filter(o=>o.sp && o.sp.kind!=='rug' && !isLight(o.sp));
+  const vs=[0, cm2ft(spec.h||0)];
+  const ok=(x,y)=>{
+    const c=GEO_PTS.obbCorners(x, y, W, D, 0);
+    if(!c.every(p=>insideFloorPt(p[0], p[1]))) return false;
+    if(obsP.polys.some(P=>GEO_PTS.convexClipArea(P, c) > WALL_TOL)) return false;
+    if(fobs.length && hitsFixed(spec, c, vs, fobs)) return false;
+    if(stObs.some(P=>GEO_PTS.convexClipArea(P, c) > 0.05)) return false;
+    if(sweeps.some(d=>GEO_PTS.convexClipArea(d.poly, c) > DOOR_TOL)) return false;
+    const probe={x, y, rot:0, ref:spec.id};
+    return !others.some(o=>obbOverlap(probe, spec, o.i, o.sp));
+  };
+  const g=(v)=>Math.round(v*20)/20;
+  if(ok(g(cx), g(cy))) return [g(cx), g(cy)];
+  for(let r=0.5; r<=14; r+=0.5){
+    const n=Math.max(8, Math.round(2*Math.PI*r/0.5));
+    for(let k=0;k<n;k++){ const a=2*Math.PI*k/n, x=g(cx+r*Math.cos(a)), y=g(cy+r*Math.sin(a)); if(ok(x,y)) return [x,y]; }
+  }
+  return null;
+}
 function addItem(refId){
   if(photoFrozen('加家具')) return;
-  // 放到当前视图中心附近
+  // 放到当前视图中心附近（S24a：附近放得下的地方）
   const cx = (vb.x+vb.w/2)/S, cy=(vb.y+vb.h/2)/S;
   const it = {uid:uidSeq++, ref:refId, x:Math.round(cx*4)/4, y:Math.round(cy*4)/4, rot:0};
+  { const sp=itemSpec(it);
+    if(sp && !CALIB && !isLight(sp) && !(sp.z>0) && sp.kind!=='rug'){ const at=freeSpotFor(sp, cx, cy); if(at){ it.x=at[0]; it.y=at[1]; } } }
   if(hasLevelsNow()) it.lv = DOC.level;   // S17：摆在当前层
   { const sp=itemSpec(it); if(sp && sp.z>0 && !isLight(sp)) it.z = FT4(cm2ft(sp.z)); }   // S19b：壁挂件（电视 / 挂画）放进来就挂在目录给的缺省高度
   pushUndo('addItem:'+refId, true);
@@ -19946,6 +20029,12 @@ window.addEventListener('keydown', ev=>{
 }, true);
 $('#keysModal').onclick=e=>{ if(e.target.id==='keysModal') toggleKeysPanel(false); };
 document.addEventListener('click', e=>{ const a=e.target && e.target.closest && e.target.closest('.keysLink'); if(a){ e.preventDefault(); toggleKeysPanel(true); } });
+function applyHintMin(){ const h=$('#hint'); if(!h) return; const on=!!panelState().hintMin; h.classList.toggle('hintMin', on);
+  const x=h.querySelector('.hintX'); if(x){ x.textContent = on ? '›' : '×'; x.title = on ? '展开这行提示' : '收起这行提示（按 ? 照样能打开快捷键表）'; } }
+document.addEventListener('click', e=>{ const x=e.target && e.target.closest && e.target.closest('#hint .hintX'); if(!x) return;
+  e.preventDefault(); const p=panelState(); p.hintMin=!p.hintMin; panelSave(p); applyHintMin(); });
+new MutationObserver(()=>applyHintMin()).observe($('#hint'), {childList:true});   // setView / setCamMode 换了提示文字：按记住的收起状态重摆
+applyHintMin();
 $('#shopModal').onclick=e=>{ if(e.target.id==='shopModal') $('#shopModal').style.display='none'; };
 $('#shopModal').addEventListener('keydown', e=>{ if(e.key==='Escape'){ e.stopPropagation(); $('#shopModal').style.display='none'; } });
 
@@ -20103,9 +20192,9 @@ function setView(v){
   $('#svg2d').style.display = v==='2d'?'block':'none';
   $('#c3d').style.display = in3?'block':'none';
   $('#hint').innerHTML = v==='2d'
-    ? '拖家具 = 移动（Shift 锁横竖 · Alt 不贴墙）· R / [ ] = 转 · Ctrl/⌘+D = 复制 · Delete = 删除 · 方向键 = 挪 1cm<br>WASD / 右键拖 = 平移 · 滚轮 = 缩放 · <b>Shift+点 / Shift+拖空白 = 多选</b> · 红色描边 = 重叠 · <a class="keysLink">? 全部快捷键</a>'
-    : (fp ? '室内视角：左键拖动 = <b>原地转头</b> · <b>双击地面 = 走过去</b> · WASD = 走（Shift 跑）· Q E = 转 · 2 = 回俯瞰 · <a class="keysLink">? 全部快捷键</a>'
-          : '左键拖空白 = 环绕 · 右键拖空白 / WASD = 平移 · Q E = 转 · <b>拖家具 = 移动 · 右键拖选中的 = 转 · Shift+点 = 多选</b> · <a class="keysLink">? 全部快捷键</a>');
+    ? '<span class="h1">拖家具 = 移动（Shift 锁横竖 · Alt 不贴墙）· R / [ ] = 转 · Ctrl/⌘+D = 复制 · Delete = 删除 · 方向键 = 挪 1cm</span><span class="h2"><br>WASD / 右键拖 = 平移 · 滚轮 = 缩放 · <b>Shift+点 / Shift+拖空白 = 多选</b> · 红色描边 = 重叠</span><span class="hsep"> · </span><a class="keysLink">? 全部快捷键</a><a class="hintX" title="收起 / 展开这行提示（按 ? 照样能打开快捷键表）">×</a>'
+    : (fp ? '<span class="h1">室内视角：左键拖动 = <b>原地转头</b> · <b>双击地面 = 走过去</b> · WASD = 走（Shift 跑）· Q E = 转 · 2 = 回俯瞰</span><span class="hsep"> · </span><a class="keysLink">? 全部快捷键</a><a class="hintX" title="收起 / 展开这行提示（按 ? 照样能打开快捷键表）">×</a>'
+          : '<span class="h1">左键拖空白 = 环绕 · 右键拖空白 / WASD = 平移 · Q E = 转 · <b>拖家具 = 移动 · 右键拖选中的 = 转 · Shift+点 = 多选</b></span><span class="hsep"> · </span><a class="keysLink">? 全部快捷键</a><a class="hintX" title="收起 / 展开这行提示（按 ? 照样能打开快捷键表）">×</a>');
   $('#dnSeg').style.display = in3?'flex':'none';
   $('#envSeg').style.display = in3?'flex':'none';
   $('#lampSeg').style.display = in3?'flex':'none';
@@ -20636,7 +20725,7 @@ function setCamMode(m){
     controls.enabled=false;
     cam.fov=68; cam.updateProjectionMatrix();
     fpAim();
-    $('#hint').innerHTML='室内视角：左键拖动 = <b>原地转头</b> · <b>双击地面 = 走过去</b> · WASD = 走（Shift 跑）· Q E = 转 · 2 = 回俯瞰 · <a class="keysLink">? 全部快捷键</a>';
+    $('#hint').innerHTML='<span class="h1">室内视角：左键拖动 = <b>原地转头</b> · <b>双击地面 = 走过去</b> · WASD = 走（Shift 跑）· Q E = 转 · 2 = 回俯瞰</span><span class="hsep"> · </span><a class="keysLink">? 全部快捷键</a><a class="hintX" title="收起 / 展开这行提示（按 ? 照样能打开快捷键表）">×</a>';
   } else {
     if(three.camMode!=='doll'){ three.fpPos=cam.position.clone();
       three.fpDir=controls.target.clone().sub(cam.position).normalize(); }
@@ -20657,7 +20746,7 @@ function setCamMode(m){
     } else {
       cam.position.set(28, 42, 50); controls.target.set(26,0,20);
     }
-    $('#hint').innerHTML='左键拖空白 = 环绕 · 右键拖空白 / WASD = 平移 · Q E = 转 · <b>拖家具 = 移动 · 右键拖选中的 = 转 · Shift+点 = 多选</b> · <a class="keysLink">? 全部快捷键</a>';
+    $('#hint').innerHTML='<span class="h1">左键拖空白 = 环绕 · 右键拖空白 / WASD = 平移 · Q E = 转 · <b>拖家具 = 移动 · 右键拖选中的 = 转 · Shift+点 = 多选</b></span><span class="hsep"> · </span><a class="keysLink">? 全部快捷键</a><a class="hintX" title="收起 / 展开这行提示（按 ? 照样能打开快捷键表）">×</a>';
   }
   applyBackdrop(); applyLightMode(); applyLevelVisibility();
   controls.update(); requestRender();
