@@ -10750,6 +10750,275 @@ async function runPBTest() {
       );
     }
 
+    /* ===== 43. S23 独立审查钓出的（先红后绿） ===== */
+    {
+      await enterEdit();
+      await pbReset();
+      const p43Plans = PLAN_REG.plans.length;
+      Q('#btnPlanNew').click();
+      await tick();
+      const p43Plan = PLAN_ID;
+      const fp43 = floorPts();
+      const X =
+          Math.min.apply(
+            null,
+            fp43.map((p) => p[0])
+          ) + 1,
+        Y =
+          Math.min.apply(
+            null,
+            fp43.map((p) => p[1])
+          ) + 1;
+      const wd = cmToWd(15);
+      const near = (a, b, tol) => Math.abs(a - b) < (tol || 1e-6);
+      const kd = (k, o) => {
+        const e = new KeyboardEvent('keydown', Object.assign({ key: k, bubbles: true, cancelable: true }, o || {}));
+        document.body.dispatchEvent(e);
+        return e;
+      };
+      pushUserWall(X, Y, X + 16, Y, 'w', wd);
+      pushUserWall(X + 16, Y, X + 16, Y + 12, 'w', wd);
+      pushUserWall(X + 16, Y + 12, X, Y + 12, 'w', wd);
+      pushUserWall(X, Y + 12, X, Y, 'w', wd);
+      geoChanged();
+      fit2DToContent();
+      await tick();
+      if (wallEdit.on) Q('#btnWallEdit').click();
+      await tick();
+      const spec43 = CATALOG.find((c) => c.kind === 'sofa' && c.w >= 150);
+      addItem(spec43.id);
+      addItem(spec43.id);
+      await tick();
+      const A = state.items[state.items.length - 2],
+        B = state.items[state.items.length - 1];
+      Object.assign(A, { x: X + 4, y: Y + 4, rot: 0 });
+      Object.assign(B, { x: X + 11, y: Y + 8, rot: 0 });
+      selOnly(A.uid);
+      drawFurniture();
+      await tick();
+      const ppf = pxPerFtNow();
+
+      /* 43.1 Shift+按下家具再拖 = 锁横竖挪（以前 Shift+按下就是加减选、直接 return：照提示先按 Shift 再拖，什么都不动还把它从选择里减掉）；
+         Shift+点（没拖）照旧 = 加减选 */
+      const [bx, by] = SPT(B.x, B.y),
+        b0 = [B.x, B.y];
+      fire('pointerdown', bx, by, { shiftKey: true });
+      await tick();
+      fire('pointermove', bx + ppf * 1, by + ppf * 0.3, { shiftKey: true });
+      await tick();
+      fire('pointermove', bx + ppf * 2, by + ppf * 0.6, { shiftKey: true });
+      await tick();
+      fire('pointerup', bx + ppf * 2, by + ppf * 0.6, { shiftKey: true, buttons: 0 });
+      await tick();
+      const moved1 = B.x - b0[0] > 1.5 && near(B.y, b0[1], 1e-9);
+      selOnly(A.uid);
+      drawFurniture();
+      await tick();
+      const [bx2, by2] = SPT(B.x, B.y);
+      fire('pointerdown', bx2, by2, { shiftKey: true });
+      await tick();
+      fire('pointerup', bx2, by2, { shiftKey: true, buttons: 0 });
+      await tick();
+      const toggled = selUids().includes(A.uid) && selUids().includes(B.uid);
+      T(
+        'pb-s23r-shift-press-then-drag',
+        moved1 && toggled,
+        'Shift+按下再斜着拖：Δx ' +
+          (B.x - b0[0]).toFixed(2) +
+          ' Δy ' +
+          (B.y - b0[1]).toFixed(4) +
+          ' · Shift+点（没拖）加选=' +
+          toggled
+      );
+
+      /* 43.2 拖家具途中按 Esc = 回到起点、拖动结束（以前只是全不选，拖动继续、松手照样落盘）；撤销环不留死步 */
+      selOnly(A.uid);
+      drawFurniture();
+      await tick();
+      const [ax, ay] = SPT(A.x, A.y);
+      const a0 = [A.x, A.y],
+        r0 = undoRing.length;
+      fire('pointerdown', ax, ay);
+      await tick();
+      fire('pointermove', ax + ppf * 1, ay);
+      await tick();
+      fire('pointermove', ax + ppf * 2, ay);
+      await tick();
+      const midX = A.x;
+      kd('Escape');
+      await tick();
+      fire('pointermove', ax + ppf * 3, ay);
+      await tick();
+      fire('pointerup', ax + ppf * 3, ay, { buttons: 0 });
+      await tick();
+      T(
+        'pb-s23r-esc-cancels-furniture-drag',
+        midX > a0[0] + 1 && near(A.x, a0[0], 1e-9) && near(A.y, a0[1], 1e-9) && undoRing.length === r0,
+        '拖动中 x +' +
+          (midX - a0[0]).toFixed(2) +
+          'ft → Esc 后 ' +
+          (A.x - a0[0]).toFixed(3) +
+          ' · 撤销环 ' +
+          r0 +
+          '→' +
+          undoRing.length
+      );
+
+      /* 43.3 柱子顶点：Alt+拖 = 不吸附地挪（以前 Alt+按下 = 删掉这个顶点）；Alt+点（没拖）照旧删 */
+      Q('#btnWallEdit').click();
+      await tick();
+      await setTool('select');
+      const sol = {
+        id: SCHEMA.Project.nextId(DOC, 'solid'),
+        geom: {
+          t: 'poly',
+          pts: [
+            [X + 6, Y + 2],
+            [X + 8, Y + 2],
+            [X + 8, Y + 3],
+            [X + 6, Y + 3],
+          ],
+        },
+        src: 'user',
+        userIndex: nextUserIndex('solids'),
+      };
+      DOC.solids.push(sol);
+      geoChanged();
+      wallEdit.sel = { kind: 'p', id: sol.id };
+      drawWallEdit();
+      updateWallBarFromSel();
+      await tick();
+      const vEl = () => pbSvg.querySelector('.pVert[data-vi="1"]');
+      let vr = vEl() && vEl().getBoundingClientRect();
+      const vx = vr ? vr.x + vr.width / 2 : 0,
+        vy = vr ? vr.y + vr.height / 2 : 0;
+      fire('pointerdown', vx, vy, { altKey: true });
+      await tick();
+      fire('pointermove', vx + ppf * 0.5, vy + ppf * 0.4, { altKey: true });
+      await tick();
+      fire('pointermove', vx + ppf * 1, vy + ppf * 0.8, { altKey: true });
+      await tick();
+      fire('pointerup', vx + ppf * 1, vy + ppf * 0.8, { altKey: true, buttons: 0 });
+      await tick();
+      const sp = entById(sol.id).geom.pts.map((q) => [q[0], q[1]]);
+      const altDrag = sp.length === 4 && sp[1][0] - (X + 8) > 0.8 && sp[1][1] - (Y + 2) > 0.6;
+      drawWallEdit();
+      vr = vEl() && vEl().getBoundingClientRect();
+      if (vr) {
+        fire('pointerdown', vr.x + vr.width / 2, vr.y + vr.height / 2, { altKey: true });
+        await tick();
+        fire('pointerup', vr.x + vr.width / 2, vr.y + vr.height / 2, { altKey: true, buttons: 0 });
+        await tick();
+      }
+      const altClickDeletes = entById(sol.id).geom.pts.length === 3;
+      T(
+        'pb-s23r-alt-drag-vertex-moves',
+        altDrag && altClickDeletes,
+        'Alt+拖顶点：' +
+          sp.length +
+          ' 个顶点、第 2 个挪到 (' +
+          (sp[1] ? (sp[1][0] - X).toFixed(2) + ', ' + (sp[1][1] - Y).toFixed(2) : '?') +
+          ') · Alt+点删掉=' +
+          altClickDeletes
+      );
+
+      /* 43.4 面板里的组合键画成「Ctrl/⌘ + D」（以前和「W A S D 任选其一」一个样子，像是在说单按 D 也复制）；
+         工具行展开着按 Esc = 先关面板（以前 Esc 先被工具行吃掉：面板还开着、工具行收起了） */
+      buildKeysPanel();
+      const dupRow = Array.from(Q('#keysBody').querySelectorAll('.kr')).find((r) => r.textContent.includes('复制'));
+      const chord = !!dupRow && /Ctrl\/⌘\+D/.test(dupRow.querySelector('.kk').textContent);
+      setProTools(true);
+      await tick();
+      kd('?');
+      await tick();
+      kd('Escape');
+      await tick();
+      const escPanelFirst = !keysPanelOpen() && proToolsOpen === true;
+      toggleKeysPanel(false);
+      setProTools(false);
+      T(
+        'pb-s23r-panel-chords-esc-order',
+        chord && escPanelFirst,
+        '「复制」那行的键：' +
+          (dupRow ? dupRow.querySelector('.kk').textContent : '无') +
+          ' · 工具行开着按 Esc：面板关=' +
+          !keysPanelOpen() +
+          '、工具行还开着=' +
+          escPanelFirst
+      );
+
+      /* 43.5 Ctrl+D 没有可复制的（编辑墙体里 / 没选中）→ 拦下浏览器「加书签」（以前没 preventDefault，Chrome 弹加书签） */
+      await setTool('select');
+      wallEdit.sel = null;
+      const e5a = kd('d', { ctrlKey: true });
+      Q('#btnWallEdit').click();
+      await tick();
+      selOnly(null);
+      drawFurniture();
+      const e5b = kd('d', { ctrlKey: true });
+      T(
+        'pb-s23r-ctrl-d-never-bookmarks',
+        e5a.defaultPrevented && e5b.defaultPrevented,
+        '编辑墙体里拦下=' + e5a.defaultPrevented + ' · 没选中拦下=' + e5b.defaultPrevented
+      );
+
+      /* 43.6 右键拖 = 平移在「移动这一层」里也成立；松手后图纸不再跟着鼠标漂、模式还在（以前 pointermove 先 return、pointerup 不清 drag） */
+      Q('#btnWallEdit').click();
+      await tick();
+      Q('#lvAddUp').click();
+      await tick();
+      Q('#btnWallEdit').click();
+      await tick();
+      setLvMove(true);
+      await tick();
+      const [px6, py6] = SPT(X + 8, Y + 6),
+        vx6 = vb.x;
+      fire('pointerdown', px6, py6, { button: 2, buttons: 2 });
+      await tick();
+      fire('pointermove', px6 + 50, py6, { button: 2, buttons: 2 });
+      await tick();
+      fire('pointerup', px6 + 50, py6, { button: 2, buttons: 0 });
+      await tick();
+      const panned6 = near((vx6 - vb.x) * pbSvg.getScreenCTM().a, 50, 0.5);
+      const vxAfter = vb.x;
+      fire('pointermove', px6 + 120, py6 + 30, { buttons: 0 });
+      await tick();
+      const noDrift = vb.x === vxAfter && !!lvMove;
+      setLvMove(false);
+      T(
+        'pb-s23r-right-pan-in-level-move',
+        panned6 && noDrift,
+        '移动这一层时右键拖：图纸平移=' + panned6 + ' · 松手后悬停不漂、模式还在=' + noDrift
+      );
+
+      /* 43.7 台面工具 Enter = 结束（以前 Enter 只管墙 / 柱 / 楼梯）*/
+      if (!wallEdit.on) Q('#btnWallEdit').click();
+      await tick();
+      await setTool('run');
+      const nRun = (DOC.runs || []).length;
+      await tap(X + 1, Y + 11.2);
+      await tap(X + 6, Y + 11.2);
+      kd('Enter');
+      await tick();
+      T(
+        'pb-s23r-enter-finishes-run',
+        (DOC.runs || []).length === nRun + 1 && wallEdit.drawPts.length === 0,
+        '台面 ' + nRun + '→' + (DOC.runs || []).length
+      );
+      await setTool('select');
+
+      /* 收尾 */
+      Q('#btnPlanDel').click();
+      await tick();
+      Q('#btnPlanDel').click();
+      await tick();
+      T(
+        'pb-s23r-clean-exit',
+        PLAN_ID !== p43Plan && PLAN_REG.plans.length === p43Plans,
+        'plans ' + p43Plans + '→' + PLAN_REG.plans.length
+      );
+    }
+
     /* ===== 收尾：页面不得有未捕获异常 ===== */
     T('pb-no-page-errors', window.__ERRS.length === 0, window.__ERRS.slice(0, 3).join(' || '));
   } catch (e) {

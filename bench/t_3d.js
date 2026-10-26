@@ -4223,6 +4223,128 @@ async function run3DTest() {
       await wait(300);
     }
 
+    /* ===== S23 独立审查钓出的（先红后绿） ===== */
+    {
+      const kd = (k, o) =>
+        document.body.dispatchEvent(
+          new KeyboardEvent('keydown', Object.assign({ key: k, bubbles: true, cancelable: true }, o || {}))
+        );
+      setView('2d');
+      await wait(300);
+      if (state.items.length < 2) addItem(arm.id);
+      const A = state.items[0],
+        B = state.items[1];
+      Object.assign(A, { x: CX3 - 3, y: CY3, rot: 0 });
+      Object.assign(B, { x: CX3 + 3, y: CY3, rot: 0 });
+      selOnly(A.uid);
+      drawFurniture();
+
+      // R1 已经在室内时再按 3：站位不变（以前瞬移回进入点、还闪一下「正在更新 3D」）；俯瞰里再按 2：机位不变（以前等于按了 F）
+      kd('3');
+      await wait(900);
+      fpKeys.d = true;
+      fpStep();
+      fpStep();
+      fpKeys.d = false;
+      const pA = three.cam.position.clone();
+      kd('3');
+      await wait(900);
+      const stayFp = three.cam.position.distanceTo(pA) < 1e-6;
+      kd('2');
+      await wait(900);
+      three.controls.target.x += 2;
+      three.cam.position.x += 2;
+      three.controls.update();
+      const cA = three.cam.position.clone();
+      kd('2');
+      await wait(900);
+      const stayDoll = three.cam.position.distanceTo(cA) < 1e-6;
+      T(
+        's23r-same-view-key-keeps-camera',
+        stayFp && stayDoll,
+        '室内再按 3 站位不变=' + stayFp + ' · 俯瞰再按 2 机位不变=' + stayDoll
+      );
+
+      // R2 快捷键面板开着 = 键盘归它：室内按 W 不走、Ctrl+Z 不撤销（以前只挡住了主监听器的后半段）
+      kd('3');
+      await wait(900);
+      kd('?');
+      await wait(60);
+      kd('w');
+      const ringU = undoRing.length,
+        ringR = redoRing.length;
+      kd('z', { ctrlKey: true });
+      await wait(60);
+      const walking = !!fpKeys.w,
+        ringSame = undoRing.length === ringU && redoRing.length === ringR;
+      kd('Escape');
+      await wait(60);
+      const closed = !keysPanelOpen();
+      fpKeys.w = false;
+      T(
+        's23r-panel-owns-keyboard',
+        !walking && ringSame && closed,
+        '面板开着按 W：在走=' + walking + ' · Ctrl+Z 撤销环不变=' + ringSame + ' · Esc 关=' + closed
+      );
+
+      // R3 俯瞰：选着 A，Shift+拖没选中的 B = 选中 B、锁轴挪（以前不改选择：接着按 Delete / R 作用在 A 上）
+      kd('2');
+      await wait(900);
+      selOnly(A.uid);
+      drawFurniture();
+      await wait(150);
+      const [bx, by] = proj(B.x, 1.2, B.y),
+        b0 = [B.x, B.y];
+      PE('pointerdown', bx, by, { shiftKey: true });
+      await wait(80);
+      PE('pointermove', bx + 40, by + 10, { shiftKey: true });
+      await wait(80);
+      PE('pointermove', bx + 90, by + 22, { shiftKey: true });
+      await wait(80);
+      PE('pointerup', bx + 90, by + 22, { shiftKey: true, buttons: 0 });
+      await wait(120);
+      const dB = [B.x - b0[0], B.y - b0[1]];
+      T(
+        's23r-3d-shift-drag-selects-it',
+        selected === B.uid &&
+          Math.max(Math.abs(dB[0]), Math.abs(dB[1])) > 0.3 &&
+          Math.min(Math.abs(dB[0]), Math.abs(dB[1])) < 1e-9,
+        '选中 ' +
+          (selected === B.uid ? 'B' : selected === A.uid ? 'A（还是旧的）' : String(selected)) +
+          ' · Δ ' +
+          dB.map((v) => v.toFixed(2))
+      );
+
+      // R4 右键拖「没选中」的家具 = 交给相机平移（不转它：铺了地毯的房间几乎点不到空地）；右键拖选中的 = 转
+      selOnly(A.uid);
+      drawFurniture();
+      await wait(150);
+      const rB0 = B.rot || 0;
+      const [cx, cy] = proj(B.x, 1.2, B.y);
+      PE('pointerdown', cx, cy, { button: 2, buttons: 2 });
+      await wait(80);
+      PE('pointermove', cx + 80, cy, { button: 2, buttons: 2 });
+      await wait(80);
+      PE('pointerup', cx + 80, cy, { button: 2, buttons: 0 });
+      await wait(120);
+      T(
+        's23r-3d-right-drag-unselected-no-rotate',
+        (B.rot || 0) === rB0 && selected === A.uid,
+        'B 转了 ' + ((B.rot || 0) - rB0) + '° · 选中仍是 A=' + (selected === A.uid)
+      );
+
+      // R5 WASD 按物理键位认（ev.code）：AZERTY 上 W 那个键打出来是「z」——照样往前走
+      const t0 = three.controls.target.clone(),
+        c0 = three.cam.position.clone();
+      const f0 = new THREE.Vector3(t0.x - c0.x, 0, t0.z - c0.z).normalize();
+      kd('z', { code: 'KeyW' });
+      await wait(60);
+      const fwd = three.controls.target.clone().sub(t0).dot(f0);
+      T('s23r-wasd-by-physical-key', fwd > 0.1, 'key=z code=KeyW → 沿视线走 ' + fwd.toFixed(2) + 'ft');
+      setView('2d');
+      await wait(300);
+    }
+
     T('t3d-bench-done', true, __E3.length + ' tests', 'done');
   } catch (e) {
     log.push('EXC ' + e.message + ' | ' + (e.stack || '').split('\n')[1]);
