@@ -2512,6 +2512,56 @@ export const FLOWS = [
   },
 
   {
+    name: 'catalog-size',
+    title: '目录按尺寸筛（S24d）：真键盘在「宽 ≤」里打数 → 只剩放得下的；选中一件点「＝选中」→ 不比它大的；× 清掉',
+    run: async (t) => {
+      const all = await t.eval(`document.querySelectorAll('.catCard').length`);
+      await t.step('在「宽 ≤」里打 90');
+      await t.type('#catW', '90');
+      await t.waitFor(`document.querySelectorAll('.catCard').length<${all}`, 5000, '目录变少');
+      const w90 = await t.eval(
+        `(()=>{const ids=[...document.querySelectorAll('.catCard [data-thumb]')].map(e=>e.dataset.thumb);
+          const sp=id=>catalogAll().find(c=>c.id===id); return {n:ids.length, bad:ids.filter(id=>+sp(id).w>90).length,
+          want:catalogAll().filter(c=>+c.w<=90).length, tag:document.querySelector('#catSizeN').textContent};})()`
+      );
+      t.assert(
+        'catalog-size-width',
+        w90.n === w90.want && w90.bad === 0 && w90.tag === w90.want + ' 件',
+        `宽 ≤ 90：${w90.n} 件（应 ${w90.want}）· 超宽的 ${w90.bad} · 末尾「${w90.tag}」`
+      );
+      await t.step('选中一件家具，点「＝选中」');
+      await t.click('#catSizeClr');
+      await t.waitFor(`document.querySelectorAll('.catCard').length===${all}`, 5000, '清掉后全量');
+      await t.click('.catCard');
+      await t.waitFor(`selected!=null`, 5000, '选中新加的那件');
+      await t.click('#catSizeSel');
+      const sel = await t.eval(
+        `(()=>{const it=state.items.find(i=>i.uid===selected), sp=itemSpec(it);
+          const ids=[...document.querySelectorAll('.catCard [data-thumb]')].map(e=>e.dataset.thumb);
+          const s2=id=>catalogAll().find(c=>c.id===id);
+          return {w:sp.w, d:sp.d, n:ids.length, bigger:ids.filter(id=>+s2(id).w>sp.w||+s2(id).d>sp.d).length, self:ids.includes(sp.id)};})()`
+      );
+      t.assert(
+        'catalog-size-from-selected',
+        sel.n > 0 && sel.bigger === 0 && sel.self,
+        `选中那件 ${sel.w}×${sel.d} · 目录 ${sel.n} 件 · 比它大的 ${sel.bigger} · 它自己在=${sel.self}`
+      );
+      await t.shot('catalog-size');
+      await t.step('收尾：× 清掉、删掉刚放的那件');
+      await t.click('#catSizeClr');
+      await t.waitFor(`document.querySelectorAll('.catCard').length===${all}`, 5000, '目录恢复全量');
+      await t.eval(
+        `(()=>{state.items=state.items.filter(i=>i.uid!==selected); selOnly(null); drawFurniture(); save();})()`
+      );
+      t.assert(
+        'catalog-size-cleared',
+        (await t.eval(`document.querySelectorAll('.catCard').length`)) === all,
+        `恢复 ${all} 张卡片`
+      );
+    },
+  },
+
+  {
     name: 'catalog-custom',
     title: '目录侧栏：展开的分类不会被重建冲掉；自己造的家具在目录里看得见',
     run: async (t) => {

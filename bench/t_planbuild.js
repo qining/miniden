@@ -11963,6 +11963,186 @@ async function runPBTest() {
       );
     }
 
+    /* ===== 47. S24d（research/13 U9）：目录按尺寸筛 ——「这面墙 2m，哪些沙发放得下」 ===== */
+    {
+      await pbReset();
+      if (wallEdit.on) Q('#btnWallEdit').click();
+      await tick();
+      const p47Plans = PLAN_REG.plans.length;
+      const toastTxt = () => (Q('#toast') || {}).textContent || '';
+      const cards = () =>
+        Array.from(Q('#catList').querySelectorAll('.catCard')).map(
+          (c) => c.querySelector('[data-thumb]').dataset.thumb
+        );
+      const specOf = (id) => catalogAll().find((c) => c.id === id);
+      const setIn = async (sel, v) => {
+        Q(sel).value = String(v);
+        Q(sel).dispatchEvent(new Event('input', { bubbles: true }));
+        await tick();
+      };
+      const unitBtn = (u) => Q('#unitSeg button[data-u="' + u + '"]');
+      const nAll = catalogAll().length;
+
+      /* 47.1 bug 猎 #94：目录重建时不能丢掉搜索词（以前换单位 / 撤销 / 切户型 / 导入布局之后：框里写着「沙发」，目录显示全部） */
+      await setIn('#catSearch', '沙发');
+      const nSofa = cards().length;
+      unitBtn('ft').click();
+      await tick();
+      const nAfterUnit = cards().length;
+      unitBtn('cm').click();
+      await tick();
+      Q('#btnPlanNew').click();
+      await tick();
+      const p47Plan = PLAN_ID;
+      const nAfterPlan = cards().length;
+      T(
+        'pb-s24d-hunt94-search-kept-on-rebuild',
+        nSofa > 0 && nSofa < nAll && nAfterUnit === nSofa && nAfterPlan === nSofa,
+        '搜「沙发」' + nSofa + ' 件（全部 ' + nAll + '）· 换单位后 ' + nAfterUnit + ' · 新建户型后 ' + nAfterPlan
+      );
+      await setIn('#catSearch', '');
+
+      /* 47.2 宽 ≤ 100cm：只剩宽不超过 100 的；件数写在那一行末尾；框高亮 */
+      await setIn('#catW', 100);
+      const w100 = cards();
+      const wantW = catalogAll().filter((c) => +c.w <= 100).length;
+      T(
+        'pb-s24d-width-filter',
+        w100.length === wantW &&
+          w100.every((id) => +specOf(id).w <= 100) &&
+          Q('#catSizeN').textContent === wantW + ' 件' &&
+          Q('#catSize').classList.contains('on') &&
+          !Q('#catSizeClr').disabled,
+        '宽 ≤ 100：显示 ' + w100.length + ' 件（应 ' + wantW + '）· 末尾「' + Q('#catSizeN').textContent + '」'
+      );
+
+      /* 47.3 再加深 ≤ 50 + 搜索词：三个条件一起 */
+      await setIn('#catD', 50);
+      await setIn('#catSearch', '柜');
+      const both = cards();
+      const wantB = catalogAll().filter(
+        (c) =>
+          +c.w <= 100 &&
+          +c.d <= 50 &&
+          (foldText(c.name).includes(foldText('柜')) || foldText(c.cat).includes(foldText('柜')))
+      ).length;
+      T(
+        'pb-s24d-depth-and-text',
+        both.length === wantB && both.every((id) => +specOf(id).w <= 100 && +specOf(id).d <= 50),
+        '宽 ≤ 100 · 深 ≤ 50 · 「柜」：' + both.length + ' 件（应 ' + wantB + '）'
+      );
+      await setIn('#catSearch', '');
+
+      /* 47.4「＝选中」：选中一张沙发 → 只看不比它大的（宽、深都不超过它） */
+      const selBtn0 = Q('#catSizeSel').disabled;
+      const sofaSpec = CATALOG.find((c) => c.kind === 'sofa' && c.w >= 200);
+      addItem(sofaSpec.id);
+      await tick();
+      const selBtn1 = Q('#catSizeSel').disabled;
+      Q('#catSizeSel').click();
+      await tick();
+      const fromSel = cards();
+      T(
+        'pb-s24d-no-bigger-than-selected',
+        selBtn0 === true &&
+          selBtn1 === false &&
+          catSize.w === sofaSpec.w &&
+          catSize.d === sofaSpec.d &&
+          fromSel.includes(sofaSpec.id) &&
+          fromSel.every((id) => +specOf(id).w <= sofaSpec.w && +specOf(id).d <= sofaSpec.d) &&
+          Math.abs(+Q('#catW').value - sofaSpec.w) <= 0.5 &&
+          toastTxt().indexOf(sofaSpec.name) >= 0,
+        '没选中时按钮灰=' +
+          selBtn0 +
+          ' · 选中后可点=' +
+          !selBtn1 +
+          ' · 筛成 宽 ≤ ' +
+          catSize.w +
+          ' 深 ≤ ' +
+          catSize.d +
+          '（' +
+          sofaSpec.name +
+          ' ' +
+          sofaSpec.w +
+          '×' +
+          sofaSpec.d +
+          '）· ' +
+          fromSel.length +
+          ' 件'
+      );
+
+      /* 47.5 单位：英尺下框里是英寸（内部按 cm 存，不变）；在英尺下输入 36″ = 91.4cm */
+      unitBtn('ft').click();
+      await tick();
+      const inchShown = +Q('#catW').value;
+      await setIn('#catW', 36);
+      const w36 = catSize.w;
+      unitBtn('cm').click();
+      await tick();
+      T(
+        'pb-s24d-follows-unit',
+        Math.abs(inchShown - sofaSpec.w / 2.54) < 0.06 &&
+          Math.abs(w36 - 91.4) < 0.06 &&
+          +Q('#catW').value === 91 &&
+          Q('#catSizeU').textContent === 'cm',
+        '英尺下宽框 ' +
+          inchShown +
+          '（' +
+          sofaSpec.w +
+          'cm）· 输入 36 → ' +
+          w36 +
+          'cm · 回到 cm 显示 ' +
+          Q('#catW').value
+      );
+
+      /* 47.6 一件都没有：说清是哪几个条件挡住的 */
+      await setIn('#catW', 1);
+      const em = Q('#catList .catEmpty');
+      T(
+        'pb-s24d-empty-state',
+        cards().length === 0 && !!em && /宽 ≤ 1 cm/.test(em.textContent) && /清掉尺寸/.test(em.textContent),
+        em ? '「' + em.textContent + '」' : '没有空结果说明'
+      );
+
+      /* 47.7 自己造一件被尺寸筛挡住的：尺寸筛清掉、刚造的那件看得见（轮㉑：刚造的必须看得见） */
+      Q('#cfName').value = '测试大书架';
+      Q('#cfW').value = '120';
+      Q('#cfD').value = '35';
+      Q('#cfH').value = '200';
+      Q('#cfAdd').click();
+      await tick();
+      const cc = state.customCat[state.customCat.length - 1];
+      T(
+        'pb-s24d-custom-add-not-hidden',
+        !!cc && catSize.w == null && catSize.d == null && cards().includes(cc.id) && Q('#catW').value === '',
+        '尺寸筛 ' + JSON.stringify(catSize) + ' · 新件在目录里=' + (!!cc && cards().includes(cc.id))
+      );
+
+      /* 47.8「×」清掉 = 全部回来 */
+      await setIn('#catW', 80);
+      Q('#catSizeClr').click();
+      await tick();
+      T(
+        'pb-s24d-clear',
+        cards().length === catalogAll().length &&
+          catSize.w == null &&
+          !Q('#catSize').classList.contains('on') &&
+          Q('#catSizeN').textContent === '',
+        '清掉后 ' + cards().length + ' / ' + catalogAll().length
+      );
+
+      /* 收尾 */
+      Q('#btnPlanDel').click();
+      await tick();
+      Q('#btnPlanDel').click();
+      await tick();
+      T(
+        'pb-s24d-clean-exit',
+        PLAN_ID !== p47Plan && PLAN_REG.plans.length === p47Plans,
+        'plans ' + p47Plans + '→' + PLAN_REG.plans.length
+      );
+    }
+
     /* ===== 收尾：页面不得有未捕获异常 ===== */
     T('pb-no-page-errors', window.__ERRS.length === 0, window.__ERRS.slice(0, 3).join(' || '));
   } catch (e) {
