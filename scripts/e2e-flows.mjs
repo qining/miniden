@@ -2932,6 +2932,111 @@ export const FLOWS = [
   },
 
   {
+    name: 'layouts',
+    title:
+      '方案（S24c）：复制当前方案 → 在方案 2 里挪家具 → 切回方案 1 原样 → 撤销只撤这一套 → 刷新后都在 → 改名 → 两步删除',
+    run: async (t) => {
+      const before = await stateOf(t);
+      await t.step('摆一件家具（方案 1）');
+      await t.click('.catCard');
+      await t.waitFor(`state.items.length>${before.items}`, 6000, '家具 +1');
+      const it0 = await t.eval(`(()=>{const i=state.items[state.items.length-1];return {uid:i.uid,x:i.x,y:i.y};})()`);
+
+      await t.step('右上角「方案」打开面板，点「复制当前方案」');
+      const bar = await t.rectOf('#layBtn');
+      const stage = await t.eval(
+        `(()=>{const b=document.querySelector('#stage').getBoundingClientRect();return {l:b.left,t:b.top,r:b.right,b:b.bottom};})()`
+      );
+      t.assert(
+        'layouts-button-top-right-of-stage',
+        bar.x > (stage.l + stage.r) / 2 &&
+          bar.y - bar.h / 2 >= stage.t &&
+          bar.y < stage.t + 60 &&
+          bar.x + bar.w / 2 <= stage.r,
+        `按钮中心 (${Math.round(bar.x)}, ${Math.round(bar.y)}) · 画布 ${Math.round(stage.l)}–${Math.round(stage.r)} × ${Math.round(stage.t)}–`
+      );
+      await t.click('#layBtn');
+      await t.waitFor(`document.querySelector('#layPanel').style.display!=='none'`, 4000, '面板打开');
+      await t.click('#layDup');
+      await t.waitFor(`LAY.list.length===2 && LAY.cur!=='L1'`, 6000, '切到方案 2');
+      const cur2 = await t.eval(`document.querySelector('#layCur').textContent`);
+      t.assert('layouts-duplicated', cur2 === '方案 2', `按钮上写「${cur2}」`);
+      await t.shot('layouts-panel');
+
+      await t.step('在方案 2 里选中它，Shift+→ 挪 10cm');
+      await t.click(await t.planPoint(it0.x, it0.y));
+      await t.waitFor(`selected===${it0.uid}`, 4000, '选中那件');
+      await t.key('ArrowRight', 'ArrowRight', 39, 8);
+      await t.waitFor(`Math.abs(state.items.find(i=>i.uid===${it0.uid}).x-${it0.x})>0.3`, 4000, '挪了 10cm');
+
+      await t.step('点面板里「方案 1」：那件还在原位，采购清单跟着换');
+      await t.click('#layList .layRow[data-id="L1"]');
+      await t.waitFor(`LAY.cur==='L1'`, 4000, '切回方案 1');
+      const back = await t.eval(
+        `(()=>{const i=state.items.find(i=>i.uid===${it0.uid});return i?{x:i.x,y:i.y}:null;})()`
+      );
+      t.assert(
+        'layouts-switch-back-unchanged',
+        !!back && Math.abs(back.x - it0.x) < 1e-6 && Math.abs(back.y - it0.y) < 1e-6,
+        back ? `方案 1 里那件在 (${back.x}, ${back.y})` : '方案 1 里找不到那件'
+      );
+
+      await t.step('Ctrl+Z：撤的是方案 1 自己的「摆上那件」，方案 2 里那件还在');
+      await t.key('z', 'KeyZ', 90, 2);
+      await t.waitFor(`!state.items.some(i=>i.uid===${it0.uid})`, 6000, '方案 1 撤掉那件');
+      const other2 = await t.eval(`(LAY.other.L2||[]).some(i=>i.uid===${it0.uid})`);
+      t.assert('layouts-undo-only-this-layout', other2 === true, '方案 2 里那件还在=' + other2);
+      await t.key('z', 'KeyZ', 90, 10); // Ctrl+Shift+Z 重做
+      await t.waitFor(`state.items.some(i=>i.uid===${it0.uid})`, 6000, '重做回来');
+      await t.eval('save()');
+
+      await t.step('真实刷新：两套方案、当前是哪套都还在');
+      await t.reload();
+      const after = await t.eval(
+        `({n:LAY.list.length, cur:LAY.cur, names:LAY.list.map(l=>l.name), btn:document.querySelector('#layCur').textContent,
+           x2:((LAY.other.L2||[]).find(i=>i.uid===${it0.uid})||{}).x})`
+      );
+      t.assert(
+        'layouts-persist-after-reload',
+        after.n === 2 && after.cur === 'L1' && after.btn === '方案 1' && Math.abs(after.x2 - it0.x - 10 / 30.48) < 1e-3,
+        JSON.stringify(after)
+      );
+
+      await t.step('改名：在名字框里打字、回车');
+      await t.click('#layBtn');
+      await t.waitFor(`document.querySelector('#layPanel').style.display!=='none'`, 4000, '面板打开');
+      await t.type('#layName', '沙发靠窗');
+      await t.key('Enter', 'Enter', 13);
+      await t.waitFor(`LAY.list[0].name==='沙发靠窗'`, 4000, '改名生效');
+      t.assert(
+        'layouts-renamed',
+        (await t.eval(`document.querySelector('#layCur').textContent`)) === '沙发靠窗',
+        '按钮跟着变'
+      );
+
+      await t.step('收尾：切到方案 2、两步删除；方案 1 删掉那件、名字改回去');
+      await t.click('#layList .layRow[data-id="L2"]');
+      await t.waitFor(`LAY.cur==='L2'`, 4000, '切到方案 2');
+      await t.click('#layDel');
+      await t.waitFor(`document.querySelector('#layDel').classList.contains('arm')`, 3000, '第一下只是确认');
+      await t.click('#layDel');
+      await t.waitFor(`LAY.list.length===1 && LAY.cur==='L1'`, 4000, '删掉方案 2');
+      await t.eval(
+        `(()=>{state.items=state.items.filter(i=>i.uid!==${it0.uid}); LAY=LAYOUTS.renameLayout(LAY,'L1','方案 1')||LAY; selOnly(null); drawFurniture(); save(); layoutBarUI();})()`
+      );
+      await t.click('#layBtn');
+      const clean = await t.eval(
+        `({items:state.items.length, n:LAY.list.length, lay:(STORE.get(ITEMS_KEY)||'').indexOf('"lay"')>=0, open:document.querySelector('#layPanel').style.display!=='none'})`
+      );
+      t.assert(
+        'layouts-cleanup',
+        clean.items === before.items && clean.n === 1 && !clean.lay && !clean.open,
+        JSON.stringify(clean)
+      );
+    },
+  },
+
+  {
     name: 'measure',
     title: '量尺寸：点起点 → 预览 → 落定 → 清除',
     run: async (t) => {

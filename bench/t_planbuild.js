@@ -11410,6 +11410,559 @@ async function runPBTest() {
       );
     }
 
+    /* ===== 46. S24c（research/13 U8）：方案 —— 同一份户型摆几套家具；几何共用，家具 / 采购清单 / 撤销各是各的 ===== */
+    {
+      await pbReset();
+      if (wallEdit.on) Q('#btnWallEdit').click();
+      await tick();
+      const p46Plans = PLAN_REG.plans.length;
+      const near = (a, b, tol) => Math.abs(a - b) < (tol || 1e-6);
+      const toastTxt = () => (Q('#toast') || {}).textContent || '';
+      const archive = () => {
+        try {
+          return JSON.parse(STORE.get(ITEMS_KEY));
+        } catch (e) {
+          return null;
+        }
+      };
+
+      /* 46.1 bug 猎 #93：切到一份还没存过家具的户型（新浏览器里先导入自己的图纸、在那儿摆了家具，再切回内置户型），
+         上一份户型的家具原样带过去，还被写进那份户型的存档 */
+      {
+        const B = BUILTIN_PLAN_ID;
+        if (PLAN_ID !== B) switchPlan(B, true);
+        await tick();
+        state.items = [];
+        save();
+        STORE.remove(PLANS.itemsKeyFor(B));
+        Q('#btnPlanNew').click();
+        await tick();
+        const q = PLAN_ID;
+        addItem(CATALOG.find((c) => c.kind === 'bed').id);
+        await tick();
+        const nQ = state.items.length;
+        switchPlan(B, true);
+        await tick();
+        const nB = state.items.length,
+          stB = STORE.get(PLANS.itemsKeyFor(B));
+        let storedB = 0;
+        try {
+          storedB = stB ? JSON.parse(stB).items.length : 0;
+        } catch (e) {}
+        T(
+          'pb-s24c-hunt93-switch-to-plan-without-archive',
+          nQ === 1 && nB === 0 && storedB === 0,
+          '新户型摆了 ' + nQ + ' 件 · 切回内置后画着 ' + nB + ' 件（要 0）· 内置的存档里 ' + storedB + ' 件（要 0）'
+        );
+        switchPlan(q, true);
+        await tick();
+        Q('#btnPlanDel').click();
+        await tick();
+        Q('#btnPlanDel').click();
+        await tick();
+      }
+
+      /* 测试户型：一间 16×12ft 的空房（自包含户型，删掉就干净） */
+      Q('#btnPlanNew').click();
+      await tick();
+      const p46Plan = PLAN_ID;
+      const fp46 = floorPts();
+      const X =
+          Math.min.apply(
+            null,
+            fp46.map((p) => p[0])
+          ) + 1,
+        Y =
+          Math.min.apply(
+            null,
+            fp46.map((p) => p[1])
+          ) + 1;
+      const wd = cmToWd(15);
+      pushUserWall(X, Y, X + 16, Y, 'w', wd);
+      pushUserWall(X + 16, Y, X + 16, Y + 12, 'w', wd);
+      pushUserWall(X + 16, Y + 12, X, Y + 12, 'w', wd);
+      pushUserWall(X, Y + 12, X, Y, 'w', wd);
+      geoChanged();
+      fit2DToContent();
+      await tick();
+      resetUndoRings();
+      const sofaSpec = CATALOG.find((c) => c.kind === 'sofa' && c.price > 0 && c.w <= 230);
+      const bedSpec = CATALOG.find((c) => c.kind === 'bed' && c.price > 0);
+      addItem(sofaSpec.id, { x: X + 5, y: Y + 4 });
+      addItem(bedSpec.id, { x: X + 11, y: Y + 7 });
+      await tick();
+      const sofaUid = state.items[0].uid;
+      resetUndoRings();
+
+      /* 46.2 缺省只有「方案 1」：存档格式与 S24c 之前逐字节相同（没有 lay），右上角显示「方案 1」 */
+      const a0 = STORE.get(ITEMS_KEY) || '';
+      T(
+        'pb-s24c-default-archive-unchanged',
+        LAY.list.length === 1 &&
+          (Q('#layCur') || {}).textContent === '方案 1' &&
+          getComputedStyle(Q('#layBar')).display !== 'none' &&
+          a0.indexOf('"lay"') < 0 &&
+          /^\{"geo":\d+,"items":\[.*\],"customCat":\[.*\],"unit":"(cm|ft)"\}$/.test(a0),
+        '方案 ' +
+          LAY.list.length +
+          ' 套 · 按钮「' +
+          (Q('#layCur') || {}).textContent +
+          '」· 存档 ' +
+          a0.slice(0, 60) +
+          '…'
+      );
+
+      /* 46.3 复制当前方案 → 切到「方案 2」，家具是深拷贝；在方案 2 里挪沙发，方案 1 不受影响；面板里两行各自的件数 / 合计 */
+      Q('#layBtn').click();
+      await tick();
+      const rows0 = Q('#layList').querySelectorAll('.layRow').length;
+      Q('#layDup').click();
+      await tick();
+      const dupOk = LAY.list.length === 2 && LAY.cur !== 'L1' && (Q('#layCur') || {}).textContent === '方案 2';
+      const it2 = state.items.find((i) => i.uid === sofaUid);
+      const shared = it2 && LAY.other.L1 && LAY.other.L1.some((i) => i === it2);
+      selOnly(sofaUid);
+      drawFurniture();
+      key('ArrowRight', document.body, true); // Shift+→ = 10cm
+      await tick();
+      const x2 = state.items.find((i) => i.uid === sofaUid).x;
+      const x1 = LAY.other.L1.find((i) => i.uid === sofaUid).x;
+      const rowTxt = Array.from(Q('#layList').querySelectorAll('.layRow')).map((r) => r.textContent);
+      T(
+        'pb-s24c-duplicate-then-edit-independent',
+        rows0 === 1 &&
+          dupOk &&
+          !shared &&
+          near(x2 - x1, 10 / 30.48, 1e-3) &&
+          near(x1, X + 5, 1e-6) &&
+          rowTxt.length === 2 &&
+          /方案 1.*2 件/.test(rowTxt[0]) &&
+          /方案 2.*2 件/.test(rowTxt[1]) &&
+          /复制成「方案 2」/.test(toastTxt()),
+        '面板行 ' +
+          rows0 +
+          '→' +
+          JSON.stringify(rowTxt) +
+          ' · 复制后当前=' +
+          LAY.cur +
+          ' · 同一个对象=' +
+          shared +
+          ' · 方案 2 的沙发 x−X=' +
+          (x2 - X).toFixed(3) +
+          ' · 方案 1 的 ' +
+          (x1 - X).toFixed(3)
+      );
+
+      /* 46.4 切回方案 1（点面板里那一行）：画的是方案 1 的家具、采购清单跟着换；存档里两套都在 */
+      addItem(CATALOG.find((c) => c.kind === 'chair' && c.price > 0).id, { x: X + 3, y: Y + 9 }); // 方案 2 多一把椅子
+      await tick();
+      const plCount2 = +Q('#plCount').textContent;
+      const row1 = Q('#layList').querySelector('.layRow[data-id="L1"]');
+      row1.click();
+      await tick();
+      const sofaNow = state.items.find((i) => i.uid === sofaUid);
+      const g1 = pbSvg.querySelectorAll('g.furn').length;
+      const plCount1 = +Q('#plCount').textContent;
+      const ar = archive();
+      T(
+        'pb-s24c-switch-shows-that-layout',
+        LAY.cur === 'L1' &&
+          near(sofaNow.x, X + 5, 1e-6) &&
+          state.items.length === 2 &&
+          g1 === 2 &&
+          plCount2 === 3 &&
+          plCount1 === 2 &&
+          !!ar &&
+          !!ar.lay &&
+          ar.lay.cur === 'L1' &&
+          ar.items.length === 2 &&
+          ar.lay.other.L2.length === 3,
+        '当前 ' +
+          LAY.cur +
+          ' · 沙发 x−X=' +
+          (sofaNow.x - X).toFixed(3) +
+          ' · 平面图上 ' +
+          g1 +
+          ' 件 · 采购清单 方案 2=' +
+          plCount2 +
+          ' / 方案 1=' +
+          plCount1 +
+          ' · 存档 cur=' +
+          (ar && ar.lay && ar.lay.cur) +
+          ' items=' +
+          (ar && ar.items.length) +
+          ' other.L2=' +
+          (ar && ar.lay && ar.lay.other.L2 && ar.lay.other.L2.length)
+      );
+
+      /* 46.5 每套方案各自撤销：方案 1 挪一下 → 切到方案 2 撤销 = 撤的是方案 2 自己的（椅子没了），方案 1 的那一下不动；
+         切回方案 1 撤销 = 撤它自己那一下 */
+      selOnly(sofaUid);
+      drawFurniture();
+      key('ArrowDown', document.body, true);
+      await tick();
+      const y1moved = state.items.find((i) => i.uid === sofaUid).y;
+      const u1 = undoRing.length;
+      Q('#layList').querySelector('.layRow[data-id="L2"]').click();
+      await tick();
+      const u2 = undoRing.length;
+      undoStep();
+      await tick();
+      const chairGone = state.items.length === 2;
+      const l1y = LAY.other.L1.find((i) => i.uid === sofaUid).y;
+      Q('#layList').querySelector('.layRow[data-id="L1"]').click();
+      await tick();
+      const u1back = undoRing.length;
+      undoStep();
+      await tick();
+      const y1undone = state.items.find((i) => i.uid === sofaUid).y;
+      T(
+        'pb-s24c-undo-per-layout',
+        u1 === 1 && u2 === 2 && chairGone && near(l1y, y1moved, 1e-9) && u1back === 1 && near(y1undone, Y + 4, 1e-6),
+        '方案 1 环 ' +
+          u1 +
+          ' 步 · 方案 2 环 ' +
+          u2 +
+          ' 步 · 方案 2 撤销后椅子没了=' +
+          chairGone +
+          '、方案 1 的沙发没被撤=' +
+          near(l1y, y1moved, 1e-9) +
+          ' · 回到方案 1 环 ' +
+          u1back +
+          ' 步、撤销后沙发 y−Y=' +
+          (y1undone - Y).toFixed(3)
+      );
+
+      /* 46.5b 只是「看的角度」的变化不算共用内容：在方案 2 里切夜晚、量一下尺寸 → 回到方案 1，它的撤销记录还在 */
+      redoStep(); // 方案 1：沙发再挪下去（环里留一步）
+      await tick();
+      Q('#layList').querySelector('.layRow[data-id="L2"]').click();
+      await tick();
+      const env0 = JSON.stringify(DOC.env),
+        meas0 = JSON.stringify(meas.list);
+      DOC.env.mode = DOC.env.mode === 'night' ? 'day' : 'night';
+      saveGeo();
+      meas.list = meas.list.concat([
+        [
+          [X + 1, Y + 1],
+          [X + 4, Y + 1],
+        ],
+      ]);
+      Q('#layList').querySelector('.layRow[data-id="L1"]').click();
+      await tick();
+      const keptRing = undoRing.length === 1 && !/撤销记录作废/.test(toastTxt());
+      DOC.env = JSON.parse(env0);
+      saveGeo();
+      meas.list = JSON.parse(meas0);
+      T(
+        'pb-s24c-view-changes-keep-undo',
+        keptRing,
+        '方案 2 里切了白天 / 夜晚、量了尺寸 → 回到方案 1 环 ' +
+          undoRing.length +
+          ' 步（要 1）· 提示「' +
+          toastTxt() +
+          '」'
+      );
+
+      /* 46.6 几何是共用的：在方案 2 里加一段墙 → 方案 1 也有；方案 1 的旧撤销记录作废（恢复它会把那段墙一起退掉），并说出来 */
+      Q('#layList').querySelector('.layRow[data-id="L2"]').click();
+      await tick();
+      const w0 = effWalls().length;
+      pushUndo('t46wall', true);
+      pushUserWall(X + 8, Y, X + 8, Y + 5, 'w', wd);
+      geoChanged();
+      await tick();
+      Q('#layList').querySelector('.layRow[data-id="L1"]').click();
+      await tick();
+      const t46 = toastTxt();
+      T(
+        'pb-s24c-shared-geometry-drops-stale-undo',
+        effWalls().length === w0 + 1 && undoRing.length === 0 && redoRing.length === 0 && /撤销记录作废/.test(t46),
+        '方案 1 看到的墙 ' +
+          w0 +
+          '→' +
+          effWalls().length +
+          ' · 方案 1 的环 ' +
+          undoRing.length +
+          '/' +
+          redoRing.length +
+          ' · 提示「' +
+          t46 +
+          '」'
+      );
+
+      /* 46.8 动到所有方案的几何操作：移动这一层 / 删楼层 —— 别的方案摆在那一层的家具一起走 / 一起删；撤销、重做把它们一起带回去 */
+      {
+        const up = addLevelUI('above');
+        await tick();
+        const chair = CATALOG.find((c) => c.kind === 'chair' && c.price > 0);
+        addItem(chair.id, { x: X + 4, y: Y + 4 }); // 方案 1 在二层
+        await tick();
+        const c1 = state.items[state.items.length - 1].uid;
+        Q('#layList').querySelector('.layRow[data-id="L2"]').click();
+        await tick();
+        addItem(chair.id, { x: X + 6, y: Y + 6 }); // 方案 2 在二层
+        await tick();
+        const c2 = state.items[state.items.length - 1].uid;
+        const o1 = () => LAY.other.L1.find((i) => i.uid === c1);
+        const m2 = () => state.items.find((i) => i.uid === c2);
+        const sofa1 = () => LAY.other.L1.find((i) => i.uid === sofaUid); // 一层的，不该动
+        const s1x = sofa1().x;
+        setLvMove(true);
+        key('ArrowRight', document.body, true); // Shift+→ = 10cm，整层
+        await tick();
+        setLvMove(false);
+        const d = 10 / 30.48;
+        const movedBoth = near(o1().x, X + 4 + d, 1e-3) && near(m2().x, X + 6 + d, 1e-3) && near(sofa1().x, s1x, 1e-9);
+        undoStep();
+        await tick();
+        const undoneBoth = near(o1().x, X + 4, 1e-6) && near(m2().x, X + 6, 1e-6);
+        deleteLevelUI(up.id);
+        await tick();
+        const askTxt = toastTxt();
+        deleteLevelUI(up.id);
+        await tick();
+        const goneBoth = !o1() && !m2() && !!sofa1() && /其中 1 件在别的方案里/.test(toastTxt());
+        undoStep();
+        await tick();
+        const backBoth = !!o1() && !!m2() && DOC.levels.length === 2;
+        redoStep();
+        await tick();
+        const redoBoth = !o1() && !m2() && DOC.levels.length === 1;
+        undoStep();
+        await tick();
+        T(
+          'pb-s24c-level-ops-reach-all-layouts',
+          movedBoth &&
+            undoneBoth &&
+            /别的方案在这一层还有 1 件/.test(askTxt) &&
+            goneBoth &&
+            backBoth &&
+            redoBoth &&
+            !!o1() &&
+            !!m2(),
+          '移动这一层：两套方案的椅子都挪了=' +
+            movedBoth +
+            ' · 撤销都回来=' +
+            undoneBoth +
+            ' · 删层确认「' +
+            askTxt +
+            '」· 两套都删了=' +
+            goneBoth +
+            ' · 撤销都回来=' +
+            backBoth +
+            ' · 重做又都删了=' +
+            redoBoth
+        );
+        switchLevel('lv1', true);
+        await tick();
+      }
+
+      /* 46.9 整图缩放：别的方案的家具也按同一个比例搬（不然切过去全在墙外）；撤销一起回去 */
+      {
+        await enterEdit();
+        await setTool('select');
+        await tap(X + 12, Y);
+        const sw = selWallSeg();
+        const L0 = sw ? Math.hypot(sw.x2 - sw.x1, sw.y2 - sw.y1) : 0;
+        const bed1 = () => LAY.other.L1.find((i) => i.ref === bedSpec.id);
+        const bed2 = () => state.items.find((i) => i.ref === bedSpec.id);
+        const sofa1 = () => LAY.other.L1.find((i) => i.uid === sofaUid);
+        const sofa2 = () => state.items.find((i) => i.uid === sofaUid);
+        const gap0 = [bed1().x - sofa1().x, bed2().x - sofa2().x];
+        const p0 = JSON.stringify([LAY.other.L1, state.items].map((a) => a.map((i) => [i.x, i.y])));
+        Q('#wLen').value = String(Math.round(L0 * 1.25 * 30.48));
+        Q('#calBtn').click();
+        await tick();
+        Q('#calBtn').click();
+        await tick();
+        const sw1 = selWallSeg();
+        const k = sw1 ? Math.hypot(sw1.x2 - sw1.x1, sw1.y2 - sw1.y1) / L0 : 0;
+        const gap1 = [bed1().x - sofa1().x, bed2().x - sofa2().x];
+        const scaledBoth = k > 1.2 && near(gap1[0], gap0[0] * k, 0.02) && near(gap1[1], gap0[1] * k, 0.02);
+        undoStep();
+        await tick();
+        const p1 = JSON.stringify([LAY.other.L1, state.items].map((a) => a.map((i) => [i.x, i.y])));
+        T(
+          'pb-s24c-rescale-reaches-all-layouts',
+          L0 > 10 && scaledBoth && p1 === p0,
+          '选中墙 ' +
+            L0.toFixed(2) +
+            'ft · ×' +
+            k.toFixed(4) +
+            ' · 床到沙发的距离 方案 1 ' +
+            gap0[0].toFixed(2) +
+            '→' +
+            gap1[0].toFixed(2) +
+            ' / 方案 2 ' +
+            gap0[1].toFixed(2) +
+            '→' +
+            gap1[1].toFixed(2) +
+            ' · 撤销后两套都回原位=' +
+            (p1 === p0)
+        );
+        Q('#btnWallEdit').click();
+        await tick();
+      }
+
+      /* 46.10 导入布局只换当前方案：别的方案还在用的自定义件留在目录里（以前整份替换自定义目录 —— 那时一份户型只有一套家具） */
+      {
+        Q('#layList').querySelector('.layRow[data-id="L1"]').click();
+        await tick();
+        Q('#cfName').value = '测试自制书架';
+        Q('#cfW').value = '80';
+        Q('#cfD').value = '30';
+        Q('#cfH').value = '180';
+        Q('#cfAdd').click();
+        await tick();
+        const cc = state.customCat[state.customCat.length - 1];
+        const usedIn1 = !!cc && state.items.some((i) => i.ref === cc.id);
+        Q('#layList').querySelector('.layRow[data-id="L2"]').click();
+        await tick();
+        // 文件读取是真 I/O（虚拟时间里慢）：同 pb-z-undo-and-import 的等法 —— 等「已导入布局」提示，最多重试 3 次
+        for (let tryN = 0; tryN < 3; tryN++) {
+          const before = toastTxt();
+          const dt = new DataTransfer();
+          dt.items.add(
+            new File([JSON.stringify({ items: [], customCat: [] })], '家具布局.json', { type: 'application/json' })
+          );
+          Q('#fileJson').files = dt.files;
+          Q('#fileJson').dispatchEvent(new Event('change', { bubbles: true }));
+          let got = false;
+          for (let i2 = 0; i2 < 40 && !got; i2++) {
+            await tick();
+            got = toastTxt() !== before && /已导入布局/.test(toastTxt());
+          }
+          if (got) break;
+        }
+        const kept = !!cc && state.customCat.some((c) => c.id === cc.id);
+        const resolves = !!cc && LAY.other.L1.filter((i) => i.ref === cc.id).every((i) => !!itemSpec(i));
+        T(
+          'pb-s24c-layout-import-keeps-others-custom',
+          usedIn1 && state.items.length === 0 && kept && resolves,
+          '方案 1 用着自制件=' +
+            usedIn1 +
+            ' · 方案 2 导入空布局后 ' +
+            state.items.length +
+            ' 件 · 自制件还在目录里=' +
+            kept +
+            ' · 方案 1 那件认得出=' +
+            resolves
+        );
+        undoStep(); // 方案 2 的家具回来
+        await tick();
+      }
+
+      /* 46.10b Esc 一层一层退：正在拖家具时 Esc 先让家具回原处（面板不动），再按一次才关面板 */
+      {
+        const it = state.items[0];
+        selOnly(it.uid);
+        drawFurniture();
+        await tick();
+        const x0 = it.x;
+        const [sx, sy] = SPT(it.x, it.y);
+        fire('pointerdown', sx, sy);
+        await tick();
+        fire('pointermove', sx + 40, sy, {});
+        await tick();
+        const moved = Math.abs(it.x - x0) > 0.5;
+        key('Escape');
+        await tick();
+        const back = Math.abs(it.x - x0) < 1e-9 && Q('#layPanel').style.display !== 'none';
+        fire('pointerup', sx + 40, sy, { buttons: 0 });
+        await tick();
+        key('Escape');
+        await tick();
+        const closed = Q('#layPanel').style.display === 'none';
+        Q('#layBtn').click(); // 后面的断言要面板开着
+        await tick();
+        T(
+          'pb-s24c-esc-drag-first-then-panel',
+          moved && back && closed,
+          '拖开了=' + moved + ' · 第一下 Esc：家具回原处且面板还开着=' + back + ' · 第二下 Esc 关面板=' + closed
+        );
+      }
+
+      /* 46.11 不止一套方案时，导出的采购清单 / 布局文件名说清是哪一套 */
+      {
+        const t2 = shoppingTitle();
+        T(
+          'pb-s24c-shopping-title-names-layout',
+          /· 方案 2 · 采购清单/.test(t2) && layoutTag('-') === '-方案 2',
+          '标题「' + t2 + '」· 文件名后缀「' + layoutTag('-') + '」'
+        );
+      }
+
+      /* 46.7 改名 / 重名拒收 / 删除（两步）/ 只剩一套时不能删；刷新（重新读存档）后名字和当前方案都在 */
+      Q('#layList').querySelector('.layRow[data-id="L1"]').click();
+      await tick();
+      Q('#layName').value = '沙发靠窗';
+      Q('#layName').dispatchEvent(new Event('change'));
+      await tick();
+      const renamed = LAYOUTS.layoutById(LAY, 'L1').name === '沙发靠窗' && Q('#layCur').textContent === '沙发靠窗';
+      Q('#layList').querySelector('.layRow[data-id="L2"]').click();
+      await tick();
+      Q('#layName').value = '沙发靠窗';
+      Q('#layName').dispatchEvent(new Event('change'));
+      await tick();
+      const dupRejected = LAYOUTS.layoutById(LAY, 'L2').name === '方案 2' && /已经有一套叫/.test(toastTxt());
+      Q('#layDup').click(); // 方案 3（复制方案 2）
+      await tick();
+      const n3 = LAY.list.length,
+        cur3 = LAY.cur;
+      Q('#layDel').click();
+      await tick();
+      const armed = LAY.list.length === 3 && Q('#layDel').classList.contains('arm');
+      Q('#layDel').click();
+      await tick();
+      const delOk = LAY.list.length === 2 && !LAYOUTS.layoutById(LAY, cur3) && LAY.cur === 'L2';
+      // 刷新：从存档重新读
+      const before = JSON.stringify([LAY.cur, LAY.list]);
+      load();
+      const after = JSON.stringify([LAY.cur, LAY.list]);
+      Q('#layList').querySelector('.layRow[data-id="L1"]') &&
+        Q('#layList').querySelector('.layRow[data-id="L1"]').click();
+      await tick();
+      Q('#layDel').click();
+      await tick();
+      Q('#layDel').click();
+      await tick();
+      const lastOne = LAY.list.length === 1 && Q('#layDel').disabled;
+      T(
+        'pb-s24c-rename-delete-persist',
+        renamed && dupRejected && n3 === 3 && armed && delOk && before === after && lastOne,
+        '改名=' +
+          renamed +
+          ' · 重名拒收=' +
+          dupRejected +
+          ' · 复制后 ' +
+          n3 +
+          ' 套 · 第一下只是确认=' +
+          armed +
+          ' · 删掉=' +
+          delOk +
+          ' · 重新读存档 ' +
+          before +
+          ' → ' +
+          after +
+          ' · 只剩一套删除按钮灰=' +
+          lastOne
+      );
+
+      /* 收尾 */
+      Q('#layBtn').click();
+      await tick();
+      Q('#btnPlanDel').click();
+      await tick();
+      Q('#btnPlanDel').click();
+      await tick();
+      T(
+        'pb-s24c-clean-exit',
+        PLAN_ID !== p46Plan && PLAN_REG.plans.length === p46Plans && Q('#layPanel').style.display === 'none',
+        'plans ' + p46Plans + '→' + PLAN_REG.plans.length
+      );
+    }
+
     /* ===== 收尾：页面不得有未捕获异常 ===== */
     T('pb-no-page-errors', window.__ERRS.length === 0, window.__ERRS.slice(0, 3).join(' || '));
   } catch (e) {

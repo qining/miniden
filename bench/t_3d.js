@@ -4412,6 +4412,69 @@ async function run3DTest() {
       await wait(300);
     }
 
+    /* ===== S24c：在 3D 里切方案 = 家具跟着换（增量同步按 uid：同一个 uid 在两套方案里可以是两件不同的东西） ===== */
+    {
+      setView('doll');
+      await wait(900);
+      const sofa = CATALOG.find((c) => c.kind === 'sofa' && c.w <= 230);
+      const chair = CATALOG.find((c) => c.kind === 'chair');
+      const keep = state.items.slice();
+      state.items = [];
+      uidSeq = 1;
+      addItem(sofa.id, { x: CX3, y: CY3 });
+      await wait(150);
+      const uS = state.items[0].uid;
+      document.querySelector('#layBtn').click();
+      await wait(60);
+      document.querySelector('#layNew').click();
+      await wait(200);
+      const emptyIn3D = state.items.length === 0 && three.furnMap.size === 0;
+      addItem(chair.id, { x: CX3 + 2, y: CY3 });
+      await wait(150);
+      const uC = state.items[0].uid;
+      const recOf = (u) => three.furnMap.get(u);
+      const idOf = (u) => (recOf(u) ? recOf(u).sig.split('|')[0] : '');
+      const xOf = (u) => (recOf(u) ? recOf(u).g.position.x : NaN);
+      const inL2 = idOf(uC) === chair.id && Math.abs(xOf(uC) - (CX3 + 2)) < 1e-6;
+      document.querySelector('#layList .layRow[data-id="L1"]').click();
+      await wait(200);
+      const inL1 = idOf(uS) === sofa.id && Math.abs(xOf(uS) - CX3) < 1e-6 && three.furnMap.size === 1;
+      document.querySelector('#layList .layRow[data-id="L2"]').click();
+      await wait(200);
+      const backL2 = idOf(uC) === chair.id && Math.abs(xOf(uC) - (CX3 + 2)) < 1e-6 && three.furnMap.size === 1;
+      T(
+        's24c-switch-layout-in-3d',
+        emptyIn3D && uS === uC && inL2 && inL1 && backL2,
+        '空白方案 3D 里没家具=' +
+          emptyIn3D +
+          ' · 两套方案的 uid ' +
+          uS +
+          '/' +
+          uC +
+          ' · 方案 2 画的是椅子=' +
+          inL2 +
+          ' · 切回方案 1 = 沙发、在原位=' +
+          inL1 +
+          ' · 再切回方案 2 = 椅子=' +
+          backL2
+      );
+      // 收尾：删掉方案 2（两步）、恢复原来的家具、关面板
+      document.querySelector('#layDel').click();
+      await wait(60);
+      document.querySelector('#layDel').click();
+      await wait(150);
+      document.querySelector('#layBtn').click();
+      state.items = keep;
+      uidSeq = Math.max(0, ...state.items.map((i) => i.uid || 0), 0) + 1;
+      selOnly(null);
+      drawFurniture();
+      save();
+      if (three) sync3D();
+      setView('2d');
+      await wait(300);
+      T('s24c-3d-clean-exit', LAY.list.length === 1, '方案 ' + LAY.list.length + ' 套');
+    }
+
     T('t3d-bench-done', true, __E3.length + ' tests', 'done');
   } catch (e) {
     log.push('EXC ' + e.message + ' | ' + (e.stack || '').split('\n')[1]);
