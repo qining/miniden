@@ -1171,3 +1171,52 @@ describe('dropDanglingWallRefs（S22a #91：门窗的 wallId 指着已经删掉�
     expect(dropDanglingWallRefs({ windows: [null, 3, { wallId: 'w1' }] })).toBe(1);
   });
 });
+
+import { WINDOW_STYLES } from '../../src/schema/project';
+describe('S22b 窗的款式与外观（提拉 / 内开内倒 / 推拉扇数 / 开启侧 / 磨砂）', () => {
+  const docWin = (extra: Record<string, unknown>) => {
+    const doc = blankDoc();
+    doc.windows.push({
+      id: 'n01',
+      geom: seg(4),
+      wallId: null,
+      pos: 0.5,
+      width: 4,
+      sill: 2.2,
+      head: 7.4,
+      style: 'fixed',
+      frame: '#f2f1ec',
+      glass: 0.18,
+      ...extra,
+    } as never);
+    return doc;
+  };
+  const paths = (d: ProjectDoc) => validate(d).map((e) => e.path);
+
+  it('新款式与可选字段合法', () => {
+    expect(WINDOW_STYLES).toEqual(['fixed', 'slide', 'casement', 'awning', 'hung', 'tilt']);
+    expect(validate(docWin({ style: 'hung' }))).toEqual([]);
+    expect(validate(docWin({ style: 'tilt', hand: 'r' }))).toEqual([]);
+    expect(validate(docWin({ style: 'slide', panes: 3 }))).toEqual([]);
+    expect(validate(docWin({ style: 'casement', hand: 'pair', frost: true }))).toEqual([]);
+  });
+
+  it('非法值被拒，路径指到具体字段', () => {
+    expect(paths(docWin({ style: 'bay' }))).toContain('windows[0].style');
+    expect(paths(docWin({ style: 'slide', panes: 5 }))).toContain('windows[0].panes');
+    expect(paths(docWin({ style: 'casement', hand: 'left' }))).toContain('windows[0].hand');
+    expect(paths(docWin({ style: 'tilt', hand: 'pair' }))).toContain('windows[0].hand');
+    expect(paths(docWin({ frost: 'yes' }))).toContain('windows[0].frost');
+  });
+
+  it('JSON Schema 跟着带上；不进 docToLegacy 投影', () => {
+    const s = projectSchema() as Record<string, any>;
+    expect(s.definitions.window.properties.style.enum).toEqual(WINDOW_STYLES);
+    expect(s.definitions.window.properties.panes.enum).toEqual([2, 3, 4]);
+    expect(s.definitions.window.properties.hand.enum).toEqual(['l', 'r', 'pair']);
+    expect(s.definitions.window.properties.frost.type).toBe('boolean');
+    expect(s.definitions.window.required).not.toContain('panes');
+    const proj = docToLegacy(docWin({ style: 'slide', panes: 4, frost: true }));
+    expect(Object.keys(proj)).toEqual(['walls', 'fixed', 'doors']);
+  });
+});

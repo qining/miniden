@@ -1875,6 +1875,32 @@ export const FLOWS = [
         `窗台 ${hs.sill.toFixed(1)}cm · 窗顶 ${hs.head.toFixed(1)}cm（90 + 150）`
       );
 
+      await t.step(
+        'S22b 款式：下拉选「平开（左开）」→ 平面图上扇从西端（站在室内看的左边）开向室内；真鼠标点「磨砂玻璃」'
+      );
+      await t.eval(
+        `(()=>{const s=document.querySelector('#wWinStyle');s.value='casement:l';s.dispatchEvent(new Event('change'));})()`
+      );
+      await t.click('#wWinFrost');
+      const sty = await t.eval(
+        `(()=>{const w=DOC.windows[0],g=w.geom;
+          const ls=[...document.querySelectorAll('#svg2d line[stroke="#5f9fd8"]')].map(l=>[+l.getAttribute('x1')/S,+l.getAttribute('y1')/S,+l.getAttribute('x2')/S,+l.getAttribute('y2')/S]).filter(l=>Math.hypot(l[2]-l[0],l[3]-l[1])>3);
+          return {style:w.style, hand:w.hand||'', frost:!!w.frost, west:Math.min(g.x1,g.x2), y:g.y1, leaf:ls[0]||null,
+            frostLine:document.querySelectorAll('#svg2d line[stroke="#f4f7fa"]').length, btn:document.querySelector('#wWinFrost').textContent};})()`
+      );
+      t.assert(
+        'aw-style-hand-frost',
+        sty.style === 'casement' &&
+          sty.hand === 'l' &&
+          sty.frost &&
+          !!sty.leaf &&
+          Math.abs(sty.leaf[0] - sty.west) < 0.02 &&
+          sty.leaf[3] > sty.y + 0.5 &&
+          sty.frostLine === 1 &&
+          sty.btn === '磨砂玻璃',
+        `款式 ${sty.style} / ${sty.hand} · 扇从 x=${sty.leaf ? sty.leaf[0].toFixed(2) : '?'}（西端 ${sty.west.toFixed(2)}）开向 y=${sty.leaf ? sty.leaf[3].toFixed(2) : '?'}（墙线 ${sty.y.toFixed(2)}，室内在南）· 磨砂=${sty.frost}「${sty.btn}」`
+      );
+
       await t.step('选择工具：斜着拖窗身 → 只沿墙滑，两头的墙跟着伸缩');
       await t.click('#wtoolSeg button[data-t="select"]');
       await t.waitFor(`wallEdit.tool==='select'`, 5000, 'tool=select');
@@ -1907,12 +1933,12 @@ export const FLOWS = [
         `→ ${((x2a - w1.x1) * 30.48).toFixed(2)}cm · Shift+→ ${((x2b - x2a) * 30.48).toFixed(2)}cm`
       );
 
-      await t.step('Ctrl+Z：方向键（一步）→ 拖动 → 窗高 → 窗台 → 开窗，一步一步退回一整段墙');
-      for (let i = 0; i < 5; i++) await t.key('z', 'KeyZ', 90, 2);
+      await t.step('Ctrl+Z：方向键（一步）→ 拖动 → 磨砂 → 款式 → 窗高 → 窗台 → 开窗，一步一步退回一整段墙');
+      for (let i = 0; i < 7; i++) await t.key('z', 'KeyZ', 90, 2);
       const un = await t.eval(
         `({win:DOC.windows.length, top:DOC.walls.filter(x=>Math.abs(x.geom.y1-${w0.y})<1e-3&&Math.abs(x.geom.y2-${w0.y})<1e-3).length})`
       );
-      t.assert('aw-undo-chain', un.win === 0 && un.top === 1, `撤 5 步后：窗 ${un.win} 扇 · 上墙 ${un.top} 段`);
+      t.assert('aw-undo-chain', un.win === 0 && un.top === 1, `撤 7 步后：窗 ${un.win} 扇 · 上墙 ${un.top} 段`);
 
       await t.step('「加门」点在下墙（实墙）上 → 先开门洞再放门（80cm）');
       await t.click('#wtoolSeg button[data-t="door"]');

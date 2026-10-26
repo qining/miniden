@@ -10013,6 +10013,304 @@ async function runPBTest() {
       await setTool('select');
     }
 
+    /* ===== 41. S22b 窗的款式与外观：提拉 / 内开内倒 / 平开左右开 / 推拉 3·4 扇、框色色板、磨砂玻璃；推拉 / 上悬 2D 符号画在窗边 ===== */
+    {
+      await enterEdit();
+      await pbReset();
+      const p41Plans = PLAN_REG.plans.length;
+      Q('#btnPlanNew').click();
+      await tick();
+      const p41Plan = PLAN_ID;
+      const fp41 = floorPts();
+      const X =
+          Math.min.apply(
+            null,
+            fp41.map((p) => p[0])
+          ) + 1,
+        Y =
+          Math.min.apply(
+            null,
+            fp41.map((p) => p[1])
+          ) + 1;
+      const wd = cmToWd(15);
+      const near = (a, b, tol) => Math.abs(a - b) < (tol || 1e-3);
+      pushUserWall(X, Y, X + 6, Y, 'w', wd);
+      const w41 = pushUserWindow(X + 6, Y, X + 10, Y, wd); // 北墙上一扇 4ft 的窗（x1 在西、室内在南）
+      pushUserWall(X + 10, Y, X + 16, Y, 'w', wd);
+      pushUserWall(X + 16, Y, X + 16, Y + 12, 'w', wd);
+      pushUserWall(X + 16, Y + 12, X, Y + 12, 'w', wd);
+      pushUserWall(X, Y + 12, X, Y, 'w', wd);
+      geoChanged();
+      fit2DToContent();
+      await tick();
+      await setTool('select');
+      wallEdit.sel = { kind: 'w', id: w41.id };
+      updateWallBarFromSel();
+      const half41 = pbDrawnThick(effWalls().find((q) => q.t === 'w' && near(q.y1, Y) && near(q.y2, Y))) / 2; // 同一面墙的墙皮（窗段不进墙多边形）
+      const setSel = async (sel, v) => {
+        const e = Q(sel);
+        e.value = v;
+        e.dispatchEvent(new Event('change'));
+        await tick();
+      };
+      // 这扇窗附近的蓝色符号（ft 坐标，相对窗）
+      const symsNear = () => {
+        const out = { lines: [], paths: [] };
+        for (const l of pbSvg.querySelectorAll('line')) {
+          if (l.getAttribute('stroke') !== '#5f9fd8') continue;
+          const a = [+l.getAttribute('x1') / S - X, +l.getAttribute('y1') / S - Y],
+            b = [+l.getAttribute('x2') / S - X, +l.getAttribute('y2') / S - Y];
+          if (Math.max(a[0], b[0]) < 5 || Math.min(a[0], b[0]) > 11 || Math.min(Math.abs(a[1]), Math.abs(b[1])) > 6)
+            continue;
+          out.lines.push([a, b]);
+        }
+        for (const q of pbSvg.querySelectorAll('path'))
+          if (q.getAttribute('stroke') === '#5f9fd8') out.paths.push(q.getAttribute('d'));
+        return out;
+      };
+
+      /* 41.1 款式下拉的每一个值 → 文档字段；换一次 = 一步撤销，选回同一个值不占步；文档过 validate */
+      const want = {
+        fixed: ['fixed', undefined, undefined],
+        slide: ['slide', undefined, undefined],
+        'slide:3': ['slide', 3, undefined],
+        'slide:4': ['slide', 4, undefined],
+        casement: ['casement', undefined, undefined],
+        'casement:l': ['casement', undefined, 'l'],
+        'casement:r': ['casement', undefined, 'r'],
+        tilt: ['tilt', undefined, undefined],
+        'tilt:r': ['tilt', undefined, 'r'],
+        hung: ['hung', undefined, undefined],
+        awning: ['awning', undefined, undefined],
+      };
+      const opts = Array.from(Q('#wWinStyle').options).map((o) => o.value);
+      let bad = [];
+      for (const k of opts) {
+        const h0 = undoRing.length;
+        await setSel('#wWinStyle', k);
+        const e = entById(w41.id),
+          wv = want[k];
+        if (!wv || e.style !== wv[0] || e.panes !== wv[1] || e.hand !== wv[2] || Q('#wWinStyle').value !== k)
+          bad.push(k);
+        const h1 = undoRing.length;
+        await setSel('#wWinStyle', k);
+        if (undoRing.length !== h1 || (k !== 'fixed' && h1 !== h0 + 1)) bad.push(k + '(撤销步)');
+      }
+      T(
+        'pb-s22b-style-dropdown',
+        opts.length === 11 && bad.length === 0 && SCHEMA.Project.validate(DOC).length === 0,
+        opts.length + ' 个选项 · 不对的 ' + JSON.stringify(bad) + ' · validate ' + SCHEMA.Project.validate(DOC).length
+      );
+
+      /* 41.2 #92 推拉 / 上悬的 2D 符号画在窗边（以前偏移多乘了一个 S：推拉那道线画到窗外 9.6ft、上悬刻度横跨 11.5ft）；3 / 4 扇多出扇缝刻度 */
+      await setSel('#wWinStyle', 'slide');
+      const s2 = symsNear().lines;
+      const off2 = s2.length ? Math.abs(s2[0][0][1]) : NaN;
+      await setSel('#wWinStyle', 'slide:4');
+      const s4 = symsNear().lines;
+      await setSel('#wWinStyle', 'awning');
+      const sa = symsNear().lines,
+        tickLen = sa.length ? Math.max(...sa.map((l) => Math.hypot(l[1][0] - l[0][0], l[1][1] - l[0][1]))) : NaN;
+      T(
+        'pb-s22b-2d-slide-awning-near-window',
+        s2.length === 1 && off2 > half41 && off2 < half41 + 0.5 && s4.length === 4 && sa.length === 2 && tickLen < 1,
+        '推拉线离墙线 ' +
+          off2.toFixed(2) +
+          'ft（墙皮 ' +
+          half41.toFixed(2) +
+          'ft）· 4 扇 ' +
+          s4.length +
+          ' 道 · 上悬刻度 ' +
+          sa.length +
+          ' 道、最长 ' +
+          tickLen.toFixed(2) +
+          'ft'
+      );
+
+      /* 41.3 平开左 / 右开、内开内倒：铰链在「站在室内看」的左 / 右（窗在北墙、室内在南：左 = 西端），扇开向室内；内开内倒多一个往里的虚线三角；
+         提拉 = 窗两侧各一道细线；磨砂 = 玻璃线上一道点虚线 */
+      const leaf = () => {
+        const L = symsNear().lines.filter((l) => Math.hypot(l[1][0] - l[0][0], l[1][1] - l[0][1]) > 3);
+        return L.length ? L[0] : null;
+      };
+      await setSel('#wWinStyle', 'casement:l');
+      const lL = leaf();
+      await setSel('#wWinStyle', 'casement:r');
+      const lR = leaf();
+      await setSel('#wWinStyle', 'tilt');
+      const pT = symsNear().paths.length,
+        chev = Array.from(pbSvg.querySelectorAll('path[stroke-dasharray="2 1.5"]')).length;
+      await setSel('#wWinStyle', 'hung');
+      const hg = symsNear().lines;
+      const okHand =
+        !!lL &&
+        near(lL[0][0], 6, 0.01) &&
+        lL[1][1] > 0.5 &&
+        !!lR &&
+        near(lR[0][0], 10, 0.01) &&
+        lR[1][1] > 0.5 &&
+        pT >= 2 &&
+        chev === 1;
+      const okHung = hg.length === 2 && hg.every((l) => near(l[0][1], l[1][1], 1e-6)) && hg[0][0][1] * hg[1][0][1] < 0;
+      Q('#wWinFrost').click();
+      await tick();
+      const frostLine = Array.from(pbSvg.querySelectorAll('line[stroke="#f4f7fa"]')).length;
+      T(
+        'pb-s22b-2d-hand-tilt-hung-frost',
+        okHand && okHung && frostLine === 1 && entById(w41.id).frost === true,
+        '左开铰链 x=' +
+          (lL ? lL[0][0].toFixed(2) : '?') +
+          '（西端 6）扇尖 y=' +
+          (lL ? lL[1][1].toFixed(2) : '?') +
+          ' · 右开铰链 x=' +
+          (lR ? lR[0][0].toFixed(2) : '?') +
+          '（东端 10）· 内倒三角 ' +
+          chev +
+          ' · 提拉两侧线 ' +
+          hg.length +
+          ' · 磨砂点虚线 ' +
+          frostLine
+      );
+
+      /* 41.4 3D：磨砂玻璃不透明度 0.6（光追走「透明 + 粗糙」）；左开的把手在东端（铰链对面）；木框哑光；
+         提拉 = 窗中间一道交接横档（窗正中、半高处一道水平射线打到框，不是玻璃）；推拉 3 扇 = 1/3、2/3 处有扇框竖梃挡着 */
+      const ray41 = (t, yFt) => {
+        three.staticGroup.updateMatrixWorld(true);
+        const rc = new THREE.Raycaster();
+        rc.set(new THREE.Vector3(X + 6 + 4 * t, curElev() + yFt, Y + 3), new THREE.Vector3(0, 0, -1));
+        const h = rc.intersectObjects(three.staticGroup.children, true).filter((x) => x.object.visible)[0];
+        return h ? (h.object.material.transparent && h.object.material.opacity < 0.75 ? 'glass' : 'solid') : 'none';
+      };
+      const midY41 = () => {
+        const e = entById(w41.id);
+        return (e.sill + e.head) / 2;
+      };
+      await setSel('#wWinStyle', 'casement:l');
+      await setSel('#wWinFrame', '#b48a5a');
+      setView('3d');
+      await wait3D(80);
+      three.staticGroup.updateMatrixWorld(true);
+      let glass = null,
+        handle = null;
+      three.staticGroup.traverse((o) => {
+        if (!o.isMesh || !o.visible) return;
+        const p = new THREE.Vector3();
+        o.getWorldPosition(p);
+        if (!(p.x > X + 5.9 && p.x < X + 10.1 && Math.abs(p.z - Y) < 0.6)) return;
+        if (o.material && o.material.transparent && !glass) glass = o;
+        const g = o.geometry && o.geometry.parameters;
+        if (g && near(g.width, 0.05, 1e-6) && near(g.height, 0.5, 1e-6)) handle = o;
+      });
+      const hx = handle ? (handle.getWorldPosition(new THREE.Vector3()).x - X - 6) / 4 : NaN;
+      const fr = handle && handle.material;
+      const fixedMid = await (async () => {
+        setView('2d');
+        await tick();
+        await setSel('#wWinStyle', 'fixed');
+        setView('3d');
+        await wait3D(80);
+        return ray41(0.5, midY41());
+      })();
+      setView('2d');
+      await tick();
+      await setSel('#wWinStyle', 'hung');
+      setView('3d');
+      await wait3D(80);
+      const hungMid = ray41(0.5, midY41()),
+        hungLow = ray41(0.5, midY41() - 0.8);
+      setView('2d');
+      await tick();
+      await setSel('#wWinStyle', 'slide:3');
+      setView('3d');
+      await wait3D(80);
+      const sl3 = [ray41(1 / 3, midY41()), ray41(2 / 3, midY41()), ray41(1 / 6, midY41())];
+      setView('2d');
+      await tick();
+      T(
+        'pb-s22b-3d-frost-hung-hand-panes-wood',
+        !!glass &&
+          near(glass.material.opacity, 0.6, 1e-6) &&
+          !!handle &&
+          hx > 0.85 &&
+          !!fr &&
+          near(fr.roughness, 0.62, 1e-6) &&
+          fr.metalness === 0 &&
+          fixedMid === 'glass' &&
+          hungMid === 'solid' &&
+          hungLow === 'glass' &&
+          sl3.join(',') === 'solid,solid,glass',
+        '磨砂不透明度 ' +
+          (glass ? glass.material.opacity : '?') +
+          ' · 左开把手在 t=' +
+          hx.toFixed(2) +
+          ' · 木框粗糙度 ' +
+          (fr ? fr.roughness : '?') +
+          ' / 金属感 ' +
+          (fr ? fr.metalness : '?') +
+          ' · 正中半高：固定 ' +
+          fixedMid +
+          ' / 提拉 ' +
+          hungMid +
+          '（下扇中间 ' +
+          hungLow +
+          '）· 推拉 3 扇 1/3、2/3、1/6：' +
+          sl3.join(' / ')
+      );
+
+      /* 41.5 框色色板：5 色；黑框 = 钢框（与以前的「黑钢框」同一口径）；选回同色不占撤销步；磨砂开关一步撤销 */
+      const fopts = Array.from(Q('#wWinFrame').options).map((o) => o.value);
+      await setSel('#wWinFrame', '#17181b');
+      const blk = entById(w41.id).frame === '#17181b' && entById(w41.id).steel === true;
+      const h5 = undoRing.length;
+      await setSel('#wWinFrame', '#17181b');
+      const same = undoRing.length === h5;
+      await setSel('#wWinFrame', '#5b3a24');
+      const wal = entById(w41.id).frame === '#5b3a24' && entById(w41.id).steel === false;
+      const h6 = undoRing.length;
+      Q('#wWinFrost').click();
+      await tick();
+      const frostOff =
+        !entById(w41.id).frost && undoRing.length === h6 + 1 && Q('#wWinFrost').textContent === '透明玻璃';
+      T(
+        'pb-s22b-frame-palette-frost',
+        fopts.length === 5 && blk && same && wal && frostOff,
+        fopts.join(' ') +
+          ' · 黑框 = 钢框 ' +
+          blk +
+          ' · 同色不占步 ' +
+          same +
+          ' · 胡桃 ' +
+          wal +
+          ' · 磨砂关掉 ' +
+          frostOff
+      );
+
+      /* 41.6 加窗工具条的款式带到新开的窗上（内开内倒右）；文档过 validate */
+      await setTool('win');
+      Q('#waStyle').value = 'tilt:r';
+      const nw = insertWindowAt([X + 12.5, Y + 12]);
+      await tick();
+      const e6 = nw && entById(nw.id);
+      Q('#waStyle').value = 'fixed';
+      await setTool('select');
+      T(
+        'pb-s22b-tool-style-carried',
+        !!e6 && e6.style === 'tilt' && e6.hand === 'r' && SCHEMA.Project.validate(DOC).length === 0,
+        e6 ? e6.style + ' / ' + e6.hand + ' · validate ' + SCHEMA.Project.validate(DOC).length : '没开出来'
+      );
+
+      /* 收尾：删掉这份户型 */
+      Q('#btnPlanDel').click();
+      await tick();
+      Q('#btnPlanDel').click();
+      await tick();
+      T(
+        'pb-s22b-clean-exit',
+        PLAN_ID !== p41Plan && PLAN_REG.plans.length === p41Plans,
+        'plans ' + p41Plans + '→' + PLAN_REG.plans.length
+      );
+    }
+
     /* ===== 收尾：页面不得有未捕获异常 ===== */
     T('pb-no-page-errors', window.__ERRS.length === 0, window.__ERRS.slice(0, 3).join(' || '));
   } catch (e) {
