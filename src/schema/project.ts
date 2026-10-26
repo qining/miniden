@@ -978,6 +978,38 @@ export function validate(doc: unknown): ValidationError[] {
   return errs;
 }
 
+/** 门 / 窗的 wallId 指向已经不在 walls 里的墙 → 置空；返回改了几处。
+ *  wallId 只有导入管线会写（DXF / PDF 的门窗指向相邻的墙段）；编辑层删墙、墙整段换成窗、删窗时并墙都会把墙移出 walls 数组，
+ *  留下的悬空引用会让 validate 判整份文档坏掉 → loadDoc 刷新后不采用这份存档（S22a #91）。
+ *  wallId 只是「它挨着哪段墙」的提示，置空不丢几何。逐层处理（ADR-0007：其余层的内容在 levels[i]，当前层在顶层）。 */
+export function dropDanglingWallRefs(doc: unknown): number {
+  if (typeof doc !== 'object' || doc === null) return 0;
+  let n = 0;
+  const fix = (c: Record<string, unknown>) => {
+    const walls = Array.isArray(c.walls) ? (c.walls as unknown[]) : [];
+    const ids = new Set(walls.map((w) => (w && typeof w === 'object' ? (w as Record<string, unknown>).id : undefined)));
+    for (const k of ['windows', 'doors'] as const) {
+      const arr = c[k];
+      if (!Array.isArray(arr)) continue;
+      for (const e of arr as unknown[]) {
+        if (!e || typeof e !== 'object') continue;
+        const r = e as Record<string, unknown>;
+        if (typeof r.wallId === 'string' && r.wallId && !ids.has(r.wallId)) {
+          r.wallId = null;
+          n++;
+        }
+      }
+    }
+  };
+  const d = doc as Record<string, unknown>;
+  fix(d);
+  if (Array.isArray(d.levels))
+    for (const lv of d.levels as unknown[])
+      if (lv && typeof lv === 'object' && LEVEL_KEYS.some((k) => k in (lv as Record<string, unknown>)))
+        fix(lv as Record<string, unknown>);
+  return n;
+}
+
 /** 几何字段形状检查。validate() 只验「geom 是个对象」，这里验它内部字段：
  *  缺字段 / NaN 会让 expand() 产出 NaN，整个构件在 2D/3D 里消失而且不报错。
  *
