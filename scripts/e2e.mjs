@@ -516,6 +516,27 @@ async function runEntry(entry) {
       await cdp('Input.dispatchKeyEvent', { type: 'keyUp', ...base });
       if (SPEED) await sleep(120);
     },
+    /** 只按下 / 只松开（室内走路这类「按着才生效」的键：中间可以读状态） */
+    async keyDown(key, code, vk, mods) {
+      await cdp('Input.dispatchKeyEvent', {
+        type: 'keyDown',
+        key,
+        code: code || key,
+        windowsVirtualKeyCode: vk,
+        nativeVirtualKeyCode: vk,
+        ...(mods ? { modifiers: mods } : {}),
+      });
+    },
+    async keyUp(key, code, vk, mods) {
+      await cdp('Input.dispatchKeyEvent', {
+        type: 'keyUp',
+        key,
+        code: code || key,
+        windowsVirtualKeyCode: vk,
+        nativeVirtualKeyCode: vk,
+        ...(mods ? { modifiers: mods } : {}),
+      });
+    },
     async type(sel, text) {
       const r = await t.rectOf(sel);
       await t.click({ x: r.x, y: r.y });

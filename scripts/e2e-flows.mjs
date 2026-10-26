@@ -1990,6 +1990,115 @@ export const FLOWS = [
   },
 
   {
+    name: 'input-scheme',
+    title:
+      '键鼠统一（S23）：? 开快捷键面板 → 方向键挪家具 1cm / Shift 10cm → 光按 D = 平移图纸、Ctrl+D = 复制 → 2 进 3D 俯瞰、右键拖家具 = 转 → 3 进室内、按住 D 走路不复制家具 → 1 回平面图 → 清理',
+    run: async (t) => {
+      /* research/12 §B：WASD 管镜头、方向键挪东西、Shift 大一步、Ctrl/⌘ 命令、右键拖转（3D）、1 2 3 换视图、? 面板、室内不串键（K1）。
+         全程真键盘 / 真鼠标（CDP isTrusted），不走脚本派发的事件。 */
+      await t.step('摆一件家具（点目录第一张卡片）');
+      const before = await stateOf(t);
+      await t.click('.catCard');
+      await t.waitFor('state.items.length>' + before.items, 6000, '家具数 +1');
+      const uid = await t.eval('state.items[state.items.length-1].uid');
+      await t.eval(`(()=>{selOnly(${uid}); drawFurniture(); updateProps();})()`);
+
+      await t.step('? = 快捷键面板，Esc 关');
+      await t.key('?', 'Slash', 191, 8);
+      const pan = await t.eval(
+        `({open:getComputedStyle(document.querySelector('#keysModal')).display!=='none', rows:document.querySelectorAll('#keysBody .kr').length, n:INPUT_MAP.length})`
+      );
+      await t.shot('keys-panel');
+      await t.key('Escape', 'Escape', 27);
+      const closed = await t.eval(`getComputedStyle(document.querySelector('#keysModal')).display==='none'`);
+      t.assert(
+        'is-keys-panel',
+        pan.open && pan.rows === pan.n && closed,
+        `面板开=${pan.open} · ${pan.rows} 行 / 表 ${pan.n} 条 · Esc 关=${closed}`
+      );
+
+      await t.step('方向键：→ 1cm、Shift+→ 10cm');
+      const x0 = await t.eval(`state.items.find(i=>i.uid===${uid}).x`);
+      await t.key('ArrowRight', 'ArrowRight', 39);
+      const x1 = await t.eval(`state.items.find(i=>i.uid===${uid}).x`);
+      await t.key('ArrowRight', 'ArrowRight', 39, 8);
+      const x2 = await t.eval(`state.items.find(i=>i.uid===${uid}).x`);
+      t.assert(
+        'is-arrow-steps',
+        Math.abs((x1 - x0) * 30.48 - 1) < 0.01 && Math.abs((x2 - x1) * 30.48 - 10) < 0.01,
+        `→ ${((x1 - x0) * 30.48).toFixed(2)}cm · Shift+→ ${((x2 - x1) * 30.48).toFixed(2)}cm`
+      );
+
+      await t.step('光按 D = 镜头往右（不复制）；Ctrl+D = 复制');
+      const n0 = await t.eval('state.items.length');
+      const vx0 = await t.eval('vb.x');
+      await t.key('d', 'KeyD', 68);
+      const after = await t.eval(`({n:state.items.length, vx:vb.x})`);
+      await t.key('d', 'KeyD', 68, 2);
+      const n2 = await t.eval('state.items.length');
+      t.assert(
+        'is-d-pans-ctrl-d-dups',
+        after.n === n0 && after.vx > vx0 && n2 === n0 + 1,
+        `D：家具 ${n0}→${after.n}、图纸往右 ${(after.vx - vx0).toFixed(1)} · Ctrl+D：${n0}→${n2}`
+      );
+      await t.key('z', 'KeyZ', 90, 2); // 撤掉复制
+      await t.eval(`(()=>{selOnly(${uid}); drawFurniture();})()`);
+
+      await t.step('2 = 3D 俯瞰；右键拖家具 = 转（以前 Shift+拖）');
+      await t.key('2', 'Digit2', 50);
+      await t.waitFor(`state.view==='doll' && three && three.staticGroup && !geoDirty3D`, 20000, '3D 建好');
+      const p3 = await t.eval(
+        `(()=>{three.cam.updateMatrixWorld(true);const it=state.items.find(i=>i.uid===${uid});const v=new THREE.Vector3(it.x, curElev()+1.0, it.y).project(three.cam);
+          const r=document.querySelector('#c3d').getBoundingClientRect();return {x:r.left+(v.x+1)/2*r.width, y:r.top+(1-v.y)/2*r.height, rot:it.rot||0, px:it.x, py:it.y};})()`
+      );
+      // 3D 场景「建好」与家具同步进场景之间还差一拍：等到这个屏幕点真的拾取得到这件家具再按
+      await t.waitFor(
+        `(pickFurniture({clientX:${p3.x}, clientY:${p3.y}})||{}).uid===${uid}`,
+        10000,
+        '光标下拾取得到这件家具'
+      );
+      await t.mouse('mouseMoved', p3.x, p3.y);
+      await t.mouse('mousePressed', p3.x, p3.y, { button: 'right', buttons: 2, clickCount: 1 });
+      for (let i = 1; i <= 8; i++) await t.mouse('mouseMoved', p3.x + i * 10, p3.y, { button: 'right', buttons: 2 });
+      await t.mouse('mouseReleased', p3.x + 80, p3.y, { button: 'right', buttons: 0, clickCount: 1 });
+      const r3 = await t.eval(
+        `(()=>{const it=state.items.find(i=>i.uid===${uid});return {rot:it.rot||0, x:it.x, y:it.y};})()`
+      );
+      t.assert(
+        'is-3d-right-drag-rotates',
+        Math.abs(r3.rot - p3.rot) > 10 && Math.hypot(r3.x - p3.px, r3.y - p3.py) < 0.01,
+        `转了 ${(r3.rot - p3.rot).toFixed(1)}° · 位置没动=${Math.hypot(r3.x - p3.px, r3.y - p3.py) < 0.01}`
+      );
+
+      await t.step('3 = 室内；按住 D 走路——不复制选中的家具（K1）');
+      await t.key('3', 'Digit3', 51);
+      await t.waitFor(`state.view==='fp' && three.camMode==='fp'`, 10000, '室内视角');
+      /* 走路由 rAF 循环里的 fpStep 推进；无头 CDP 下不一定出帧（AGENTS §3 的环境口径），所以按住期间手动推一步——
+         键是真键盘按下去的（fpKeys 是真实 keydown 写的），只是「下一帧」由断言代劳 */
+      const n0f = await t.eval('state.items.length');
+      await t.keyDown('d', 'KeyD', 68);
+      const mid = await t.eval(
+        `(()=>{const p=three.cam.position.clone(); fpStep(); return {walking:!!fpKeys.d, moved:three.cam.position.distanceTo(p), n:state.items.length};})()`
+      );
+      await t.keyUp('d', 'KeyD', 68);
+      const end = await t.eval(`({walking:!!fpKeys.d, n:state.items.length})`);
+      t.assert(
+        'is-fp-d-walks-no-dup',
+        mid.walking && mid.moved > 0.1 && !end.walking && mid.n === n0f && end.n === n0f,
+        `按住 D：在走=${mid.walking}、一步 ${mid.moved.toFixed(2)}ft · 松开不走=${!end.walking} · 家具 ${n0f}→${end.n}（没复制）`
+      );
+
+      await t.step('1 = 回平面图；清理：删掉这件家具');
+      await t.key('1', 'Digit1', 49);
+      await t.waitFor(`state.view==='2d'`, 8000, '回到 2D');
+      await t.eval(`(()=>{selOnly(${uid}); drawFurniture();})()`);
+      await t.key('Delete', 'Delete', 46);
+      const n9 = await t.eval('state.items.length');
+      t.assert('is-cleaned', n9 === before.items, `家具 ${before.items}→${n9}`);
+    },
+  },
+
+  {
     name: 'props-panel',
     title: '检视面板：改颜色能撤销、旋转口径一致、自定义件尺寸有上下限',
     run: async (t) => {

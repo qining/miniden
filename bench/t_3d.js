@@ -112,21 +112,42 @@ async function run3DTest() {
     [bx, by] = proj(it.x, 1.2, it.y);
     T('3d-pick-prefers-furniture-over-light', uidAt(bx, by) === it.uid, 'uid=' + uidAt(bx, by));
 
-    // Shift 拖动 = 原地旋转（位置不得改变）
+    // S23：右键拖家具 = 原地旋转（位置不得改变；以前是 Shift+拖）；Shift+拖 = 锁横 / 竖移动（与平面图同一口径）
     const rot0 = it.rot || 0,
       px0 = it.x,
       py0 = it.y;
-    PE('pointerdown', bx, by, { shiftKey: true });
+    PE('pointerdown', bx, by, { button: 2, buttons: 2 });
     await wait(80);
-    PE('pointermove', bx + 80, by, { shiftKey: true });
+    PE('pointermove', bx + 80, by, { button: 2, buttons: 2 });
     await wait(80);
-    PE('pointerup', bx + 80, by, { shiftKey: true });
+    PE('pointerup', bx + 80, by, { button: 2, buttons: 0 });
     await wait(120);
     T(
-      '3d-shift-drag-rotates',
+      '3d-right-drag-rotates',
       Math.abs(it.rot - rot0) > 10 && Math.hypot(it.x - px0, it.y - py0) < 0.01,
       'drot=' + (it.rot - rot0).toFixed(1) + '° dpos=' + Math.hypot(it.x - px0, it.y - py0).toFixed(3)
     );
+    {
+      const r1 = it.rot,
+        qx0 = it.x,
+        qy0 = it.y;
+      [bx, by] = proj(it.x, 1.2, it.y);
+      PE('pointerdown', bx, by, { shiftKey: true });
+      await wait(80);
+      PE('pointermove', bx + 40, by + 12, { shiftKey: true });
+      await wait(80);
+      PE('pointermove', bx + 90, by + 25, { shiftKey: true });
+      await wait(80);
+      PE('pointerup', bx + 90, by + 25, { shiftKey: true, buttons: 0 });
+      await wait(120);
+      const dx = it.x - qx0,
+        dy = it.y - qy0;
+      T(
+        '3d-shift-drag-axis-lock',
+        it.rot === r1 && Math.max(Math.abs(dx), Math.abs(dy)) > 0.3 && Math.min(Math.abs(dx), Math.abs(dy)) < 1e-9,
+        '斜着拖：Δx=' + dx.toFixed(3) + ' Δy=' + dy.toFixed(3) + '（一维为 0）· 朝向不变=' + (it.rot === r1)
+      );
+    }
 
     /* ===== E19 轮㉖：3D 拖动的「点击 vs 拖动」判据 =====
        2D 拖动有 ≥5px 的屏幕阈值（AGENTS §8.2：1px 手抖会静默改坏几何），3D 拖动没有。
@@ -4082,6 +4103,124 @@ async function run3DTest() {
           ' · 未捕获异常 ' +
           window.__E3.length
       );
+    }
+
+    /* ===== S23 键鼠统一：3D 俯瞰 / 室内（research/12 §B.4 规则 1 / 6 / 7；K1 / K2） ===== */
+    {
+      const kd = (k, o) =>
+        document.body.dispatchEvent(
+          new KeyboardEvent('keydown', Object.assign({ key: k, bubbles: true, cancelable: true }, o || {}))
+        );
+      const ku = (k, o) =>
+        document.body.dispatchEvent(
+          new KeyboardEvent('keyup', Object.assign({ key: k, bubbles: true, cancelable: true }, o || {}))
+        );
+      const near = (a, b, t) => Math.abs(a - b) < (t || 1e-6);
+      if (wallEdit.on) document.querySelector('#btnWallEdit').click();
+      setView('2d');
+      await wait(300);
+      if (!state.items.length) addItem(arm.id);
+      const it23 = state.items[0];
+      selOnly(it23.uid);
+      drawFurniture();
+      // S23.1 1 / 2 / 3 = 平面图 / 3D 俯瞰 / 室内（从平面图起手）
+      kd('2');
+      await wait(900);
+      const v2 = state.view;
+      kd('3');
+      await wait(900);
+      const v3 = state.view;
+      kd('1');
+      await wait(300);
+      const v1 = state.view;
+      T('s23-123-switch-views', v2 === 'doll' && v3 === 'fp' && v1 === '2d', '2→' + v2 + ' · 3→' + v3 + ' · 1→' + v1);
+
+      // S23.2 俯瞰：W = 沿视线（投到地面）往前、目标点一起走；Q = 绕目标往左转 5°、Shift+E = 往右 15°（与室内的 Q / E 同向）
+      kd('2');
+      await wait(900);
+      const t0 = three.controls.target.clone(),
+        c0 = three.cam.position.clone();
+      const f0 = new THREE.Vector3(t0.x - c0.x, 0, t0.z - c0.z).normalize();
+      kd('w');
+      await wait(60);
+      const dT = three.controls.target.clone().sub(t0),
+        dC = three.cam.position.clone().sub(c0);
+      const wOk = dT.dot(f0) > 0.1 && Math.abs(dT.y) < 1e-9 && dT.distanceTo(dC) < 1e-6;
+      const yawO = () =>
+        Math.atan2(three.controls.target.x - three.cam.position.x, three.controls.target.z - three.cam.position.z);
+      const dDeg = (a, b) => ((((b - a) * 180) / Math.PI + 540) % 360) - 180;
+      const ya = yawO();
+      kd('q');
+      await wait(60);
+      const yb = yawO();
+      kd('e', { shiftKey: true });
+      await wait(60);
+      const yc = yawO();
+      T(
+        's23-doll-wasd-qe',
+        wOk && near(dDeg(ya, yb), 5, 0.01) && near(dDeg(yb, yc), -15, 0.01),
+        'W：目标沿视线走 ' +
+          dT.dot(f0).toFixed(2) +
+          'ft、相机同步=' +
+          (dT.distanceTo(dC) < 1e-6) +
+          ' · Q ' +
+          dDeg(ya, yb).toFixed(2) +
+          '° · Shift+E ' +
+          dDeg(yb, yc).toFixed(2) +
+          '°'
+      );
+
+      // S23.3 室内：Q = 原地往左转（偏航 +0.06）；D / 方向键 / R / Delete 不作用于选中的家具（K1：以前 D 一边走一边复制）；Shift = 跑（K2：以前从来没生效）
+      kd('3');
+      await wait(900);
+      selOnly(it23.uid);
+      const n0 = state.items.length,
+        ix = it23.x,
+        iy = it23.y,
+        ir = it23.rot || 0;
+      const fy0 = three.fpYaw;
+      kd('q');
+      await wait(60);
+      const fyq = three.fpYaw - fy0;
+      kd('d');
+      kd('ArrowRight');
+      kd('r');
+      kd('Delete');
+      await wait(60);
+      ku('d');
+      ku('ArrowRight');
+      const k1 =
+        state.items.length === n0 &&
+        state.items.some((i) => i.uid === it23.uid) &&
+        it23.x === ix &&
+        it23.y === iy &&
+        (it23.rot || 0) === ir;
+      kd('Shift', { shiftKey: true });
+      kd('w', { shiftKey: true });
+      const pA = three.cam.position.clone();
+      fpStep();
+      const runD = three.cam.position.distanceTo(pA);
+      ku('Shift', { shiftKey: false });
+      const pB = three.cam.position.clone();
+      fpStep();
+      const walkD = three.cam.position.distanceTo(pB);
+      ku('w');
+      T(
+        's23-fp-turn-no-furniture-keys-run',
+        near(fyq, 0.06, 1e-9) && k1 && walkD > 0.1 && runD > walkD * 2,
+        'Q 偏航 +' +
+          fyq.toFixed(3) +
+          ' · D / → / R / Delete 之后家具 ' +
+          (k1 ? '原样' : '被改了') +
+          ' · 一步：跑 ' +
+          runD.toFixed(2) +
+          'ft / 走 ' +
+          walkD.toFixed(2) +
+          'ft'
+      );
+      for (const k of ['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright']) fpKeys[k] = false;
+      setView('2d');
+      await wait(300);
     }
 
     T('t3d-bench-done', true, __E3.length + ' tests', 'done');
