@@ -22,7 +22,12 @@
 import type { Geom, Pt } from './primitives';
 
 export type WallKind = 'wall' | 'thin' | 'opening' | 'passage'; // opening=门洞(t:'d')，passage=开口(t:'o')，thin=细线(t:'i')
-export type WindowStyle = 'fixed' | 'slide' | 'casement' | 'awning';
+/** 窗的开启方式。S22b 加：hung 提拉（北美单 / 双提拉，上下两扇）· tilt 内开内倒（中国 / 欧洲常见，单扇） */
+export type WindowStyle = 'fixed' | 'slide' | 'casement' | 'awning' | 'hung' | 'tilt';
+export const WINDOW_STYLES: WindowStyle[] = ['fixed', 'slide', 'casement', 'awning', 'hung', 'tilt'];
+/** S22b：平开 / 内开内倒的开启侧（站在室内看：l = 铰链在左、r = 铰链在右；pair = 对开，只有平开有；缺省 = 平开对开、内开内倒左） */
+export type WindowHand = 'l' | 'r' | 'pair';
+export const WINDOW_HANDS: WindowHand[] = ['l', 'r', 'pair'];
 export type DoorKind = 'swing' | 'double' | 'slide' | 'bifold';
 export type FixtureType = 'counter' | 'basin' | 'toilet' | 'tub' | 'shower' | 'mirror';
 export const FIXTURE_TYPES: FixtureType[] = ['counter', 'basin', 'toilet', 'tub', 'shower', 'mirror'];
@@ -47,7 +52,13 @@ export interface Window {
   width: number; // ft
   sill: number; // ft（窗台高；fullHeight = 0）
   head: number; // ft（过梁顶高；fullHeight = 层高）
-  style: WindowStyle; // fixed/slide/casement/awning（落地不走 style，用 fullHeight）
+  style: WindowStyle; // fixed/slide/casement/awning/hung/tilt（落地不走 style，用 fullHeight）
+  /** S22b：推拉窗几扇（缺省 2） */
+  panes?: 2 | 3 | 4;
+  /** S22b：平开 / 内开内倒的开启侧（见 WindowHand） */
+  hand?: WindowHand;
+  /** S22b：磨砂玻璃（卫生间常用；缺省 = 透明） */
+  frost?: boolean;
   fullHeight?: boolean; // 落地（sill=0 / head=层高）；legacy 的 fc 标志
   frame: string; // 框色
   glass: number; // 玻璃不透明度 0..1
@@ -756,8 +767,14 @@ export function validate(doc: unknown): ValidationError[] {
         if (!isNum(w.head) || w.head < 0) fail(`windows[${i}].head`, 'head 必须 ≥0');
         if (isNum(w.sill) && isNum(w.head) && w.sill >= w.head) fail(`windows[${i}]`, 'sill 必须 < head');
         const st = w.style;
-        if (st !== 'fixed' && st !== 'slide' && st !== 'casement' && st !== 'awning')
-          fail(`windows[${i}].style`, `style 非法: ${String(st)}`);
+        if (!WINDOW_STYLES.includes(st as WindowStyle)) fail(`windows[${i}].style`, `style 非法: ${String(st)}`);
+        if (w.panes !== undefined && w.panes !== 2 && w.panes !== 3 && w.panes !== 4)
+          fail(`windows[${i}].panes`, '推拉窗扇数只能是 2 / 3 / 4');
+        if (w.hand !== undefined && !WINDOW_HANDS.includes(w.hand as WindowHand))
+          fail(`windows[${i}].hand`, `开启侧非法: ${String(w.hand)}（l / r / pair）`);
+        if (w.hand === 'pair' && st === 'tilt') fail(`windows[${i}].hand`, '内开内倒是单扇，没有对开');
+        if (w.frost !== undefined && typeof w.frost !== 'boolean')
+          fail(`windows[${i}].frost`, 'frost 必须是 true / false');
         if (w.glass != null && (!isNum(w.glass) || (w.glass as number) < 0 || (w.glass as number) > 1))
           fail(`windows[${i}].glass`, 'glass 必须在 0..1');
         if (w.curtain !== undefined) {
@@ -1349,7 +1366,10 @@ export function projectSchema(): object {
           width: { type: 'number', exclusiveMinimum: 0 },
           sill: { type: 'number', minimum: 0 },
           head: { type: 'number', minimum: 0 },
-          style: { enum: ['fixed', 'slide', 'casement', 'awning'] },
+          style: { enum: WINDOW_STYLES.slice() },
+          panes: { enum: [2, 3, 4] },
+          hand: { enum: WINDOW_HANDS.slice() },
+          frost: { type: 'boolean' },
           fullHeight: { type: 'boolean' },
           frame: { type: 'string' },
           glass: { type: 'number', minimum: 0, maximum: 1 },
