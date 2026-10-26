@@ -11019,6 +11019,218 @@ async function runPBTest() {
       );
     }
 
+    /* ===== 44. S24a（research/13 U1–U4）：压在固定构件上要红、新加的落在空位、检视面板不溢出、提示行能收起 ===== */
+    {
+      await enterEdit();
+      await pbReset();
+      const p44Plans = PLAN_REG.plans.length;
+      Q('#btnPlanNew').click();
+      await tick();
+      const p44Plan = PLAN_ID;
+      const fp44 = floorPts();
+      const X =
+          Math.min.apply(
+            null,
+            fp44.map((p) => p[0])
+          ) + 1,
+        Y =
+          Math.min.apply(
+            null,
+            fp44.map((p) => p[1])
+          ) + 1;
+      const wd = cmToWd(15);
+      const near = (a, b, tol) => Math.abs(a - b) < (tol || 1e-6);
+      pushUserWall(X, Y, X + 16, Y, 'w', wd);
+      pushUserWall(X + 16, Y, X + 16, Y + 12, 'w', wd);
+      pushUserWall(X + 16, Y + 12, X, Y + 12, 'w', wd);
+      pushUserWall(X, Y + 12, X, Y, 'w', wd);
+      geoChanged();
+      fit2DToContent();
+      await tick();
+      // 一个马桶（洁具工具真放，离墙远 = 不吸附）、一段台面（沿北墙）
+      await setTool('fx');
+      Q('#fxType').value = 'toilet';
+      await tap(X + 4, Y + 6);
+      const toilet = DOC.fixtures[DOC.fixtures.length - 1];
+      // 北墙边一条 11ft 台面（Y+0.25 起、深 2ft）
+      pushUserRun(
+        [
+          [X + 3, Y + 0.25],
+          [X + 14, Y + 0.25],
+        ],
+        2.0,
+        2.95
+      );
+      geoChanged();
+      Q('#btnWallEdit').click();
+      await tick();
+      const tc = [(toilet.x1 + toilet.x2) / 2, (toilet.y1 + toilet.y2) / 2];
+      const sofaSpec = CATALOG.find((c) => c.kind === 'sofa' && c.w >= 150 && c.w <= 220);
+      const stoolSpec = CATALOG.find((c) => c.kind === 'stool');
+      const tvSpec = CATALOG.find((c) => c.kind === 'tv');
+      const put = (spec, x, y, z) => {
+        addItem(spec.id);
+        const it = state.items[state.items.length - 1];
+        Object.assign(it, { x, y, rot: 0 });
+        if (z != null) it.z = z;
+        return it;
+      };
+      const sA = put(sofaSpec, tc[0], tc[1]);
+      const st = put(stoolSpec, X + 4.2, Y + 1.4); // 台面下面（吧凳塞进去）
+      const sC = put(sofaSpec, X + 11, Y + 0.6 + cm2ft(sofaSpec.d) / 2 + 0.3); // 后半截压在台面上、不碰墙
+      const tv = tvSpec ? put(tvSpec, X + 7, Y + 0.6, 4.5) : null; // 挂在 4.5ft：台面顶 2.95ft 之上
+      drawFurniture();
+      await tick();
+      const why = (it) => furnWhy.get(it.uid) || [];
+
+      /* 44.1 U1 压在洁具 / 台面上 = 红「压在固定构件上」；吧凳塞进台面下面不算；挂在台面上方的电视不算（高度不重叠） */
+      const okFx =
+        why(sA).includes('onFixture') &&
+        !why(st).includes('onFixture') &&
+        why(sC).includes('onFixture') &&
+        (!tv || !why(tv).includes('onFixture'));
+      T(
+        'pb-s24-furniture-on-fixture-flagged',
+        okFx,
+        '沙发压马桶 ' +
+          JSON.stringify(why(sA)) +
+          ' · 吧凳塞台面下 ' +
+          JSON.stringify(why(st)) +
+          ' · 沙发压台面 ' +
+          JSON.stringify(why(sC)) +
+          ' · 台面上方的电视 ' +
+          (tv ? JSON.stringify(why(tv)) : '（目录里没有）')
+      );
+
+      /* 44.2 U2 新加一件：视图正中正好是马桶 → 不落在马桶上，落在最近的空位（在地板里、不插墙、不压任何东西） */
+      for (const it of [sA, st, sC, tv].filter(Boolean)) state.items.splice(state.items.indexOf(it), 1);
+      drawFurniture();
+      vb.x = tc[0] * S - vb.w / 2;
+      vb.y = tc[1] * S - vb.h / 2;
+      pbSvg.setAttribute('viewBox', `${vb.x} ${vb.y} ${vb.w} ${vb.h}`);
+      addItem(sofaSpec.id);
+      await tick();
+      const nw = state.items[state.items.length - 1];
+      const dC = Math.hypot(nw.x - tc[0], nw.y - tc[1]);
+      T(
+        'pb-s24-new-item-lands-free',
+        why(nw).length === 0 && insideFloorPt(nw.x, nw.y) && dC < 8,
+        '落在 (' +
+          (nw.x - X).toFixed(2) +
+          ', ' +
+          (nw.y - Y).toFixed(2) +
+          ')，离视图中心 ' +
+          dC.toFixed(2) +
+          'ft · 冲突 ' +
+          JSON.stringify(why(nw))
+      );
+
+      /* 44.3 U3 检视面板「旋转」那一行不溢出：「+90°」整个在面板里、面板没有横向滚动 */
+      selOnly(nw.uid);
+      drawFurniture();
+      updateProps();
+      await tick();
+      const pr = Q('#props').getBoundingClientRect(),
+        b90 = Q('#pRot90').getBoundingClientRect();
+      const noOverflow = b90.right <= pr.right - 4 && Q('#props').scrollWidth <= Q('#props').clientWidth + 1;
+      T(
+        'pb-s24-props-rotation-row-fits',
+        noOverflow,
+        '「+90°」右沿 ' +
+          b90.right.toFixed(0) +
+          ' / 面板右沿 ' +
+          pr.right.toFixed(0) +
+          ' · scrollWidth ' +
+          Q('#props').scrollWidth +
+          ' / clientWidth ' +
+          Q('#props').clientWidth
+      );
+
+      /* 44.4 U4 提示行能一键收起（只留「? 快捷键」）、再点展开；记住；1700 宽下两侧面板的缺省宽度与以前一样（400 / 300） */
+      const hx = Q('#hint .hintX');
+      if (hx) hx.click();
+      await tick();
+      const minOn = Q('#hint').classList.contains('hintMin') && !!panelState().hintMin;
+      const lk = Q('#hint .keysLink'),
+        lkVis = !!lk && lk.getBoundingClientRect().width > 0;
+      const txt = Q('#hint .h1'),
+        txtHidden = !!txt && txt.getBoundingClientRect().width === 0;
+      const hx2 = Q('#hint .hintX');
+      if (hx2) hx2.click();
+      await tick();
+      const minOff = !Q('#hint').classList.contains('hintMin') && !panelState().hintMin;
+      const cw = Q('#catalog').getBoundingClientRect().width,
+        pw = Q('#props').getBoundingClientRect().width;
+      const pst = panelState();
+      const defaults = pst.catW || pst.prW ? true : near(cw, 400, 1.5) && near(pw, 300, 1.5);
+      T(
+        'pb-s24-hint-collapse-panel-widths',
+        !!hx && minOn && lkVis && txtHidden && minOff && defaults,
+        '收起=' +
+          minOn +
+          '（链接还在=' +
+          lkVis +
+          '、正文藏起=' +
+          txtHidden +
+          '）· 再点展开=' +
+          minOff +
+          ' · 面板 ' +
+          cw.toFixed(0) +
+          ' / ' +
+          pw.toFixed(0) +
+          'px'
+      );
+
+      /* 收尾 */
+      Q('#btnWallEdit').click();
+      await tick();
+      Q('#btnPlanDel').click();
+      await tick();
+      Q('#btnPlanDel').click();
+      await tick();
+      T(
+        'pb-s24-clean-exit',
+        PLAN_ID !== p44Plan && PLAN_REG.plans.length === p44Plans,
+        'plans ' + p44Plans + '→' + PLAN_REG.plans.length
+      );
+
+      /* 44.5 U1 内置户型的中岛（只有带中岛的户型）：沙发放在中岛上 = 红；户型一打开就点卡片，不落在中岛上（U2） */
+      await enterEdit();
+      Q('#btnWallEdit').click();
+      await tick();
+      const isl = ISL();
+      if (!isl) T('pb-s24-island-flagged', true, '这份内置户型没有中岛（不适用）');
+      else {
+        const ic = [(isl.a[0] + isl.b[0] + isl.e[0] + isl.d[0]) / 4, (isl.a[1] + isl.b[1] + isl.e[1] + isl.d[1]) / 4];
+        addItem(sofaSpec.id);
+        const si = state.items[state.items.length - 1];
+        Object.assign(si, { x: ic[0], y: ic[1], rot: 0 });
+        drawFurniture();
+        await tick();
+        const onIsl = why(si).includes('onFixture');
+        state.items.splice(state.items.indexOf(si), 1);
+        fit2DToContent();
+        vb.x = ic[0] * S - vb.w / 2;
+        vb.y = ic[1] * S - vb.h / 2;
+        pbSvg.setAttribute('viewBox', `${vb.x} ${vb.y} ${vb.w} ${vb.h}`);
+        addItem(sofaSpec.id);
+        await tick();
+        const ni = state.items[state.items.length - 1];
+        const freeNi = why(ni).length === 0;
+        state.items.splice(state.items.indexOf(ni), 1);
+        selOnly(null);
+        drawFurniture();
+        fit2DToContent();
+        T(
+          'pb-s24-island-flagged',
+          onIsl && freeNi,
+          '沙发放中岛上 ' + JSON.stringify(onIsl) + ' · 视图中心在中岛上时新加的落在空位=' + freeNi
+        );
+      }
+      Q('#btnWallEdit').click();
+      await tick();
+    }
+
     /* ===== 收尾：页面不得有未捕获异常 ===== */
     T('pb-no-page-errors', window.__ERRS.length === 0, window.__ERRS.slice(0, 3).join(' || '));
   } catch (e) {
