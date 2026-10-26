@@ -8531,7 +8531,7 @@ async function runPBTest() {
       const wd = cmToWd(15);
       const wN = pushUserWall(X, Y, X + 16, Y, 'w', wd);
       pushUserWall(X + 16, Y, X + 16, Y + 12, 'w', wd);
-      const wS1 = pushUserWall(X + 16, Y + 12, X + 10, Y + 12, 'w', wd);
+      pushUserWall(X + 16, Y + 12, X + 10, Y + 12, 'w', wd);
       const nS = pushUserWindow(X + 10, Y + 12, X + 5, Y + 12, wd);
       pushUserWall(X + 5, Y + 12, X, Y + 12, 'w', wd);
       pushUserWall(X, Y + 12, X, Y, 'w', wd);
@@ -8625,6 +8625,1392 @@ async function runPBTest() {
         PLAN_ID !== p37Plan && PLAN_REG.plans.length === p37Plans,
         'plans ' + p37Plans + '→' + PLAN_REG.plans.length
       );
+    }
+
+    /* ===== 38. S22a 开窗 / 改窗（加窗工具、在这段开窗、加门点实墙、窗台 / 窗高、沿墙滑、改宽） ===== */
+    {
+      await enterEdit();
+      await pbReset();
+      const p38Plans = PLAN_REG.plans.length;
+      Q('#btnPlanNew').click();
+      await tick();
+      const p38Plan = PLAN_ID;
+      const fp38 = floorPts();
+      const X =
+          Math.min.apply(
+            null,
+            fp38.map((p) => p[0])
+          ) + 1,
+        Y =
+          Math.min.apply(
+            null,
+            fp38.map((p) => p[1])
+          ) + 1;
+      const wd = cmToWd(15);
+      const wN = pushUserWall(X, Y, X + 16, Y, 'w', wd);
+      const wE = pushUserWall(X + 16, Y, X + 16, Y + 12, 'w', wd);
+      const wS = pushUserWall(X + 16, Y + 12, X, Y + 12, 'w', wd);
+      pushUserWall(X, Y + 12, X, Y, 'w', wd);
+      geoChanged();
+      fit2DToContent();
+      await tick();
+      const tN = pbDrawnThick(effWalls().find((s) => s._id === wN.id));
+      // 北墙上三个插座：左段（at 2ft）/ 将来窗口里（at 8ft）/ 右段（at 13ft）
+      const olAt = (at) => pushUserOutlet(pointSnap(X + at, Y + tN / 2 + 0.2, 'std', 'wall'), 'std', 1, null);
+      const o1 = olAt(2),
+        o2 = olAt(8),
+        o3 = olAt(13);
+      syncOutlets();
+      geoChanged();
+      await tick();
+      const pose = (o) => {
+        const q = outletPose(o);
+        return q ? [q.x, q.y] : null;
+      };
+      const o3pose0 = pose(o3);
+      const geomOf = (id) => {
+        const e = entById(id);
+        return e ? [e.geom.x1, e.geom.y1, e.geom.x2, e.geom.y2] : null;
+      };
+      const wN0 = JSON.stringify(geomOf(wN.id));
+      const near = (a, b, tol) => Math.abs(a - b) < (tol || 1e-3);
+      const winW = 120 / 30.48;
+
+      /* 38.1 加窗工具：悬停在北墙上 → 蓝色预览（窗那一截 + 宽 + 两头各剩多少墙） */
+      await setTool('win');
+      const [hx, hy] = SPT(X + 8, Y);
+      fire('pointermove', hx, hy, { buttons: 0 });
+      await tick();
+      const pv = wallEdit.winPreview;
+      const pvEl = pbSvg.querySelector('g.winPreview');
+      T(
+        'pb-s22-win-preview',
+        !!pv &&
+          pv.id === wN.id &&
+          near(pv.b - pv.a, winW, 0.01) &&
+          near((pv.a + pv.b) / 2, 8, 0.01) &&
+          !!pvEl &&
+          pvEl.querySelectorAll('text').length === 3,
+        pv
+          ? '预览 [' +
+              pv.a.toFixed(2) +
+              ', ' +
+              pv.b.toFixed(2) +
+              ']ft · 标签 ' +
+              (pvEl ? pvEl.querySelectorAll('text').length : 0) +
+              ' 个'
+          : '没有预览'
+      );
+
+      /* 38.2 点一下 = 开窗：北墙拆成「墙｜窗｜墙」，窗宽 120cm、居中（吸到中点）、窗厚 = 墙厚；
+         挂在北墙上的插座：左段那个不动、窗里那个去掉（提示说个数）、右段那个改挂到新墙段且位置不变；一步撤销 */
+      const r2 = undoRing.length;
+      await tap(X + 8, Y);
+      const win = (DOC.windows || []).find((w) => w.src === 'user');
+      const right = (DOC.walls || []).find(
+        (w) =>
+          w.id !== wN.id &&
+          w.id !== wE.id &&
+          w.id !== wS.id &&
+          w.src === 'user' &&
+          near(w.geom.y1, Y) &&
+          near(w.geom.y2, Y)
+      );
+      const gW = win ? win.geom : null,
+        gL = entById(wN.id).geom;
+      const msg2 = Q('#wMsg').textContent;
+      const ok2 =
+        !!win &&
+        !!right &&
+        near(Math.hypot(gW.x2 - gW.x1, gW.y2 - gW.y1), winW, 1e-3) &&
+        near((gW.x1 + gW.x2) / 2, X + 8, 1e-3) &&
+        near(gL.x2, gW.x1, 1e-4) &&
+        near(right.geom.x1, gW.x2, 1e-4) &&
+        near(right.geom.x2, X + 16, 1e-4) &&
+        near(win.thick, wN.thick, 1e-6) &&
+        undoRing.length === r2 + 1;
+      const ol2 = (DOC.outlets || []).map((o) => o.id);
+      const o3now = (DOC.outlets || []).find((o) => o.id === o3.id);
+      const okOl =
+        ol2.includes(o1.id) &&
+        !ol2.includes(o2.id) &&
+        !!o3now &&
+        o3now.hostId === right.id &&
+        near(pose(o3now)[0], o3pose0[0], 2e-3) &&
+        near(pose(o3now)[1], o3pose0[1], 2e-3) &&
+        /1 个点位/.test(msg2);
+      T(
+        'pb-s22-win-insert-splits-wall',
+        ok2 && okOl && wallEdit.sel && wallEdit.sel.id === (win && win.id),
+        '窗 ' +
+          (gW
+            ? (Math.hypot(gW.x2 - gW.x1, gW.y2 - gW.y1) * 30.48).toFixed(1) +
+              'cm 中心 ' +
+              ((gW.x1 + gW.x2) / 2 - X).toFixed(3)
+            : '无') +
+          ' · 左段到 ' +
+          (gL.x2 - X).toFixed(3) +
+          ' · 右段从 ' +
+          (right ? (right.geom.x1 - X).toFixed(3) : '无') +
+          ' · 厚 ' +
+          (win ? win.thick.toFixed(4) : '?') +
+          ' vs ' +
+          wN.thick.toFixed(4) +
+          ' · 选中 ' +
+          JSON.stringify(wallEdit.sel) +
+          ' · 插座 ' +
+          JSON.stringify(ol2) +
+          ' · 右段那个挂到新墙=' +
+          (!!o3now && o3now.hostId === (right && right.id)) +
+          ' · 提示「' +
+          msg2.slice(0, 40) +
+          '」· 撤销环 +' +
+          (undoRing.length - r2)
+      );
+
+      /* 38.3 撤销：回到一整段北墙、三个插座原样 */
+      undoStep();
+      await tick();
+      const back3 =
+        JSON.stringify(geomOf(wN.id)) === wN0 &&
+        !(DOC.windows || []).some((w) => w.src === 'user') &&
+        (DOC.outlets || []).length === 3;
+      T(
+        'pb-s22-win-insert-undo',
+        back3,
+        '北墙复原=' +
+          (JSON.stringify(geomOf(wN.id)) === wN0) +
+          ' · 窗 ' +
+          (DOC.windows || []).length +
+          ' · 插座 ' +
+          (DOC.outlets || []).length
+      );
+
+      /* 38.3b W12 删窗 = 墙封回去（与「加窗」互逆）：再开一扇 → Delete → 北墙又是完整一段（几何 = 开窗前）、拆出来的右段不在了、
+         右段那个插座挂回北墙且位置不变、一步撤销、提示说「封上」；Ctrl+Z 两次回到开窗前（窗里那个插座也回来）。
+         以前 Delete = 只删窗那一截 → 墙上留个洞（2D 一道缺口、3D 一个落地的洞） */
+      {
+        const h0 = undoRing.length;
+        await tap(X + 8, Y);
+        const winB = (DOC.windows || []).find((w) => w.src === 'user');
+        const selIsWin = !!winB && !!wallEdit.sel && wallEdit.sel.id === winB.id;
+        const h1 = undoRing.length;
+        key('Delete');
+        await tick();
+        const nUser = (DOC.walls || []).filter(
+          (w) => w.src === 'user' && near(w.geom.y1, Y) && near(w.geom.y2, Y)
+        ).length;
+        const o3b = (DOC.outlets || []).find((o) => o.id === o3.id);
+        const msgB = Q('#wMsg').textContent,
+          gNB = JSON.stringify(geomOf(wN.id));
+        const closed =
+          selIsWin &&
+          !(DOC.windows || []).some((w) => w.src === 'user') &&
+          gNB === wN0 &&
+          nUser === 1 &&
+          !!o3b &&
+          o3b.hostId === wN.id &&
+          near(pose(o3b)[0], o3pose0[0], 2e-3) &&
+          near(pose(o3b)[1], o3pose0[1], 2e-3) &&
+          undoRing.length === h1 + 1 &&
+          /封/.test(msgB);
+        undoStep();
+        await tick();
+        const winBack = (DOC.windows || []).some((w) => w.src === 'user');
+        undoStep();
+        await tick();
+        const orig =
+          JSON.stringify(geomOf(wN.id)) === wN0 &&
+          !(DOC.windows || []).some((w) => w.src === 'user') &&
+          (DOC.outlets || []).length === 3 &&
+          undoRing.length === h0;
+        T(
+          'pb-s22-win-delete-closes-wall',
+          closed && winBack && orig,
+          '选中窗=' +
+            selIsWin +
+            ' · Delete 后北墙=' +
+            (gNB === wN0 ? '整段' : gNB) +
+            ' · 北边用户墙 ' +
+            nUser +
+            ' 段 · 插座挂回北墙=' +
+            !!(o3b && o3b.hostId === wN.id) +
+            ' · 「' +
+            msgB.slice(0, 30) +
+            '」 · 撤一步窗回来=' +
+            winBack +
+            ' · 再撤一步回到开窗前=' +
+            orig
+        );
+      }
+
+      /* 38.4 中点吸附：离中点 0.4 个吸附半径点下 → 吸到正中；按住 Alt 同一处 → 不吸 */
+      const rSnap = 10 / pxPerFt();
+      const offX = 8 + rSnap * 0.4;
+      const [ax, ay] = SPT(X + offX, Y);
+      fire('pointerdown', ax, ay, { altKey: true });
+      await tick();
+      fire('pointerup', ax, ay, { altKey: true, buttons: 0 });
+      await tick();
+      const wAlt = (DOC.windows || []).find((w) => w.src === 'user');
+      const cAlt = wAlt ? (wAlt.geom.x1 + wAlt.geom.x2) / 2 - X : NaN;
+      undoStep();
+      await tick();
+      await tap(X + offX, Y);
+      const wSnap = (DOC.windows || []).find((w) => w.src === 'user');
+      const cSnap = wSnap ? (wSnap.geom.x1 + wSnap.geom.x2) / 2 - X : NaN;
+      T(
+        'pb-s22-win-mid-snap-alt',
+        near(cSnap, 8, 1e-3) && near(cAlt, offX, 0.02),
+        '吸附半径 ' +
+          rSnap.toFixed(3) +
+          'ft · 点在 ' +
+          offX.toFixed(3) +
+          ' → 不按 Alt 中心 ' +
+          cSnap.toFixed(3) +
+          ' · 按 Alt ' +
+          cAlt.toFixed(3)
+      );
+
+      /* 38.5 选择工具拖窗身 = 沿墙滑（斜着拖也只取沿墙分量）、两头的墙跟着伸缩；Esc 中途回滚——款式不变
+         （回滚以前把整个视图写回去，窗的 slider 键把平开 / 上悬改成了固定）；拖动中的「离左端 · 离右端」跟着窗走 */
+      await setTool('select');
+      const w5 = wSnap;
+      const g5 = Object.assign({}, w5.geom);
+      const ppf = pxPerFtNow();
+      const [sx, sy] = SPT((g5.x1 + g5.x2) / 2, Y);
+      fire('pointerdown', sx, sy);
+      await tick();
+      fire('pointermove', sx + ppf * 1, sy + ppf * 0.5);
+      await tick();
+      fire('pointermove', sx + ppf * 2, sy + ppf * 0.5);
+      await tick();
+      fire('pointerup', sx + ppf * 2, sy + ppf * 0.5, { buttons: 0 });
+      await tick();
+      const g5b = entById(w5.id).geom,
+        gL5 = entById(wN.id).geom;
+      const rt5 = (DOC.walls || []).find(
+        (w) => w.src === 'user' && w.id !== wN.id && near(w.geom.y1, Y) && near(w.geom.y2, Y) && near(w.geom.x2, X + 16)
+      );
+      const slid = g5b.x1 - g5.x1;
+      const ok5 =
+        near(slid, 2, 0.05) &&
+        near(g5b.y1, Y, 1e-6) &&
+        near(g5b.y2, Y, 1e-6) &&
+        near(gL5.x2, g5b.x1, 1e-4) &&
+        !!rt5 &&
+        near(rt5.geom.x1, g5b.x2, 1e-4);
+      entById(w5.id).style = 'casement';
+      fire('pointerdown', SPT((g5b.x1 + g5b.x2) / 2, Y)[0], sy);
+      await tick();
+      fire('pointermove', SPT((g5b.x1 + g5b.x2) / 2, Y)[0] + ppf * 1.5, sy);
+      await tick();
+      // 独立量：拖动中左墙从它的起点量到窗左端、右墙从窗右端量到它的终点（拐角）
+      const gm5 = entById(w5.id).geom,
+        wantL5 = (gm5.x1 - entById(wN.id).geom.x1) * 30.48,
+        wantR5 = (X + 16 - gm5.x2) * 30.48;
+      const mm5 = /离左端 ([\d.]+) cm · 离右端 ([\d.]+) cm/.exec(Q('#wMsg').textContent) || [];
+      const liveRuns = Math.abs(+mm5[1] - wantL5) <= 0.6 && Math.abs(+mm5[2] - wantR5) <= 0.6;
+      key('Escape');
+      await tick();
+      fire('pointerup', SPT((g5b.x1 + g5b.x2) / 2, Y)[0] + ppf * 1.5, sy, { buttons: 0 });
+      await tick();
+      const rolled =
+        near(entById(w5.id).geom.x1, g5b.x1, 1e-6) &&
+        near(entById(wN.id).geom.x2, g5b.x1, 1e-6) &&
+        entById(w5.id).style === 'casement';
+      T(
+        'pb-s22-win-slide-along-wall',
+        ok5 && rolled,
+        '拖 (2, 0.5)ft → 沿墙挪了 ' +
+          slid.toFixed(3) +
+          'ft · 离开墙线=' +
+          !near(g5b.y1, Y, 1e-6) +
+          ' · 两头的墙贴着=' +
+          (near(gL5.x2, g5b.x1, 1e-4) && !!rt5 && near(rt5.geom.x1, g5b.x2, 1e-4)) +
+          ' · Esc 回滚=' +
+          rolled +
+          '（款式 ' +
+          entById(w5.id).style +
+          '）· 拖动中提示 ' +
+          (mm5[0] || '（没有）') +
+          ' vs 量出来 ' +
+          wantL5.toFixed(1) +
+          ' / ' +
+          wantR5.toFixed(1)
+      );
+      entById(w5.id).style = 'fixed';
+      T(
+        'pb-s22-win-drag-runs-live',
+        liveRuns,
+        (mm5[0] || Q('#wMsg').textContent) + ' vs 量出来 ' + wantL5.toFixed(1) + ' / ' + wantR5.toFixed(1)
+      );
+
+      /* 38.5b 拖窗的端点 = 改宽（另一端不动、这一头的墙跟着伸缩）；松手后 width 字段 = 几何长度；Ctrl+Z 一步回去 */
+      {
+        const ge = Object.assign({}, entById(w5.id).geom),
+          [ex, ey] = SPT(ge.x2, Y),
+          h0 = undoRing.length;
+        const hEl = document.elementFromPoint(ex, ey);
+        fire('pointerdown', ex, ey);
+        await tick();
+        fire('pointermove', ex + ppf * 0.25, ey);
+        await tick();
+        fire('pointermove', ex + ppf * 0.5, ey);
+        await tick();
+        const gx = entById(w5.id).geom,
+          wantR = (X + 16 - gx.x2) * 30.48;
+        const mR = /离右端 ([\d.]+) cm/.exec(Q('#wMsg').textContent) || [];
+        fire('pointerup', ex + ppf * 0.5, ey, { buttons: 0 });
+        await tick();
+        const ga = entById(w5.id).geom,
+          ent = entById(w5.id),
+          rtE = (DOC.walls || []).find(
+            (w) =>
+              w.src === 'user' && w.id !== wN.id && near(w.geom.y1, Y) && near(w.geom.y2, Y) && near(w.geom.x2, X + 16)
+          );
+        const okE =
+          !!hEl &&
+          hEl.classList.contains('wEnd') &&
+          near(ga.x1, ge.x1, 1e-6) &&
+          near(ga.x2 - ge.x2, 0.5, 0.02) &&
+          near(ent.width, ga.x2 - ga.x1, 0.006) &&
+          !!rtE &&
+          near(rtE.geom.x1, ga.x2, 1e-4) &&
+          Math.abs(+mR[1] - wantR) <= 0.6 &&
+          undoRing.length === h0 + 1;
+        const dUndo = undoRing.length - h0;
+        document.body.dispatchEvent(
+          new KeyboardEvent('keydown', { key: 'z', ctrlKey: true, bubbles: true, cancelable: true })
+        );
+        await tick();
+        const gu = entById(w5.id).geom;
+        await tap((gu.x1 + gu.x2) / 2, Y); // 撤销会清掉编辑层的选中（快照里的实体可能已不在）→ 重新点选，后面几条接着用
+        T(
+          'pb-s22-win-end-drag-width',
+          okE && near(gu.x2, ge.x2, 1e-6),
+          '抓到端点=' +
+            !!(hEl && hEl.classList.contains('wEnd')) +
+            ' · 右端 +' +
+            (ga.x2 - ge.x2).toFixed(3) +
+            'ft · 左端不动=' +
+            near(ga.x1, ge.x1, 1e-6) +
+            ' · width ' +
+            (ent.width * 30.48).toFixed(1) +
+            'cm vs 几何 ' +
+            ((ga.x2 - ga.x1) * 30.48).toFixed(1) +
+            'cm · 右墙贴着=' +
+            !!(rtE && near(rtE.geom.x1, ga.x2, 1e-4)) +
+            ' · 拖动中 ' +
+            (mR[0] || '（没有）') +
+            ' vs ' +
+            wantR.toFixed(1) +
+            ' · 撤销 +' +
+            dUndo +
+            ' · Ctrl+Z 回到原宽=' +
+            near(gu.x2, ge.x2, 1e-6)
+        );
+      }
+
+      /* 38.6 方向键 = 沿墙挪：→ 1cm、Shift+→ 10cm；↑（垂直于这扇窗）不动；挪到头 = 右边的墙留最短一截 */
+      const x6 = entById(w5.id).geom.x1;
+      key('ArrowRight');
+      await tick();
+      const d1 = entById(w5.id).geom.x1 - x6;
+      key('ArrowRight', null, true);
+      await tick();
+      const d2 = entById(w5.id).geom.x1 - x6 - d1;
+      key('ArrowUp');
+      await tick();
+      const up = entById(w5.id).geom.y1 - Y;
+      for (let k = 0; k < 80; k++) key('ArrowRight', null, true);
+      await tick();
+      const rt6 = (DOC.walls || []).find(
+        (w) => w.src === 'user' && w.id !== wN.id && near(w.geom.y1, Y) && near(w.geom.y2, Y) && near(w.geom.x2, X + 16)
+      );
+      const stub = rt6 ? Math.hypot(rt6.geom.x2 - rt6.geom.x1, rt6.geom.y2 - rt6.geom.y1) : NaN;
+      // 右段上挂着 38.2 改挂过去的那个插座：窗推到头 = 墙垛缩到插座左沿为止（不盖住插座），没有插座时才是 STUB_MIN
+      const o36 = (DOC.outlets || []).find((o) => o.id === o3.id && o.hostId === (rt6 && rt6.id));
+      const want6 = o36 ? Math.max(STUB_MIN, X + 16 - (pose(o36)[0] - cmFt(ptDef('std').plate[0]) / 2)) : STUB_MIN;
+      const why6 = Q('#wMsg').textContent;
+      T(
+        'pb-s22-win-arrow-along-wall',
+        near(d1, 1 / 30.48, 1e-3) &&
+          near(d2, 10 / 30.48, 1e-3) &&
+          Math.abs(up) < 1e-9 &&
+          near(stub, want6, 0.011) &&
+          (!o36 || /点位挡着/.test(why6)),
+        '→ ' +
+          (d1 * 30.48).toFixed(2) +
+          'cm · Shift+→ ' +
+          (d2 * 30.48).toFixed(2) +
+          'cm · ↑ 离开墙线 ' +
+          up.toFixed(4) +
+          'ft · 挪到头右边剩 ' +
+          (stub * 30.48).toFixed(1) +
+          'cm（应为 ' +
+          (want6 * 30.48).toFixed(1) +
+          'cm：' +
+          (o36 ? '插座挡着' : '最短墙垛') +
+          '）· 「' +
+          why6.slice(0, 30) +
+          '」'
+      );
+
+      /* 38.7 改宽（长 → 改这段）= 中心不动、两头的墙跟着伸缩（以前伸进相邻的墙里）；先挪回中间 */
+      {
+        const g = entById(w5.id).geom,
+          kk = Math.round((((g.x1 + g.x2) / 2 - X - 8) * 30.48) / 10);
+        for (let k = 0; k < kk; k++) key('ArrowLeft', null, true);
+        await tick();
+      }
+      const g7 = Object.assign({}, entById(w5.id).geom),
+        c7 = (g7.x1 + g7.x2) / 2;
+      Q('#wLen').value = '150';
+      Q('#wLenApply').click();
+      await tick();
+      const g7b = entById(w5.id).geom,
+        gL7 = entById(wN.id).geom;
+      const rt7 = (DOC.walls || []).find(
+        (w) => w.src === 'user' && w.id !== wN.id && near(w.geom.y1, Y) && near(w.geom.y2, Y) && near(w.geom.x2, X + 16)
+      );
+      T(
+        'pb-s22-win-width-follows-walls',
+        near(g7b.x2 - g7b.x1, 150 / 30.48, 2e-3) &&
+          near((g7b.x1 + g7b.x2) / 2, c7, 2e-3) &&
+          near(gL7.x2, g7b.x1, 1e-4) &&
+          !!rt7 &&
+          near(rt7.geom.x1, g7b.x2, 1e-4),
+        '宽 ' +
+          ((g7b.x2 - g7b.x1) * 30.48).toFixed(1) +
+          'cm · 中心 ' +
+          ((g7b.x1 + g7b.x2) / 2 - c7).toFixed(4) +
+          ' · 左墙贴着=' +
+          near(gL7.x2, g7b.x1, 1e-4) +
+          ' · 右墙贴着=' +
+          (!!rt7 && near(rt7.geom.x1, g7b.x2, 1e-4))
+      );
+
+      /* 38.8 窗台 / 窗高：输入 90 / 150 → 实体 90 / 240；超出天花的组合被拒、数值不变 */
+      Q('#wWinSill').value = '90';
+      Q('#wWinSill').dispatchEvent(new Event('change'));
+      Q('#wWinH').value = '150';
+      Q('#wWinH').dispatchEvent(new Event('change'));
+      await tick();
+      const e8 = entById(w5.id);
+      const okH = near(e8.sill * 30.48, 90, 0.6) && near(e8.head * 30.48, 240, 0.6) && !e8.fullHeight;
+      Q('#wWinSill').value = '200';
+      Q('#wWinSill').dispatchEvent(new Event('change'));
+      await tick();
+      const refused =
+        near(entById(w5.id).sill * 30.48, 90, 0.6) &&
+        /天花/.test(Q('#wMsg').textContent) &&
+        Q('#wWinSill').value === '90';
+      T(
+        'pb-s22-win-sill-height',
+        okH && refused,
+        '窗台 ' +
+          (e8.sill * 30.48).toFixed(1) +
+          ' · 窗顶 ' +
+          (e8.head * 30.48).toFixed(1) +
+          ' · 200 + 150 被拒=' +
+          refused
+      );
+
+      /* 38.9 3D：窗前一道水平射线——窗台以下打到墙、窗台与窗顶之间打到玻璃、窗顶以上打到墙 */
+      setView('3d');
+      await wait3D(80);
+      three.staticGroup.updateMatrixWorld(true);
+      const rc9 = new THREE.Raycaster();
+      const cx9 = (entById(w5.id).geom.x1 + entById(w5.id).geom.x2) / 2;
+      const hitAt = (yCm) => {
+        rc9.set(new THREE.Vector3(cx9, yCm / 30.48, Y + 3), new THREE.Vector3(0, 0, -1));
+        const h = rc9.intersectObjects(three.staticGroup.children, true).filter((x) => x.object.visible)[0];
+        return h ? (h.object.material.transparent && h.object.material.opacity < 0.5 ? 'glass' : 'solid') : 'none';
+      };
+      const h9 = [hitAt(45), hitAt(165), hitAt(255)];
+      setView('2d');
+      await tick();
+      T('pb-s22-win-3d-heights', h9.join(',') === 'solid,glass,solid', '离地 45 / 165 / 255cm → ' + h9.join(' / '));
+
+      /* 38.10「在这段开窗」：选中东墙（12ft）→ 中点开一扇；再画一段 3ft 短墙选中它 → 整段换成窗 */
+      await enterEdit();
+      await setTool('select');
+      await tap(X + 16, Y + 3);
+      const btnShown = getComputedStyle(Q('#wOpenWin')).display !== 'none';
+      Q('#wOpenWin').click();
+      await tick();
+      const wE2 = (DOC.windows || []).find(
+        (w) => w.src === 'user' && near(w.geom.x1, X + 16) && near(w.geom.x2, X + 16)
+      );
+      const cE = wE2 ? (wE2.geom.y1 + wE2.geom.y2) / 2 - Y : NaN;
+      const short = pushUserWall(X + 4, Y + 6, X + 7, Y + 6, 'w', wd);
+      geoChanged();
+      await tick();
+      wallEdit.sel = { kind: 'w', id: short.id };
+      updateWallBarFromSel();
+      Q('#wOpenWin').click();
+      await tick();
+      const whole =
+        (DOC.windows || []).some((w) => w.id === short.id) && !(DOC.walls || []).some((w) => w.id === short.id);
+      T(
+        'pb-s22-win-open-in-selected-wall',
+        btnShown && !!wE2 && near(cE, 6, 1e-3) && whole,
+        '按钮在=' + btnShown + ' · 东墙开窗中心 ' + cE.toFixed(3) + 'ft（中点 6）· 3ft 短墙整段换成窗=' + whole
+      );
+
+      /* 38.11 加门：点在实墙（南墙）上 = 先开门洞再放门（缺省 80cm），选中这扇门 */
+      await setTool('door');
+      const nD0 = (DOC.doors || []).length;
+      await tap(X + 5, Y + 12);
+      const dNew = (DOC.doors || [])[(DOC.doors || []).length - 1];
+      const gap = (DOC.walls || []).find(
+        (w) => w.kind === 'opening' && dNew && near(w.geom.x1, dNew.geom.x1) && near(w.geom.y1, dNew.geom.y1)
+      );
+      T(
+        'pb-s22-door-on-solid-wall',
+        (DOC.doors || []).length === nD0 + 1 &&
+          !!gap &&
+          near(Math.hypot(dNew.geom.x2 - dNew.geom.x1, dNew.geom.y2 - dNew.geom.y1), 80 / 30.48, 1e-3) &&
+          wallEdit.sel &&
+          wallEdit.sel.kind === 'door',
+        '门 ' +
+          nD0 +
+          '→' +
+          (DOC.doors || []).length +
+          ' · 门洞在=' +
+          !!gap +
+          ' · 宽 ' +
+          (dNew ? (Math.hypot(dNew.geom.x2 - dNew.geom.x1, dNew.geom.y2 - dNew.geom.y1) * 30.48).toFixed(1) : '?') +
+          'cm'
+      );
+
+      /* 38.12 常用尺寸：选「卫生间高窗」→ 三个框填好；开出来的窗就是这个尺寸 */
+      await setTool('win');
+      Q('#waPreset').value = '60,140,60';
+      Q('#waPreset').dispatchEvent(new Event('change'));
+      const filled = Q('#waW').value === '60' && Q('#waSill').value === '140' && Q('#waH').value === '60';
+      await tap(X + 3, Y + 12);
+      const wb = entById(wallEdit.sel && wallEdit.sel.id);
+      T(
+        'pb-s22-win-preset',
+        filled &&
+          !!wb &&
+          near(Math.hypot(wb.geom.x2 - wb.geom.x1, wb.geom.y2 - wb.geom.y1), 60 / 30.48, 1e-3) &&
+          near(wb.sill * 30.48, 140, 0.6) &&
+          near((wb.head - wb.sill) * 30.48, 60, 0.6),
+        '框里 ' +
+          [Q('#waW').value, Q('#waSill').value, Q('#waH').value].join(' / ') +
+          ' · 开出来 ' +
+          (wb && wb.geom
+            ? (Math.hypot(wb.geom.x2 - wb.geom.x1, wb.geom.y2 - wb.geom.y1) * 30.48).toFixed(0) +
+              'cm · 窗台 ' +
+              (wb.sill * 30.48).toFixed(0)
+            : '—')
+      );
+      Q('#waW').value = '120';
+      Q('#waSill').value = '67';
+      Q('#waH').value = '158';
+
+      /* 38.12b 工具条的窗台 / 窗高也要过同一道关：窗台 300（天花 ~259）/ 窗台 240 + 窗高 158 → 不开窗、说明为什么、文档仍然合法
+         （以前照开：窗台 300 / 窗顶 251 = 窗台高过窗顶，validate 判这份文档坏了 → 刷新后内置户型的改动被整份丢掉、
+         自己画的户型「读不动」；240 + 158 则悄悄缩成 11cm 高的窗）；窗台 0 + 窗高顶到天花 = 落地窗，照开 */
+      {
+        await setTool('win');
+        const nWin = (DOC.windows || []).length;
+        const tryOpen = async (sill, h, at) => {
+          Q('#waSill').value = String(sill);
+          Q('#waH').value = String(h);
+          await tap(at[0], at[1]);
+          return {
+            n: (DOC.windows || []).length,
+            msg: Q('#wMsg').textContent,
+            errs: SCHEMA.Project.validate(DOC).length,
+          };
+        };
+        const r1 = await tryOpen(300, 158, [X + 12, Y + 12]);
+        const r2 = await tryOpen(240, 158, [X + 12, Y + 12]);
+        const r3 = await tryOpen(0, 300, [X + 12, Y + 12]);
+        const wFull = (DOC.windows || [])[(DOC.windows || []).length - 1];
+        T(
+          'pb-s22-win-tool-heights-checked',
+          r1.n === nWin &&
+            /天花/.test(r1.msg) &&
+            r2.n === nWin &&
+            /天花/.test(r2.msg) &&
+            r3.n === nWin + 1 &&
+            !!wFull &&
+            !!wFull.fullHeight &&
+            r1.errs + r2.errs + r3.errs === 0,
+          '窗台 300：开了 ' +
+            (r1.n - nWin) +
+            ' 扇「' +
+            r1.msg.slice(0, 30) +
+            '」 · 240 + 158：开了 ' +
+            (r2.n - nWin) +
+            ' 扇 · 0 + 300：开了 ' +
+            (r3.n - nWin) +
+            ' 扇（落地=' +
+            !!(wFull && wFull.fullHeight) +
+            '）· validate 报错 ' +
+            (r1.errs + r2.errs + r3.errs)
+        );
+        Q('#waSill').value = '67';
+        Q('#waH').value = '158';
+        await setTool('select');
+      }
+
+      /* 38.13 #88 短墙垛（< 15cm，两个端点都在门端附近）：拖门离开它 = 墙垛伸长、远端（拐角）不动；拖回去 = 墙垛缩到最短为止、
+         不钻进拐角的墙（以前两个端点都认成「跟着走」→ 整段平移：往外拖一步都拖不动，往里拖墙垛被推进拐角）。
+         开窗时窗离墙端只留 ~5cm 的墙垛，这种短墙垛很常见 */
+      await setTool('select');
+      const Y13 = Y + 6; // 房间中间一道隔墙（视图只框地面，画在外面会出屏）
+      pushUserWall(X + 1, Y13, X + 10, Y13, 'w', wd);
+      pushUserWall(X + 10, Y13, X + 13, Y13, 'd', wd);
+      const stub13 = pushUserWall(X + 13, Y13, X + 13.3, Y13, 'w', wd);
+      pushUserWall(X + 13.3, Y13, X + 13.3, Y13 + 3, 'w', wd);
+      const door13 = pushUserDoor(X + 10, Y13, X + 13, Y13);
+      geoChanged();
+      fit2DToContent();
+      await tick();
+      const dragDoor13 = async (dxFt) => {
+        const dg = entById(door13.id).geom,
+          [cx, cy] = SPT((dg.x1 + dg.x2) / 2, Y13),
+          ppf = pxPerFtNow();
+        fire('pointerdown', cx, cy);
+        await tick();
+        fire('pointermove', cx + (dxFt / 2) * ppf, cy);
+        await tick();
+        fire('pointermove', cx + dxFt * ppf, cy);
+        await tick();
+        fire('pointerup', cx + dxFt * ppf, cy);
+        await tick();
+      };
+      await dragDoor13(-1);
+      const sg13a = Object.assign({}, entById(stub13.id).geom),
+        dg13a = Object.assign({}, entById(door13.id).geom);
+      await dragDoor13(2);
+      const sg13b = entById(stub13.id).geom,
+        dg13b = entById(door13.id).geom;
+      T(
+        'pb-s22-door-short-stub-follows',
+        near(dg13a.x1, X + 9, 0.02) &&
+          near(sg13a.x1, dg13a.x2, 1e-4) &&
+          near(sg13a.x2, X + 13.3, 1e-4) &&
+          near(sg13b.x2, X + 13.3, 1e-4) &&
+          near(sg13b.x1, dg13b.x2, 1e-4) &&
+          near(sg13b.x2 - sg13b.x1, STUB_MIN, 0.011),
+        '往外拖 1ft：门 ' +
+          (dg13a.x1 - X).toFixed(3) +
+          ' · 墙垛 ' +
+          (sg13a.x1 - X).toFixed(3) +
+          '→' +
+          (sg13a.x2 - X).toFixed(3) +
+          ' ｜ 往里拖 2ft：墙垛 ' +
+          (sg13b.x1 - X).toFixed(3) +
+          '→' +
+          (sg13b.x2 - X).toFixed(3) +
+          '（剩 ' +
+          ((sg13b.x2 - sg13b.x1) * 30.48).toFixed(1) +
+          'cm）'
+      );
+
+      /* 38.13b #89 门连窗：门旁边紧挨一扇平开窗（窗是门的联动墙垛之一）→ 拖门、半路 Esc → 窗回到原位、款式还是平开
+         （回滚以前把整个视图写回去：窗视图的派生键 slider 把 style 改成 fixed——拖窗按 Esc 也是同一处） */
+      {
+        const Yb = Y + 10.5;
+        pushUserWall(X + 1, Yb, X + 6, Yb, 'w', wd);
+        pushUserWall(X + 6, Yb, X + 9, Yb, 'd', wd);
+        const nwB = pushUserWindow(X + 9, Yb, X + 12, Yb, wd);
+        nwB.style = 'casement';
+        pushUserWall(X + 12, Yb, X + 15, Yb, 'w', wd);
+        const drB = pushUserDoor(X + 6, Yb, X + 9, Yb);
+        geoChanged();
+        await tick();
+        const [bx, by] = SPT(X + 7.5, Yb),
+          ppfB = pxPerFtNow();
+        fire('pointerdown', bx, by);
+        await tick();
+        fire('pointermove', bx - 0.5 * ppfB, by);
+        await tick();
+        fire('pointermove', bx - 1 * ppfB, by);
+        await tick();
+        const midB = [entById(drB.id).geom.x1 - X, nwB.geom.x1 - X];
+        key('Escape');
+        await tick();
+        fire('pointerup', bx - 1 * ppfB, by, { buttons: 0 });
+        await tick();
+        T(
+          'pb-s22-door-esc-keeps-window-style',
+          near(midB[0], 5, 0.02) &&
+            near(midB[1], 8, 0.02) &&
+            near(nwB.geom.x1, X + 9, 1e-6) &&
+            nwB.style === 'casement',
+          '拖动中 门 x1=' +
+            midB[0].toFixed(3) +
+            ' · 窗跟着到 ' +
+            midB[1].toFixed(3) +
+            ' · Esc 后窗回到 ' +
+            (nwB.geom.x1 - X).toFixed(3) +
+            ' · 款式 ' +
+            nwB.style
+        );
+      }
+
+      /* 38.14 兜底：这一节做过的所有开窗 / 开门 / 滑动 / 改宽 / 改高之后，文档仍然过 validate
+         （过不了 = 刷新后 loadDoc 不采用这份存档：内置户型的改动整份丢掉、自己画的户型「读不动」） */
+      {
+        const errs = SCHEMA.Project.validate(DOC);
+        T(
+          'pb-s22-doc-still-valid',
+          errs.length === 0,
+          errs.length
+            ? errs
+                .slice(0, 3)
+                .map((e) => e.path + ' ' + e.message)
+                .join(' ｜ ')
+            : '0 条报错'
+        );
+      }
+
+      /* 收尾：删掉这份户型 */
+      await setTool('select');
+      Q('#btnPlanDel').click();
+      await tick();
+      Q('#btnPlanDel').click();
+      await tick();
+      T(
+        'pb-s22-clean-exit',
+        PLAN_ID !== p38Plan && PLAN_REG.plans.length === p38Plans,
+        'plans ' + p38Plans + '→' + PLAN_REG.plans.length
+      );
+    }
+
+    /* ===== 39. S22a 内置墙上开窗：内置段隐藏、换成「墙｜窗｜墙」三段用户段（同厚、首尾接得上）；撤销一步回到原样 ===== */
+    {
+      await enterEdit();
+      await pbReset();
+      fit2DToContent();
+      await tick();
+      const near39 = (a, b, tol) => Math.abs(a - b) < (tol || 1e-3);
+      let best = null;
+      for (const sg of effWalls()) {
+        if (sg.t !== 'w') continue;
+        const e = entById(sg._id);
+        if (!e || e.src === 'user' || !e.geom || e.geom.t !== 'seg') continue;
+        const L = Math.hypot(sg.x2 - sg.x1, sg.y2 - sg.y1);
+        if (L > 6 && (!best || L > best.L))
+          best = { id: sg._id, L, g: Object.assign({}, e.geom), th: pbDrawnThick(sg) };
+      }
+      if (!best) {
+        T('pb-s22-builtin-wall-window', false, '这份内置户型里找不到 6ft 以上的直线实墙');
+      } else {
+        const h0 = undoRing.length,
+          nW0 = DOC.walls.length,
+          nN0 = (DOC.windows || []).length,
+          hid0 = DOC.hidden.walls.slice();
+        await setTool('win');
+        // 点在没有 T 口的最长那一截空当中间（内墙接过来的地方窗会自动让开——那是 40.6 的事）
+        const jn = wallJunctions(
+          entById(best.id),
+          effWalls().find((q) => q._id === best.id)
+        ).sort((p, q) => p[0] - q[0]);
+        let gap = [0, 0],
+          prev = 0;
+        for (const iv of jn.concat([[best.L, best.L]])) {
+          if (iv[0] - prev > gap[1] - gap[0]) gap = [prev, iv[0]];
+          prev = Math.max(prev, iv[1]);
+        }
+        const tc = (gap[0] + gap[1]) / 2,
+          ux39 = (best.g.x2 - best.g.x1) / best.L,
+          uy39 = (best.g.y2 - best.g.y1) / best.L;
+        const mx = best.g.x1 + ux39 * tc,
+          my = best.g.y1 + uy39 * tc;
+        await tap(mx, my);
+        const win = entById(wallEdit.sel && wallEdit.sel.id);
+        const uw = DOC.walls.filter((w) => w.src === 'user');
+        const L1 = uw.find((w) => near39(w.geom.x1, best.g.x1) && near39(w.geom.y1, best.g.y1));
+        const R1 = uw.find((w) => near39(w.geom.x2, best.g.x2) && near39(w.geom.y2, best.g.y2));
+        const seg = (id) => effWalls().find((q) => q._id === id);
+        const wg = win && win.geom;
+        const chained =
+          !!(L1 && R1 && wg) &&
+          near39(L1.geom.x2, wg.x1, 1e-4) &&
+          near39(L1.geom.y2, wg.y1, 1e-4) &&
+          near39(R1.geom.x1, wg.x2, 1e-4) &&
+          near39(R1.geom.y1, wg.y2, 1e-4);
+        const thickOk =
+          !!(L1 && R1 && win) &&
+          near39(pbDrawnThick(seg(L1.id)), best.th, 1e-3) &&
+          near39(pbDrawnThick(seg(R1.id)), best.th, 1e-3);
+        const wLen = wg ? Math.hypot(wg.x2 - wg.x1, wg.y2 - wg.y1) : NaN;
+        const centered = wg ? near39((wg.x1 + wg.x2) / 2, mx, 0.02) && near39((wg.y1 + wg.y2) / 2, my, 0.02) : false;
+        const hiddenNow = DOC.hidden.walls.includes(best.id) && !effWalls().some((q) => q._id === best.id);
+        const ok1 =
+          !!win && isWinEnt(win) && hiddenNow && chained && thickOk && near39(wLen, 120 / 30.48, 2e-3) && centered;
+        document.body.dispatchEvent(
+          new KeyboardEvent('keydown', { key: 'z', ctrlKey: true, bubbles: true, cancelable: true })
+        );
+        await tick();
+        const back =
+          DOC.walls.length === nW0 &&
+          (DOC.windows || []).length === nN0 &&
+          JSON.stringify(DOC.hidden.walls) === JSON.stringify(hid0) &&
+          effWalls().some((q) => q._id === best.id) &&
+          undoRing.length === h0;
+        T(
+          'pb-s22-builtin-wall-window',
+          ok1 && back,
+          '内置墙 ' +
+            best.id +
+            '（' +
+            (best.L * 30.48).toFixed(0) +
+            'cm）· 隐藏=' +
+            hiddenNow +
+            ' · 墙｜窗｜墙 接得上=' +
+            chained +
+            ' · 同厚=' +
+            thickOk +
+            ' · 窗 ' +
+            (wLen * 30.48).toFixed(1) +
+            'cm 居中=' +
+            centered +
+            ' · 撤销回原样=' +
+            back
+        );
+        /* 39.2 W12 内置墙上开的窗删掉 = 墙封回去：同一处再开一扇 → Delete → 原内置墙那一整段由一段用户墙接上（首尾 = 原内置墙的两端）、
+           内置墙仍然隐藏、窗不在了；Ctrl+Z 两次回到原样 */
+        await setTool('win');
+        await tap(mx, my);
+        const h2 = undoRing.length;
+        const selWin2 = !!wallEdit.sel && isWinEnt(entById(wallEdit.sel.id)); // 开完就选中它了
+        key('Delete');
+        await tick();
+        const one = DOC.walls.filter(
+          (w) =>
+            w.src === 'user' &&
+            ((near39(w.geom.x1, best.g.x1) &&
+              near39(w.geom.y1, best.g.y1) &&
+              near39(w.geom.x2, best.g.x2) &&
+              near39(w.geom.y2, best.g.y2)) ||
+              (near39(w.geom.x1, best.g.x2) &&
+                near39(w.geom.y1, best.g.y2) &&
+                near39(w.geom.x2, best.g.x1) &&
+                near39(w.geom.y2, best.g.y1)))
+        ).length;
+        const closed2 =
+          selWin2 &&
+          one === 1 &&
+          DOC.walls.filter((w) => w.src === 'user').length === 1 &&
+          !(DOC.windows || []).some((w) => w.src === 'user') &&
+          DOC.hidden.walls.includes(best.id) &&
+          undoRing.length === h2 + 1;
+        undoStep();
+        await tick();
+        undoStep();
+        await tick();
+        const back2 =
+          DOC.walls.length === nW0 &&
+          (DOC.windows || []).length === nN0 &&
+          JSON.stringify(DOC.hidden.walls) === JSON.stringify(hid0) &&
+          undoRing.length === h0;
+        T(
+          'pb-s22-builtin-wall-window-delete-closes',
+          closed2 && back2,
+          '选中窗=' +
+            selWin2 +
+            ' · 删后接上原内置墙两端的用户墙 ' +
+            one +
+            ' 段 · 内置墙仍隐藏=' +
+            DOC.hidden.walls.includes(best.id) +
+            ' · 撤两步回原样=' +
+            back2
+        );
+        await setTool('select');
+      }
+
+      /* 39.3 W12 内置窗（两头接着共线的内置墙）删掉 = 墙封回去：窗那一截上每隔 5cm 取一点，删后都落在实墙里；窗被隐藏；Ctrl+Z 回去。
+         以前 = 隐藏这扇窗、墙上留一个洞 */
+      let bw = null;
+      for (const sg of effWalls()) {
+        if (sg.t !== 'g') continue;
+        const e = entById(sg._id);
+        if (!e || e.src === 'user') continue;
+        const L = Math.hypot(sg.x2 - sg.x1, sg.y2 - sg.y1),
+          u = [(sg.x2 - sg.x1) / L, (sg.y2 - sg.y1) / L];
+        const touch = (P) =>
+          effWalls().some(
+            (q) =>
+              (q.t === 'w' || q.t === 'i') &&
+              [
+                [q.x1, q.y1],
+                [q.x2, q.y2],
+              ].some((p) => Math.hypot(p[0] - P[0], p[1] - P[1]) < 2e-3) &&
+              Math.abs(((q.x2 - q.x1) * u[1] - (q.y2 - q.y1) * u[0]) / (Math.hypot(q.x2 - q.x1, q.y2 - q.y1) || 1)) <
+                1e-3
+          );
+        const n = (touch([sg.x1, sg.y1]) ? 1 : 0) + (touch([sg.x2, sg.y2]) ? 1 : 0);
+        if (n && (!bw || n > bw.n)) bw = { id: sg._id, n, g: { x1: sg.x1, y1: sg.y1, x2: sg.x2, y2: sg.y2 }, L };
+      }
+      if (!bw) T('pb-s22-builtin-window-delete-closes', true, '这份内置户型没有接着共线墙的内置窗（不适用）');
+      else {
+        const h3 = undoRing.length,
+          hidW0 = DOC.hidden.windows.slice();
+        await setTool('select');
+        await tap((bw.g.x1 + bw.g.x2) / 2, (bw.g.y1 + bw.g.y2) / 2);
+        const selOk3 = !!wallEdit.sel && wallEdit.sel.id === bw.id;
+        key('Delete');
+        await tick();
+        const solid = effWalls().filter((q) => q.t === 'w' || q.t === 'i');
+        const onSolid = (p) =>
+          solid.some((q) => {
+            const dx = q.x2 - q.x1,
+              dy = q.y2 - q.y1,
+              L2 = dx * dx + dy * dy;
+            if (L2 < 1e-9) return false;
+            const t = Math.max(0, Math.min(1, ((p[0] - q.x1) * dx + (p[1] - q.y1) * dy) / L2));
+            return Math.hypot(p[0] - (q.x1 + dx * t), p[1] - (q.y1 + dy * t)) < 1e-3;
+          });
+        let holes = 0;
+        const nS = Math.max(2, Math.ceil((bw.L * 30.48) / 5));
+        for (let i = 0; i <= nS; i++) {
+          const t = i / nS;
+          if (!onSolid([bw.g.x1 + (bw.g.x2 - bw.g.x1) * t, bw.g.y1 + (bw.g.y2 - bw.g.y1) * t])) holes++;
+        }
+        const closed3 =
+          selOk3 &&
+          holes === 0 &&
+          DOC.hidden.windows.includes(bw.id) &&
+          !effWalls().some((q) => q._id === bw.id) &&
+          undoRing.length === h3 + 1;
+        undoStep();
+        await tick();
+        const back3 =
+          effWalls().some((q) => q._id === bw.id && q.t === 'g') &&
+          JSON.stringify(DOC.hidden.windows) === JSON.stringify(hidW0);
+        T(
+          'pb-s22-builtin-window-delete-closes',
+          closed3 && back3,
+          '内置窗 ' +
+            bw.id +
+            '（' +
+            (bw.L * 30.48).toFixed(0) +
+            'cm，' +
+            bw.n +
+            ' 头接着共线墙）· 选中=' +
+            selOk3 +
+            ' · 删后窗那一截 ' +
+            (nS + 1) +
+            ' 个点里落空 ' +
+            holes +
+            ' 个 · Ctrl+Z 回来=' +
+            back3
+        );
+      }
+    }
+
+    /* ===== 40. S22a 独立审查钓出的四件（先红后绿）：联动只认最近的端点、wallId 悬空、墙垛上的点位跟着窗漂、重置内置埋掉洞口 ===== */
+    {
+      await enterEdit();
+      await pbReset();
+      const p40Plans = PLAN_REG.plans.length;
+      Q('#btnPlanNew').click();
+      await tick();
+      const p40Plan = PLAN_ID;
+      const fp40 = floorPts();
+      const X =
+          Math.min.apply(
+            null,
+            fp40.map((p) => p[0])
+          ) + 1,
+        Y =
+          Math.min.apply(
+            null,
+            fp40.map((p) => p[1])
+          ) + 1;
+      const wd = cmToWd(15);
+      const near = (a, b, tol) => Math.abs(a - b) < (tol || 1e-3);
+      const shiftKey = (k, n) => {
+        for (let i = 0; i < n; i++) key(k, null, true);
+      };
+      await setTool('select');
+
+      /* 40.1 审查：一面直墙是两段画的（A 0→8、C 8→16）；在 A 上靠右开窗 → 右边只剩 5.5cm 墙垛、C 的起点离窗端 5.5cm（< LINK_TOL）。
+         窗往左挪 30cm：墙垛伸长、C 原地不动（以前 C 也被认成「跟着走」→ C 跟着窗左移、压进墙垛） */
+      const A1 = pushUserWall(X, Y, X + 8, Y, 'w', wd);
+      const C1 = pushUserWall(X + 8, Y, X + 16, Y, 'w', wd);
+      geoChanged();
+      await tick();
+      const w1 = insertWindowAt([X + 7.5, Y]);
+      await tick();
+      const stub1 = () =>
+        (DOC.walls || []).find(
+          (w) =>
+            w.src === 'user' && w.id !== A1.id && w.id !== C1.id && near(w.geom.y1, Y) && near(w.geom.x2, X + 8, 0.6)
+        );
+      const c0 = Object.assign({}, entById(C1.id).geom);
+      shiftKey('ArrowLeft', 3);
+      await tick();
+      const g1 = entById(w1.id).geom,
+        st1 = stub1(),
+        cG = entById(C1.id).geom;
+      T(
+        'pb-s22r-link-nearest-end-only',
+        !!st1 &&
+          near(cG.x1, c0.x1, 1e-9) &&
+          near(cG.x2, c0.x2, 1e-9) &&
+          near(st1.geom.x1, g1.x2, 1e-4) &&
+          near(st1.geom.x2, X + 8, 1e-4) &&
+          near(c0.x1 - g1.x2 - (STUB_MIN + 30 / 30.48), 0, 0.01),
+        '窗右端 ' +
+          (g1.x2 - X).toFixed(3) +
+          ' · 墙垛 ' +
+          (st1 ? (st1.geom.x1 - X).toFixed(3) + '→' + (st1.geom.x2 - X).toFixed(3) : '没有') +
+          ' · C 起点 ' +
+          (cG.x1 - X).toFixed(3) +
+          '（原 ' +
+          (c0.x1 - X).toFixed(3) +
+          '）'
+      );
+
+      /* 40.2 审查：同一个根因落在门上：门洞｜5.5cm 墙垛｜窗。门往远离窗的方向挪 → 墙垛伸长、窗不动
+         （以前窗的端点离门端 5.5cm 也被认成跟着走 → 窗伸过来盖住墙垛） */
+      const Y2 = Y + 6;
+      pushUserWall(X + 1, Y2, X + 3, Y2, 'w', wd);
+      pushUserWall(X + 3, Y2, X + 6, Y2, 'd', wd);
+      const sb2 = pushUserWall(X + 6, Y2, X + 6 + STUB_MIN, Y2, 'w', wd);
+      const wn2 = pushUserWindow(X + 6 + STUB_MIN, Y2, X + 9, Y2, wd);
+      pushUserWall(X + 9, Y2, X + 14, Y2, 'w', wd);
+      const dr2 = pushUserDoor(X + 3, Y2, X + 6, Y2);
+      geoChanged();
+      await tick();
+      wallEdit.sel = { kind: 'door', id: dr2.id };
+      updateWallBarFromSel();
+      const dx0 = entById(dr2.id).geom.x2;
+      shiftKey('ArrowLeft', 6);
+      await tick();
+      const dMoved = dx0 - entById(dr2.id).geom.x2,
+        sg2 = entById(sb2.id).geom,
+        wg2 = entById(wn2.id).geom;
+      T(
+        'pb-s22r-door-link-skips-window',
+        dMoved > 0.1 &&
+          near(sg2.x1, entById(dr2.id).geom.x2, 1e-4) &&
+          near(sg2.x2, X + 6 + STUB_MIN, 1e-6) &&
+          near(wg2.x1, X + 6 + STUB_MIN, 1e-6),
+        '门左移 ' +
+          (dMoved * 30.48).toFixed(1) +
+          'cm · 墙垛 ' +
+          (sg2.x1 - X).toFixed(3) +
+          '→' +
+          (sg2.x2 - X).toFixed(3) +
+          ' · 窗起点 ' +
+          (wg2.x1 - X).toFixed(3) +
+          '（原 ' +
+          (6 + STUB_MIN).toFixed(3) +
+          '）'
+      );
+
+      /* 40.3 #90 墙垛上的点位不跟着窗漂：开窗时右段那个插座改挂到拆出来的右段（它的 x1 就是窗端）→ 窗挪了，at 从会动的那端量 →
+         插座跟着窗平移。现在：窗挪 / 改宽，插座原地不动；窗也不能挪到压住插座（墙垛缩到插座那里就停） */
+      const Y3 = Y + 10;
+      const W3 = pushUserWall(X, Y3, X + 16, Y3, 'w', wd);
+      geoChanged();
+      await tick();
+      const t3 = pbDrawnThick(effWalls().find((q) => q._id === W3.id));
+      const ol3 = pushUserOutlet(pointSnap(X + 11.5, Y3 + t3 / 2 + 0.2, 'std', 'wall'), 'std', 1, null);
+      syncOutlets();
+      geoChanged();
+      await tick();
+      const pose3 = () => {
+        const q = outletPose((DOC.outlets || []).find((o) => o.id === ol3.id));
+        return q ? [q.x, q.y] : [NaN, NaN];
+      };
+      const w3 = insertWindowAt([X + 8, Y3]);
+      await tick();
+      const p30 = pose3();
+      shiftKey('ArrowLeft', 5);
+      await tick();
+      const p31 = pose3();
+      shiftKey('ArrowRight', 40);
+      await tick();
+      const p32 = pose3(),
+        g3 = entById(w3.id).geom;
+      const half3 = cmFt(ptDef('std').plate[0]) / 2;
+      T(
+        'pb-s22r-outlet-stays-when-window-moves',
+        near(p31[0], p30[0], 2e-3) &&
+          near(p31[1], p30[1], 2e-3) &&
+          near(p32[0], p30[0], 2e-3) &&
+          g3.x2 <= p30[0] - half3 + 1e-3,
+        '插座 x ' +
+          (p30[0] - X).toFixed(3) +
+          ' → 窗左移 50cm 后 ' +
+          (p31[0] - X).toFixed(3) +
+          ' → 窗往右推到头 ' +
+          (p32[0] - X).toFixed(3) +
+          ' · 窗右端停在 ' +
+          (g3.x2 - X).toFixed(3) +
+          '（插座左沿 ' +
+          (p30[0] - half3 - X).toFixed(3) +
+          '）'
+      );
+
+      /* 40.4 #91 门 / 窗的 wallId 指着的墙被删掉 / 整段换成窗 → 文档仍过 validate（以前「引用不存在的墙」→ 刷新后整份存档不被采用。
+         导入的户型里门窗都带 wallId） */
+      const Y4 = Y + 3;
+      const Wq = pushUserWall(X + 1, Y4, X + 4, Y4, 'w', wd);
+      pushUserWall(X + 4, Y4, X + 7, Y4, 'd', wd);
+      const Wr = pushUserWall(X + 7, Y4, X + 9, Y4, 'w', wd);
+      const dq = pushUserDoor(X + 4, Y4, X + 7, Y4);
+      dq.wallId = Wq.id;
+      const nq = pushUserWindow(X + 9, Y4, X + 11, Y4, wd);
+      nq.wallId = Wr.id;
+      geoChanged();
+      await tick();
+      const e40a = SCHEMA.Project.validate(DOC).length;
+      wallEdit.sel = { kind: 'w', id: Wq.id };
+      updateWallBarFromSel();
+      key('Delete');
+      await tick();
+      const e40b = SCHEMA.Project.validate(DOC);
+      wallEdit.sel = { kind: 'w', id: Wr.id };
+      updateWallBarFromSel();
+      Q('#wType').value = 'g';
+      Q('#wType').dispatchEvent(new Event('change'));
+      await tick();
+      const e40c = SCHEMA.Project.validate(DOC);
+      T(
+        'pb-s22r-dangling-wallid-cleared',
+        e40a === 0 &&
+          e40b.length === 0 &&
+          e40c.length === 0 &&
+          entById(dq.id).wallId == null &&
+          entById(nq.id).wallId == null,
+        '起始报错 ' +
+          e40a +
+          ' · 删掉门的宿主墙后 ' +
+          (e40b.length ? e40b[0].path + ' ' + e40b[0].message : '0') +
+          ' · 窗的宿主墙换成窗后 ' +
+          (e40c.length ? e40c[0].path + ' ' + e40c[0].message : '0')
+      );
+
+      /* 40.6 审查 #9 T 口：一面墙中间接过来一道内墙（T 口在 8ft）→ 在 T 口上点「加窗」/「加门」：洞口让到 T 口一侧、不跨过它；
+         预览跟开出来的一样（以前照开：内墙顶在玻璃上 / 门洞里） */
+      const Y6 = Y + 1.5;
+      const W6 = pushUserWall(X, Y6, X + 16, Y6, 'w', wd);
+      pushUserWall(X + 8, Y6, X + 8, Y6 + 1.4, 'w', wd);
+      geoChanged();
+      await tick();
+      const half6 = pbDrawnThick(effWalls().find((q) => q._id === W6.id)) / 2;
+      const clearOfT = (g) =>
+        Math.min(g.x1, g.x2) >= X + 8 + half6 - 1e-6 || Math.max(g.x1, g.x2) <= X + 8 - half6 + 1e-6;
+      await setTool('win');
+      const [hx6, hy6] = SPT(X + 8.05, Y6);
+      fire('pointermove', hx6, hy6, { buttons: 0 });
+      await tick();
+      const pv6 = wallEdit.winPreview ? { a: wallEdit.winPreview.a, b: wallEdit.winPreview.b } : null;
+      const w6 = insertWindowAt([X + 8.05, Y6]);
+      await tick();
+      const g6 = w6 && entById(w6.id).geom;
+      const sameAsPreview =
+        !!pv6 &&
+        !!g6 &&
+        near(Math.min(g6.x1, g6.x2) - X, pv6.a, 0.011) &&
+        near(Math.max(g6.x1, g6.x2) - X, pv6.b, 0.011);
+      await setTool('door');
+      const d6 = insertDoorAt([X + 7.9, Y6]);
+      await tick();
+      const gd6 = d6 && d6 !== 'refused' ? entById(d6.id).geom : null;
+      T(
+        'pb-s22r-opening-avoids-t-junction',
+        !!g6 && clearOfT(g6) && sameAsPreview && !!gd6 && clearOfT(gd6),
+        '窗 ' +
+          (g6 ? (Math.min(g6.x1, g6.x2) - X).toFixed(2) + '→' + (Math.max(g6.x1, g6.x2) - X).toFixed(2) : '没开') +
+          '（预览 ' +
+          (pv6 ? pv6.a.toFixed(2) + '→' + pv6.b.toFixed(2) : '无') +
+          '）· 门 ' +
+          (gd6
+            ? (Math.min(gd6.x1, gd6.x2) - X).toFixed(2) + '→' + (Math.max(gd6.x1, gd6.x2) - X).toFixed(2)
+            : String(d6)) +
+          ' · T 口在 8.00 ± ' +
+          half6.toFixed(2)
+      );
+
+      /* 40.7 审查 #5 两个拐角之间整段换成的窗（两头没有能跟着伸缩的墙）：「长」改窄 = 窗居中缩、两头补上墙（窗那一截没有洞）；
+         改宽 = 拒、几何不变（以前照样对称伸缩：改窄两头留缝、加宽伸进拐角的墙） */
+      const Y7 = Y + 8;
+      pushUserWall(X + 2, Y7 - 1, X + 2, Y7, 'w', wd);
+      const W7 = pushUserWall(X + 2, Y7, X + 12, Y7, 'w', wd);
+      pushUserWall(X + 12, Y7, X + 12, Y7 - 1, 'w', wd);
+      geoChanged();
+      await tick();
+      wallEdit.sel = { kind: 'w', id: W7.id };
+      Q('#wType').value = 'g';
+      Q('#wType').dispatchEvent(new Event('change'));
+      await tick();
+      wallEdit.sel = { kind: 'w', id: W7.id };
+      updateWallBarFromSel();
+      const g70 = Object.assign({}, entById(W7.id).geom);
+      Q('#wLen').value = '400';
+      Q('#wLenApply').click();
+      await tick();
+      const wider =
+        JSON.stringify(entById(W7.id).geom) === JSON.stringify(g70) && /宽不了/.test(Q('#wMsg').textContent);
+      Q('#wLen').value = '150';
+      Q('#wLenApply').click();
+      await tick();
+      const g71 = entById(W7.id).geom;
+      const solid7 = effWalls().filter((q) => q.t === 'w' || q.t === 'g');
+      let holes7 = 0;
+      for (let i = 0; i <= 40; i++) {
+        const px = X + 2 + (10 * i) / 40;
+        if (
+          !solid7.some(
+            (q) =>
+              near(q.y1, Y7) && near(q.y2, Y7) && px >= Math.min(q.x1, q.x2) - 1e-4 && px <= Math.max(q.x1, q.x2) + 1e-4
+          )
+        )
+          holes7++;
+      }
+      T(
+        'pb-s22r-whole-window-narrow-fills-walls',
+        wider &&
+          near(Math.abs(g71.x2 - g71.x1), 150 / 30.48, 2e-3) &&
+          near((g71.x1 + g71.x2) / 2, X + 7, 2e-3) &&
+          holes7 === 0,
+        '改宽被拒=' +
+          wider +
+          ' · 改窄后窗 ' +
+          (Math.abs(g71.x2 - g71.x1) * 30.48).toFixed(1) +
+          'cm 中心 ' +
+          ((g71.x1 + g71.x2) / 2 - X).toFixed(3) +
+          ' · 这面墙 41 个点里落空 ' +
+          holes7 +
+          ' 个'
+      );
+
+      /* 40.8 审查 #10 加窗工具条填 0：宽 0 / 窗高 0 都不开、说为什么（以前 0 被悄悄换成缺省 120 / 158） */
+      await setTool('win');
+      const nW8 = (DOC.windows || []).length;
+      Q('#waW').value = '0';
+      insertWindowAt([X + 13.5, Y6]); // W6 右边那截实墙
+      const m8a = Q('#wMsg').textContent;
+      Q('#waW').value = '120';
+      Q('#waH').value = '0';
+      insertWindowAt([X + 13.5, Y6]);
+      const m8b = Q('#wMsg').textContent;
+      Q('#waH').value = '158';
+      T(
+        'pb-s22r-zero-size-refused',
+        (DOC.windows || []).length === nW8 && /20cm 宽/.test(m8a) && /窗高至少 20cm/.test(m8b),
+        '开了 ' + ((DOC.windows || []).length - nW8) + ' 扇 · 「' + m8a.slice(0, 24) + '」「' + m8b.slice(0, 24) + '」'
+      );
+
+      /* 40.9 审查 #7 / #8 撤销之后工具条跟着回去（没选中就不该还亮着「在这段开窗」）；没选中时点它也要说一句；
+         选中的窗按垂直于墙的方向键 = 提示「只能沿着墙挪」（以前什么都不发生） */
+      await setTool('select');
+      wallEdit.sel = { kind: 'w', id: W6.id };
+      updateWallBarFromSel();
+      const btnBefore = getComputedStyle(Q('#wOpenWin')).display !== 'none';
+      undoStep();
+      await tick();
+      const btnAfter = getComputedStyle(Q('#wOpenWin')).display !== 'none';
+      openWindowInSel();
+      const m9a = Q('#wMsg').textContent;
+      const w9 = (DOC.windows || []).find((w) => w.src === 'user' && near(w.geom.y1, Y6) && near(w.geom.y2, Y6));
+      if (w9) {
+        wallEdit.sel = { kind: 'w', id: w9.id };
+        updateWallBarFromSel();
+      }
+      key('ArrowUp');
+      await tick();
+      const m9b = Q('#wMsg').textContent;
+      T(
+        'pb-s22r-undo-refreshes-bar-and-hints',
+        btnBefore && !btnAfter && /先选中一段实墙/.test(m9a) && !!w9 && /只能沿着墙挪/.test(m9b),
+        '撤销前按钮在=' +
+          btnBefore +
+          ' · 撤销后=' +
+          btnAfter +
+          ' · 没选中点它「' +
+          m9a.slice(0, 16) +
+          '」 · ↑「' +
+          m9b.slice(0, 20) +
+          '」'
+      );
+
+      /* 40.10 审查 #6「在这段开窗」碰上比窗还短的墙 = 整段换成窗：上面的点位一起去掉，提示里说个数（以前不说） */
+      const W10 = pushUserWall(X + 13, Y + 4.5, X + 15, Y + 4.5, 'w', wd); // 空地方（别和 40.2 那道墙叠着）
+      geoChanged();
+      await tick();
+      const t10 = pbDrawnThick(effWalls().find((q) => q._id === W10.id));
+      pushUserOutlet(pointSnap(X + 14, Y + 4.5 + t10 / 2 + 0.2, 'std', 'wall'), 'std', 1, null);
+      syncOutlets();
+      geoChanged();
+      wallEdit.sel = { kind: 'w', id: W10.id };
+      updateWallBarFromSel();
+      openWindowInSel();
+      const m10 = Q('#wMsg').textContent;
+      T(
+        'pb-s22r-whole-convert-says-outlets',
+        /整段换成了窗/.test(m10) && /1 个点位/.test(m10),
+        '「' + m10.slice(0, 50) + '」'
+      );
+
+      /* 收尾：删掉这份户型 */
+      Q('#btnPlanDel').click();
+      await tick();
+      Q('#btnPlanDel').click();
+      await tick();
+      T(
+        'pb-s22r-clean-exit',
+        PLAN_ID !== p40Plan && PLAN_REG.plans.length === p40Plans,
+        'plans ' + p40Plans + '→' + PLAN_REG.plans.length
+      );
+
+      /* 40.5 审查：内置户型：在内置墙上开一扇窗 →「重置内置」→ 这面内置墙完整回来、拆出来的墙垛 / 窗不在了（以前它们是「用户新增」被留下：
+         原墙穿过窗洞重新出现，3D 里窗被墙挡住、墙垛与原墙重叠） */
+      await enterEdit();
+      await pbReset();
+      let bw5 = null;
+      for (const sg of effWalls()) {
+        if (sg.t !== 'w') continue;
+        const e = entById(sg._id);
+        if (!e || e.src === 'user' || !e.geom || e.geom.t !== 'seg') continue;
+        const L = Math.hypot(sg.x2 - sg.x1, sg.y2 - sg.y1);
+        if (L > 6 && (!bw5 || L > bw5.L)) bw5 = { id: sg._id, L, g: Object.assign({}, e.geom) };
+      }
+      const r5 = undoRing.length;
+      const w5 = insertWindowAt([(bw5.g.x1 + bw5.g.x2) / 2, (bw5.g.y1 + bw5.g.y2) / 2]);
+      await tick();
+      const cf = window.confirm;
+      window.confirm = () => true;
+      Q('#wRestore').click();
+      await tick();
+      window.confirm = cf;
+      const onLine = (q) => {
+        const g = q.geom || q,
+          dx = bw5.g.x2 - bw5.g.x1,
+          dy = bw5.g.y2 - bw5.g.y1,
+          L = Math.hypot(dx, dy);
+        const off = (x, y) => Math.abs((x - bw5.g.x1) * dy - (y - bw5.g.y1) * dx) / L;
+        return off(g.x1, g.y1) < 2e-3 && off(g.x2, g.y2) < 2e-3;
+      };
+      const leftovers =
+        (DOC.walls || []).filter((w) => w.src === 'user' && onLine(w)).length +
+        (DOC.windows || []).filter((w) => w.src === 'user' && onLine(w)).length;
+      const whole = effWalls().some((q) => q._id === bw5.id && q.t === 'w');
+      T(
+        'pb-s22r-restore-builtins-drops-split-pieces',
+        !!w5 && whole && leftovers === 0 && !(DOC.windows || []).some((w) => w.id === w5.id),
+        '内置墙 ' + bw5.id + ' 回来=' + whole + ' · 这条墙线上剩下的用户墙 / 窗 ' + leftovers + ' 段'
+      );
+      while (undoRing.length > r5) {
+        undoStep();
+        await tick();
+      }
+      await setTool('select');
     }
 
     /* ===== 收尾：页面不得有未捕获异常 ===== */

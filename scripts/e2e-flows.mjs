@@ -1783,6 +1783,187 @@ export const FLOWS = [
   },
 
   {
+    name: 'add-window',
+    title:
+      '开窗 / 改窗：空白户型真鼠标画一圈墙 →「加窗」悬停看预览 → 点上墙 = 开一扇 120cm 的窗（墙拆成三段）→ 真键盘改窗台 / 窗高 → 拖窗 = 沿墙滑、方向键 1cm / Shift 10cm → Ctrl+Z 一步一步退 →「加门」点实墙 = 开门洞放门 → 3D 窗台以下是墙 → 删户型',
+    run: async (t) => {
+      /* S22a（research/12 W1–W6）。用户点名的两个入口：「加窗」与「墙换窗」。全程真鼠标 / 真键盘：
+         悬停预览、点墙开窗、窗台 / 窗高输入框（真打字 + 回车）、拖窗身（斜着拖只取沿墙分量）、方向键步长、撤销、加门点实墙。 */
+      await t.step('新建空白户型，真鼠标画一圈墙');
+      await ensureProTools(t);
+      await t.click('#btnPlanNew');
+      await t.waitFor(`PLAN_ID!==BUILTIN_PLAN_ID`, 8000, '切到空白户型');
+      const cv = await t.eval(
+        `(()=>{const P=floorPts();let x1=1e9,y1=1e9,x2=-1e9,y2=-1e9;` +
+          `for(const q of P){x1=Math.min(x1,q[0]);y1=Math.min(y1,q[1]);x2=Math.max(x2,q[0]);y2=Math.max(y2,q[1]);}` +
+          `return {x1,y1,x2,y2};})()`
+      );
+      const A = [cv.x1 + 1, cv.y1 + 1],
+        B = [cv.x2 - 1, cv.y1 + 1],
+        C = [cv.x2 - 1, cv.y2 - 1],
+        D = [cv.x1 + 1, cv.y2 - 1];
+      await t.click('#btnWallEdit');
+      await t.waitFor(`wallEdit.on`, 5000, '进入编辑');
+      await t.click('#wtoolSeg button[data-t="wall"]');
+      await t.waitFor(`wallEdit.tool==='wall'`, 5000, 'tool=wall');
+      await t.eval(`document.querySelector('#wType').value='w'`);
+      for (const [p, q] of [
+        [A, B],
+        [B, C],
+        [C, D],
+        [D, A],
+      ]) {
+        await t.click(await t.planPoint(p[0], p[1]));
+        await t.click(await t.planPoint(q[0], q[1]));
+        await t.key('Enter', 'Enter', 13);
+        await t.waitFor(`wallEdit.drawPts.length===0`, 6000, '这段提交');
+      }
+      const nWalls = await t.eval(`DOC.walls.filter(w=>w.src==='user').length`);
+      t.assert('aw-walls-drawn', nWalls === 4, `画了 ${nWalls} 段墙`);
+
+      await t.step('「加窗」：悬停在上墙中间 → 蓝色预览 + 三个读数；点一下开窗');
+      await t.click('#wtoolSeg button[data-t="win"]');
+      await t.waitFor(`wallEdit.tool==='win'`, 5000, 'tool=win');
+      const ctl = await t.eval(
+        `({vis:getComputedStyle(document.querySelector('#winAddCtl')).display!=='none', w:document.querySelector('#waW').value, sill:document.querySelector('#waSill').value, h:document.querySelector('#waH').value})`
+      );
+      t.assert(
+        'aw-tool-bar',
+        ctl.vis && ctl.w === '120' && ctl.sill === '67' && ctl.h === '158',
+        `工具条在=${ctl.vis} · 宽 ${ctl.w} · 窗台 ${ctl.sill} · 窗高 ${ctl.h}`
+      );
+      const M = [(A[0] + B[0]) / 2 + 0.05, A[1]];
+      const pm = await t.planPoint(M[0], M[1]);
+      await t.mouse('mouseMoved', pm.x - 30, pm.y + 40);
+      await t.mouse('mouseMoved', pm.x, pm.y);
+      await t.waitFor(`!!wallEdit.winPreview`, 5000, '出现预览');
+      const pv = await t.eval(
+        `({n:document.querySelectorAll('#svg2d .winPreview text').length, band:document.querySelectorAll('#svg2d .winPreview polygon').length, txt:[...document.querySelectorAll('#svg2d .winPreview text')].map(e=>e.textContent)})`
+      );
+      t.assert('aw-preview', pv.n === 3 && pv.band === 1, `预览：一截蓝带 ×${pv.band} · 读数 ${pv.txt.join(' / ')}`);
+      await t.shot('aw-preview');
+      await t.click(pm);
+      await t.waitFor(`DOC.windows.length===1`, 5000, '开出一扇窗');
+      const w0 = await t.eval(
+        `(()=>{const w=DOC.windows[0],g=w.geom;const top=DOC.walls.filter(x=>Math.abs(x.geom.y1-g.y1)<1e-3&&Math.abs(x.geom.y2-g.y1)<1e-3);
+          return {y:g.y1, len:Math.hypot(g.x2-g.x1,g.y2-g.y1)*30.48, cx:(g.x1+g.x2)/2, x1:g.x1, x2:g.x2, top:top.length,
+            joinL:top.some(x=>Math.abs(Math.max(x.geom.x1,x.geom.x2)-Math.min(g.x1,g.x2))<1e-4),
+            joinR:top.some(x=>Math.abs(Math.min(x.geom.x1,x.geom.x2)-Math.max(g.x1,g.x2))<1e-4),
+            sel:wallEdit.sel&&wallEdit.sel.id===w.id, msg:document.querySelector('#wMsg').textContent, undo:undoRing.length};})()`
+      );
+      t.assert(
+        'aw-window-opened',
+        Math.abs(w0.len - 120) < 0.5 &&
+          Math.abs(w0.cx - (A[0] + B[0]) / 2) < 1e-3 &&
+          w0.top === 2 &&
+          w0.joinL &&
+          w0.joinR &&
+          w0.sel &&
+          /^已开窗/.test(w0.msg),
+        `窗 ${w0.len.toFixed(1)}cm · 中心吸到墙段中点=${Math.abs(w0.cx - (A[0] + B[0]) / 2) < 1e-3} · 上墙剩 ${w0.top} 段、两头接着=${w0.joinL && w0.joinR} · 选中=${w0.sel} · 「${w0.msg.slice(0, 40)}…」`
+      );
+
+      await t.step('窗台 / 窗高：真键盘输入 90 / 150 → 回车');
+      await t.type('#wWinSill', '90');
+      await t.key('Enter', 'Enter', 13);
+      await t.type('#wWinH', '150');
+      await t.key('Enter', 'Enter', 13);
+      const hs = await t.eval(`({sill:DOC.windows[0].sill*30.48, head:DOC.windows[0].head*30.48})`);
+      t.assert(
+        'aw-sill-height',
+        Math.abs(hs.sill - 90) < 0.6 && Math.abs(hs.head - 240) < 0.6,
+        `窗台 ${hs.sill.toFixed(1)}cm · 窗顶 ${hs.head.toFixed(1)}cm（90 + 150）`
+      );
+
+      await t.step('选择工具：斜着拖窗身 → 只沿墙滑，两头的墙跟着伸缩');
+      await t.click('#wtoolSeg button[data-t="select"]');
+      await t.waitFor(`wallEdit.tool==='select'`, 5000, 'tool=select');
+      const ppf = await t.eval(`document.querySelector('#svg2d').getScreenCTM().a*S`);
+      const c0 = await t.planPoint((w0.x1 + w0.x2) / 2, w0.y);
+      await t.drag(c0, { x: c0.x + ppf * 2, y: c0.y + ppf * 0.6 });
+      const w1 = await t.eval(
+        `(()=>{const g=DOC.windows[0].geom;const top=DOC.walls.filter(x=>Math.abs(x.geom.y1-${w0.y})<1e-3&&Math.abs(x.geom.y2-${w0.y})<1e-3);
+          return {x1:g.x1, y1:g.y1, y2:g.y2, joinL:top.some(x=>Math.abs(Math.max(x.geom.x1,x.geom.x2)-Math.min(g.x1,g.x2))<1e-4),
+            joinR:top.some(x=>Math.abs(Math.min(x.geom.x1,x.geom.x2)-Math.max(g.x1,g.x2))<1e-4)};})()`
+      );
+      t.assert(
+        'aw-slide-along-wall',
+        Math.abs(w1.x1 - w0.x1 - 2) < 0.1 &&
+          Math.abs(w1.y1 - w0.y) < 1e-6 &&
+          Math.abs(w1.y2 - w0.y) < 1e-6 &&
+          w1.joinL &&
+          w1.joinR,
+        `沿墙挪了 ${(w1.x1 - w0.x1).toFixed(2)}ft（拖了 2ft 横 + 0.6ft 竖）· 离开墙线=${Math.abs(w1.y1 - w0.y) >= 1e-6} · 两头的墙接着=${w1.joinL && w1.joinR}`
+      );
+
+      await t.step('方向键：→ 1cm、Shift+→ 10cm（沿墙）');
+      await t.key('ArrowRight', 'ArrowRight', 39);
+      const x2a = await t.eval(`DOC.windows[0].geom.x1`);
+      await t.key('ArrowRight', 'ArrowRight', 39, 8);
+      const x2b = await t.eval(`DOC.windows[0].geom.x1`);
+      t.assert(
+        'aw-arrow-steps',
+        Math.abs((x2a - w1.x1) * 30.48 - 1) < 0.05 && Math.abs((x2b - x2a) * 30.48 - 10) < 0.05,
+        `→ ${((x2a - w1.x1) * 30.48).toFixed(2)}cm · Shift+→ ${((x2b - x2a) * 30.48).toFixed(2)}cm`
+      );
+
+      await t.step('Ctrl+Z：方向键（一步）→ 拖动 → 窗高 → 窗台 → 开窗，一步一步退回一整段墙');
+      for (let i = 0; i < 5; i++) await t.key('z', 'KeyZ', 90, 2);
+      const un = await t.eval(
+        `({win:DOC.windows.length, top:DOC.walls.filter(x=>Math.abs(x.geom.y1-${w0.y})<1e-3&&Math.abs(x.geom.y2-${w0.y})<1e-3).length})`
+      );
+      t.assert('aw-undo-chain', un.win === 0 && un.top === 1, `撤 5 步后：窗 ${un.win} 扇 · 上墙 ${un.top} 段`);
+
+      await t.step('「加门」点在下墙（实墙）上 → 先开门洞再放门（80cm）');
+      await t.click('#wtoolSeg button[data-t="door"]');
+      await t.waitFor(`wallEdit.tool==='door'`, 5000, 'tool=door');
+      await t.click(await t.planPoint((C[0] + D[0]) / 2 - 2, C[1]));
+      await t.waitFor(`DOC.doors.length===1`, 5000, '放了一扇门');
+      const dr = await t.eval(
+        `(()=>{const d=DOC.doors[0].geom;return {len:Math.hypot(d.x2-d.x1,d.y2-d.y1)*30.48, gap:DOC.walls.some(w=>w.kind==='opening'&&Math.abs(w.geom.x1-d.x1)<1e-3), sel:wallEdit.sel&&wallEdit.sel.kind};})()`
+      );
+      t.assert(
+        'aw-door-on-wall',
+        Math.abs(dr.len - 80) < 0.5 && dr.gap && dr.sel === 'door',
+        `门 ${dr.len.toFixed(1)}cm · 门洞在=${dr.gap} · 选中=${dr.sel}`
+      );
+
+      await t.step('3D：重新开一扇（窗台 90）→ 窗台以下打到墙、窗台以上打到玻璃');
+      await t.click('#wtoolSeg button[data-t="win"]');
+      await t.waitFor(`wallEdit.tool==='win'`, 5000, 'tool=win');
+      await t.type('#waSill', '90');
+      await t.key('Enter', 'Enter', 13);
+      await t.click(pm);
+      await t.waitFor(`DOC.windows.length===1`, 5000, '开出一扇窗');
+      await t.click('#wDone');
+      await t.waitFor(`!wallEdit.on`, 5000, '退出编辑');
+      await t.click('#btnDoll');
+      await t.waitFor(`state.view!=='2d' && three && three.staticGroup && !geoDirty3D`, 20000, '3D 建好');
+      const ray = await t.eval(
+        `(()=>{three.staticGroup.updateMatrixWorld(true);const rc=new THREE.Raycaster();const g=DOC.windows[0].geom,cx=(g.x1+g.x2)/2,cz=g.y1+3,el=curElev();
+          const hit=(y)=>{rc.set(new THREE.Vector3(cx,el+y,cz),new THREE.Vector3(0,0,-1));const h=rc.intersectObject(three.staticGroup,true).filter(x=>x.object.visible)[0];
+            if(!h)return 'none';const m=h.object.material||{};return (m.transparent&&m.opacity<0.5)?'glass':'solid';};
+          return {low:hit(45/30.48), mid:hit(165/30.48)};})()`
+      );
+      t.assert(
+        'aw-3d-sill',
+        ray.low === 'solid' && ray.mid === 'glass',
+        `离地 45cm 打到 ${ray.low} · 165cm 打到 ${ray.mid}`
+      );
+      await t.shot('aw-3d');
+      await t.click('#btn2d');
+      await t.waitFor(`state.view==='2d'`, 8000, '回到 2D');
+
+      await t.step('清除：删掉这份户型（两步）');
+      await ensureProTools(t);
+      await t.click('#btnPlanDel');
+      await t.click('#btnPlanDel');
+      await t.waitFor(`PLAN_ID===BUILTIN_PLAN_ID`, 8000, '删完切回内置');
+      t.assert('aw-cleaned', true, '回到内置户型');
+    },
+  },
+
+  {
     name: 'props-panel',
     title: '检视面板：改颜色能撤销、旋转口径一致、自定义件尺寸有上下限',
     run: async (t) => {

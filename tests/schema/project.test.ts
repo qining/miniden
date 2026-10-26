@@ -1110,3 +1110,64 @@ describe('窗帘与墙色（S21）', () => {
     ]);
   });
 });
+
+import { dropDanglingWallRefs } from '../../src/schema/project';
+describe('dropDanglingWallRefs（S22a #91：门窗的 wallId 指着已经删掉的墙）', () => {
+  const win = (id: string, wallId: string | null) =>
+    ({
+      id,
+      geom: seg(8),
+      wallId,
+      pos: 0.5,
+      width: 1,
+      sill: 2,
+      head: 7,
+      style: 'fixed',
+      frame: '#000',
+      glass: 0.2,
+    }) as never;
+  const door = (id: string, wallId: string | null) =>
+    ({ id, geom: seg(10), wallId, pos: 0.5, width: 3, kind: 'swing' }) as never;
+
+  it('悬空的置空、还在的留着；返回改了几处；改完过 validate', () => {
+    const doc = blankDoc();
+    doc.walls.push({ id: 'w01', kind: 'wall', geom: seg() });
+    doc.windows.push(win('n01', 'w01'), win('n02', 'w09'));
+    doc.doors.push(door('d01', 'w08'), door('d02', null));
+    expect(validate(doc).map((e) => e.path)).toEqual(['windows[1].wallId', 'doors[0].wallId']);
+    expect(dropDanglingWallRefs(doc)).toBe(2);
+    expect(doc.windows.map((w) => w.wallId)).toEqual(['w01', null]);
+    expect(doc.doors.map((d) => d.wallId)).toEqual([null, null]);
+    expect(validate(doc)).toEqual([]);
+    expect(dropDanglingWallRefs(doc)).toBe(0); // 幂等
+  });
+
+  it('逐层：其余层按它自己的 walls 判；当前层的外壳（没有内容）不动', () => {
+    const doc = blankDoc() as ProjectDoc & { levels: unknown[]; level: string };
+    doc.walls.push({ id: 'w01', kind: 'wall', geom: seg() });
+    doc.windows.push(win('n01', 'w01'));
+    doc.levels = [
+      { id: 'L1', name: '一层', elev: 0 },
+      {
+        id: 'L2',
+        name: '二层',
+        elev: 9,
+        walls: [{ id: 'w05', kind: 'wall', geom: seg() }],
+        windows: [win('n05', 'w01')],
+        doors: [door('d05', 'w05')],
+      },
+    ];
+    doc.level = 'L1';
+    expect(dropDanglingWallRefs(doc)).toBe(1);
+    const l2 = doc.levels[1] as { windows: Array<{ wallId: unknown }>; doors: Array<{ wallId: unknown }> };
+    expect(l2.windows[0].wallId).toBe(null); // 二层的窗指着一层的墙：在它那一层里是悬空的
+    expect(l2.doors[0].wallId).toBe('w05');
+    expect(doc.windows[0].wallId).toBe('w01');
+  });
+
+  it('非对象 / 缺数组不炸', () => {
+    expect(dropDanglingWallRefs(null)).toBe(0);
+    expect(dropDanglingWallRefs({})).toBe(0);
+    expect(dropDanglingWallRefs({ windows: [null, 3, { wallId: 'w1' }] })).toBe(1);
+  });
+});
