@@ -12143,6 +12143,237 @@ async function runPBTest() {
       );
     }
 
+    /* ===== 48. S24e（research/13 U10）：家具剪贴板 Ctrl/⌘+C / X / V —— 粘到视图中心附近的空位，能跨方案 / 楼层 / 户型 ===== */
+    {
+      await pbReset();
+      if (wallEdit.on) Q('#btnWallEdit').click();
+      await tick();
+      const p48Plans = PLAN_REG.plans.length;
+      const near = (a, b, tol) => Math.abs(a - b) < (tol || 1e-6);
+      const toastTxt = () => (Q('#toast') || {}).textContent || '';
+      const ck = (k, code) => {
+        const e = new KeyboardEvent('keydown', { key: k, code, ctrlKey: true, bubbles: true, cancelable: true });
+        document.body.dispatchEvent(e);
+        return e;
+      };
+      Q('#btnPlanNew').click();
+      await tick();
+      const p48Plan = PLAN_ID;
+      const fp48 = floorPts();
+      const X =
+          Math.min.apply(
+            null,
+            fp48.map((p) => p[0])
+          ) + 1,
+        Y =
+          Math.min.apply(
+            null,
+            fp48.map((p) => p[1])
+          ) + 1;
+      const wd = cmToWd(15);
+      pushUserWall(X, Y, X + 26, Y, 'w', wd);
+      pushUserWall(X + 26, Y, X + 26, Y + 18, 'w', wd);
+      pushUserWall(X + 26, Y + 18, X, Y + 18, 'w', wd);
+      pushUserWall(X, Y + 18, X, Y, 'w', wd);
+      geoChanged();
+      fit2DToContent();
+      await tick();
+      const sofa = CATALOG.find((c) => c.kind === 'sofa' && c.w <= 230 && c.d <= 100);
+      const table =
+        CATALOG.find((c) => c.kind === 'coffee' || /茶几/.test(c.name)) || CATALOG.find((c) => c.kind === 'table');
+      addItem(sofa.id, { x: X + 5, y: Y + 3 });
+      addItem(table.id, { x: X + 5, y: Y + 6.5, rot: 0 });
+      await tick();
+      const [a0, b0] = state.items.slice(-2);
+      const rel0 = [b0.x - a0.x, b0.y - a0.y];
+
+      /* 48.1 复制一组 → 新建一套空白方案 → 粘贴：两件都来了、相对位置不变、选中这两件、一步撤销、都不红 */
+      selSetMany([a0.uid, b0.uid], a0.uid);
+      drawFurniture();
+      const eC = ck('c', 'KeyC');
+      await tick();
+      const copied = /已复制 2 件/.test(toastTxt()) && !eC.defaultPrevented;
+      Q('#layBtn').click();
+      await tick();
+      Q('#layNew').click();
+      await tick();
+      const r0 = undoRing.length;
+      ck('v', 'KeyV');
+      await tick();
+      const [a1, b1] = state.items;
+      const pasted =
+        state.items.length === 2 &&
+        !!a1 &&
+        !!b1 &&
+        a1.ref === sofa.id &&
+        b1.ref === table.id &&
+        near(b1.x - a1.x, rel0[0], 1e-3) &&
+        near(b1.y - a1.y, rel0[1], 1e-3) &&
+        selUids().length === 2 &&
+        undoRing.length === r0 + 1 &&
+        state.items.every((i) => !(furnWhy.get(i.uid) || []).length);
+      T(
+        'pb-s24e-copy-paste-into-other-layout',
+        copied && pasted,
+        '复制提示=' +
+          copied +
+          ' · 空白方案里粘了 ' +
+          state.items.length +
+          ' 件 · 相对位置 ' +
+          (a1 && b1 ? (b1.x - a1.x).toFixed(2) + ',' + (b1.y - a1.y).toFixed(2) : '?') +
+          '（原 ' +
+          rel0.map((v) => v.toFixed(2)).join(',') +
+          '）· 选中 ' +
+          selUids().length +
+          ' · 撤销 +' +
+          (undoRing.length - r0) +
+          ' · 冲突 ' +
+          JSON.stringify(state.items.map((i) => furnWhy.get(i.uid) || []))
+      );
+
+      /* 48.2 再粘一次：落在旁边放得下的地方（不与刚才那组叠在一起） */
+      ck('v', 'KeyV');
+      await tick();
+      const noOverlap = state.items.length === 4 && state.items.every((i) => !(furnWhy.get(i.uid) || []).length);
+      T(
+        'pb-s24e-paste-again-finds-free-spot',
+        noOverlap,
+        '粘第二次后 ' +
+          state.items.length +
+          ' 件 · 冲突 ' +
+          JSON.stringify(state.items.map((i) => furnWhy.get(i.uid) || []))
+      );
+
+      /* 48.3 剪切 = 复制 + 删（一步撤销）；剪完粘回来 */
+      const keep = state.items.slice(0, 2).map((i) => i.uid);
+      selSetMany(state.items.slice(2).map((i) => i.uid));
+      const rX = undoRing.length;
+      ck('x', 'KeyX');
+      await tick();
+      const cutOk = state.items.length === 2 && undoRing.length === rX + 1 && /已剪切 2 件/.test(toastTxt());
+      ck('v', 'KeyV');
+      await tick();
+      const backOk = state.items.length === 4 && keep.every((u) => state.items.some((i) => i.uid === u));
+      T('pb-s24e-cut-then-paste', cutOk && backOk, '剪切后 2 件、撤销 +1=' + cutOk + ' · 粘回来 4 件=' + backOk);
+
+      /* 48.4 自定义件跨户型：在这份户型复制一件自制家具 → 切到另一份（有存档、但没有这个条目的）户型粘贴 → 它的目录条目一起带过去（不是「目录里没有」） */
+      Q('#btnPlanNew').click(); // B 先建好：它的存档里没有等下才造的那件
+      await tick();
+      const p48b = PLAN_ID;
+      switchPlan(p48Plan, true);
+      await tick();
+      Q('#cfName').value = '测试自制矮柜';
+      Q('#cfW').value = '60';
+      Q('#cfD').value = '40';
+      Q('#cfH').value = '50';
+      Q('#cfAdd').click();
+      await tick();
+      const cc = state.customCat[state.customCat.length - 1];
+      const ci = state.items[state.items.length - 1];
+      selOnly(ci.uid);
+      ck('c', 'KeyC');
+      await tick();
+      switchPlan(p48b, true);
+      await tick();
+      const hadCat = state.customCat.some((c) => c.id === cc.id);
+      ck('v', 'KeyV');
+      await tick();
+      const pc = state.items[state.items.length - 1];
+      T(
+        'pb-s24e-paste-custom-into-other-plan',
+        !hadCat &&
+          !!pc &&
+          pc.ref === cc.id &&
+          !!itemSpec(pc) &&
+          state.customCat.some((c) => c.id === cc.id) &&
+          /自定义目录条目/.test(toastTxt()),
+        '另一份户型原来没有这个条目=' +
+          !hadCat +
+          ' · 粘过来认得出=' +
+          !!(pc && itemSpec(pc)) +
+          ' · 提示「' +
+          toastTxt() +
+          '」'
+      );
+      Q('#btnPlanDel').click();
+      await tick();
+      Q('#btnPlanDel').click();
+      await tick();
+      if (PLAN_ID !== p48Plan) switchPlan(p48Plan, true);
+      await tick();
+
+      /* 48.5 粘到另一层：复制一层的件 → 切到二层粘 → 落在二层 */
+      const up = addLevelUI('above');
+      await tick();
+      switchLevel('lv1', true);
+      await tick();
+      const one = state.items.find((i) => itemLevel(i) === 'lv1');
+      selOnly(one.uid);
+      ck('c', 'KeyC');
+      switchLevel(up.id, true);
+      await tick();
+      ck('v', 'KeyV');
+      await tick();
+      const pl = state.items[state.items.length - 1];
+      T(
+        'pb-s24e-paste-onto-other-level',
+        !!pl && pl.ref === one.ref && itemLevel(pl) === up.id && selected === pl.uid,
+        '粘在 ' + (pl ? levelName(itemLevel(pl)) : '?') + '（要「' + levelName(up.id) + '」）'
+      );
+      switchLevel('lv1', true);
+      await tick();
+
+      /* 48.6 拦在该拦的地方：剪贴板空 → 说一句；编辑墙体 / 室内视角 → 不动家具；输入框里 Ctrl+V 是粘文字（不碰家具） */
+      const clip0 = furnClip;
+      furnClip = null;
+      ck('v', 'KeyV');
+      await tick();
+      const emptyMsg = /剪贴板是空的/.test(toastTxt());
+      furnClip = clip0;
+      const n0 = state.items.length;
+      const inp = Q('#catSearch');
+      inp.focus();
+      inp.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'v', code: 'KeyV', ctrlKey: true, bubbles: true, cancelable: true })
+      );
+      await tick();
+      inp.blur();
+      const inField = state.items.length === n0;
+      Q('#btnWallEdit').click();
+      await tick();
+      ck('v', 'KeyV');
+      await tick();
+      const inEdit = state.items.length === n0 && /编辑墙体里没有复制粘贴/.test((Q('#wMsg') || {}).textContent || '');
+      Q('#btnWallEdit').click();
+      await tick();
+      T(
+        'pb-s24e-keys-gated',
+        emptyMsg && inField && inEdit,
+        '空剪贴板有提示=' + emptyMsg + ' · 输入框里不粘家具=' + inField + ' · 编辑墙体里不粘=' + inEdit
+      );
+
+      /* 48.7 快捷键表里有这一行 */
+      T(
+        'pb-s24e-in-keys-table',
+        INPUT_MAP.some((r) => r.k.includes('Ctrl/⌘+C') && r.k.includes('Ctrl/⌘+V') && /另一套方案/.test(r.a)),
+        JSON.stringify(INPUT_MAP.filter((r) => r.k.some((k) => /Ctrl\/⌘\+[CVD]/.test(k))).map((r) => r.k))
+      );
+
+      /* 收尾 */
+      Q('#layBtn').click();
+      await tick();
+      if (PLAN_ID !== p48Plan) switchPlan(p48Plan, true);
+      Q('#btnPlanDel').click();
+      await tick();
+      Q('#btnPlanDel').click();
+      await tick();
+      T(
+        'pb-s24e-clean-exit',
+        PLAN_ID !== p48Plan && PLAN_REG.plans.length === p48Plans,
+        'plans ' + p48Plans + '→' + PLAN_REG.plans.length
+      );
+    }
+
     /* ===== 收尾：页面不得有未捕获异常 ===== */
     T('pb-no-page-errors', window.__ERRS.length === 0, window.__ERRS.slice(0, 3).join(' || '));
   } catch (e) {

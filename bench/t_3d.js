@@ -4475,6 +4475,68 @@ async function run3DTest() {
       T('s24c-3d-clean-exit', LAY.list.length === 1, '方案 ' + LAY.list.length + ' 套');
     }
 
+    /* ===== S24e：3D 俯瞰里点目录卡片 = 落在镜头绕着转的那个点附近（以前落在平面图视口的中心：3D 里平移过镜头之后可能根本不在画面里）；
+       Ctrl/⌘+V 同一个口径 ===== */
+    {
+      setView('doll');
+      await wait(900);
+      const keep = state.items.slice();
+      state.items = [];
+      const t0 = three.controls.target.clone();
+      // 把镜头平移到户型中心偏东 4ft（平面图视口不动）
+      const tx = CX3 + 4,
+        tz = CY3 + 2;
+      three.cam.position.x += tx - t0.x;
+      three.cam.position.z += tz - t0.z;
+      three.controls.target.set(tx, t0.y, tz);
+      three.controls.update();
+      await wait(200);
+      const vbC = [(vb.x + vb.w / 2) / S, (vb.y + vb.h / 2) / S];
+      const spec =
+        CATALOG.find((c) => c.kind === 'nightstand') || CATALOG.find((c) => c.w <= 60 && c.d <= 50 && !isLight(c));
+      const card = Array.from(document.querySelectorAll('#catalog .catCard')).find((c) =>
+        c.querySelector('[data-thumb="' + spec.id + '"]')
+      );
+      if (card) card.click();
+      await wait(150);
+      const it = state.items[state.items.length - 1];
+      const dT = it ? Math.hypot(it.x - tx, it.y - tz) : 99,
+        dV = it ? Math.hypot(it.x - vbC[0], it.y - vbC[1]) : 99;
+      // Ctrl/⌘+C → V：粘的那件也在镜头中心附近（找空位：不与第一件叠在一起）
+      selOnly(it ? it.uid : null);
+      document.body.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'c', code: 'KeyC', ctrlKey: true, bubbles: true, cancelable: true })
+      );
+      document.body.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'v', code: 'KeyV', ctrlKey: true, bubbles: true, cancelable: true })
+      );
+      await wait(150);
+      const it2 = state.items.length === 2 ? state.items[1] : null;
+      const dT2 = it2 ? Math.hypot(it2.x - tx, it2.y - tz) : 99;
+      T(
+        's24e-3d-add-and-paste-at-orbit-target',
+        !!card && !!it && dT < 2.5 && dV > 3 && !!it2 && dT2 < 4 && (it2.x !== it.x || it2.y !== it.y),
+        '点卡片：离镜头中心 ' +
+          dT.toFixed(2) +
+          'ft · 离平面图视口中心 ' +
+          dV.toFixed(2) +
+          'ft · 粘贴的那件离镜头中心 ' +
+          dT2.toFixed(2) +
+          'ft、与第一件不重合=' +
+          !!(it2 && (it2.x !== it.x || it2.y !== it.y))
+      );
+      state.items = keep;
+      selOnly(null);
+      drawFurniture();
+      save();
+      three.cam.position.x -= tx - t0.x;
+      three.cam.position.z -= tz - t0.z;
+      three.controls.target.copy(t0);
+      three.controls.update();
+      setView('2d');
+      await wait(300);
+    }
+
     T('t3d-bench-done', true, __E3.length + ' tests', 'done');
   } catch (e) {
     log.push('EXC ' + e.message + ' | ' + (e.stack || '').split('\n')[1]);

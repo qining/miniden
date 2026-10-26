@@ -3087,6 +3087,58 @@ export const FLOWS = [
   },
 
   {
+    name: 'clipboard',
+    title: '家具剪贴板（S24e）：真键盘 Ctrl+C → 新建一套空白方案 → Ctrl+V 粘过来 → Ctrl+X 剪掉 → Ctrl+V 再粘回来',
+    run: async (t) => {
+      const before = await stateOf(t);
+      await t.step('摆一件、点选它');
+      await t.click('.catCard');
+      await t.waitFor(`state.items.length>${before.items}`, 6000, '家具 +1');
+      const it0 = await t.eval(`(()=>{const i=state.items[state.items.length-1];return {uid:i.uid,ref:i.ref};})()`);
+      await t.waitFor(`selected===${it0.uid}`, 4000, '选中刚摆的那件');
+      await t.step('Ctrl+C');
+      await t.key('c', 'KeyC', 67, 2);
+      await t.waitFor(`!!furnClip && furnClip.items.length===1`, 4000, '进了剪贴板');
+      await t.step('新建一套空白方案，Ctrl+V');
+      await t.click('#layBtn');
+      await t.waitFor(`document.querySelector('#layPanel').style.display!=='none'`, 4000, '方案面板打开');
+      await t.click('#layNew');
+      await t.waitFor(`LAY.list.length===2 && state.items.length===0`, 6000, '空白方案');
+      await t.key('v', 'KeyV', 86, 2);
+      await t.waitFor(`state.items.length===1`, 4000, '粘过来一件');
+      const p1 = await t.eval(
+        `(()=>{const i=state.items[0];return {ref:i.ref, sel:selected===i.uid, why:(furnWhy.get(i.uid)||[]).length};})()`
+      );
+      t.assert(
+        'clipboard-paste-into-new-layout',
+        p1.ref === it0.ref && p1.sel && p1.why === 0,
+        `粘的是 ${p1.ref}（要 ${it0.ref}）· 选中=${p1.sel} · 冲突 ${p1.why} 条`
+      );
+      await t.step('Ctrl+X 剪掉、Ctrl+V 粘回来');
+      await t.key('x', 'KeyX', 88, 2);
+      await t.waitFor(`state.items.length===0`, 4000, '剪掉了');
+      await t.key('v', 'KeyV', 86, 2);
+      await t.waitFor(`state.items.length===1`, 4000, '粘回来了');
+      t.assert('clipboard-cut-paste', (await t.eval(`state.items.length`)) === 1, '剪切后再粘回 1 件');
+      await t.shot('clipboard');
+      await t.step('收尾：删掉这套方案（两步）、删掉方案 1 里那件');
+      await t.click('#layDel');
+      await t.waitFor(`document.querySelector('#layDel').classList.contains('arm')`, 3000, '第一下只是确认');
+      await t.click('#layDel');
+      await t.waitFor(`LAY.list.length===1`, 4000, '删掉了');
+      await t.click('#layBtn');
+      await t.eval(
+        `(()=>{state.items=state.items.filter(i=>i.uid!==${it0.uid}); selOnly(null); drawFurniture(); save();})()`
+      );
+      t.assert(
+        'clipboard-cleanup',
+        (await t.eval(`state.items.length`)) === before.items && (await t.eval(`LAY.list.length`)) === 1,
+        '方案 1 套、家具回到原数'
+      );
+    },
+  },
+
+  {
     name: 'measure',
     title: '量尺寸：点起点 → 预览 → 落定 → 清除',
     run: async (t) => {
