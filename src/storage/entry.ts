@@ -15,6 +15,7 @@
 
 import { createStore, openIdb, type StorageLike } from './store';
 import * as plans from './plans';
+import * as layouts from './layouts';
 
 const g = globalThis as Record<string, unknown>;
 const lsRaw =
@@ -28,6 +29,8 @@ const store = createStore({ idb: openIdb(), ls: lsRaw });
 /* E26：多户型注册表的纯函数层（解析/增删改/键名口径）跟着存储块一起走。
    它不碰存储实例 —— 注册表那份 JSON 的读写由主脚本用 STORE.get/set 做。 */
 (g as { MINIDEN_PLANS?: unknown }).MINIDEN_PLANS = plans;
+/* S24c：方案（同一份户型的几套家具摆法）的纯函数层。存放在这份户型的家具存档里，读写由主脚本做。 */
+(g as { MINIDEN_LAYOUTS?: unknown }).MINIDEN_LAYOUTS = layouts;
 
 /* 排队写入有个 200ms 防抖；页面隐藏/关闭前必须落盘，否则最后一次编辑会丢。 */
 if (typeof g.addEventListener === 'function') {

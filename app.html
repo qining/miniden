@@ -271,6 +271,26 @@
   #lvMove.on{background:var(--edit-on); color:var(--on-fg);}
   #svg2d.lvMoving{cursor:move;}
   #lvDel.arm{background:#a83a3a; color:#fff;}
+  /* S24c：方案（画布右上角，与左上角的楼层条对称；三个视图都在） */
+  #layBar{position:absolute; right:12px; top:12px; z-index:9; display:flex; flex-direction:column; align-items:flex-end; gap:4px; max-width:calc(100% - 130px);}
+  #stage.refOn #layBar{right:254px;}   /* 「原户型图」开着时它占右上角 */
+  #layBtn{display:flex; align-items:center; gap:6px; max-width:100%; padding:5px 10px; font-size:12px;}
+  #layBtn .layLbl, #layBtn #layCnt{color:var(--muted); font-size:11px;}
+  #layBtn b{overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:170px; font-weight:600;}
+  #layPanel{width:280px; max-width:100%; display:flex; flex-direction:column; gap:7px; padding:8px 10px; background:var(--panel); border:1px solid var(--line); border-radius:8px; font-size:12px; color:var(--text); box-shadow:0 6px 24px rgba(0,0,0,.35);}
+  #layList{display:flex; flex-direction:column; gap:3px; max-height:260px; overflow-y:auto;}
+  .layRow{display:flex; justify-content:space-between; align-items:baseline; gap:8px; width:100%; text-align:left; padding:5px 8px; border-radius:6px; border:1px solid var(--line); background:none; color:var(--text); cursor:pointer; font:inherit;}
+  .layRow:hover{border-color:var(--accent);}
+  .layRow.on{background:var(--accent); color:var(--on-fg); border-color:transparent; cursor:default;}
+  .layRow .ln{overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .layRow .lm{flex:none; font-size:11px; opacity:.8;}
+  #layPanel .layNameRow{display:flex; gap:6px; align-items:center; color:var(--muted);}
+  #layName{flex:1; min-width:0; background:var(--field-bg); color:var(--fg); border:1px solid var(--field-line); border-radius:6px; padding:3px 6px;}
+  #layPanel .layActs{display:flex; flex-wrap:wrap; gap:6px;}
+  #layPanel .layActs .btn{padding:4px 9px; font-size:12px;}
+  #layPanel .btn:disabled{opacity:.38; cursor:default;}
+  #layDel.arm{background:#a83a3a; color:#fff;}
+  #layPanel .layNote{color:var(--muted); font-size:11px; line-height:1.5;}
   #refPhoto{
     position:absolute; right:12px; top:12px; width:230px; border:1px solid var(--line); border-radius:6px;
     display:none; z-index:15; box-shadow:0 4px 20px rgba(0,0,0,.5);
@@ -703,6 +723,19 @@
         <button class="btn danger" id="lvDel">删除这一层</button>
       </div>
     </div>
+    <div id="layBar">
+      <button class="btn" id="layBtn" aria-expanded="false" title="方案：同一份户型摆几套家具来比较（墙体门窗共用；家具、采购清单、撤销记录各是各的）——点开切换 / 复制 / 新建 / 改名 / 删除"><span class="layLbl">方案</span><b id="layCur">方案 1</b><span id="layCnt"></span> ▾</button>
+      <div id="layPanel" style="display:none">
+        <div id="layList"></div>
+        <label class="layNameRow">名字 <input id="layName" maxlength="40" title="当前方案的名字（回车生效）"></label>
+        <div class="layActs">
+          <button class="btn primary" id="layDup" title="把当前这套家具复制成一套新方案再改（比较两种摆法最常用）">＋ 复制当前方案</button>
+          <button class="btn" id="layNew" title="新建一套空的方案：墙体照旧，家具从零开始摆">＋ 空白方案</button>
+          <button class="btn danger" id="layDel" title="删除当前方案和它的家具（两步确认，不能撤销）；只剩一套时不能删">删除这个方案</button>
+        </div>
+        <div class="layNote">墙体、门窗、洁具所有方案共用：改一处，每套都跟着。家具、采购清单、撤销记录各是各的。</div>
+      </div>
+    </div>
     <div id="hint"><span class="h1">拖家具 = 移动（Shift 锁横竖 · Alt 不贴墙）· R / [ ] = 转 · Ctrl/⌘+D = 复制 · Delete = 删除 · 方向键 = 挪 1cm</span><span class="h2"><br>WASD / 右键拖 = 平移 · 滚轮 = 缩放 · <b>Shift+点 / Shift+拖空白 = 多选</b> · 红色描边 = 重叠</span><span class="hsep"> · </span><a class="keysLink">? 全部快捷键</a><a class="hintX" title="收起 / 展开这行提示（按 ? 照样能打开快捷键表）">×</a></div>
     <div id="wMsg"></div>
     <div id="totals"></div>
@@ -786,7 +819,7 @@
 /* VENDORED —— 由 scripts/build-storage.mjs 从 src/storage/ 编译生成，勿手改。
    src/ 是唯一事实来源（单测 + tsc strict）；改 src/storage/ 后跑 `npm run storage:build`。
    build.mjs 校验本块与最新编译输出逐字节一致。 */
-"use strict";(()=>{var tn=Object.defineProperty;var rn=(n,e)=>{for(var t in e)tn(n,t,{get:e[t],enumerable:!0})};var sn="miniden-planner",J="miniden_kv",on="planner_store_degraded",O="planner_store_ls_ahead";function an(n){if(!n||typeof n.getItem!="function")return null;try{n.setItem("__miniden_probe","1"),n.removeItem("__miniden_probe")}catch{return null}return{name:"localStorage",read:async e=>{let t={};for(let s of e)try{let r=n.getItem(s);typeof r=="string"&&(t[s]=r)}catch{}return t},write:async(e,t)=>{try{return n.setItem(e,t),!0}catch{return!1}},remove:async e=>{try{return n.removeItem(e),!0}catch{return!1}}}}function ln(n){return new Promise(e=>{let t=null;try{t=n()}catch{e(void 0);return}if(!t){e(void 0);return}t.onsuccess=()=>e(t.result),t.onerror=()=>e(void 0)})}function z(n){return new Promise(e=>{let t=null;try{t=n()}catch{e(!1);return}if(!t){e(!1);return}t.onsuccess=()=>e(!0),t.onerror=()=>e(!1)})}function un(n,e=J){let t=s=>{if(!n.transaction)return null;let r;try{r=n.transaction(e,s)}catch{return null}if(!r||typeof r.objectStore!="function")return null;try{return r.objectStore(e)}catch{return null}};return{name:"indexedDB",read:async s=>{let r={};for(let o of s){let d=t("readonly");if(!d)break;let c=await ln(()=>d.get(o));typeof c=="string"&&(r[o]=c)}return r},write:async(s,r)=>{let o=t("readwrite");return o?z(()=>o.put(r,s)):!1},remove:async s=>{let r=t("readwrite");return r?z(()=>r.delete(s)):!1}}}function X(n=sn,e=1,t=J){let r=globalThis.indexedDB;if(!r||typeof r.open!="function")return Promise.resolve(null);let o=r.open.bind(r);return new Promise(d=>{let c;try{c=o(n,e)}catch{d(null);return}if(!c){d(null);return}c.onupgradeneeded=()=>{let u=c.result;if(u&&typeof u.createObjectStore=="function")try{u.createObjectStore(t)}catch{}},c.onsuccess=()=>{let u=c.result;if(!u||typeof u.transaction!="function"){d(null);return}d(un(u,t))},c.onerror=()=>d(null),c.onblocked=()=>d(null)})}function Y(n){let e=n.mirrorLimit??15e5,t=n.debounceMs??200,s=n.degradedFlag??on,r=n.ls??null,o=new Map,d=new Map,c=new Set,u=new Set,w=new Set(n.warmKeys??[]),j=[],B=new Set,f={migrated:0,conflicts:0,idbWrites:0,idbFails:0,lsMirrors:0,lsFails:0,skippedMirror:0,hydrated:0},A=null,E=null,b=!1,F=Promise.resolve({migrated:0,conflicts:0,idbWrites:0,idbFails:0,lsMirrors:0,lsFails:0,skippedMirror:0,hydrated:0}),K=new Set,h=null,v=i=>{if(!r)return null;try{let a=r.getItem(i);return typeof a=="string"?a:null}catch{return null}},_=(i,a)=>{if(!r)return!1;try{return r.setItem(i,a),!0}catch{return!1}},k=new Set;try{let i=JSON.parse(v(O)||"[]");if(Array.isArray(i))for(let a of i)typeof a=="string"&&k.add(a)}catch{}let Z=()=>{if(r)try{k.size?r.setItem(O,JSON.stringify(Array.from(k))):r.removeItem(O)}catch{}},P=(i,a)=>{a!==k.has(i)&&(a?k.add(i):k.delete(i),Z())},I=()=>{b=!0,_(s,"1")},$=()=>{if(b){b=!1;try{r?.removeItem(s)}catch{}}};function V(){if(t<=0){x();return}if(h!==null)return;let i=globalThis;if(typeof i.setTimeout!="function"){x();return}h=i.setTimeout(()=>{h=null,x()},t)}async function H(){return A||(E||(E=Promise.resolve(n.idb??null).then(i=>A=i??null)),E)}function W(i){for(let a of i??[])w.add(a);return F=F.then(()=>nn()),F}async function nn(){let i=Array.from(w).filter(l=>!K.has(l));if(!i.length)return{...f};let a=await H(),L=a?await a.read(i):{},g={};for(let l of i){let m=v(l);m!==null&&(g[l]=m)}b=v(s)==="1";let S=!1,M=[];for(let l of i){let m=L[l],p=g[l];if(k.has(l)&&!u.has(l)){m!==p&&f.conflicts++,o.set(l,p===void 0?null:p),a&&((p===void 0?await a.remove(l):await a.write(l,p))?P(l,!1):(I(),S=!0));continue}if(u.has(l))continue;m!==void 0&&!b?(o.set(l,m),p!==void 0&&p!==m&&(f.conflicts++,m.length<=e&&_(l,m))):p!==void 0?(o.set(l,p),a&&(m===void 0?f.migrated++:m!==p&&f.conflicts++,await a.write(l,p)||(I(),S=!0))):m!==void 0&&o.set(l,m);let G=o.get(l);G!==void 0&&G!==p&&(B.add(l),M.push(l),f.hydrated++)}for(let l of i)K.add(l);if(b&&(S?_(s,"1"):$()),M.length)for(let l of j)l(M);return{...f}}async function x(){if(h!==null){let g=globalThis;typeof g.clearTimeout=="function"&&g.clearTimeout(h),h=null}let i=await H(),a=Array.from(d.entries()),L=Array.from(c);if(d.clear(),c.clear(),!i)return{...f};for(let[g,S]of a)await i.write(g,S)?(f.idbWrites++,o.get(g)===S&&!d.has(g)&&P(g,!1)):(f.idbFails++,I());for(let g of L)await i.remove(g)?(f.idbWrites++,o.get(g)===null&&!d.has(g)&&P(g,!1)):(f.idbFails++,I());return{...f}}return{warm:W,warming(i){return i.some(a=>w.has(a)&&!K.has(a))},ready:()=>W(),get(i){return o.has(i)?o.get(i)??null:v(i)},set(i,a){o.set(i,a),u.add(i),d.set(i,a),c.delete(i),a.length<=e?_(i,a)?(f.lsMirrors++,P(i,!0)):(f.lsFails++,P(i,!1)):(f.skippedMirror++,P(i,!1)),V()},remove(i){o.set(i,null),u.add(i),d.delete(i),c.add(i);try{r?.removeItem(i),P(i,!0)}catch{}V()},has(i){return o.has(i)?o.get(i)!==null:v(i)!==null},lsGet:v,lsRemove(i){try{r?.removeItem(i)}catch{}},flush:x,onHydrate(i){j.push(i),B.size&&i(Array.from(B))},stats:()=>({...f}),degraded:()=>b,backend:()=>A?A.name:an(r)?"localStorage":"none"}}var C={};rn(C,{MAX_PLANS:()=>fn,PLANS_KEY:()=>cn,PLANS_SCHEMA:()=>dn,docKeyFor:()=>gn,hasPlan:()=>q,itemsKeyFor:()=>mn,newPlanId:()=>_n,normalizeRegistry:()=>Pn,planById:()=>D,removePlan:()=>An,renamePlan:()=>Rn,serializeRegistry:()=>Sn,setActive:()=>vn,sortedPlans:()=>In,touchPlan:()=>hn,trimRegistry:()=>T,upsertPlan:()=>wn});var cn="planner_plans_v1",dn=1,fn=24,gn=n=>"planner_doc_v1:"+n,mn=n=>"planner_v1:"+n,R=n=>typeof n=="string"&&n.length>0&&n.length<=64,N=n=>typeof n=="string"&&n.length>0&&n.length<=120,pn=n=>n==="builtin"||n==="imported"||n==="blank",Q=n=>typeof n=="number"&&Number.isFinite(n);function yn(n){if(!n||typeof n!="object"||Array.isArray(n))return;let e=n,t=s=>typeof s=="number"&&Number.isFinite(s)&&s>=0?Math.floor(s):0;return{walls:t(e.walls),doors:t(e.doors),fixtures:t(e.fixtures),items:t(e.items)}}function bn(n){if(!n||typeof n!="object"||Array.isArray(n))return null;let e=n;if(!R(e.id)||!N(e.name)||!pn(e.origin))return null;let t=Q(e.createdAt)?e.createdAt:0,s={id:e.id,name:e.name,origin:e.origin,createdAt:t,updatedAt:Q(e.updatedAt)?e.updatedAt:t},r=yn(e.counts);return r&&(s.counts=r),s}function kn(n,e,t){return!R(e)||n.plans.some(s=>s.id===e)?n:{...n,plans:[{id:e,name:t,origin:"builtin",createdAt:0,updatedAt:0},...n.plans]}}function Pn(n,e,t="\u5185\u7F6E\u6237\u578B"){let s=[],r="";if(n&&typeof n=="object"&&!Array.isArray(n)){let u=n;Array.isArray(u.plans)&&(s=u.plans.map(bn).filter(w=>w!==null)),R(u.active)&&(r=u.active)}let o=new Map;for(let u of s)o.set(u.id,u);s=Array.from(o.values());let c=kn({v:1,active:r,plans:s},e,t);return c.plans.some(u=>u.id===c.active)||(c.active=R(e)?e:c.plans[0]?.id??""),T(c)}function T(n){if(n.plans.length<=24)return n;let e=new Set([n.active]);for(let r of n.plans)r.origin==="builtin"&&e.add(r.id);let t=n.plans.filter(r=>!e.has(r.id)).sort((r,o)=>r.updatedAt-o.updatedAt),s=new Set(t.slice(0,n.plans.length-24).map(r=>r.id));return{...n,plans:n.plans.filter(r=>!s.has(r.id))}}function Sn(n){return JSON.stringify({v:1,active:n.active,plans:n.plans})}function D(n,e){return n.plans.find(t=>t.id===e)??null}function q(n,e){return n.plans.some(t=>t.id===e)}function wn(n,e){if(!R(e.id)||!N(e.name))return n;let t=D(n,e.id),s={id:e.id,name:e.name,origin:t?t.origin:e.origin,createdAt:t?t.createdAt:e.now,updatedAt:e.now};e.counts&&(s.counts=e.counts);let r=t?n.plans.map(o=>o.id===e.id?s:o):[...n.plans,s];return T({...n,active:e.id,plans:r})}function hn(n,e,t){let s=D(n,e);if(!s)return n;let r={...s};return t.now!==void 0&&(r.updatedAt=t.now),t.counts&&(r.counts=t.counts),t.name!==void 0&&N(t.name)&&(r.name=t.name),{...n,plans:n.plans.map(o=>o.id===e?r:o)}}function vn(n,e){return q(n,e)?{...n,active:e}:n}function An(n,e){let t=D(n,e);if(!t||t.origin==="builtin"||n.plans.length<=1)return null;let s=n.plans.filter(o=>o.id!==e),r=n.active;if(r===e){let o=s.find(d=>d.origin==="builtin")||s[0];r=o?o.id:""}return{...n,active:r,plans:s}}function Rn(n,e,t){return!q(n,e)||!N(t)?null:{...n,plans:n.plans.map(s=>s.id===e?{...s,name:t}:s)}}function _n(n,e){let t=Math.floor(e()*1e9).toString(36);return"p"+n.toString(36)+t}function In(n){return[...n.plans].sort((e,t)=>e.origin==="builtin"&&t.origin!=="builtin"?-1:t.origin==="builtin"&&e.origin!=="builtin"?1:t.updatedAt-e.updatedAt)}var y=globalThis,xn=y.localStorage&&typeof y.localStorage.getItem=="function"?y.localStorage:null,U=Y({idb:X(),ls:xn});y.MINIDEN_STORE=U;y.MINIDEN_PLANS=C;if(typeof y.addEventListener=="function"){let n=y.addEventListener,e=()=>{try{U.flush()}catch{}};n("pagehide",e),n("visibilitychange",()=>{let t=y.document;t&&t.visibilityState==="hidden"&&e()})}})();
+"use strict";(()=>{var pn=Object.defineProperty;var Z=(n,t)=>{for(var e in t)pn(n,e,{get:t[e],enumerable:!0})};var yn="miniden-planner",nn="miniden_kv",bn="planner_store_degraded",K="planner_store_ls_ahead";function kn(n){if(!n||typeof n.getItem!="function")return null;try{n.setItem("__miniden_probe","1"),n.removeItem("__miniden_probe")}catch{return null}return{name:"localStorage",read:async t=>{let e={};for(let i of t)try{let r=n.getItem(i);typeof r=="string"&&(e[i]=r)}catch{}return e},write:async(t,e)=>{try{return n.setItem(t,e),!0}catch{return!1}},remove:async t=>{try{return n.removeItem(t),!0}catch{return!1}}}}function hn(n){return new Promise(t=>{let e=null;try{e=n()}catch{t(void 0);return}if(!e){t(void 0);return}e.onsuccess=()=>t(e.result),e.onerror=()=>t(void 0)})}function Q(n){return new Promise(t=>{let e=null;try{e=n()}catch{t(!1);return}if(!e){t(!1);return}e.onsuccess=()=>t(!0),e.onerror=()=>t(!1)})}function Sn(n,t=nn){let e=i=>{if(!n.transaction)return null;let r;try{r=n.transaction(t,i)}catch{return null}if(!r||typeof r.objectStore!="function")return null;try{return r.objectStore(t)}catch{return null}};return{name:"indexedDB",read:async i=>{let r={};for(let s of i){let d=e("readonly");if(!d)break;let l=await hn(()=>d.get(s));typeof l=="string"&&(r[s]=l)}return r},write:async(i,r)=>{let s=e("readwrite");return s?Q(()=>s.put(r,i)):!1},remove:async i=>{let r=e("readwrite");return r?Q(()=>r.delete(i)):!1}}}function tn(n=yn,t=1,e=nn){let r=globalThis.indexedDB;if(!r||typeof r.open!="function")return Promise.resolve(null);let s=r.open.bind(r);return new Promise(d=>{let l;try{l=s(n,t)}catch{d(null);return}if(!l){d(null);return}l.onupgradeneeded=()=>{let u=l.result;if(u&&typeof u.createObjectStore=="function")try{u.createObjectStore(e)}catch{}},l.onsuccess=()=>{let u=l.result;if(!u||typeof u.transaction!="function"){d(null);return}d(Sn(u,e))},l.onerror=()=>d(null),l.onblocked=()=>d(null)})}function en(n){let t=n.mirrorLimit??15e5,e=n.debounceMs??200,i=n.degradedFlag??bn,r=n.ls??null,s=new Map,d=new Map,l=new Set,u=new Set,f=new Set(n.warmKeys??[]),k=[],P=new Set,g={migrated:0,conflicts:0,idbWrites:0,idbFails:0,lsMirrors:0,lsFails:0,skippedMirror:0,hydrated:0},M=null,F=null,h=!1,B=Promise.resolve({migrated:0,conflicts:0,idbWrites:0,idbFails:0,lsMirrors:0,lsFails:0,skippedMirror:0,hydrated:0}),U=new Set,_=null,x=o=>{if(!r)return null;try{let a=r.getItem(o);return typeof a=="string"?a:null}catch{return null}},R=(o,a)=>{if(!r)return!1;try{return r.setItem(o,a),!0}catch{return!1}},S=new Set;try{let o=JSON.parse(x(K)||"[]");if(Array.isArray(o))for(let a of o)typeof a=="string"&&S.add(a)}catch{}let dn=()=>{if(r)try{S.size?r.setItem(K,JSON.stringify(Array.from(S))):r.removeItem(K)}catch{}},A=(o,a)=>{a!==S.has(o)&&(a?S.add(o):S.delete(o),dn())},I=()=>{h=!0,R(i,"1")},fn=()=>{if(h){h=!1;try{r?.removeItem(i)}catch{}}};function W(){if(e<=0){N();return}if(_!==null)return;let o=globalThis;if(typeof o.setTimeout!="function"){N();return}_=o.setTimeout(()=>{_=null,N()},e)}async function G(){return M||(F||(F=Promise.resolve(n.idb??null).then(o=>M=o??null)),F)}function J(o){for(let a of o??[])f.add(a);return B=B.then(()=>gn()),B}async function gn(){let o=Array.from(f).filter(c=>!U.has(c));if(!o.length)return{...g};let a=await G(),T=a?await a.read(o):{},m={};for(let c of o){let p=x(c);p!==null&&(m[c]=p)}h=x(i)==="1";let w=!1,D=[];for(let c of o){let p=T[c],y=m[c];if(S.has(c)&&!u.has(c)){p!==y&&g.conflicts++,s.set(c,y===void 0?null:y),a&&((y===void 0?await a.remove(c):await a.write(c,y))?A(c,!1):(I(),w=!0));continue}if(u.has(c))continue;p!==void 0&&!h?(s.set(c,p),y!==void 0&&y!==p&&(g.conflicts++,p.length<=t&&R(c,p))):y!==void 0?(s.set(c,y),a&&(p===void 0?g.migrated++:p!==y&&g.conflicts++,await a.write(c,y)||(I(),w=!0))):p!==void 0&&s.set(c,p);let $=s.get(c);$!==void 0&&$!==y&&(P.add(c),D.push(c),g.hydrated++)}for(let c of o)U.add(c);if(h&&(w?R(i,"1"):fn()),D.length)for(let c of k)c(D);return{...g}}async function N(){if(_!==null){let m=globalThis;typeof m.clearTimeout=="function"&&m.clearTimeout(_),_=null}let o=await G(),a=Array.from(d.entries()),T=Array.from(l);if(d.clear(),l.clear(),!o)return{...g};for(let[m,w]of a)await o.write(m,w)?(g.idbWrites++,s.get(m)===w&&!d.has(m)&&A(m,!1)):(g.idbFails++,I());for(let m of T)await o.remove(m)?(g.idbWrites++,s.get(m)===null&&!d.has(m)&&A(m,!1)):(g.idbFails++,I());return{...g}}return{warm:J,warming(o){return o.some(a=>f.has(a)&&!U.has(a))},ready:()=>J(),get(o){return s.has(o)?s.get(o)??null:x(o)},set(o,a){s.set(o,a),u.add(o),d.set(o,a),l.delete(o),a.length<=t?R(o,a)?(g.lsMirrors++,A(o,!0)):(g.lsFails++,A(o,!1)):(g.skippedMirror++,A(o,!1)),W()},remove(o){s.set(o,null),u.add(o),d.delete(o),l.add(o);try{r?.removeItem(o),A(o,!0)}catch{}W()},has(o){return s.has(o)?s.get(o)!==null:x(o)!==null},lsGet:x,lsRemove(o){try{r?.removeItem(o)}catch{}},flush:N,onHydrate(o){k.push(o),P.size&&o(Array.from(P))},stats:()=>({...g}),degraded:()=>h,backend:()=>M?M.name:kn(r)?"localStorage":"none"}}var C={};Z(C,{MAX_PLANS:()=>Ln,PLANS_KEY:()=>An,PLANS_SCHEMA:()=>wn,docKeyFor:()=>Pn,hasPlan:()=>j,itemsKeyFor:()=>_n,newPlanId:()=>Fn,normalizeRegistry:()=>In,planById:()=>E,removePlan:()=>En,renamePlan:()=>qn,serializeRegistry:()=>Nn,setActive:()=>On,sortedPlans:()=>Bn,touchPlan:()=>Dn,trimRegistry:()=>Y,upsertPlan:()=>Tn});var An="planner_plans_v1",wn=1,Ln=24,Pn=n=>"planner_doc_v1:"+n,_n=n=>"planner_v1:"+n,v=n=>typeof n=="string"&&n.length>0&&n.length<=64,O=n=>typeof n=="string"&&n.length>0&&n.length<=120,xn=n=>n==="builtin"||n==="imported"||n==="blank",rn=n=>typeof n=="number"&&Number.isFinite(n);function Mn(n){if(!n||typeof n!="object"||Array.isArray(n))return;let t=n,e=i=>typeof i=="number"&&Number.isFinite(i)&&i>=0?Math.floor(i):0;return{walls:e(t.walls),doors:e(t.doors),fixtures:e(t.fixtures),items:e(t.items)}}function vn(n){if(!n||typeof n!="object"||Array.isArray(n))return null;let t=n;if(!v(t.id)||!O(t.name)||!xn(t.origin))return null;let e=rn(t.createdAt)?t.createdAt:0,i={id:t.id,name:t.name,origin:t.origin,createdAt:e,updatedAt:rn(t.updatedAt)?t.updatedAt:e},r=Mn(t.counts);return r&&(i.counts=r),i}function Rn(n,t,e){return!v(t)||n.plans.some(i=>i.id===t)?n:{...n,plans:[{id:t,name:e,origin:"builtin",createdAt:0,updatedAt:0},...n.plans]}}function In(n,t,e="\u5185\u7F6E\u6237\u578B"){let i=[],r="";if(n&&typeof n=="object"&&!Array.isArray(n)){let u=n;Array.isArray(u.plans)&&(i=u.plans.map(vn).filter(f=>f!==null)),v(u.active)&&(r=u.active)}let s=new Map;for(let u of i)s.set(u.id,u);i=Array.from(s.values());let l=Rn({v:1,active:r,plans:i},t,e);return l.plans.some(u=>u.id===l.active)||(l.active=v(t)?t:l.plans[0]?.id??""),Y(l)}function Y(n){if(n.plans.length<=24)return n;let t=new Set([n.active]);for(let r of n.plans)r.origin==="builtin"&&t.add(r.id);let e=n.plans.filter(r=>!t.has(r.id)).sort((r,s)=>r.updatedAt-s.updatedAt),i=new Set(e.slice(0,n.plans.length-24).map(r=>r.id));return{...n,plans:n.plans.filter(r=>!i.has(r.id))}}function Nn(n){return JSON.stringify({v:1,active:n.active,plans:n.plans})}function E(n,t){return n.plans.find(e=>e.id===t)??null}function j(n,t){return n.plans.some(e=>e.id===t)}function Tn(n,t){if(!v(t.id)||!O(t.name))return n;let e=E(n,t.id),i={id:t.id,name:t.name,origin:e?e.origin:t.origin,createdAt:e?e.createdAt:t.now,updatedAt:t.now};t.counts&&(i.counts=t.counts);let r=e?n.plans.map(s=>s.id===t.id?i:s):[...n.plans,i];return Y({...n,active:t.id,plans:r})}function Dn(n,t,e){let i=E(n,t);if(!i)return n;let r={...i};return e.now!==void 0&&(r.updatedAt=e.now),e.counts&&(r.counts=e.counts),e.name!==void 0&&O(e.name)&&(r.name=e.name),{...n,plans:n.plans.map(s=>s.id===t?r:s)}}function On(n,t){return j(n,t)?{...n,active:t}:n}function En(n,t){let e=E(n,t);if(!e||e.origin==="builtin"||n.plans.length<=1)return null;let i=n.plans.filter(s=>s.id!==t),r=n.active;if(r===t){let s=i.find(d=>d.origin==="builtin")||i[0];r=s?s.id:""}return{...n,active:r,plans:i}}function qn(n,t,e){return!j(n,t)||!O(e)?null:{...n,plans:n.plans.map(i=>i.id===t?{...i,name:e}:i)}}function Fn(n,t){let e=Math.floor(t()*1e9).toString(36);return"p"+n.toString(36)+e}function Bn(n){return[...n.plans].sort((t,e)=>t.origin==="builtin"&&e.origin!=="builtin"?-1:e.origin==="builtin"&&t.origin!=="builtin"?1:e.updatedAt-t.updatedAt)}var z={};Z(z,{DEFAULT_LAYOUT_ID:()=>Yn,LAYOUTS_SCHEMA:()=>Un,MAX_LAYOUTS:()=>Kn,NAME_MAX:()=>jn,addLayout:()=>Hn,cleanName:()=>q,defaultLayouts:()=>X,isDefaultLayouts:()=>un,layoutById:()=>V,layoutItems:()=>Vn,layoutName:()=>L,nextLayoutName:()=>ln,normalizeLayouts:()=>Cn,removeLayout:()=>Wn,renameLayout:()=>Gn,serializeLayouts:()=>Xn,switchLayout:()=>zn});var Un=1,Kn=12,Yn="L1",jn=40,L=n=>"\u65B9\u6848 "+n,on=n=>typeof n=="string"&&/^[A-Za-z0-9_-]{1,24}$/.test(n),q=n=>{if(typeof n!="string")return null;let t=n.trim();return t.length>0&&t.length<=40?t:null},an=n=>Array.isArray(n)?n.filter(t=>!!t&&typeof t=="object"&&!Array.isArray(t)):[],sn=n=>{let t=/^L(\d{1,9})$/.exec(n);return t?+t[1]:0};function X(){return{cur:"L1",seq:2,list:[{id:"L1",name:L(1)}],other:{}}}function Cn(n){if(!n||typeof n!="object"||Array.isArray(n))return X();let t=n,e=new Set,i=[];for(let f of Array.isArray(t.list)?t.list:[]){if(!f||typeof f!="object")continue;let k=f,P=q(k.name);if(!(!on(k.id)||!P||e.has(k.id))&&(e.add(k.id),i.push({id:k.id,name:P}),i.length>=12))break}let r=on(t.cur)?t.cur:"";if(!i.length)return X();e.has(r)||(r||(r="L"+(Math.max(0,...i.map(f=>sn(f.id)))+1)),i.unshift({id:r,name:H(i,L(1))}),i.length>12&&(i.length=12));let s={},d=t.other&&typeof t.other=="object"&&!Array.isArray(t.other)?t.other:{};for(let f of i)f.id!==r&&(s[f.id]=an(d[f.id]));let l=Math.max(0,...i.map(f=>sn(f.id))),u=Math.max(typeof t.seq=="number"&&Number.isFinite(t.seq)?Math.floor(t.seq):0,l+1,2);return{cur:r,seq:u,list:i,other:s}}function un(n){return n.list.length===1&&n.list[0].id==="L1"&&n.list[0].name===L(1)}function Xn(n){if(un(n))return null;let t={};for(let e of n.list)e.id!==n.cur&&(t[e.id]=n.other[e.id]||[]);return{v:1,cur:n.cur,seq:n.seq,list:n.list.map(e=>({id:e.id,name:e.name})),other:t}}function V(n,t){return n.list.find(e=>e.id===t)??null}function Vn(n,t,e){return e===n.cur?t:n.other[e]||[]}function H(n,t){let e=new Set(n.map(i=>i.name));if(!e.has(t))return t;for(let i=2;i<1e3;i++){let r=(t+" ("+i+")").slice(-40);if(!e.has(r))return r}return t}function ln(n){let t=new Set(n.list.map(e=>e.name));for(let e=1;e<=13;e++)if(!t.has(L(e)))return L(e);return H(n.list,L(n.list.length+1))}function Hn(n,t,e){if(n.list.length>=12)return null;let i="L"+n.seq,r=H(n.list,q(e.name)||ln(n)),s={...n.other,[n.cur]:t};return delete s[i],{set:{cur:i,seq:n.seq+1,list:[...n.list,{id:i,name:r}],other:s},items:an(e.items)}}function zn(n,t,e){if(e===n.cur||!V(n,e))return null;let i={...n.other,[n.cur]:t},r=i[e]||[];return delete i[e],{set:{...n,cur:e,other:i},items:r}}function Wn(n,t,e){let i=n.list.findIndex(u=>u.id===e);if(i<0||n.list.length<=1)return null;let r=n.list.filter(u=>u.id!==e),s={...n.other};if(delete s[e],e!==n.cur)return{set:{...n,list:r,other:s},items:t};let d=r[Math.max(0,i-1)],l=s[d.id]||[];return delete s[d.id],{set:{...n,cur:d.id,list:r,other:s},items:l}}function Gn(n,t,e){let i=q(e);return!i||!V(n,t)||n.list.some(r=>r.id!==t&&r.name===i)?null:{...n,list:n.list.map(r=>r.id===t?{...r,name:i}:r)}}var b=globalThis,Jn=b.localStorage&&typeof b.localStorage.getItem=="function"?b.localStorage:null,cn=en({idb:tn(),ls:Jn});b.MINIDEN_STORE=cn;b.MINIDEN_PLANS=C;b.MINIDEN_LAYOUTS=z;if(typeof b.addEventListener=="function"){let n=b.addEventListener,t=()=>{try{cn.flush()}catch{}};n("pagehide",t),n("visibilitychange",()=>{let e=b.document;e&&e.visibilityState==="hidden"&&t()})}})();
 
 </script><!-- /miniden-storage -->
 <script id="miniden-schema">
@@ -1603,11 +1636,20 @@ loadPacksFromStore();
 reportPackDigestMismatch();
 watchPackStore();
 let legacyOwned = true;   // 旧单桶存档是否属于当前户型（loadDoc 里判定）
+/* ---------- S24c：方案（research/13 U8；纯函数层 = src/storage/layouts.ts，单测守着） ----------
+   同一份户型存几套家具摆法：几何（DOC）只有一份、所有方案共用；家具 / 采购清单 / 撤销记录各是各的。
+   state.items 永远是「当前方案」的家具；LAY.other = 其余几套。都在这份户型的家具存档里（一个键 = 一次写）：
+     { geo, items, customCat, unit, lay? } —— 只有缺省的「方案 1」时不写 lay（存档与 S24c 之前逐字节相同）。
+   自定义目录（customCat）与单位是这份户型的，所有方案共用（不然在方案 2 里加的自定义件，切回方案 1 就成了「目录里没有」）。 */
+const LAYOUTS = window.MINIDEN_LAYOUTS;
+let LAY = LAYOUTS.defaultLayouts();
 function save(){
   /* 这份户型的家具存档可能只存在主存里、而门面还在读它：此刻内存里的 state.items
      可能是「还没读到」而不是「真的没有」（bug 猎 #28）。warm 完成后会重新载入。 */
   if(planArchiveUnknown.has(ITEMS_KEY)) return;
-  try{ STORE.set(ITEMS_KEY, JSON.stringify({geo:GEO_VERSION, items:state.items, customCat:state.customCat, unit:state.unit})); }catch(e){}
+  const o={geo:GEO_VERSION, items:state.items, customCat:state.customCat, unit:state.unit};
+  const lay=LAYOUTS.serializeLayouts(LAY); if(lay) o.lay=lay;
+  try{ STORE.set(ITEMS_KEY, JSON.stringify(o)); }catch(e){}
 }
 /* S13：布局跟着 app 走。
    家具「目录」是 app 数据（就在 app.html 里，275 条，永远跟着文件走）；
@@ -1620,6 +1662,7 @@ function save(){
    就不播种 —— 否则用户删空家具之后一刷新又被复活。 */
 function takeArchive(s){
   if(s && s.geo===GEO_VERSION && Array.isArray(s.items)){ state.items=s.items; state.customCat=s.customCat||[]; state.unit=s.unit||'cm';
+    LAY = LAYOUTS.normalizeLayouts(s.lay);   // S24c：别的方案（坏了 / 没有 = 只有这一套；items 永远是当前方案的，一件不丢）
     uidSeq = Math.max(0,...state.items.map(i=>i.uid),0)+1; return true; }
   return false;
 }
@@ -1630,6 +1673,7 @@ function seedLayout(){
 }
 function load(){
   let archived=false;   // 这台浏览器对这份户型存过档吗（存过就以它为准，不播种）
+  LAY = LAYOUTS.defaultLayouts();   // S24c：方案属于这份户型的存档；读不到存档 = 只有缺省一套
   try{ const raw=STORE.get(ITEMS_KEY); if(raw!==null) archived=true; if(takeArchive(JSON.parse(raw))) return true; }catch(e){}
   // 旧单桶家具存档：只有在旧文档也属于当前户型时才认（否则是别的户型的布局，坐标对不上）
   // E26：它属于**内置户型**，切到自包含户型时不能拿它当本户型的布局
@@ -1790,9 +1834,10 @@ function planSelectUI(){
     del.title = del.disabled ? '内置户型不可删除（它是出厂户型的入口）' : '删除当前户型（连它的存档与家具布局一起删）；第一步只是确认，再点一次才真删';
     disarmPlanDel(); }
   const ren=$('#btnPlanRename'); if(ren) ren.disabled = !cur;
+  layoutBarUI();   // S24c：方案属于户型 —— 换户型 / 撤销跨户型 / 导入 / 新建之后右上角跟着换
 }
 /* 切户型不是「一次编辑」：两个环都清空，不然 Ctrl+Z 会把上一份户型的文档写进这一份的键。 */
-function resetUndoRings(){ undoRing.length=0; redoRing.length=0; lastGesture=null; updateUndoUI(); }
+function resetUndoRings(){ undoRing.length=0; redoRing.length=0; lastGesture=null; ringStash.clear(); updateUndoUI(); }
 /* 换户型（切过去 / 新建空白 / 撤销回另一份）时，编辑层里存的是「上一份文档的实体 id」
    和「上一份坐标上的进行中绘制」。不作废就会在新户型的图上留下悬空引用：
    工具条描述一个不存在的东西、Delete 说「已删除」而什么都没删（还往撤销环塞一步死快照）、
@@ -1830,7 +1875,11 @@ function switchPlan(id, quiet){
   STORE.warm([DOC_KEY, ITEMS_KEY]);               // 这份户型的存档可能只存在主存里
   watchPlanArchive([DOC_KEY, ITEMS_KEY]);         // 读到之前不许写回（bug 猎 #28）
   DOC = loadDoc();
-  load();                                          // 这份户型的家具
+  /* bug 猎 #93：这份户型没存过家具（新浏览器里先导入自己的图纸、在那儿摆了家具，再切回内置户型）时 load() 读不到存档，
+     原先 state.items 原样留着上一份户型的家具 —— 画在这份户型上，紧接着末尾的 save() 还把它写进这份户型的存档。
+     自定义目录同理（它也在家具存档里，属于那一份户型） */
+  state.items = []; state.customCat = [];
+  load();                                          // 这份户型的家具（S24c：连同它的几套方案）
   resetUndoRings();
   selected = null; uidSeq = Math.max(0, ...state.items.map(i=>i.uid||0), 0) + 1;
   invalidateEditLayer();
@@ -1865,6 +1914,7 @@ function createBlankPlan(){
   STORE.warm([DOC_KEY, ITEMS_KEY]);
   PLAN_REG = PLANS.upsertPlan(PLAN_REG, { id, name: d.name, origin:'blank', now: Date.now(), counts: planCounts() });
   state.items=[]; selected=null; uidSeq=1; lastImportInfo=null;
+  LAY = LAYOUTS.defaultLayouts();   // S24c：新户型只有缺省的「方案 1」（撤销 = 回到原户型，方案从它的存档里读回来）
   invalidateEditLayer();   // bug 猎 #54 #55：旧户型的选中与进行中的画墙链必须作废
   measDropForGeometry();   // bug 猎 #48：空白户型的图上不该挂着上一份户型的量尺寸标注
   applyPlanChrome();
@@ -1898,7 +1948,7 @@ function deleteCurrentPlan(){
   if(!planDelArmed){
     planDelArmed = true;
     const b=$('#btnPlanDel'); if(b){ b.classList.add('arm'); b.textContent='确认删除？再点一次'; }
-    wMsg('删除「'+cur.name+'」会连同它的存档一起删掉（已摆家具也在里面）。再点一次确认，或切到别的户型。', true);
+    wMsg('删除「'+cur.name+'」会连同它的存档一起删掉（'+(LAY.list.length>1 ? '它的 '+LAY.list.length+' 套方案和每套的家具' : '已摆家具')+'也在里面）。再点一次确认，或切到别的户型。', true);
     return false;
   }
   const next = PLANS.removePlan(PLAN_REG, PLAN_ID);
@@ -1911,6 +1961,139 @@ function deleteCurrentPlan(){
   switchPlan(target, true);
   toast('已删除户型「'+cur.name+'」', 3500);
   return true;
+}
+/* ---------- S24c：方案的切换 / 新建 / 复制 / 改名 / 删除（research/13 U8） ----------
+   口径：切方案不是「一次编辑」（与切户型同一条），所以不进撤销环；每套方案的撤销环各管各的（ringStash）。
+   删除两步确认、不能撤销（同删户型）；最后一套不能删。 */
+/* 共用部分的指纹：几何 + 自定义目录。不算「当前在哪一层」与白天 / 夜晚 / 窗外环境（那是看的角度，不是内容），
+   也不算量尺寸标注（在别的方案里量一下就把这套的撤销记录作废，代价太大；旧快照恢复时最多带回旧标注） */
+function layoutSig(){
+  try{ return JSON.stringify([DOC, state.customCat], function(k, v){ return (this===DOC && (k==='level' || k==='env')) ? undefined : v; }); }catch(e){ return ''; }
+}
+function stashRings(){
+  const hasX = undoRing.some(x=>x.startsWith(SNAP_X)) || redoRing.some(x=>x.startsWith(SNAP_X));
+  ringStash.set(PLAN_ID+'/'+LAY.cur, {u:undoRing, r:redoRing, sig:layoutSig(), x: hasX ? JSON.stringify(LAY.other) : null});
+  undoRing=[]; redoRing=[]; lastGesture=null;
+}
+/* 回到一套方案：它的环还对得上就还给它；对不上（共用部分在别的方案里改过）就作废 —— 返回 true = 作废了一些记录 */
+function unstashRings(){
+  const k=PLAN_ID+'/'+LAY.cur, st=ringStash.get(k); ringStash.delete(k);
+  let dropped=false;
+  if(st && st.sig===layoutSig() && (st.x===null || st.x===JSON.stringify(LAY.other))){ undoRing=st.u; redoRing=st.r; }
+  else { undoRing=[]; redoRing=[]; dropped = !!st && (st.u.length + st.r.length) > 0; }
+  lastGesture=null; updateUndoUI();
+  return dropped;
+}
+/* S24c：从存档里读这份户型的方案（撤销 / 重做跨户型时：快照里只有当前那套的家具）。
+   v = 快照里的那套；存档里的当前方案不是它 → 切到它（存档里那套的家具收进 other） */
+function storedLayouts(v){
+  let set=LAYOUTS.defaultLayouts(), items=[];
+  try{ const a=JSON.parse(STORE.get(ITEMS_KEY)); if(a && a.geo===GEO_VERSION && Array.isArray(a.items)){ set=LAYOUTS.normalizeLayouts(a.lay); items=a.items; } }catch(e){}
+  if(typeof v==='string' && v!==set.cur){ const mv=LAYOUTS.switchLayout(set, items, v); if(mv) set=mv.set; }
+  return set;
+}
+function layoutBlocked(what, quiet){
+  if(CALIB || IMGONLY) return true;
+  if(!quiet && photoFrozen(what)) return true;
+  if(planArchiveUnknown.has(ITEMS_KEY)){ toast('这份户型的家具存档还在从浏览器主存里读：先别动方案（稍等片刻会自动载入）', 6000); return true; }
+  return false;
+}
+function layoutStats(items){
+  let buy=0, sum=0, approx=false; const cur=curNow();
+  for(const it of items){ const sp=itemSpec(it); if(!sp || isBuiltIn(sp)) continue; buy++;
+    const pr=priceOf(sp, cur); if(pr){ sum+=pr.v; if(!pr.exact) approx=true; } }
+  return {buy, sum, approx};
+}
+function layoutStatsText(items){ const t=layoutStats(items); return t.buy+' 件 · '+(t.approx?'≈':'')+fmtMoney(t.sum); }
+/* 进入另一套方案（切换 / 新建 / 复制 / 删除都走这里）。discard = 当前这套被删了：它的环不收 */
+function enterLayout(mv, discard){
+  if(lvMove) setLvMove(false);
+  drag=null; selOnly(null); disarmLayoutDel();
+  if(discard) ringStash.delete(PLAN_ID+'/'+LAY.cur); else stashRings();
+  LAY=mv.set; state.items=mv.items;
+  uidSeq = Math.max(0, ...state.items.map(i=>i.uid||0), 0) + 1;
+  const dropped=unstashRings();
+  save(); planTouch();
+  refresh(); updateProps(); layoutBarUI();
+  return dropped;
+}
+function switchLayoutUI(id){
+  if(id===LAY.cur || !LAYOUTS.layoutById(LAY, id)) return false;
+  if(layoutBlocked('切换方案')) return false;
+  const mv=LAYOUTS.switchLayout(LAY, state.items, id); if(!mv) return false;
+  const dropped=enterLayout(mv), m=LAYOUTS.layoutById(LAY, LAY.cur);
+  toast('已切到「'+m.name+'」（'+layoutStatsText(state.items)+'）'+
+    (dropped ? '；墙体或自定义目录在别的方案里改过，这套方案之前的撤销记录作废了（它们会把那些改动一起退掉）' : ''), dropped ? 7000 : 2500);
+  return true;
+}
+function addLayoutUI(copy){
+  if(layoutBlocked(copy ? '复制方案' : '新建方案')) return null;
+  if(LAY.list.length >= LAYOUTS.MAX_LAYOUTS){ toast('一份户型最多 '+LAYOUTS.MAX_LAYOUTS+' 套方案：先删掉一套不要的', 5000); return null; }
+  const src=LAYOUTS.layoutById(LAY, LAY.cur);
+  const mv=LAYOUTS.addLayout(LAY, state.items, {items: copy ? JSON.parse(JSON.stringify(state.items)) : []});
+  if(!mv) return null;
+  enterLayout(mv);
+  const m=LAYOUTS.layoutById(LAY, LAY.cur);
+  toast(copy ? '已把「'+src.name+'」复制成「'+m.name+'」：在这套里随便改，「'+src.name+'」不受影响（右上角随时切回去比较）'
+             : '已新建空白方案「'+m.name+'」：墙体照旧，家具从零开始摆（右上角随时切回「'+src.name+'」）', 5000);
+  return LAY.cur;
+}
+function renameLayoutUI(name){
+  if(layoutBlocked('改方案名', true)) return false;
+  const cur=LAYOUTS.layoutById(LAY, LAY.cur), n=String(name==null?'':name).trim();
+  if(!cur || n===cur.name){ layoutBarUI(); return false; }
+  const next=LAYOUTS.renameLayout(LAY, LAY.cur, n);
+  if(!next){
+    toast(!n ? '方案名字不能为空' : n.length>LAYOUTS.NAME_MAX ? '方案名字最长 '+LAYOUTS.NAME_MAX+' 个字' : '已经有一套叫「'+n+'」的方案了，换个名字', 4000);
+    layoutBarUI(); return false;
+  }
+  LAY=next; save(); layoutBarUI();
+  toast('方案已改名为「'+n+'」', 2500);
+  return true;
+}
+let layDelArmed=false;
+function disarmLayoutDel(){
+  layDelArmed=false;
+  const b=$('#layDel'); if(b){ b.classList.remove('arm'); b.textContent='删除这个方案'; }
+}
+function deleteLayoutUI(){
+  if(layoutBlocked('删方案')) return false;
+  if(LAY.list.length<=1){ toast('只剩这一套方案，不能删', 3500); return false; }
+  const cur=LAYOUTS.layoutById(LAY, LAY.cur);
+  if(!layDelArmed){
+    layDelArmed=true;
+    const b=$('#layDel'); if(b){ b.classList.add('arm'); b.textContent='确认删除？再点一次'; }
+    toast('删除「'+cur.name+'」会连同它的 '+state.items.length+' 件家具一起删掉，而且不能撤销。再点一次确认。', 6000);
+    return false;
+  }
+  const mv=LAYOUTS.removeLayout(LAY, state.items, LAY.cur); if(!mv){ disarmLayoutDel(); return false; }
+  enterLayout(mv, true);
+  toast('已删除方案「'+cur.name+'」，现在是「'+LAYOUTS.layoutById(LAY, LAY.cur).name+'」', 4000);
+  return true;
+}
+let _layStatsKey='';
+function layoutBarUI(){
+  const bar=$('#layBar'); if(!bar) return;
+  if(CALIB || IMGONLY){ bar.style.display='none'; return; }
+  const cur=LAYOUTS.layoutById(LAY, LAY.cur), n=LAY.list.length;
+  $('#layCur').textContent = cur ? cur.name : '';
+  $('#layBtn .layLbl').style.display = cur && /^方案/.test(cur.name) ? 'none' : '';   // 名字本身就是「方案 N」时不再重复前缀
+  $('#layCnt').textContent = n>1 ? '· 共 '+n+' 套' : '';
+  const panel=$('#layPanel'); if(panel.style.display==='none') return;   // 收着：只更新按钮
+  _layStatsKey=curNow()+'|'+fxRate();
+  const list=$('#layList'); list.innerHTML='';
+  for(const l of LAY.list){
+    const b=document.createElement('button'); b.className='layRow'+(l.id===LAY.cur?' on':''); b.dataset.id=l.id;
+    b.innerHTML='<span class="ln"></span><span class="lm"></span>';
+    b.querySelector('.ln').textContent=l.name;
+    b.querySelector('.lm').textContent=layoutStatsText(LAYOUTS.layoutItems(LAY, state.items, l.id));
+    b.title = l.id===LAY.cur ? '当前方案' : '切到「'+l.name+'」';
+    b.onclick=()=>{ b.blur(); switchLayoutUI(l.id); };
+    list.appendChild(b);
+  }
+  const inp=$('#layName'); if(document.activeElement!==inp) inp.value = cur ? cur.name : '';
+  $('#layDel').disabled = n<=1;
+  $('#layDup').disabled = $('#layNew').disabled = n>=LAYOUTS.MAX_LAYOUTS;
 }
 function saveGeoImpl(){
   /* 两种情况不许写文档（都是「把用户存好的那份覆盖掉」）：
@@ -1957,10 +2140,21 @@ function geoChanged(){
    覆盖：户型文档（墙/窗/门/柱/洁具/台面/底图）+ 已摆家具 + 导入替换。 */
 const UNDO_CAP = 50;
 let undoRing = [], redoRing = [], lastGesture = null;
-function snapState(){
+/* S24c：每套方案各自撤销。离开一套方案时它的两个环收进这里（键 = 户型 / 方案），回来时还给它 ——
+   前提是它们还对得上：几何 / 自定义目录是所有方案共用的，这些在别的方案里改过，
+   这套方案的旧快照一恢复就会把那些改动一起退掉，所以作废（toast 说出来）。 */
+const ringStash = new Map();
+/* 动到别的方案的几何操作（整图缩放 / 移动这一层 / 删楼层）：快照要连别的方案的家具一起存（X 放在最前面，
+   靠前缀认得出来），撤销时一起回去；不然撤销删楼层，墙回来了，别的方案在那一层的家具却没了。 */
+const SNAP_X = '{"X":';
+function snapState(withOthers){
   /* E26：快照带上「哪份户型」+ 注册表。不带的话，导入/新建后 Ctrl+Z 会把上一份户型的
-     文档写进新户型的键（串户型），而且刚创建的那份户型会在列表里残留。 */
-  try{ return JSON.stringify({d:DOC, i:state.items, c:state.customCat, u:uidSeq, su:showUnderlay, st:showTrace, p:PLAN_ID, r:PLAN_REG, m:meas.list}); }catch(e){ return null; }
+     文档写进新户型的键（串户型），而且刚创建的那份户型会在列表里残留。
+     S24c：再带上「哪套方案」（v）。 */
+  try{
+    const o={d:DOC, i:state.items, c:state.customCat, u:uidSeq, su:showUnderlay, st:showTrace, p:PLAN_ID, r:PLAN_REG, m:meas.list, v:LAY.cur};
+    return JSON.stringify(withOthers && Object.keys(LAY.other).length ? Object.assign({X:LAY.other}, o) : o);
+  }catch(e){ return null; }
 }
 /* 手势键有两种身份，必须分开（bug 猎 轮㉒）：
    · 连续手势（拖动中、滑块拖动中、连续方向键微调）：同一个键只该压一次 → 只传 gestureKey
@@ -1969,9 +2163,9 @@ function snapState(){
      以前离散动作也吃同一套合并，于是「连放两个洁具 / 连点两次同一件商品 / 按两次 +90°」
      只算一步：撤销一次同时撤掉两件事，或者撤销按钮亮着而按下去什么都没发生（零反馈，R10）。
      「按了但什么都没变」不需要靠键合并挡 —— 下面那句快照相等检查就是干这个的。 */
-function pushUndo(gestureKey, eachGesture){
+function pushUndo(gestureKey, eachGesture, withOthers){
   if(CALIB || IMGONLY) return;                        // 校准/底图视图不编辑，也不进环
-  const s = snapState(); if(!s) return;
+  const s = snapState(withOthers); if(!s) return;
   if(!eachGesture && gestureKey && lastGesture === gestureKey) return;   // 同一手势（拖动中、连续微调）不重复压
   lastGesture = eachGesture ? null : (gestureKey || null);   // 离散动作收尾：下一个手势重新开始
   if(undoRing.length && undoRing[undoRing.length-1] === s) return;   // 无实际变化
@@ -1994,7 +2188,13 @@ function restoreState(s){
     try{ STORE.flush(); }catch(e){}
     PLAN_ID = o.p; DOC_KEY = PLANS.docKeyFor(PLAN_ID); ITEMS_KEY = PLANS.itemsKeyFor(PLAN_ID);
     STORE.warm([DOC_KEY, ITEMS_KEY]);
+    watchPlanArchive([DOC_KEY, ITEMS_KEY]);   // S24c：那份户型的存档（连同它别的方案）读到之前不许写回（bug 猎 #28 同一条）
+    LAY = storedLayouts(o.v);   // S24c：快照里只有当前那套的家具 —— 那份户型别的方案从它的存档里读回来
+  } else if(typeof o.v === 'string' && o.v !== LAY.cur && LAYOUTS.layoutById(LAY, o.v)){
+    const mv = LAYOUTS.switchLayout(LAY, state.items, o.v); if(mv) LAY = mv.set;   // 兜底（每套方案各有自己的环，正常走不到）：快照里的家具属于 o.v，不许写进这一套
   }
+  // 动过别的方案的几何操作：别的方案的家具一起回去（只回还在的方案；之后新建的方案不受影响）
+  if(o.X) for(const id of Object.keys(o.X)) if(id!==LAY.cur && LAYOUTS.layoutById(LAY, id) && Array.isArray(o.X[id])) LAY.other[id]=o.X[id];
   if(o.r) PLAN_REG = PLANS.normalizeRegistry(o.r, BUILTIN_PLAN_ID, BUILTIN_PLAN_NAME);
   DOC = o.d; state.items = Array.isArray(o.i)? o.i : []; state.customCat = Array.isArray(o.c)? o.c : [];
   if(typeof o.su === 'boolean'){ showUnderlay = o.su; $('#btnUnderlay').classList.toggle('on', showUnderlay); }
@@ -2032,7 +2232,7 @@ function undoStep(){
   const cur = pruneDeadRing();
   if(!undoRing.length){ toast('没有可撤销的改动'); return; }
   lastGesture = null;
-  const prev = undoRing.pop(); redoRing.push(cur);
+  const prev = undoRing.pop(); redoRing.push(prev.startsWith(SNAP_X) ? snapState(true) : cur);   // S24c：撤的那一步动过别的方案 → 重做也要能把它们改回去
   restoreState(prev); toast('已撤销');
 }
 function redoStep(){
@@ -2041,7 +2241,7 @@ function redoStep(){
   const cur = pruneDeadRing();
   if(!redoRing.length){ toast('没有可重做的改动'); return; }
   lastGesture = null;
-  const nxt = redoRing.pop(); undoRing.push(cur);
+  const nxt = redoRing.pop(); undoRing.push(nxt.startsWith(SNAP_X) ? snapState(true) : cur);
   restoreState(nxt); toast('已重做');
 }
 /* 死步：环顶那份快照与当前状态一模一样 = 那次动作其实什么都没改
@@ -2077,14 +2277,14 @@ function updateUndoUI(){
 // 以前 pointerdown 就 pushUndo：点一下家具/墙/台面（没拖）会把「撤销」按钮点亮，
 // 按下去却什么都没发生——零反馈 = 设计缺陷（R10）。手势键照旧，合并语义不变。（bug 猎 #33）
 let gestureSeq = 0;
-function markDragGesture(drag, key){
+function markDragGesture(drag, key, withOthers){
   if(!drag || drag.moved || !key) return;
   drag.moved = true;
   /* 手势身份要能区分「同一次手势」与「同一种动作」（#40 同一条判据）。
      只用 'drag3d:<uid>' 这种稳定键，连着拖同一件两次会并成一步：
      实测撤销一次退 27cm，两次拖动一起没了。每次拖动一个序号，手势内仍合并，手势之间不合并。 */
   if(drag.gestureSeq == null) drag.gestureSeq = ++gestureSeq;
-  pushUndo(key + '#' + drag.gestureSeq);
+  pushUndo(key + '#' + drag.gestureSeq, false, withOthers);
 }
 /* 有效几何（S1 Phase 2b）：唯一几何源 = DOC（id 寻址文档）→ docToLegacy 投影。
    CALIB 校准模式永远用纯净内置常量（不走文档，md5 基线逐字节不变）。 */
@@ -2236,6 +2436,7 @@ function applyImportedDoc(doc, info){
     origin:'imported', now: Date.now(), counts: { walls:(doc.walls||[]).length, doors:(doc.doors||[]).length,
       fixtures:(doc.fixtures||[]).length, items: 0 } });
   state.items=[]; selected=null; uidSeq=1;
+  LAY = LAYOUTS.defaultLayouts();   // S24c：导入 = 新户型，只有缺省的「方案 1」
   showUnderlay=false; $('#btnUnderlay').classList.remove('on');
   // S7：旧底图/特征线状态不属于新文档
   showTrace=false; _traceCache=null; gBaseImg=null;
@@ -4157,7 +4358,7 @@ svg.addEventListener('pointermove', ev=>{
   }
   if(lvMove && lvMove.drag){ const d=lvMove.drag;                 // S17b：整层拖
     if(!d.moved && Math.hypot(ev.clientX-d.cX, ev.clientY-d.cY) < 5) return;
-    markDragGesture(d, 'lvMove');
+    markDragGesture(d, 'lvMove', true);   // S24c：别的方案在这一层的家具也跟着走 → 快照连它们一起存
     const p=svgPoint(ev); shiftCurLevel(FT4(p[0]-d.last[0]), FT4(p[1]-d.last[1])); d.last=p; return; }
   if(lvMove) return;
   if(imgMove){ imgMoveMove(ev); return; }
@@ -4299,12 +4500,15 @@ window.addEventListener('keydown', ev=>{
   if(lvMove && !['INPUT','SELECT','TEXTAREA'].includes(tag)){   // S17b：移动这一层
     if(ev.key==='Escape'){ setLvMove(false); ev.preventDefault(); return; }
     if(ev.key.startsWith('Arrow')){ const st=(ev.shiftKey?10:1)/30.48;
-      pushUndo('lvNudge');                                       // 连按 = 一步
+      pushUndo('lvNudge', false, true);                          // 连按 = 一步（S24c：连别的方案一起存）
       shiftCurLevel((ev.key==='ArrowLeft'?-st:ev.key==='ArrowRight'?st:0), (ev.key==='ArrowUp'?-st:ev.key==='ArrowDown'?st:0));
       ev.preventDefault(); return; }
   }
   if(meas.on && ev.key==='Escape' && !['INPUT','SELECT','TEXTAREA'].includes(tag)){ measEnd(); return; }
   if(proToolsOpen && ev.key==='Escape' && !['INPUT','SELECT','TEXTAREA'].includes(tag)){ setProTools(false); $('#btnMore').focus(); return; }
+  // S24c：方案面板开着 → Esc 关它（一层一层退：正在拖的家具先回原处，那一下归拖动）
+  if(ev.key==='Escape' && $('#layPanel').style.display!=='none' && !['INPUT','SELECT','TEXTAREA'].includes(tag) &&
+     !drag && !(three && three.dragging3D)){ $('#layBtn').click(); return; }
   const frEl=$('#firstRun');
   if(frEl && frEl.style.display!=='none' && ev.key==='Escape'){ closeFirstRun(); return; }
   // S23：镜头 / 视图 / 楼层键三个视图一个口径（输入框里、对话框开着时不作用；快捷键面板在窗口捕获阶段自己接管键盘）
@@ -5462,23 +5666,28 @@ function deleteLevelUI(id){
   if(photoFrozen('删楼层')) return false;
   if(DOC.levels.length<=1){ toast('只剩这一层，不能删', 4000); return false; }
   const n=state.items.filter(it=>itemLevel(it)===id).length;
+  // S24c：别的方案摆在这一层的家具（楼层是共用的：这一层没了，它们也没地方放）
+  const nO=Object.keys(LAY.other).reduce((a,k)=>a+LAY.other[k].filter(it=>itemLevel(it)===id).length, 0);
   if(_lvDelArm!==id){
     _lvDelArm=id;
-    toast('再点一次「删除这一层」确认：「'+levelName(id)+'」的墙 / 门窗 / 房间 / 点位 / 楼梯'+(n?'，以及摆在这一层的 '+n+' 件家具':'')+'会一起删掉（可撤销）', 6000);
+    toast('再点一次「删除这一层」确认：「'+levelName(id)+'」的墙 / 门窗 / 房间 / 点位 / 楼梯'+(n?'，以及摆在这一层的 '+n+' 件家具':'')+
+      (nO?'（别的方案在这一层还有 '+nO+' 件，也一起删）':'')+'会一起删掉（可撤销）', 6000);
     levelBarUI(); return false;
   }
   _lvDelArm='';
-  pushUndo('levelDel', true);
+  pushUndo('levelDel', true, true);
   const doomed=new Set(state.items.filter(it=>itemLevel(it)===id).map(it=>it.uid));   // 与上面数的 n 同一个口径
+  const keepO={}; for(const k of Object.keys(LAY.other)) keepO[k]=LAY.other[k].filter(it=>itemLevel(it)!==id);   // 删层之前判（删了之后 itemLevel 会把它们算到当前层）
   const elev0=curElev();
   const r=LV.removeLevel(DOC, id);
   if(!r.ok){ toast(r.reason||'删不了', 4000); return false; }
   state.items = state.items.filter(it=>!doomed.has(it.uid));
+  for(const k of Object.keys(keepO)) LAY.other[k]=keepO[k];
   CEIL_H = DOC.ceilingH || CEIL_H;
   invalidateEditLayer(); selected=null;
   saveGeo(); save(); geoDirty3D=true;
   build2D(); levelBarUI(); shiftCamElev(curElev()-elev0); if(is3D()) schedule3DRebuild();   // 删的是当前层 / 重排了标高 → 相机跟过去
-  toast('已删除「'+(r.removed? r.removed.name : '')+'」'+(n?'（连同 '+n+' 件家具）':''), 5000);
+  toast('已删除「'+(r.removed? r.removed.name : '')+'」'+(n||nO?'（连同 '+(n+nO)+' 件家具'+(nO?'，其中 '+nO+' 件在别的方案里':'')+'）':''), 5000);
   return true;
 }
 function setLevelCeilUI(cm){
@@ -6332,13 +6541,13 @@ function armRescale(){
   if(_calArm===null||Math.abs(_calArm-k)>1e-9){ _calArm=k;
     wMsg('整图将缩放 ×'+k.toFixed(4)+'（'+lenLabel(cur)+' → '+lenLabel(want)+'）；再点一次「整图按此缩放」确认', false); return; }
   _calArm=null;
-  pushUndo('rescale:'+k.toFixed(6), true);
+  pushUndo('rescale:'+k.toFixed(6), true, true);   // S24c：别的方案的家具也跟着搬 → 快照连它们一起存
   const info=rescaleDocPlan(k);
   /* bug 猎 #22：家具不在 ProjectDoc 里（它走 planner_v1:<id> 另一条存档），rescaleDocPlan 只摸 DOC。
      但它摆在墙边：整图缩放不把它一起搬走，它就留在旧坐标 —— ×2 后跑到墙外 / 房间错位。
      与洁具同一条规则：位置按同一个中心缩放，真实尺寸（w/d）与 rot 不动。 */
   let moved=0;
-  if(info.c) for(const it of state.items){
+  if(info.c) for(const it of state.items.concat(...Object.values(LAY.other))){   // S24c：所有方案（几何是共用的）
     const nx=FT2(info.c[0]+(it.x-info.c[0])*k), ny=FT2(info.c[1]+(it.y-info.c[1])*k);
     if(nx!==it.x||ny!==it.y){ it.x=nx; it.y=ny; moved++; }
   }
@@ -19834,6 +20043,11 @@ function updateTotals(){
   if(ghost)   tail.push(`${ghost} 件目录里没有（不计价）`);
   $('#totals').innerHTML = `采购 ${buy} 件 · 合计约 <b>${approx?'≈':''}${fmtMoney(sum, cur)}</b>` +
     (tail.length ? ` <span class="muted" style="font-size:11px">（${tail.join('、')}）</span>` : '');
+  /* S24c：方案面板开着 → 当前那一行跟着变（拖动时每帧都走这里：只改这一行）；换了币种 / 汇率 → 每一行都要重算 */
+  if($('#layPanel').style.display!=='none'){
+    if(_layStatsKey !== cur+'|'+fxRate()) layoutBarUI();
+    else { const r=$('#layList .layRow.on .lm'); if(r) r.textContent = buy+' 件 · '+(approx?'≈':'')+fmtMoney(sum, cur); }
+  }
 }
 function updatePlacedList(){
   const el2 = $('#plRows'); el2.innerHTML='';
@@ -20043,8 +20257,10 @@ function shoppingFloors(){
 function fmtMoney2(v, cur){ cur=cur||curNow(); return CUR_SYM[cur] + v.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2}); }
 function shoppingTitle(){
   const d=new Date(), ds=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
-  return (currentDoc().name || '我的户型') + ' · 采购清单 · ' + ds + ' · ' + CUR_SYM[curNow()];
+  return (currentDoc().name || '我的户型') + layoutTag(' · ') + ' · 采购清单 · ' + ds + ' · ' + CUR_SYM[curNow()];
 }
+/* S24c：不止一套方案时，导出的清单要说清是哪一套（不然两份清单分不出来） */
+function layoutTag(sep){ if(LAY.list.length<=1) return ''; const m=LAYOUTS.layoutById(LAY, LAY.cur); return m ? sep+m.name : ''; }
 /* 复制：Clipboard API → 退回隐藏 textarea + execCommand → 再不行就弹出文本框全选（不能「点了没反应」） */
 async function copyToClipboard(txt){
   try{ if(navigator.clipboard && navigator.clipboard.writeText){ await navigator.clipboard.writeText(txt); return true; } }catch(e){}
@@ -20074,7 +20290,7 @@ $('#plCsv').onclick=()=>{ $('#plCsv').blur();
   const csv=CATPACK.shoppingCSV(L, {currency:CUR_SYM[curNow()], floors:F});
   const a=document.createElement('a');
   a.href=URL.createObjectURL(new Blob([csv], {type:'text/csv;charset=utf-8'}));
-  a.download=(currentDoc().name || '我的户型')+'-采购清单.csv';
+  a.download=(currentDoc().name || '我的户型')+layoutTag('-')+'-采购清单.csv';
   document.body.appendChild(a); a.click();
   setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 2000);
   toast('采购清单已导出 CSV（'+L.rows.length+' 行 · '+L.buy+' 件'+(F.length?' · 地板 '+F.length+' 种':'')+'；Excel / Numbers 能直接打开）', 5000);
@@ -20478,6 +20694,17 @@ $('#stW').onchange=()=>{ const st=selStair(); if(!st) return;
 // S17：楼层条
 $('#lvAddUp').onclick=()=>{ $('#lvAddUp').blur(); addLevelUI('above'); };
 $('#lvAddDown').onclick=()=>{ $('#lvAddDown').blur(); addLevelUI('below'); };
+/* S24c：方案面板（右上角）。像楼层设置面板一样：按钮开 / 关，开着不碍事 —— 比较几套方案时可以一直开着来回点 */
+$('#layBtn').onclick=()=>{ $('#layBtn').blur(); const p=$('#layPanel'), open=p.style.display==='none';
+  p.style.display = open ? 'flex' : 'none'; $('#layBtn').setAttribute('aria-expanded', open ? 'true' : 'false'); disarmLayoutDel(); layoutBarUI(); };
+$('#layDup').onclick=()=>{ $('#layDup').blur(); addLayoutUI(true); };
+$('#layNew').onclick=()=>{ $('#layNew').blur(); addLayoutUI(false); };
+$('#layDel').onclick=()=>{ $('#layDel').blur(); deleteLayoutUI(); };
+$('#layName').onchange=()=>renameLayoutUI($('#layName').value);
+$('#layName').addEventListener('keydown', e=>{
+  if(e.key==='Enter'){ e.preventDefault(); $('#layName').blur(); }
+  else if(e.key==='Escape'){ e.preventDefault(); e.stopPropagation(); const m=LAYOUTS.layoutById(LAY, LAY.cur); $('#layName').value = m ? m.name : ''; $('#layName').blur(); }
+});
 $('#lvMore').onclick=()=>{ $('#lvMore').blur(); const p=$('#lvPanel'); p.style.display = p.style.display==='none' ? 'flex' : 'none'; _lvDelArm=''; levelBarUI(); };
 $('#lvDel').onclick=()=>{ $('#lvDel').blur(); deleteLevelUI(curLevelId()); };
 $('#lvName').onchange=()=>{ const v=$('#lvName').value.trim().slice(0,20); if(!v) return;
@@ -20793,9 +21020,10 @@ $('#wRestore').onclick=()=>{
     return;
   }
   if(docImported()){   // 旧存档（E26 之前导入写在内置键上）：整套回到内置户型
-    if(confirm('回到内置户型？（导入的户型与其中改动——包括放置的洁具——将丢弃，已摆家具也会清空；Ctrl+Z 可退回去）')){
-      pushUndo();
+    if(confirm('回到内置户型？（导入的户型与其中改动——包括放置的洁具——将丢弃，已摆家具也会清空'+(LAY.list.length>1?'（所有方案）':'')+'；Ctrl+Z 可退回去）')){
+      pushUndo(null, false, true);
       DOC=freshDoc(); state.items=[]; selected=null; uidSeq=1; lastImportInfo=null;
+      for(const k of Object.keys(LAY.other)) LAY.other[k]=[];   // S24c：几何整份换掉了，别的方案的坐标也全对不上
       showUnderlay=false; $('#btnUnderlay').classList.remove('on');
       showTrace=false; _traceCache=null; $('#btnTrace').classList.remove('on');
       measDropForGeometry();   // bug 猎 #48：几何整份换回内置，旧标注跟着作废
@@ -21209,7 +21437,7 @@ $('#btnUnderlay').onclick=()=>{ $('#btnUnderlay').blur();
   if(CALIB){ return; }               // 校准审计模式本身就带底图
   setUnderlay(!showUnderlay); };
 /* 原图 */
-$('#btnRefPhoto').onclick=()=>{ const p=$('#refPhoto'); p.style.display = p.style.display==='block'?'none':'block'; };
+$('#btnRefPhoto').onclick=()=>{ const p=$('#refPhoto'); p.style.display = p.style.display==='block'?'none':'block'; $('#stage').classList.toggle('refOn', p.style.display==='block'); };
 /* S5：DXF 导入（解析 → 映射 → 一次性确认 → applyImportedDoc） */
 const escHtml=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let _dxfPending = null;   // {dxf, doc, info}：待确认的导入结果（可换单位重算）
@@ -21435,6 +21663,8 @@ function shiftCurLevel(dx, dy){
   if(!dx && !dy) return;
   LV.translateLevelContent(DOC, dx, dy);
   for(const it of state.items) if(onCurLevel(it)){ it.x=FT4(it.x+dx); it.y=FT4(it.y+dy); }
+  // S24c：几何是所有方案共用的 —— 别的方案摆在这一层的家具也得跟着这一层走，不然切过去全错位
+  for(const k of Object.keys(LAY.other)) for(const it of LAY.other[k]) if(onCurLevel(it)){ it.x=FT4(it.x+dx); it.y=FT4(it.y+dy); }
   /* 量尺寸标注跨的是这一层的几何（切层就作废，见 measDropForGeometry）：跟着一起搬，读数不变（与整图缩放 #48 同一条规则，bug 猎 #72）。
      特征线不用动：它存的是图片像素坐标，跟着底图的偏移走（以前在这里清了缓存，搬一下特征线就没了、按钮却还亮着，bug 猎 #73） */
   const mv=(p)=> p ? [FT4(p[0]+dx), FT4(p[1]+dy)] : p;
@@ -21676,7 +21906,7 @@ async function rasterizePdfToImg(page, vp1, name){
 /* 导入导出 */
 $('#btnSaveJson').onclick=()=>{
   const blob = new Blob([JSON.stringify({items:state.items, customCat:state.customCat},null,1)],{type:'application/json'});
-  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='家具布局.json'; a.click();
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='家具布局'+layoutTag('-')+'.json'; a.click();   // S24c：不止一套方案时文件名带上是哪一套
 };
 $('#btnLoadJson').onclick=()=>$('#fileJson').click();
 $('#fileJson').addEventListener('change', ev=>{
@@ -21705,7 +21935,11 @@ $('#fileJson').addEventListener('change', ev=>{
     }
     const before = state.items.length, beforeCustom = state.customCat.length;
     pushUndo('loadLayout', true);
-    state.items = s.items; state.customCat = customIn;
+    /* S24c：导入布局只替换**当前方案**的家具。自定义目录是所有方案共用的：别的方案还在用的自定义件留着
+       （以前整份替换没问题 —— 那时一份户型只有一套家具；现在替换掉，别的方案里的自定义件就成了「目录里没有」） */
+    const refO = new Set(); for(const k of Object.keys(LAY.other)) for(const it of LAY.other[k]) if(it && it.ref) refO.add(it.ref);
+    const inIds = new Set(customIn.map(c=>c && c.id));
+    state.items = s.items; state.customCat = customIn.concat(state.customCat.filter(c=>refO.has(c.id) && !inIds.has(c.id)));
     /* S17（ADR-0007 第 8 条）：楼层标记对不上这份户型的件 → 落到当前层（并说出来）。
        不就地改的话它会「跟着当前层走」，以后加出同名楼层时又会突然跳过去。 */
     let lvFix = 0;
@@ -22078,6 +22312,7 @@ if(location.search.indexOf('testgeo')>=0){  // 无痕测试种子（不写入存
 }
 build2D();
 if(!load()){ state.items=[]; refresh(); } else { refresh(); }   // 默认空白户型，不预置家具
+layoutBarUI();
 buildCatalog();
 if(typeof syncPTUI==='function') syncPTUI();
 if(typeof syncCurUI==='function') syncCurUI();
