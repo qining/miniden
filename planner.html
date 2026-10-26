@@ -188,6 +188,15 @@
   .panelHead .xbtn:hover{color:var(--fg); border-color:var(--accent);}
   #catalog .search{padding:10px; border-bottom:1px solid var(--line);}
   #catalog .search input{width:100%;}
+  /* S24d：按尺寸筛（搜索框下面一行；空着 = 不限） */
+  #catalog .search #catSize{display:flex; flex-wrap:wrap; align-items:center; gap:4px 5px; margin-top:7px; font-size:12px; color:var(--muted);}
+  #catSize label{display:flex; align-items:center; gap:3px; white-space:nowrap;}
+  #catalog .search #catSize input{width:50px; padding:3px 4px;}
+  #catSize .btn{padding:2px 7px; font-size:11px;}
+  #catSize .btn:disabled{opacity:.38; cursor:default;}
+  #catalog .search #catSize.on input{border-color:var(--accent);}
+  #catSizeN{margin-left:auto; white-space:nowrap;}
+  .catEmpty{padding:18px 14px; color:var(--muted); font-size:12px; line-height:1.7;}
   #catList{flex:1; overflow-y:auto; padding-bottom:20px;}
   /* 卡片网格：挑家具靠的是看图，列表里塞小图根本挑不动 */
   .catGrid{display:grid; grid-template-columns:repeat(auto-fill, minmax(min(150px, calc(50% - 6px)), 1fr));   /* S24a：窄目录（笔记本屏幕）也保持两列，不变成一列大卡片 */
@@ -690,7 +699,15 @@
   <div id="catalog">
     <div class="panelHead"><span class="ttl">家具目录</span>
       <button class="xbtn" id="catCollapse" title="收起面板">收起 ◂</button></div>
-    <div class="search"><input id="catSearch" type="text" placeholder="搜索家具（如 poang→POÄNG / 沙发）"></div>
+    <div class="search"><input id="catSearch" type="text" placeholder="搜索家具（如 poang→POÄNG / 沙发）">
+      <div id="catSize" title="按尺寸筛：只看放得下的（空着 = 不限）">
+        <label>宽 ≤ <input id="catW" type="number" min="1" step="1"></label>
+        <label>深 ≤ <input id="catD" type="number" min="1" step="1"></label>
+        <span id="catSizeU">cm</span>
+        <button class="btn" id="catSizeSel" title="填入选中那件家具的宽 / 深：找「和它一样大以内」的（换一件不会更占地方）">＝选中</button>
+        <button class="btn" id="catSizeClr" title="清除尺寸筛选">×</button>
+        <span id="catSizeN"></span>
+      </div></div>
     <div id="catList"></div>
     <div id="customForm">
       <h3>＋ 自定义家具（网上看中的）</h3>
@@ -21855,20 +21872,52 @@ function observeThumbs(container){
    否则收起第一组、一切币种它又自己弹回来。
    搜索期间全展开是临时的（搜索结果当然都要露出来），不写进这里。 */
 const catOpenState = new Map();
-function buildCatalog(filter=''){
+const catSize = {w:null, d:null};   // S24d：cm；null = 不限
+function catSizeOk(c){ return (catSize.w==null || (+c.w||0) <= catSize.w + 1e-6) && (catSize.d==null || (+c.d||0) <= catSize.d + 1e-6); }
+function catSizeFromUI(){
+  const f=(id)=>{ const v=$(id).value, n=+v; return (v!=='' && n>0) ? Math.round(doorLenFromUI(n)*30.48*10)/10 : null; };
+  catSize.w=f('#catW'); catSize.d=f('#catD');
+}
+function catSizeText(){
+  const L=(cm)=>doorLenToUI(cm2ft(cm))+' '+doorLenUnit();
+  return [catSize.w!=null ? '宽 ≤ '+L(catSize.w) : '', catSize.d!=null ? '深 ≤ '+L(catSize.d) : ''].filter(Boolean).join('、');
+}
+function catSizeUI(){
+  const box=$('#catSize'); if(!box) return;
+  $('#catSizeU').textContent=doorLenUnit();
+  for(const [k, id] of [['w','#catW'],['d','#catD']]){ const el=$(id); if(document.activeElement!==el) el.value = catSize[k]==null ? '' : doorLenToUI(cm2ft(catSize[k])); }
+  const on = catSize.w!=null || catSize.d!=null;
+  box.classList.toggle('on', on); $('#catSizeClr').disabled = !on;
+  const it = selected!=null ? state.items.find(i=>i.uid===selected) : null;
+  $('#catSizeSel').disabled = !(it && itemSpec(it));
+}
+/* bug 猎 #94：不传就读搜索框。以前缺省 = ''：换单位 / 撤销 / 切户型 / 导入布局 / 目录包装载…之后重建目录时丢掉搜索词——
+   搜索框里还写着「沙发」，目录却显示全部（10 处调用不传参） */
+function buildCatalog(filter){
+  if(filter==null) filter = $('#catSearch') ? $('#catSearch').value : '';
   const listEl = $('#catList'); listEl.innerHTML='';
   const cats = {};
   const all = catalogAll();
   const q = foldText(String(filter).trim());
+  let nShown = 0;
   for(const c of all){
     if(q && !(foldText(c.name).includes(q) || foldText(c.cat).includes(q))) continue;
-    (cats[c.cat] = cats[c.cat]||[]).push(c);
+    if(!catSizeOk(c)) continue;   // S24d：按尺寸筛
+    (cats[c.cat] = cats[c.cat]||[]).push(c); nShown++;
+  }
+  const sized = catSize.w!=null || catSize.d!=null;
+  $('#catSizeN').textContent = (q || sized) ? nShown+' 件' : '';
+  if(!nShown && (q || sized)){
+    const em=document.createElement('div'); em.className='catEmpty';
+    em.textContent = '没有'+(q ? '名字里带「'+String(filter).trim()+'」' : '')+(q && sized ? '、' : '')+(sized ? catSizeText()+' ' : '')+'的家具'+
+      (sized ? '——把尺寸放宽一点，或点「×」清掉尺寸' : '——换个词试试（英文名、中文名、分类都能搜）');
+    listEl.appendChild(em);
   }
   let first=true;
   const _ordered = CAT_ORDER.filter(k=>cats[k]);
   const _rest = Object.keys(cats).filter(k=>!_ordered.includes(k));
   for(const cat of [..._ordered, ..._rest]){
-    const open = filter ? true : catOpenState.has(cat) ? catOpenState.get(cat) : first;
+    const open = (q || sized) ? true : catOpenState.has(cat) ? catOpenState.get(cat) : first;
     const grp = document.createElement('div'); grp.className='catGroup'+(open?' open':''); first=false;
     const h = document.createElement('h3'); h.innerHTML=`${cat}<span>▾</span>`;
     h.onclick=()=>catOpenState.set(cat, grp.classList.toggle('open'));
@@ -22096,6 +22145,7 @@ function updatePlacedList(){
 // 否则同一时刻框里显示 720、滑块显示 0，再按 +90° 又跳到 90（bug 猎 #43）。
 function normDeg(x){ const v = (+x || 0) % 360; return v < 0 ? v + 360 : v; }
 function updateProps(){
+  catSizeUI();   // S24d：「＝选中」只在选中一件时能点
   // S20：多选 —— 单件字段收起，换成「已选 N 件」+ 合计 + 整组按钮
   const gIds = selUids();
   $('#pGroup').style.display = gIds.length>1 ? 'flex' : 'none';
@@ -22392,6 +22442,7 @@ $('#cfAdd').onclick=()=>{
   state.customCat.push({id, cat:'自定义', name, w, d, h, color:$('#cfColor').value, kind:'box', img:$('#cfImg').value.trim()||null, price:0});
   // 刚造的这件排在最后一组，而新分组默认折叠——不展开并滚过去，用户在目录里根本找不着它（轮㉑）
   catOpenState.set('自定义', true);
+  if(!catSizeOk({w, d})){ catSize.w=null; catSize.d=null; $('#catW').value=''; $('#catD').value=''; catSizeUI(); }   // S24d：尺寸筛挡住了刚造的这件 → 清掉（轮㉑：刚造的必须看得见）
   buildCatalog($('#catSearch').value);
   const grpNew = [...$('#catList').querySelectorAll('.catGroup')]
     .find(g=>{ const h3=g.querySelector('h3'); return h3 && h3.textContent.indexOf('自定义')>=0; });
@@ -22400,6 +22451,17 @@ $('#cfAdd').onclick=()=>{
   $('#cfName').value=''; $('#cfW').value=''; $('#cfD').value=''; $('#cfH').value=''; $('#cfImg').value='';
 };
 $('#catSearch').addEventListener('input', e=>buildCatalog(e.target.value));
+/* S24d（research/13 U9）：目录按尺寸筛 ——「这面墙 2m，哪些沙发放得下」「换一件，不比现在这件大」。
+   内部按 cm 存；框里的数跟着单位走（cm / in，与墙长、门宽同一个口径）。不进存档（是一次挑选，不是这份户型的数据） */
+$('#catW').addEventListener('input', ()=>{ catSizeFromUI(); catSizeUI(); buildCatalog(); });
+$('#catD').addEventListener('input', ()=>{ catSizeFromUI(); catSizeUI(); buildCatalog(); });
+$('#catSizeClr').onclick=()=>{ $('#catSizeClr').blur(); catSize.w=null; catSize.d=null; $('#catW').value=''; $('#catD').value=''; catSizeUI(); buildCatalog(); };
+$('#catSizeSel').onclick=()=>{ $('#catSizeSel').blur();
+  const it=state.items.find(i=>i.uid===selected), sp=it && itemSpec(it);
+  if(!sp){ toast('先在图上选中一件家具，再点「＝选中」'); return; }
+  catSize.w=+sp.w||null; catSize.d=+sp.d||null; $('#catW').value=''; $('#catD').value='';
+  catSizeUI(); buildCatalog();
+  toast('目录只看'+catSizeText()+'的（和「'+sp.name+'」一样大以内）：换哪件都不会更占地方', 4000); };
 $('#curUSD').onclick=()=>{ setCurrency('usd'); $('#curUSD').blur(); };
 $('#curCAD').onclick=()=>{ setCurrency('cad'); $('#curCAD').blur(); };
 $('#fxRate').addEventListener('input', e=>{
@@ -22552,6 +22614,7 @@ document.querySelectorAll('#unitSeg button').forEach(b=>{
   b.onclick=()=>{ state.unit=b.dataset.u; b.blur();
     document.querySelectorAll('#unitSeg button').forEach(x=>x.classList.toggle('on',x===b));
     build2D();                          // 房间尺寸标注写在平面图里，只重画家具是不够的
+    catSizeUI();                        // S24d：尺寸筛的框里的数跟着单位换（内部按 cm 存，不变）
     buildCatalog();                     // 目录卡片的尺寸文字同样走 fmtLen —— 不重建就停在旧单位（E2E 抓到）
     updateProps(); if(wallEdit.on) updateWallBarFromSel(); save(); };
 });
