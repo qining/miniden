@@ -12374,6 +12374,189 @@ async function runPBTest() {
       );
     }
 
+    /* ===== 49. S24f（research/13 U12）：高家具挡窗 = 黄框提示（不是红：挡窗不是「放不下」） ===== */
+    {
+      await pbReset();
+      if (wallEdit.on) Q('#btnWallEdit').click();
+      await tick();
+      const p49Plans = PLAN_REG.plans.length;
+      Q('#btnPlanNew').click();
+      await tick();
+      const p49Plan = PLAN_ID;
+      const fp49 = floorPts();
+      const X =
+          Math.min.apply(
+            null,
+            fp49.map((p) => p[0])
+          ) + 1,
+        Y =
+          Math.min.apply(
+            null,
+            fp49.map((p) => p[1])
+          ) + 1;
+      const wd = cmToWd(15);
+      // 北墙中间一扇 6ft 的窗（窗台 90cm、窗头 210cm）
+      pushUserWall(X, Y, X + 5, Y, 'w', wd);
+      const win = pushUserWindow(X + 5, Y, X + 11, Y, wd);
+      win.sill = 90 / 30.48;
+      win.head = 210 / 30.48;
+      pushUserWall(X + 11, Y, X + 16, Y, 'w', wd);
+      pushUserWall(X + 16, Y, X + 16, Y + 12, 'w', wd);
+      pushUserWall(X + 16, Y + 12, X, Y + 12, 'w', wd);
+      pushUserWall(X, Y + 12, X, Y, 'w', wd);
+      geoChanged();
+      fit2DToContent();
+      await tick();
+      const face = Y + wd / S / 2; // 窗的室内墙皮
+      const mk = (name, w, d, h, x, y, extra) => {
+        const it = Object.assign(
+          { uid: uidSeq++, custom: { name, w, d, h, color: '#7d6e5c' }, x, y, rot: 0 },
+          extra || {}
+        );
+        state.items.push(it);
+        return it;
+      };
+      const wk = (it) => furnWarn.get(it.uid) || [];
+      const rk = (it) => furnWhy.get(it.uid) || [];
+      const gOf = (it) => pbSvg.querySelector('g.furn[data-uid="' + it.uid + '"]');
+      const strokeOf = (it) => {
+        const g = gOf(it),
+          sh = g && g.querySelector('rect,circle');
+        return sh ? sh.getAttribute('stroke') : '';
+      };
+
+      /* 49.1 书柜（高 200）贴着窗放 = 黄；窗下的矮柜（高 75）不算；书柜挪开 2ft 不算 */
+      const book = mk('测试书柜', 80, 30, 200, X + 7, face + 15 / 30.48 + 0.05);
+      const low = mk('测试矮柜', 80, 45, 75, X + 9.8, face + 22.5 / 30.48 + 0.05); // 与书柜不重叠，沿窗挡住 2.5ft，但比窗台还矮
+      selOnly(book.uid);
+      drawFurniture();
+      await tick();
+      const line = gDoorBlk ? gDoorBlk.querySelector('.winBlk[data-win="' + win.id + '"]') : null;
+      const t1 =
+        (gOf(book) && gOf(book).querySelector('title') ? gOf(book).querySelector('title').textContent : '') || '';
+      const panel1 = Q('#pClear').textContent,
+        col1 = Q('#pClear').style.color;
+      const blocked =
+        wk(book).includes('blocksWin') &&
+        !rk(book).length &&
+        strokeOf(book) === '#e8b93c' &&
+        gOf(book).classList.contains('blocksWin') &&
+        /挡在窗前/.test(t1) &&
+        !!line &&
+        /挡在窗前/.test(panel1) &&
+        !!col1;
+      const lowOk = !wk(low).length && !rk(low).length;
+      const wk1 = JSON.stringify(wk(book)),
+        st1 = strokeOf(book);
+      book.y = face + 15 / 30.48 + 2;
+      drawFurniture();
+      await tick();
+      const awayOk = !wk(book).length && !(gDoorBlk && gDoorBlk.querySelector('.winBlk'));
+      T(
+        'pb-s24f-tall-in-front-of-window-is-yellow',
+        blocked && lowOk && awayOk,
+        '书柜贴窗：黄=' +
+          blocked +
+          '（' +
+          wk1 +
+          ' · 描边 ' +
+          st1 +
+          ' · 窗上黄线=' +
+          !!line +
+          ' · 面板「' +
+          panel1 +
+          '」）· 窗下矮柜不算=' +
+          lowOk +
+          ' · 书柜挪开 2ft 不算=' +
+          awayOk
+      );
+
+      /* 49.2 挂在窗头以上的搁板不算；大绿植不算（摆在窗边是故意的） */
+      book.y = face + 15 / 30.48 + 0.05;
+      const shelf = mk('测试搁板', 120, 25, 20, X + 8, face + 12.5 / 30.48 + 0.05, { z: 215 / 30.48 });
+      const plant = mk('测试大绿植', 60, 60, 200, X + 10, face + 30 / 30.48 + 0.05);
+      plant.custom.kind = 'plant';
+      book.x = X + 6.4; // 让开搁板（高度不重叠本来也不算撞，挪开只是让断言读得清）
+      drawFurniture();
+      await tick();
+      T(
+        'pb-s24f-shelf-above-and-plant-not-flagged',
+        !wk(shelf).length && !wk(plant).length && wk(book).includes('blocksWin'),
+        '窗头以上的搁板 ' +
+          JSON.stringify(wk(shelf)) +
+          ' · 绿植 ' +
+          JSON.stringify(wk(plant)) +
+          ' · 书柜照旧 ' +
+          JSON.stringify(wk(book))
+      );
+      state.items = state.items.filter((i) => i !== shelf && i !== plant && i !== low);
+
+      /* 49.3 落地窗：沙发（高 85）挡不到一半 = 不算；衣柜（高 200）= 黄 */
+      win.fullHeight = true;
+      geoChanged();
+      book.x = X + 15; // 挪到窗外那段墙前（不挡窗）
+      book.y = Y + 6;
+      const sofa = mk('测试沙发', 220, 90, 85, X + 8, face + 45 / 30.48 + 0.05);
+      drawFurniture();
+      await tick();
+      const sofaOk = !wk(sofa).length;
+      sofa.y = Y + 8;
+      const ward = mk('测试衣柜', 150, 60, 200, X + 8, face + 30 / 30.48 + 0.05);
+      drawFurniture();
+      await tick();
+      T(
+        'pb-s24f-full-height-window',
+        sofaOk && wk(ward).includes('blocksWin'),
+        '落地窗前的沙发不算=' + sofaOk + ' · 衣柜 ' + JSON.stringify(wk(ward))
+      );
+
+      /* 49.4 红优先：既挡窗又和别的件重叠 = 红框，悬停两条原因都写 */
+      const box = mk('测试箱子', 60, 40, 60, ward.x + 0.6, ward.y);
+      drawFurniture();
+      await tick();
+      const tt =
+        (gOf(ward) && gOf(ward).querySelector('title') ? gOf(ward).querySelector('title').textContent : '') || '';
+      T(
+        'pb-s24f-red-wins-both-listed',
+        rk(ward).includes('overlap') &&
+          wk(ward).includes('blocksWin') &&
+          strokeOf(ward) === '#e05656' &&
+          /重叠/.test(tt) &&
+          /挡在窗前/.test(tt),
+        '描边 ' + strokeOf(ward) + ' · 悬停「' + tt + '」'
+      );
+      state.items = state.items.filter((i) => i !== box);
+      drawFurniture();
+
+      /* 49.5（顺手）选中框下的尺寸字：件转过半圈时翻正（以前跟着件一起倒过来） */
+      ward.rot = 180;
+      selOnly(ward.uid);
+      drawFurniture();
+      await tick();
+      const dl = pbSvg.querySelector('.selBox .selDims');
+      const tr = dl ? dl.getAttribute('transform') || '' : '';
+      ward.rot = 0;
+      drawFurniture();
+      await tick();
+      const dl0 = pbSvg.querySelector('.selBox .selDims');
+      T(
+        'pb-s24f-selection-dims-upright',
+        /^rotate\(180 /.test(tr) && !!dl0 && !dl0.getAttribute('transform'),
+        '转 180° 时尺寸字 transform=「' + tr + '」· 0° 时=「' + (dl0 ? dl0.getAttribute('transform') : '?') + '」'
+      );
+
+      /* 收尾 */
+      Q('#btnPlanDel').click();
+      await tick();
+      Q('#btnPlanDel').click();
+      await tick();
+      T(
+        'pb-s24f-clean-exit',
+        PLAN_ID !== p49Plan && PLAN_REG.plans.length === p49Plans,
+        'plans ' + p49Plans + '→' + PLAN_REG.plans.length
+      );
+    }
+
     /* ===== 收尾：页面不得有未捕获异常 ===== */
     T('pb-no-page-errors', window.__ERRS.length === 0, window.__ERRS.slice(0, 3).join(' || '));
   } catch (e) {
