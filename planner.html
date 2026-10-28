@@ -6106,6 +6106,46 @@ function hitsFixed(spec, corners, vs, fobs){
   return fobs.some(o=> vs[0] < o.z1-0.02 && vs[1] > o.z0+0.02 && !(tuckable && o.counter) && GEO_PTS.convexClipArea(o.poly, corners) > FX_TOL);
 }
 const furnWhy = new Map();   // uid → 红框的原因（drawFurniture 算，检视面板读）
+/* S24f（research/13 U12）：高家具挡窗 = 黄框提示（不是红：挡窗不是「放不下」，是「这样摆会挡光 / 挡视线」）。
+   判据：窗的室内一侧、离墙皮 WIN_FRONT 以内的那一条里有这件；它挡住窗洞高度的一半以上（离地 + 件高 与 窗台–窗头 的重叠），
+   沿窗方向挡住 ≥ 窗长的 40% 或 ≥ 45cm。所以书柜 / 衣柜 / 高柜挡窗 = 黄；窗下的书桌、矮柜、落地窗前的沙发不算；
+   挂在窗头以上的搁板不算。灯、地毯、绿植不算（绿植摆在窗边是故意的）。高度按 3D 建窗的同一组数（缺省窗台 67cm、窗头 226cm，落地窗 0 到天花）。 */
+const furnWarn = new Map();  // uid → 黄框的原因
+const WARN_WHY = {blocksWin:'挡在窗前（比窗台高出一大截：挡光、挡视线）'};
+const WIN_FRONT = 1.0;       // ft：窗前多深算「挡在窗前」（≈30cm）
+let _winFronts=null, _winFrontsKey='';
+function windowFronts(){
+  if(CALIB) return [];
+  const segs=effWalls().filter(s=>s.t==='g');
+  let key=''; try{ key=JSON.stringify([segs.map(s=>[s._id, s.x1, s.y1, s.x2, s.y2, s.wd]), DOC.windows, CEIL_H, DOC.level||'']); }catch(e){ return []; }
+  if(_winFronts && key===_winFrontsKey) return _winFronts;
+  const out=[];
+  for(const s of segs){
+    const w=entById(s._id), f=segFrame(s); if(f.L<0.3) continue;
+    const head = (w && w.fullHeight) ? CEIL_H : Math.min(w && w.head!=null ? w.head : 7.4, CEIL_H-0.25);
+    const sill = (w && w.fullHeight) ? 0 : Math.min(w && w.sill!=null ? w.sill : 2.2, Math.max(0, head-1));
+    const k=curtainSide(w || {}, s), nx=f.nx*k, ny=f.ny*k, o0=f.h, o1=f.h+WIN_FRONT;
+    const P=(t, o)=>[s.x1+f.ux*t+nx*o, s.y1+f.uy*t+ny*o];
+    out.push({id:s._id, seg:s, L:f.L, u:[f.ux, f.uy], p0:[s.x1, s.y1], sill, head,
+      poly:[P(0, o0), P(f.L, o0), P(f.L, o1), P(0, o1)], face:[P(0, o0+0.03), P(f.L, o0+0.03)]});
+  }
+  _winFrontsKey=key; _winFronts=out; return out;
+}
+/* 这件挡住了哪几扇窗（corners = 占地四角，vs = 离地高度区间） */
+function blocksWindows(spec, corners, vs, fronts){
+  if(!fronts.length || isLight(spec) || spec.kind==='rug' || spec.kind==='plant') return [];
+  const hit=[];
+  for(const W of fronts){
+    const span=W.head-W.sill; if(!(span>0.3)) continue;
+    const cov=(Math.min(vs[1], W.head)-Math.max(vs[0], W.sill))/span; if(cov < 0.5) continue;
+    if(GEO_PTS.convexClipArea(W.poly, corners) < 0.05) continue;
+    let t0=Infinity, t1=-Infinity;
+    for(const c of corners){ const t=(c[0]-W.p0[0])*W.u[0]+(c[1]-W.p0[1])*W.u[1]; if(t<t0) t0=t; if(t>t1) t1=t; }
+    const along=Math.min(t1, W.L)-Math.max(t0, 0);
+    if(along >= Math.min(0.4*W.L, 45/30.48) - 1e-6) hit.push(W);
+  }
+  return hit;
+}
 function drawFurniture(){
   if(!gFurn) return;
   gFurn.innerHTML=''; gSel.innerHTML='';
@@ -6156,8 +6196,9 @@ function drawFurniture(){
   const obsP = CALIB ? null : placementObstacles();
   const sweeps = CALIB ? [] : doorSweeps();
   const fobs = CALIB ? [] : fixedObstacles();
-  const blockedSweeps = [];
-  furnWhy.clear();
+  const blockedSweeps = [], blockedWins = [];
+  const fronts = CALIB ? [] : windowFronts();
+  furnWhy.clear(); furnWarn.clear();
   const tuck=(x,y)=>['chair','stool','officeChair'].includes(x)&&['tableRound','tableRect','desk','coffeeTable'].includes(y);
   for(let i=0;i<boxes.length;i++){
     const a=boxes[i]; if((a.spec.kind==='rug')) continue;
@@ -6181,12 +6222,17 @@ function drawFurniture(){
     /* 离地框把「顶 ≤ 层高」夹住了，但改低层高 / 放进一件比层高还高的柜子 / 改自定义件的高度都绕得过去：
        3D 里它就穿出天花、戳进楼上的地板（bug 猎 #71）。灯具按天花定位，不算 */
     if(c && !CALIB && vSpanIt(a.it, a.spec)[1] > CEIL_H + CEIL_TOL) why.push('tooTall');
-    if(why.length){
+    const warn=[];
+    if(c && fronts.length){ const hw=blocksWindows(a.spec, c, vSpanIt(a.it, a.spec), fronts);
+      if(hw.length){ warn.push('blocksWin'); for(const W of hw) if(!blockedWins.includes(W)) blockedWins.push(W); } }
+    if(why.length || warn.length){
       const g=gFurn.querySelector(`[data-uid="${a.it.uid}"]`);
-      if(g) g.querySelector('rect,circle').setAttribute('stroke','#e05656'),
-            g.querySelector('rect,circle').setAttribute('stroke-width',2.5);
-      if(g){ for(const k of why) g.classList.add(k); el('title',{},g).textContent=why.map(k=>BLOCK_WHY[k]).join('；'); }
-      furnWhy.set(a.it.uid, why);
+      const sh=g && g.querySelector('rect,circle');
+      if(sh){ sh.setAttribute('stroke', why.length ? '#e05656' : '#e8b93c'); sh.setAttribute('stroke-width', why.length ? 2.5 : 2.2); }
+      if(g){ for(const k of why.concat(warn)) g.classList.add(k);
+        el('title',{},g).textContent=why.map(k=>BLOCK_WHY[k]).concat(warn.map(k=>'⚠ '+WARN_WHY[k])).join('；'); }
+      if(why.length) furnWhy.set(a.it.uid, why);
+      if(warn.length) furnWarn.set(a.it.uid, warn);
     }
   }
   // S18：被挡住的门扇 —— 整个 90° 扇形画红（2D 门符号只画半开 45°，挡住的往往在另一半）
@@ -6194,6 +6240,8 @@ function drawFurniture(){
     gDoorBlk.innerHTML='';
     for(const d of blockedSweeps)
       el('polygon',{points:d.poly.map(p=>(p[0]*S)+','+(p[1]*S)).join(' '), fill:'rgba(224,86,86,0.14)', stroke:'#e05656', 'stroke-width':1.4, 'stroke-dasharray':'4 3', class:'doorBlk', 'data-door':d.id}, gDoorBlk);
+    for(const W of blockedWins)   // S24f：被挡住的窗 —— 室内一侧一道黄虚线
+      el('line',{x1:W.face[0][0]*S, y1:W.face[0][1]*S, x2:W.face[1][0]*S, y2:W.face[1][1]*S, stroke:'#e8b93c', 'stroke-width':2.4, 'stroke-dasharray':'6 4', 'stroke-linecap':'round', class:'winBlk', 'data-win':W.id}, gDoorBlk);
   }
   // 选中框（S20：选择集里每件一个虚线框；单选才有旋转手柄与尺寸标注 —— 整组转走 R / 面板「整组 +90°」）
   const selIds = selUids(), multi = selIds.length>1;
@@ -6209,8 +6257,11 @@ function drawFurniture(){
         const rh = el('circle',{cx:0, cy:(-df/2)*S-16, r:6, fill:'#4c8dff', class:'rotHandle','data-uid':it.uid},gs);
         el('line',{x1:0,y1:-df/2*S-4,x2:0,y2:-df/2*S-10,stroke:'#4c8dff','stroke-width':1.5},gs);
         // 尺寸标注
-        const lbl = el('text',{x:0, y:df/2*S+16, 'text-anchor':'middle','font-size':11, fill:'#7fb8ff'},gs);
+        const lbl = el('text',{x:0, y:df/2*S+16, 'text-anchor':'middle','font-size':11, fill:'#7fb8ff', class:'selDims'},gs);
         lbl.textContent = spec ? fmtDims(spec) : '目录里没有这件';
+        /* 转过半圈（90°–270°）时跟件名一样翻 180°，不然字是倒着的（绕字带中线翻：还在原来那一条位置上） */
+        const rr=((it.rot%360)+360)%360;
+        if(rr>90 && rr<270) lbl.setAttribute('transform', 'rotate(180 0 '+(df/2*S+16-3.5).toFixed(2)+')');
       }
       for(const c of obbCorners(it, gd)){ gx0=Math.min(gx0,c[0]); gy0=Math.min(gy0,c[1]); gx1=Math.max(gx1,c[0]); gy1=Math.max(gy1,c[1]); }
       // S18：拖动中显示四条边到迎面墙皮的距离（≤ 12ft）；贴上的那面墙皮描绿。松手就消失（拖整组时按被拖的那件标）
@@ -22286,8 +22337,10 @@ function updateProps(){
   const a=$('#pUrl'); if(s.url){a.href=s.url; a.textContent='打开产品页 ↗';} else {a.removeAttribute('href'); a.textContent='—';}
   // 离墙距离提示；S18：红框的原因写在这里（悬停提示在触屏 / 不悬停时看不见）
   const why = furnWhy.get(it.uid) || [];
-  $('#pClear').textContent = `位置 (${it.x.toFixed(2)}, ${it.y.toFixed(2)}) ft` + (why.length ? ' · ⚠ '+why.map(k=>BLOCK_WHY[k]).join('；') : '');
-  $('#pClear').style.color = why.length ? '#ff8a80' : '';
+  const warnK = furnWarn.get(it.uid) || [];   // S24f：黄的提示（挡窗）排在红的原因后面
+  $('#pClear').textContent = `位置 (${it.x.toFixed(2)}, ${it.y.toFixed(2)}) ft` + (why.length ? ' · ⚠ '+why.map(k=>BLOCK_WHY[k]).join('；') : '') +
+    (warnK.length ? ' · ⚠ '+warnK.map(k=>WARN_WHY[k]).join('；') : '');
+  $('#pClear').style.color = why.length ? '#ff8a80' : warnK.length ? '#f0c56a' : '';
 }
 /* S19：离地。提交式（change）：一次改动一步撤销；顶不能高过这一层的天花；重打同一个数不占步 */
 $('#pZ').addEventListener('change', e=>{
