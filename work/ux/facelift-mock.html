@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>MiniDen facelift 设计稿（静态原型，不依赖 app.html）</title>
+<!--
+  状态用 hash 切换：#furn（摆家具 · 选中家具，缺省）· #deco（装修 · 选中房间）· #build（改户型 · 选中窗）
+  · #build3d（改户型 · 在 3D 里，提示回 2D）· #list（摆家具 · 清单标签）· #empty（空白户型空状态）· #menus（文件 / 设置 / 帮助 菜单展开）
+  只是设计稿：所有数据是写死的示意。规格见 docs/design/facelift.md
+-->
+<style>
+:root{
+  /* 现有变量（app.html :root，值不变） */
+  --bg:#1b1815; --panel:#232019; --panel2:#2c2822; --line:#332f29;
+  --text:#ece7df; --muted:#a89f92; --accent:#d9a05b; --ok:#5cbf72; --danger:#e06c5a;
+  --stage-bg:#141210; --field-bg:#141210; --on-fg:#141210; --warn:#e0b341;
+  --hint-bg:rgba(27,24,21,.8); --totals-bg:rgba(27,24,21,.85);
+  --sp-1:4px; --sp-2:8px; --sp-3:12px; --sp-4:16px; --sp-6:24px; --r-1:6px; --r-2:10px;
+  --fs-1:12px; --fs-2:13px; --fs-3:14px; --fs-4:16px;
+  /* facelift 新增（规格 §6.1） */
+  --accent-hover:#e4b06f; --accent-soft:rgba(217,160,91,.14); --accent-line:rgba(217,160,91,.55);
+  --sel-bg:#3b342b; --sel-text:#f6f1e9;
+  --danger-soft:rgba(224,108,90,.12); --danger-line:rgba(224,108,90,.45);
+  --warn-soft:rgba(224,179,65,.10); --warn-line:rgba(224,179,65,.35);
+  --ok-soft:rgba(92,191,114,.12);
+  --raise:#2f2a23; --menu-bg:#25211b; --shadow-pop:0 10px 36px rgba(0,0,0,.5);
+  --h-top:49px; --h-ctl:32px; --h-ctl-sm:28px; --h-modebar:40px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;background:var(--bg);color:var(--text);display:flex;flex-direction:column;font-size:13px}
+
+/* ---------- 按钮层级 ---------- */
+.btn{height:var(--h-ctl-sm);display:inline-flex;align-items:center;gap:6px;padding:0 10px;border-radius:var(--r-1);
+  font:inherit;font-size:var(--fs-2);cursor:pointer;white-space:nowrap;border:1px solid var(--line);background:var(--panel2);color:var(--text)}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--on-fg);font-weight:600}
+.btn.primary:hover{background:var(--accent-hover)}
+.btn.ghost{background:none;border-color:transparent;color:var(--muted)}
+.btn.ghost:hover{color:var(--text);background:var(--panel2)}
+.btn.icon{width:var(--h-ctl-sm);padding:0;justify-content:center;font-size:16px}
+.btn.lg.icon{width:var(--h-ctl)}
+.btn.danger{color:var(--danger)}
+.btn.danger:hover{border-color:var(--danger-line);background:var(--danger-soft)}
+.btn.lg{height:var(--h-ctl);padding:0 12px}
+.btn:disabled{opacity:.38;cursor:default}
+.kbd{font-size:11px;opacity:.75;font-weight:400}
+
+/* 分段控件：选中 = 中性亮底 + 琥珀细描边（不是实心琥珀） */
+.seg{display:inline-flex;background:var(--field-bg);border:1px solid var(--line);border-radius:var(--r-1);padding:2px;gap:2px}
+.seg button{height:calc(var(--h-ctl) - 6px);border:1px solid transparent;background:none;color:var(--muted);padding:0 12px;border-radius:4px;font:inherit;font-size:var(--fs-2);cursor:pointer;white-space:nowrap}
+.seg button:hover{color:var(--text)}
+.seg button.on{background:var(--sel-bg);color:var(--sel-text);border-color:var(--accent-line)}
+.seg.sm button{height:22px;padding:0 9px;font-size:var(--fs-1)}
+
+/* ---------- 顶栏（固定 49px，永不折行） ---------- */
+#topbar{height:var(--h-top);flex:none;display:flex;align-items:center;gap:10px;padding:0 14px;background:var(--panel);border-bottom:1px solid var(--line);flex-wrap:nowrap;white-space:nowrap}
+.brand{font-weight:700;font-size:16px;margin-right:4px}
+.vsep{width:1px;height:20px;background:var(--line)}
+/* 分区（顶层导航）：文字标签 + 选中下划线，视觉上和视图分段控件区分开 */
+#modeSeg{display:flex;gap:2px;height:100%}
+#modeSeg button{position:relative;background:none;border:none;color:var(--muted);font:inherit;font-size:var(--fs-3);font-weight:600;padding:0 12px;cursor:pointer}
+#modeSeg button:hover{color:var(--text)}
+#modeSeg button.on{color:var(--text)}
+#modeSeg button.on::after{content:'';position:absolute;left:10px;right:10px;bottom:-1px;height:2px;border-radius:2px;background:var(--accent)}
+.spacer{flex:1}
+#saveState{display:flex;align-items:center;gap:6px;color:var(--muted);font-size:var(--fs-1);padding:0 8px;height:var(--h-ctl-sm);border-radius:var(--r-1);cursor:pointer}
+#saveState:hover{background:var(--panel2);color:var(--text)}
+#saveState i{width:7px;height:7px;border-radius:50%;background:var(--ok);display:inline-block}
+
+/* ---------- 模式条（只在「装修」「改户型」出现；固定 40px 单行） ---------- */
+#modebar{height:var(--h-modebar);flex:none;display:none;align-items:center;gap:10px;padding:0 14px;background:var(--bg);border-bottom:1px solid var(--line);white-space:nowrap}
+.mode-deco #modebar,.mode-build #modebar{display:flex}
+.mbLbl{font-size:var(--fs-1);color:var(--muted)}
+.tools{display:flex;gap:2px}
+.tools button{height:30px;padding:0 10px;border-radius:var(--r-1);border:1px solid transparent;background:none;color:var(--muted);font:inherit;font-size:var(--fs-2);cursor:pointer}
+.tools button:hover{color:var(--text);background:var(--panel2)}
+.tools button.on{background:var(--sel-bg);color:var(--sel-text);border-color:var(--accent-line)}
+.tools button:disabled{opacity:.38}
+
+/* ---------- 主区 ---------- */
+#main{flex:1;display:flex;min-height:0}
+.left{width:clamp(260px,24vw,400px);flex:none;background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
+#props{width:clamp(240px,21vw,300px);flex:none;background:var(--panel);border-left:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
+.panelHead{display:flex;align-items:center;gap:8px;padding:10px 12px 6px}
+.panelHead .ttl{font-size:var(--fs-1);color:var(--muted);font-weight:600;flex:1}
+.xbtn{height:22px;padding:0 8px;font-size:11px;border-radius:var(--r-1);border:1px solid var(--line);background:none;color:var(--muted)}
+
+/* 目录 */
+.search{padding:4px 12px 8px;display:flex;gap:6px}
+.search input{flex:1;height:var(--h-ctl-sm);background:var(--field-bg);border:1px solid var(--line);border-radius:var(--r-1);color:var(--text);padding:0 8px;font:inherit;font-size:var(--fs-2)}
+.chips{display:flex;gap:6px;padding:0 12px 10px;flex-wrap:wrap;border-bottom:1px solid var(--line)}
+.chip{height:24px;padding:0 10px;border-radius:12px;border:1px solid var(--line);background:none;color:var(--muted);font:inherit;font-size:var(--fs-1);cursor:pointer}
+.chip.on{background:var(--sel-bg);color:var(--sel-text);border-color:var(--accent-line)}
+.catList{flex:1;overflow:hidden;padding:0 0 8px}
+.catGroupH{font-size:var(--fs-1);color:var(--muted);font-weight:600;padding:10px 12px 6px;display:flex;justify-content:space-between}
+.catGrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:0 10px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r-2);overflow:hidden}
+.card .ph{aspect-ratio:4/3;background:var(--field-bg);display:flex;align-items:center;justify-content:center}
+.card .meta{padding:6px 8px 8px}
+.card .nm{font-size:var(--fs-1);line-height:1.3;height:32px;overflow:hidden}
+.card .sub{font-size:11px;color:var(--muted);display:flex;justify-content:space-between;margin-top:3px}
+.card .sub b{color:var(--ok);font-weight:600}
+.leftFoot{border-top:1px solid var(--line);padding:10px 12px}
+
+/* 画布 */
+#stage{flex:1;position:relative;background:var(--stage-bg);min-width:0;overflow:hidden}
+#stage svg{position:absolute;inset:0;width:100%;height:100%}
+.ovl{position:absolute;z-index:9;display:flex;align-items:center;gap:6px}
+#crumbs{left:12px;top:12px;background:var(--totals-bg);border:1px solid var(--line);border-radius:8px;padding:2px;gap:0}
+#crumbs button{height:28px;display:flex;align-items:center;gap:5px;padding:0 8px;border:none;background:none;color:var(--text);font:inherit;font-size:var(--fs-2);border-radius:6px;cursor:pointer;max-width:180px}
+#crumbs button:hover{background:var(--panel2)}
+#crumbs button .k{color:var(--muted);font-size:11px}
+#crumbs button .v{overflow:hidden;text-overflow:ellipsis}
+#crumbs .caret{color:var(--muted);font-size:10px}
+#crumbs .sep{color:var(--muted);padding:0 2px;font-size:12px}
+#stageTR{right:12px;top:12px}
+.ovlBtn{height:30px;display:flex;align-items:center;gap:6px;padding:0 10px;background:var(--totals-bg);border:1px solid var(--line);border-radius:8px;color:var(--text);font:inherit;font-size:var(--fs-2)}
+#hint{left:12px;bottom:12px;max-width:calc(100% - 300px);background:var(--hint-bg);padding:6px 10px;border-radius:var(--r-1);font-size:var(--fs-1);color:var(--muted);line-height:1.6;display:block}
+#hint a{color:var(--accent);text-decoration:none}
+#totals{right:12px;bottom:12px;height:34px;padding:0 12px;background:var(--totals-bg);border:1px solid var(--line);border-radius:8px;font-size:var(--fs-2);cursor:pointer;color:var(--text)}
+#totals:hover{border-color:var(--accent-line)}
+#totals b{color:var(--ok)}
+#totals .go{color:var(--muted)}
+
+/* 右侧标签页 */
+.tabs{display:flex;align-items:flex-end;gap:2px;padding:0 8px 0 12px;border-bottom:1px solid var(--line);height:40px;flex:none}
+.tab{height:39px;display:flex;align-items:center;gap:6px;padding:0 10px;font-size:var(--fs-2);font-weight:600;color:var(--muted);border-bottom:2px solid transparent;cursor:pointer}
+.tab.on{color:var(--text);border-bottom-color:var(--accent)}
+.tab .n{font-size:11px;font-weight:600;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--panel2);color:var(--muted);display:inline-flex;align-items:center;justify-content:center}
+.tab.on .n{background:var(--accent-soft);color:var(--accent)}
+.tabs .xbtn{margin-left:auto;margin-bottom:8px}
+.pbody{flex:1;overflow:auto;padding:12px;display:flex;flex-direction:column;gap:14px}
+.pbody h3{font-size:var(--fs-3);font-weight:600;line-height:1.35}
+.kicker{font-size:11px;color:var(--muted);letter-spacing:.5px;margin-bottom:2px}
+.sec{display:flex;flex-direction:column;gap:8px}
+.secH{font-size:var(--fs-1);color:var(--muted);font-weight:600;display:flex;justify-content:space-between;align-items:center}
+.secH .val{color:var(--text);font-weight:400}
+.row{display:flex;align-items:center;gap:8px;font-size:var(--fs-2)}
+.row>label{width:56px;flex:none;color:var(--muted);font-size:var(--fs-1)}
+.num{width:64px;height:var(--h-ctl-sm);background:var(--field-bg);border:1px solid var(--line);border-radius:var(--r-1);color:var(--text);padding:0 6px;font:inherit;font-size:var(--fs-2)}
+.unit{color:var(--muted);font-size:var(--fs-1)}
+input[type=range]{flex:1 1 40px;min-width:0;width:40px;accent-color:var(--accent)}
+.price{color:var(--ok);font-weight:600}
+.muted{color:var(--muted);font-size:var(--fs-1);line-height:1.6}
+.note{font-size:var(--fs-1);line-height:1.55;padding:8px 10px;border-radius:var(--r-1)}
+.note.warn{background:var(--warn-soft);border:1px solid var(--warn-line);color:var(--warn)}
+.note.info{background:var(--panel2);border:1px solid var(--line);color:var(--muted)}
+.actions{display:flex;gap:8px;padding-top:4px;border-top:1px solid var(--line);padding-top:12px}
+.link{color:var(--accent);font-size:var(--fs-1);text-decoration:none}
+.colorDot{width:22px;height:22px;border-radius:6px;border:1px solid rgba(255,255,255,.15)}
+
+/* 色块网格：地板 */
+.swGrid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.sw{position:relative;aspect-ratio:1;border-radius:8px;border:1px solid rgba(255,255,255,.12);cursor:pointer}
+.sw:hover{border-color:var(--muted)}
+.sw.on{box-shadow:0 0 0 2px var(--panel),0 0 0 4px var(--accent)}
+.sw.on::after{content:'✓';position:absolute;right:3px;top:2px;width:16px;height:16px;border-radius:50%;background:var(--accent);color:var(--on-fg);font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center}
+.sw.follow{border:1px dashed var(--muted);background:var(--panel2)!important;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--muted);text-align:center;line-height:1.25}
+.swCat{font-size:11px;color:var(--muted);margin:2px 0 -2px}
+/* 色块网格：墙色（小圆角方块，7 列） */
+.paintGrid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+.paint{aspect-ratio:1;border-radius:6px;border:1px solid rgba(255,255,255,.14);cursor:pointer;position:relative}
+.paint.on{box-shadow:0 0 0 2px var(--panel),0 0 0 4px var(--accent)}
+.paint.custom{background:conic-gradient(#e06c5a,#e0b341,#5cbf72,#5f9fd9,#a47ad9,#e06c5a)}
+/* 木纹 / 拼法示意（真实实现用 floorTexture() 缩略图） */
+.f-plank{background:repeating-linear-gradient(90deg,rgba(0,0,0,.14) 0 1px,transparent 1px 11px),repeating-linear-gradient(0deg,rgba(255,255,255,.05) 0 2px,transparent 2px 5px)}
+.f-herr{background-image:repeating-linear-gradient(45deg,rgba(0,0,0,.16) 0 1px,transparent 1px 8px),repeating-linear-gradient(-45deg,rgba(0,0,0,.16) 0 1px,transparent 1px 8px)}
+.f-grid{background-image:linear-gradient(rgba(0,0,0,.16) 1px,transparent 1px),linear-gradient(90deg,rgba(0,0,0,.16) 1px,transparent 1px);background-size:16px 16px}
+.f-check{background-image:conic-gradient(#e8e6e0 25%,#262628 0 50%,#e8e6e0 0 75%,#262628 0);background-size:16px 16px}
+.f-noise{background-image:radial-gradient(rgba(0,0,0,.12) 1px,transparent 1px);background-size:4px 4px}
+
+/* 下拉 / 菜单 */
+.pop{position:absolute;z-index:40;background:var(--menu-bg);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow-pop);padding:6px;min-width:240px;display:none}
+.menus .pop.showInMenus{display:block}
+.mi{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:6px;font-size:var(--fs-2);color:var(--text);white-space:nowrap}
+.mi:hover{background:var(--panel2)}
+.mi small{margin-left:auto;color:var(--muted);font-size:11px}
+.mi.sub{padding-left:28px;color:var(--muted);font-size:var(--fs-1)}
+.mg{font-size:11px;color:var(--muted);padding:8px 10px 4px;font-weight:600}
+.mdiv{height:1px;background:var(--line);margin:6px 4px}
+.mi.danger{color:var(--danger)}
+
+/* 空状态卡 / 模式提示卡 */
+.centerCard{position:absolute;left:50%;top:44%;transform:translate(-50%,-50%);width:380px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px 20px;box-shadow:var(--shadow-pop);z-index:12;display:none}
+.centerCard h3{font-size:var(--fs-4);margin-bottom:6px}
+.centerCard p{color:var(--muted);font-size:var(--fs-2);line-height:1.6;margin-bottom:14px}
+.centerCard .acts{display:flex;gap:8px;justify-content:flex-end}
+.empty #emptyCard{display:block}
+.build3d #modeNote{display:block}
+
+/* 清单 */
+.plHead{display:flex;justify-content:space-between;font-size:var(--fs-1);color:var(--muted);font-weight:600;margin-bottom:-6px}
+.plRow{display:flex;align-items:center;gap:8px;padding:6px 6px;border-radius:6px;font-size:var(--fs-1)}
+.plRow:hover{background:var(--panel2)}
+.plRow .dot{width:10px;height:10px;border-radius:3px;flex:none}
+.plRow .nm{flex:1;min-width:0;line-height:1.35}
+.plRow .nm small{display:block;color:var(--muted);font-size:11px}
+.plRow .sum{color:var(--ok);font-variant-numeric:tabular-nums;font-weight:600}
+.plRow .loc{opacity:0;width:22px;height:22px;border:1px solid var(--line);border-radius:5px;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:11px}
+.plRow:hover .loc,.plRow.hov .loc{opacity:1}
+.plFoot{border-top:1px solid var(--line);padding:10px 12px;display:flex;flex-direction:column;gap:8px;flex:none}
+.plTotal{display:flex;justify-content:space-between;align-items:baseline;font-size:var(--fs-3)}
+.plTotal b{color:var(--ok);font-size:var(--fs-4)}
+
+/* 房间列表（装修左栏） */
+.roomRow{display:flex;align-items:center;gap:10px;padding:8px 12px;cursor:pointer;border-left:2px solid transparent}
+.roomRow:hover{background:var(--panel2)}
+.roomRow.on{background:var(--sel-bg);border-left-color:var(--accent)}
+.roomRow .fl{width:30px;height:30px;border-radius:6px;border:1px solid rgba(255,255,255,.12);flex:none}
+.roomRow .nm{flex:1;font-size:var(--fs-2)}
+.roomRow .nm small{display:block;color:var(--muted);font-size:11px}
+.roomRow .wc{width:14px;height:14px;border-radius:4px;border:1px solid rgba(255,255,255,.2)}
+.placeGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding:0 12px}
+.placeBtn{height:54px;border:1px solid var(--line);border-radius:8px;background:var(--panel2);color:var(--text);font:inherit;font-size:var(--fs-1);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px}
+.placeBtn span{font-size:16px;opacity:.8}
+
+/* 状态显隐 */
+.only-furn,.only-deco,.only-build,.only-list,.only-insp,.only-3d{display:none!important}
+.mode-furn .only-furn,.mode-deco .only-deco,.mode-build .only-build{display:revert!important}
+.pbody.only-insp{display:none!important}
+.mode-furn.tab-insp .pbody.only-insp.only-furn,.mode-deco.tab-insp .pbody.only-insp.only-deco,.mode-build.tab-insp .pbody.only-insp.only-build{display:flex!important}
+.tab-list .only-list{display:flex!important}
+.mode-furn .left.only-furn,.mode-deco .left.only-deco{display:flex!important}
+.mode-deco .tools.only-deco,.mode-build .tools.only-build{display:flex!important}
+.build3d .only-3d{display:revert!important}
+.build3d .no-3d{display:none!important}
+</style>
+</head>
+<body>
+<div id="topbar">
+  <span class="brand">MiniDen</span>
+  <span class="vsep"></span>
+  <div id="modeSeg">
+    <button id="modeFurn" class="on">摆家具</button>
+    <button id="modeDeco">装修</button>
+    <button id="btnWallEdit">改户型</button>
+  </div>
+  <span class="vsep"></span>
+  <div class="seg" id="viewSeg"><button id="btn2d" class="on">2D 平面</button><button id="btnDoll">3D 俯瞰</button><button id="btnFP">室内</button></div>
+  <div class="seg" id="undoSeg" style="margin-left:4px"><button title="撤销 ⌘Z">↶ 撤销</button><button title="重做 ⇧⌘Z" style="opacity:.4">↷ 重做</button></div>
+  <div class="spacer"></div>
+  <div id="saveState" title="保存在这台电脑的这个浏览器里"><i></i>已自动保存</div>
+  <button class="btn lg ghost" id="btnMore">文件 ▾</button>
+  <button class="btn lg icon ghost" id="btnSettings" title="设置">⚙</button>
+  <button class="btn lg icon ghost" id="btnHelp" title="帮助">?</button>
+</div>
+
+<div id="modebar">
+  <!-- 装修 -->
+  <div class="tools only-deco" id="decoToolSeg">
+    <button class="on">选择</button>
+    <button class="no-3d">放洁具</button>
+    <button class="no-3d">画台面</button>
+  </div>
+  <span class="mbLbl only-deco">点地板选房间 · 点门窗选门窗 · 改完 3D 里当场看</span>
+  <!-- 改户型 -->
+  <div class="tools only-build" id="wtoolSeg">
+    <button data-t="select" class="on">选择</button>
+    <button data-t="wall" class="b2">画墙</button>
+    <button data-t="door" class="b2">门</button>
+    <button data-t="win" class="b2">窗</button>
+    <button data-t="poly" class="b2">柱子 / 墙块</button>
+    <button data-t="room" class="b2">房间范围</button>
+    <button data-t="stair" class="b2">楼梯</button>
+    <button class="b2">更多 ▾</button>
+  </div>
+  <div class="spacer"></div>
+  <button class="btn ghost only-build">底图 ▾</button>
+  <button class="btn icon ghost only-build" title="更多操作">⋯</button>
+  <button class="btn primary" id="wDone">完成 <span class="kbd">Esc</span></button>
+</div>
+
+<div id="main">
+  <!-- 左栏：摆家具 = 家具目录 -->
+  <div class="left only-furn" id="catalog">
+    <div class="panelHead"><span class="ttl">家具目录</span><button class="xbtn">收起 ◂</button></div>
+    <div class="search"><input placeholder="搜索家具，如 沙发 / poang"><button class="btn">筛选 ▾</button></div>
+    <div class="chips">
+      <button class="chip">全部</button><button class="chip on">客厅</button><button class="chip">卧室</button><button class="chip">餐厅</button>
+      <button class="chip">书房</button><button class="chip">儿童</button><button class="chip">收纳</button><button class="chip">灯具</button><button class="chip">地毯与装饰</button>
+    </div>
+    <div class="catList">
+      <div class="catGroupH"><span>沙发 / 单椅</span><span>▾</span></div>
+      <div class="catGrid">
+        <div class="card"><div class="ph"><svg width="110" height="64"><rect x="8" y="22" width="94" height="30" rx="6" fill="#b9b2a6"/><rect x="8" y="12" width="94" height="16" rx="6" fill="#cfc8bc"/></svg></div><div class="meta"><div class="nm">SALTSJÖBADEN 三人沙发 · Fridtuna 浅米色</div><div class="sub"><span>226 × 95 cm</span><b>US$899</b></div></div></div>
+        <div class="card"><div class="ph"><svg width="110" height="64"><rect x="30" y="20" width="50" height="34" rx="6" fill="#8b9a8a"/><rect x="30" y="10" width="50" height="16" rx="6" fill="#9caa9b"/></svg></div><div class="meta"><div class="nm">ÖRFJÄLL 转椅 · 白色 / Vissle 浅灰</div><div class="sub"><span>68 × 80 cm</span><b>US$99</b></div></div></div>
+        <div class="card"><div class="ph"><svg width="110" height="64"><rect x="10" y="24" width="90" height="28" rx="5" fill="#6f655b"/><rect x="10" y="14" width="90" height="14" rx="5" fill="#7d7268"/></svg></div><div class="meta"><div class="nm">Gilman Creek 电动躺椅（电动头枕）</div><div class="sub"><span>94 × 99 cm</span><b>US$600</b></div></div></div>
+        <div class="card"><div class="ph"><svg width="110" height="64"><rect x="20" y="22" width="70" height="30" rx="14" fill="#d8cbb4"/></svg></div><div class="meta"><div class="nm">Figgy 儿童模块沙发 · 月光灰</div><div class="sub"><span>178 × 64 cm</span><b>US$795</b></div></div></div>
+      </div>
+      <div class="catGroupH"><span>茶几 / 边几</span><span>▾</span></div>
+    </div>
+    <div class="leftFoot"><button class="btn" style="width:100%;justify-content:center">＋ 加一件目录里没有的</button></div>
+  </div>
+
+  <!-- 左栏：装修 = 房间列表 + 房子自带 -->
+  <div class="left only-deco" id="decoPanel">
+    <div class="panelHead"><span class="ttl">房间 · 一层</span></div>
+    <div class="roomRow"><span class="fl f-plank" style="background-color:#b28c60"></span><span class="nm">客厅<small>跟全屋 · 自然橡木 · 52.0 m²</small></span><span class="wc" style="background:#f2efe8"></span></div>
+    <div class="roomRow on"><span class="fl f-plank" style="background-color:#d6c0a0"></span><span class="nm">卧室 1<small>浅色白橡 · 直铺 · 22.3 m²</small></span><span class="wc" style="background:#a9b8c2"></span></div>
+    <div class="roomRow"><span class="fl f-plank" style="background-color:#b28c60"></span><span class="nm">卧室 2<small>跟全屋 · 自然橡木 · 18.6 m²</small></span><span class="wc" style="background:#f2efe8"></span></div>
+    <div class="roomRow"><span class="fl f-grid" style="background-color:#e2e0da"></span><span class="nm">卫生间<small>白色哑光砖 60×60 · 14.9 m²</small></span><span class="wc" style="background:#f2efe8"></span></div>
+    <div class="roomRow"><span class="fl f-grid" style="background-color:#929290"></span><span class="nm">厨房<small>灰色大板砖 60×120 · 6.0 m²</small></span><span class="wc" style="background:#f2efe8"></span></div>
+    <div class="panelHead" style="margin-top:10px"><span class="ttl">房子自带 · 放到平面图上</span></div>
+    <div class="placeGrid">
+      <button class="placeBtn"><span>▭</span>台柜</button><button class="placeBtn"><span>◡</span>洗手盆</button><button class="placeBtn"><span>◯</span>马桶</button>
+      <button class="placeBtn"><span>▢</span>浴缸</button><button class="placeBtn"><span>⊠</span>淋浴</button><button class="placeBtn"><span>▯</span>镜子</button>
+    </div>
+    <div style="padding:8px 12px"><button class="placeBtn" style="width:100%;height:40px;flex-direction:row;gap:8px"><span>⌐</span>画台面 / 橱柜（沿墙点折线）</button></div>
+    <div class="muted" style="padding:4px 12px">放置要在 2D 平面里点位置；选中、改材质在 3D 里也能做。</div>
+  </div>
+
+  <!-- 画布 -->
+  <div id="stage">
+    <svg viewBox="0 0 795 811" preserveAspectRatio="xMidYMid meet">
+      <defs>
+        <pattern id="pk" width="10" height="70" patternUnits="userSpaceOnUse"><rect width="10" height="70" fill="#6a5a47"/><line x1="0" y1="0" x2="0" y2="70" stroke="rgba(0,0,0,.25)"/><line x1="0" y1="40" x2="10" y2="40" stroke="rgba(0,0,0,.18)"/></pattern>
+        <pattern id="pkL" width="10" height="70" patternUnits="userSpaceOnUse"><rect width="10" height="70" fill="#d6c0a0"/><line x1="0" y1="0" x2="0" y2="70" stroke="rgba(0,0,0,.14)"/><line x1="0" y1="30" x2="10" y2="30" stroke="rgba(0,0,0,.1)"/></pattern>
+        <pattern id="pkN" width="10" height="70" patternUnits="userSpaceOnUse"><rect width="10" height="70" fill="#b28c60"/><line x1="0" y1="0" x2="0" y2="70" stroke="rgba(0,0,0,.18)"/><line x1="0" y1="50" x2="10" y2="50" stroke="rgba(0,0,0,.12)"/></pattern>
+        <pattern id="tl" width="18" height="18" patternUnits="userSpaceOnUse"><rect width="18" height="18" fill="#cfcdc7"/><path d="M0 0H18V18" fill="none" stroke="rgba(0,0,0,.18)"/></pattern>
+        <pattern id="tg" width="18" height="36" patternUnits="userSpaceOnUse"><rect width="18" height="36" fill="#8a8a88"/><path d="M0 0H18V36" fill="none" stroke="rgba(0,0,0,.2)"/></pattern>
+      </defs>
+      <g transform="translate(118,150)">
+        <!-- 地板（摆家具时调暗 = 现状；装修里按真实色相显示） -->
+        <g class="floorDim">
+          <rect x="0" y="0" width="230" height="170" fill="url(#pkN)"/>
+          <rect x="0" y="170" width="230" height="110" fill="url(#tl)"/>
+          <rect x="0" y="280" width="230" height="150" fill="url(#pkN)"/>
+          <rect x="230" y="0" width="330" height="360" fill="url(#pkN)"/>
+          <rect x="230" y="360" width="330" height="70" fill="url(#tg)"/>
+        </g>
+        <rect class="dimMask" x="0" y="0" width="560" height="430" fill="rgba(20,18,16,.2)"/>
+        <!-- 装修选中的卧室 1：浅白橡 + 选中描边 -->
+        <g class="selRoom" style="display:none">
+          <rect x="0" y="0" width="230" height="170" fill="url(#pkL)"/>
+        </g>
+        <!-- 墙 -->
+        <g stroke="#0c0d0f" stroke-width="9" fill="none" stroke-linecap="butt">
+          <rect x="0" y="0" width="560" height="430"/>
+          <line x1="230" y1="0" x2="230" y2="120"/><line x1="230" y1="165" x2="230" y2="430"/>
+          <line x1="0" y1="170" x2="80" y2="170"/><line x1="125" y1="170" x2="230" y2="170"/>
+          <line x1="0" y1="280" x2="60" y2="280"/><line x1="105" y1="280" x2="230" y2="280"/>
+          <line x1="230" y1="360" x2="330" y2="360"/>
+        </g>
+        <g stroke="#7fb8ff" stroke-width="4"><line x1="70" y1="0" x2="160" y2="0"/><line x1="560" y1="110" x2="560" y2="240"/><line x1="90" y1="430" x2="170" y2="430"/><line x1="0" y1="200" x2="0" y2="250"/></g>
+        <rect class="selRoom" style="display:none" x="6" y="6" width="218" height="158" fill="rgba(217,160,91,.10)" stroke="#d9a05b" stroke-width="2.5" stroke-dasharray="8 5"/>
+        <!-- 选中的窗（改户型） -->
+        <g class="selWin" style="display:none"><line x1="560" y1="110" x2="560" y2="240" stroke="#d9a05b" stroke-width="8"/><circle cx="560" cy="110" r="5" fill="#d9a05b"/><circle cx="560" cy="240" r="5" fill="#d9a05b"/><text x="540" y="180" fill="#d9a05b" font-size="11" text-anchor="end">宽 152 cm</text></g>
+        <g font-size="12" fill="#c9c3ba" text-anchor="middle" style="paint-order:stroke;stroke:rgba(20,18,16,.75);stroke-width:3px">
+          <text x="115" y="80">卧室 1</text><text x="115" y="230">卫生间</text><text x="115" y="360">卧室 2</text><text x="395" y="150">客厅</text><text x="445" y="400">厨房</text>
+        </g>
+        <!-- 家具 -->
+        <g class="furn">
+          <rect x="300" y="210" width="170" height="70" rx="4" fill="#b9b2a6" stroke="#d9a05b" stroke-width="2.5" class="selFurn"/>
+          <text x="385" y="249" font-size="11" fill="#3a332a" text-anchor="middle">SALTSJÖBADEN</text>
+          <rect x="350" y="300" width="70" height="40" rx="3" fill="#7d6f5f"/>
+          <rect x="20" y="20" width="110" height="130" rx="3" fill="#8f8a86"/><text x="75" y="88" font-size="10" fill="#2a2622" text-anchor="middle">铁架床</text>
+          <rect x="430" y="40" width="100" height="56" rx="3" fill="#c8a77c"/><text x="480" y="72" font-size="10" fill="#2a2622" text-anchor="middle">餐桌</text>
+          <circle cx="440" cy="110" r="10" fill="#8b9a8a"/><circle cx="470" cy="110" r="10" fill="#8b9a8a"/><circle cx="500" cy="110" r="10" fill="#8b9a8a"/>
+        </g>
+        <!-- 选中家具的旋转手柄与离墙距离 -->
+        <g class="selFurnDeco"><circle cx="385" cy="196" r="6" fill="none" stroke="#d9a05b" stroke-width="2"/><line x1="470" y1="245" x2="556" y2="245" stroke="#d9a05b" stroke-dasharray="3 3"/><text x="513" y="239" font-size="10" fill="#d9a05b" text-anchor="middle">86 cm</text></g>
+      </g>
+    </svg>
+
+    <div class="ovl" id="crumbs">
+      <button><span class="v">迷你窝 · 2室2卫</span><span class="caret">▾</span></button><span class="sep">›</span>
+      <button><span class="v">一层</span><span class="caret">▾</span></button><span class="sep">›</span>
+      <button><span class="k">方案</span><span class="v">客厅朝南</span><span class="caret">▾</span></button>
+    </div>
+    <div class="ovl" id="stageTR">
+      <button class="ovlBtn no-3d">📏 量尺寸</button>
+      <button class="ovlBtn only-3d">☀ 场景 ▾</button>
+    </div>
+
+    <div class="centerCard" id="emptyCard">
+      <h3>这份户型还没有墙</h3>
+      <p>先把外墙画出来，或者导入一张户型图照着描。画好第一段墙后这张卡就会消失。</p>
+      <div class="acts"><button class="btn lg">导入户型图…</button><button class="btn lg primary">画外墙</button></div>
+    </div>
+    <div class="centerCard" id="modeNote" style="top:18%">
+      <h3>改户型要在 2D 平面里画</h3>
+      <p>3D 里能看、能选中家具，但画墙、开门窗要回到平面图。</p>
+      <div class="acts"><button class="btn lg">留在 3D</button><button class="btn lg primary">切到 2D 平面</button></div>
+    </div>
+
+    <div class="ovl" id="hint">
+      <span class="only-furn">拖 = 移动 · R = 转 15° · ⌘D = 复制 · Delete = 删除 · Shift+点 = 多选 · </span>
+      <span class="only-deco">卧室 1 · 22.3 m² · 地板：浅色白橡 · 墙色：雾蓝 · 2 扇窗 · </span>
+      <span class="only-build">窗 · 推拉 2 扇 · 宽 152 cm · 两头各剩 61 / 48 cm ｜ 拖 = 沿墙滑 · 拖端点 = 改宽 · </span>
+      <a>? 快捷键</a>
+    </div>
+    <button class="ovl" id="totals">清单 18 件 · <b>US$6,077</b> <span class="go">›</span></button>
+  </div>
+
+  <!-- 右栏：检视｜清单 -->
+  <div id="props">
+    <div class="tabs">
+      <div class="tab" id="tabInsp">检视</div>
+      <div class="tab" id="tabList">清单 <span class="n">18</span></div>
+      <button class="xbtn">收起 ▸</button>
+    </div>
+
+    <!-- 检视 · 家具 -->
+    <div class="pbody only-insp only-furn">
+      <div><div class="kicker">家具 · 沙发 / 单椅</div><h3>SALTSJÖBADEN 三人沙发 · Fridtuna 浅米色</h3>
+        <div class="row" style="margin-top:6px"><span class="price">US$899</span><a class="link" style="margin-left:auto">产品页 ↗</a></div></div>
+      <div class="sec">
+        <div class="row"><label>尺寸</label><span>226 × 95 × 83 cm</span></div>
+        <div class="row"><label>旋转</label><input class="num" value="0"><span class="unit">°</span><input type="range" value="0"><button class="btn">+90°</button></div>
+        <div class="row"><label>离地</label><input class="num" value="0"><span class="unit">cm</span></div>
+        <div class="row"><label>显示颜色</label><span class="colorDot" style="background:#b9b2a6"></span><span class="muted">只改画面，不改买的款式</span></div>
+      </div>
+      <div class="note info">离右墙 86 cm · 离餐桌 42 cm</div>
+      <div class="actions"><button class="btn">复制 <span class="kbd">⌘D</span></button><button class="btn danger">删除 <span class="kbd">Del</span></button></div>
+    </div>
+
+    <!-- 检视 · 房间（装修） -->
+    <div class="pbody only-insp only-deco">
+      <div class="sec" style="padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--bg)">
+        <div class="secH"><span>全屋地板（一层）</span><span class="val">自然橡木 · 直铺 ▾</span></div>
+        <div class="muted" style="font-size:11px">没单独设地板的房间都用它（客厅、卧室 2）</div>
+      </div>
+      <div><div class="kicker">房间</div><h3>卧室 1 <span class="muted" style="font-weight:400">· 22.3 m²</span></h3></div>
+      <div class="sec">
+        <div class="secH"><span>地板</span><span class="val">浅色白橡 · 直铺</span></div>
+        <div class="swGrid">
+          <div class="sw follow">跟全屋</div>
+          <div class="sw f-plank" style="background-color:#b28c60" title="自然橡木 · 直铺"></div>
+          <div class="sw f-plank on" style="background-color:#d6c0a0" title="浅色白橡 · 直铺"></div>
+          <div class="sw f-plank" style="background-color:#6a4830" title="胡桃木 · 直铺"></div>
+          <div class="sw f-plank" style="background-color:#988f86" title="灰洗橡木 · 直铺"></div>
+          <div class="sw f-herr" style="background-color:#b28c60" title="自然橡木 · 人字拼"></div>
+          <div class="sw f-herr" style="background-color:#d6c0a0" title="浅色白橡 · 鱼骨拼"></div>
+          <div class="sw f-plank" style="background-color:#6e655f" title="深烟熏橡木 · 直铺"></div>
+        </div>
+        <div class="swCat">瓷砖 · 石材 · 地毯 · 水泥</div>
+        <div class="swGrid">
+          <div class="sw f-grid" style="background-color:#e2e0da"></div><div class="sw f-grid" style="background-color:#929290"></div>
+          <div class="sw f-check"></div><div class="sw f-noise" style="background-color:#a4a29e"></div>
+        </div>
+        <div class="row"><label>铺贴方向</label><div class="seg sm"><button class="on">0°</button><button>45°</button><button>90°</button><button>135°</button></div></div>
+      </div>
+      <div class="sec">
+        <div class="secH"><span>墙色</span><span class="val">雾蓝</span></div>
+        <div class="paintGrid">
+          <div class="paint" style="background:#ffffff" title="白墙（缺省）"></div><div class="paint" style="background:#f2efe8"></div><div class="paint" style="background:#e9e4da"></div><div class="paint" style="background:#dcd6cb"></div><div class="paint" style="background:#cfd1cd"></div><div class="paint" style="background:#b9c2b2"></div><div class="paint on" style="background:#a9b8c2"></div>
+          <div class="paint" style="background:#e6d2ca"></div><div class="paint" style="background:#e8d3a6"></div><div class="paint" style="background:#c98c6c"></div><div class="paint" style="background:#5f7486"></div><div class="paint" style="background:#4f604f"></div><div class="paint" style="background:#5a5c60"></div><div class="paint custom" title="自定义颜色…"></div>
+        </div>
+      </div>
+      <div class="sec">
+        <div class="secH"><span>窗帘（这个房间的 2 扇窗）</span></div>
+        <div class="row"><label>款式</label><span class="btn" style="flex:1">落地帘 ▾</span><span class="colorDot" style="background:#c9b79c" title="窗帘颜色"></span></div>
+        <div class="muted" style="font-size:11px">单扇窗另设的会保留（2 扇里 0 扇另设）</div>
+      </div>
+    </div>
+
+    <!-- 检视 · 窗（改户型） -->
+    <div class="pbody only-insp only-build">
+      <div><div class="kicker">窗 · 客厅东墙</div><h3>推拉窗（2 扇）</h3></div>
+      <div class="sec"><div class="secH"><span>尺寸</span></div>
+        <div class="row"><label>宽</label><input class="num" value="152"><span class="unit">cm</span><button class="btn">改这段</button></div>
+        <div class="row"><label>窗型</label><div class="seg sm"><button class="on">普通窗</button><button>落地窗</button></div></div>
+        <div class="row"><label>窗台</label><input class="num" value="67"><span class="unit">cm</span></div>
+        <div class="row"><label>窗高</label><input class="num" value="158"><span class="unit">cm</span></div>
+      </div>
+      <div class="sec"><div class="secH"><span>外观</span><a class="link">在「装修」里也能改</a></div>
+        <div class="row"><label>开启方式</label><span class="btn" style="flex:1">推拉（2 扇） ▾</span></div>
+        <div class="row"><label>窗框</label><div style="display:flex;gap:6px"><div class="paint on" style="width:24px;background:#f2f1ec"></div><div class="paint" style="width:24px;background:#17181b"></div><div class="paint" style="width:24px;background:#3a3f45"></div><div class="paint" style="width:24px;background:#b48a5a"></div><div class="paint" style="width:24px;background:#5b3a24"></div></div></div>
+        <div class="row"><label>玻璃</label><div class="seg sm"><button class="on">透明</button><button>磨砂</button></div></div>
+        <div class="row"><label>窗帘</label><span class="btn" style="flex:1">落地帘（只改这一扇） ▾</span></div>
+      </div>
+      <div class="actions"><button class="btn danger">删除这扇窗 <span class="kbd">Del</span></button></div>
+    </div>
+
+    <!-- 清单 -->
+    <div class="pbody only-list" style="gap:4px">
+      <div class="plHead"><span>要买的 · 15 款 18 件</span><span>小计</span></div>
+      <div style="height:6px"></div>
+      <div class="plRow"><span class="dot" style="background:#ccc"></span><span class="nm">SALTSJÖBADEN 三人沙发<small>× 1 · US$899</small></span><span class="loc">◎</span><span class="sum">US$899</span></div>
+      <div class="plRow hov"><span class="dot" style="background:#8b9a8a"></span><span class="nm">VIHALS 餐椅 · 绿色<small>× 3 · 单价 US$55</small></span><span class="loc" title="在图上定位（再点切到下一件）">◎</span><span class="sum">US$165</span></div>
+      <div class="plRow"><span class="dot" style="background:#d8cbb4"></span><span class="nm">Wunderkids 折叠爬行垫 S · 沙色<small>× 1</small></span><span class="loc">◎</span><span class="sum">US$269</span></div>
+      <div class="plRow"><span class="dot" style="background:#9a958c"></span><span class="nm">Wunderkids 折叠爬行垫 S · 石灰色<small>× 1</small></span><span class="loc">◎</span><span class="sum">US$269</span></div>
+      <div class="plRow"><span class="dot" style="background:#333"></span><span class="nm">IDÅSEN 电动升降桌 · 黑色<small>× 1</small></span><span class="loc">◎</span><span class="sum">US$799</span></div>
+      <div class="plRow"><span class="dot" style="background:#c8a77c"></span><span class="nm">PS 2026 折叠桌 · 松木<small>× 1</small></span><span class="loc">◎</span><span class="sum">US$299</span></div>
+      <div class="plRow"><span class="dot" style="background:#e8e2d8"></span><span class="nm">铁架床 Queen + 床垫<small>× 1</small></span><span class="loc">◎</span><span class="sum">US$420</span></div>
+      <div class="plRow"><span class="dot" style="background:#b28c60"></span><span class="nm">Figgy 儿童模块沙发 · 月光灰<small>× 1</small></span><span class="loc">◎</span><span class="sum">US$795</span></div>
+      <div class="plHead" style="margin-top:10px"><span>地板用量（不含损耗）</span><span>面积</span></div>
+      <div style="height:6px"></div>
+      <div class="plRow"><span class="dot" style="background:#b28c60"></span><span class="nm">自然橡木 · 直铺<small>客厅、卧室 2</small></span><span class="sum" style="color:var(--text);font-weight:400">70.6 m²</span></div>
+      <div class="plHead" style="margin-top:10px"><span>房子自带 · 不计价</span><span>14 件</span></div>
+      <div class="plRow"><span class="dot" style="background:#e8d9b0"></span><span class="nm">筒灯 4″（嵌入式）<small>× 14</small></span><span class="loc">◎</span></div>
+    </div>
+    <div class="plFoot only-list">
+      <div class="plTotal"><span>合计约</span><b>US$6,077</b></div>
+      <div class="muted" style="font-size:11px">币种在 ⚙ 设置里换 · 2 件按汇率折算（≈）</div>
+      <div style="display:flex;gap:8px"><button class="btn" style="flex:1;justify-content:center">复制清单</button><button class="btn" style="flex:1;justify-content:center">导出 CSV</button></div>
+    </div>
+  </div>
+</div>
+
+<!-- 菜单（#menus 状态下一起展开，仅示意） -->
+<div class="pop showInMenus" style="right:84px;top:44px;width:290px">
+  <div class="mg" style="color:var(--text)">文件 ▾</div><div class="mg">导入我的户型图</div>
+  <div class="mi">导入户型图…<small>照片 / PDF / CAD</small></div>
+  <div class="mi sub">CAD 图纸（.dxf）</div><div class="mi sub">矢量 PDF</div><div class="mi sub">照片或扫描件（描着画）</div>
+  <div class="mdiv"></div><div class="mg">备份与恢复</div>
+  <div class="mi">下载完整备份<small>户型 + 全部方案</small></div>
+  <div class="mi">从备份恢复…</div>
+  <div class="mi sub">只导出户型结构（不含家具）</div>
+  <div class="mdiv"></div><div class="mg">导出</div>
+  <div class="mi">导出平面图图片（PNG）</div>
+  <div class="mi">拍一张效果图…<small>室内视角</small></div>
+</div>
+<div class="pop showInMenus" style="right:390px;top:44px;width:250px">
+  <div class="mg">⚙ 设置</div>
+  <div class="mi">长度单位<span style="margin-left:auto" class="seg sm"><button class="on">cm</button><button>英尺</button></span></div>
+  <div class="mi">价格币种<span style="margin-left:auto" class="seg sm"><button class="on">US$</button><button>CA$</button></span></div>
+  <div class="mi">美元→加元汇率<small>1.38</small></div>
+  <div class="mdiv"></div><div class="mg">高级</div>
+  <div class="mi">目录扩展包…<small>1 个已加载</small></div>
+</div>
+<div class="pop showInMenus" style="right:656px;top:44px;width:230px">
+  <div class="mg">? 帮助</div>
+  <div class="mi">快速上手（重开引导）</div>
+  <div class="mi">键盘与鼠标<small>?</small></div>
+  <div class="mdiv"></div><div class="mg">常见任务</div>
+  <div class="mi sub">换地板、刷墙色 → 装修</div><div class="mi sub">导入自己的户型图</div><div class="mi sub">拿采购清单 → 右侧「清单」</div>
+  <div class="mdiv"></div><div class="mi" style="color:var(--muted);font-size:11px">MiniDen v3.9</div>
+</div>
+
+<script>
+/* 只做状态切换，不是交互原型 */
+(function(){
+  const s=(location.hash||'#furn').slice(1), b=document.body;
+  const mode = s.startsWith('deco')?'deco' : s.startsWith('build')?'build' : 'furn';
+  b.classList.add('mode-'+mode, (s==='list'||s==='empty'||s==='menus')?'tab-list':'tab-insp');
+  if(s==='build3d') b.classList.add('build3d');
+  if(s==='empty') b.classList.add('empty');
+  if(s==='menus') b.classList.add('menus');
+  const on=(sel,c)=>document.querySelectorAll(sel).forEach(e=>e.classList.toggle('on',c));
+  on('#modeFurn',mode==='furn'); on('#modeDeco',mode==='deco'); on('#btnWallEdit',mode==='build');
+  on('#tabInsp',!b.classList.contains('tab-list')); on('#tabList',b.classList.contains('tab-list'));
+  if(s==='build3d'){ on('#btn2d',false); on('#btnDoll',true); document.querySelectorAll('#wtoolSeg .b2').forEach(x=>x.disabled=true); }
+  const show=(sel,v)=>document.querySelectorAll(sel).forEach(e=>e.style.display=v?'':'none');
+  show('.selFurn', mode==='furn'); show('.selFurnDeco', mode==='furn' && s==='furn');
+  if(mode!=='furn' || s!=='furn') document.querySelector('.selFurn').setAttribute('stroke','none');
+  show('.selRoom', mode==='deco'); show('.dimMask', mode!=='deco'); show('.selWin', mode==='build');
+  if(s==='empty'){ document.querySelector('#stage svg').style.display='none'; document.querySelector('#crumbs .v').textContent='我的空白户型'; document.querySelector('#totals').innerHTML='清单 0 件 · <b>US$0</b>'; }
+})();
+</script>
+</body>
+</html>

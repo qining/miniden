@@ -57,3 +57,6 @@ private/
 # 它 = app.html + private/plans/mine.json 替换，因此**含真实户型坐标** —— 与历史里已有的同一份数据
 # （commit e73cb45 的硬编码几何）同级；用户已明确暂缓 git filter-repo。红线见 AGENTS.md §1.4：
 # 公开入口 app.html / dist/app.html 必须 generic 且不含 private/ 资源引用；新的个人数据仍进 private/。
+
+# UX 审阅 / 验收的截图与临时脚本（research/14）
+work/ux/shots/
