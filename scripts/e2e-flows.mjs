@@ -150,6 +150,9 @@ export const FLOWS = [
          在界面里把房子画出来、装上门 / 窗 / 洁具 / 家具，在 3D 里看见它，刷新后它还在。
          以前每条流程都跑在内置户型上（打开就有一整套房 + 门 + 洁具），所以这条路径
          从来没有被真实输入测过。坐标全部从空白画布派生 ⇒ plan-independent。 */
+      /* 先记下内置户型现在的样子：切回来要与它逐项一样（S24c #93 之后才写得对——以前断言是「家具 > 0」，
+         公开入口的内置户型本来一件家具都没有，那条断言之所以能过，是因为从零建的那份户型的家具漏了过去，正是 #93） */
+      const b0 = await t.eval(`({walls:effWalls().length, doors:effDoors().length, items:state.items.length})`);
       await t.step('新建空白户型（工具 ⌄ → 新建空白户型）');
       await ensureProTools(t);
       await t.click('#btnPlanNew');
@@ -321,8 +324,13 @@ export const FLOWS = [
       );
       t.assert(
         'zero-builtin-untouched',
-        bi.walls > 10 && bi.doors > 0 && bi.user === 0 && bi.items > 0,
-        `内置 墙${bi.walls} 门${bi.doors} 家具${bi.items} · 用户改动 ${bi.user} 处`
+        bi.walls > 10 &&
+          bi.doors > 0 &&
+          bi.user === 0 &&
+          bi.walls === b0.walls &&
+          bi.doors === b0.doors &&
+          bi.items === b0.items,
+        `内置 墙${bi.walls} 门${bi.doors} 家具${bi.items}（新建之前 墙${b0.walls} 门${b0.doors} 家具${b0.items}）· 用户改动 ${bi.user} 处`
       );
 
       await t.step('清场：删掉这份从零建的户型（两步确认）');
