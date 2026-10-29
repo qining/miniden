@@ -158,6 +158,7 @@
   .swGrid .sw[aria-pressed=true]{box-shadow:0 0 0 2px var(--panel), 0 0 0 4px var(--accent);}
   .swGrid .sw[aria-pressed=true]::after{content:'✓'; position:absolute; right:3px; top:3px; width:15px; height:15px; border-radius:50%; background:var(--accent); color:var(--on-fg); font-size:10px; font-weight:700; display:flex; align-items:center; justify-content:center;}
   .swGrid .sw.follow{border:1px dashed var(--muted); background:var(--panel2);}
+  .swGrid .sw.follow span{position:absolute; left:3px; bottom:3px; padding:0 4px; border-radius:4px; background:rgba(0,0,0,.62); color:#fff; font-size:10px; line-height:15px;}
   .swGrid.paint{grid-template-columns:repeat(7,1fr); gap:5px;} .swGrid.paint .sw{border-radius:6px;}
   .swGrid.frame{grid-template-columns:repeat(5,26px);} .swGrid.frame .sw{border-radius:5px;}
   .swGrid .sw.custom{background:conic-gradient(#e06c5a,#e0b341,#5cbf72,#5f9fd9,#a47ad9,#e06c5a);}
@@ -184,6 +185,9 @@
   #emptyCard span{color:var(--muted); font-size:12px; line-height:1.55;}
   #emptyCard .mnBtns{display:flex; gap:8px; justify-content:flex-end; margin-top:6px;}
   body.calib #emptyCard{display:none !important;}
+  #underlayNote{position:absolute; left:50%; top:12px; transform:translateX(-50%); z-index:11; display:flex; align-items:center; gap:10px; padding:4px 6px 4px 12px; border-radius:8px;
+    background:var(--menu-bg); border:1px solid var(--line); box-shadow:var(--shadow-pop); font-size:12px; color:var(--muted); white-space:nowrap;}
+  #underlayNote .btn{height:24px; font-size:12px;} body.calib #underlayNote{display:none !important;}
   #modeNote{position:absolute; left:50%; top:18%; transform:translateX(-50%); z-index:12; width:380px; max-width:90%; padding:16px 18px; border-radius:12px;
     background:var(--menu-bg); border:1px solid var(--line); box-shadow:var(--shadow-pop); display:flex; flex-direction:column; gap:6px; font-size:13px;}
   #modeNote span{color:var(--muted); font-size:12px;}
@@ -193,6 +197,9 @@
   #wtoolSeg button:disabled, #decoToolSeg button:disabled{opacity:.38; cursor:default;}
   #inspBuild.decoMode .dimRow, #inspBuild.decoMode #segCtl{display:none !important;}
   #inspBuild.buildMode .decoOnly{display:none !important;}
+  #lvFloorMini{display:none;} #lvFloorL.mini #lvFloorMini{display:inline;} #lvFloorL.mini .swGrid, #lvFloorL.mini #lvFloorNote{display:none !important;}
+  #lvFloorL.mini{flex-direction:row !important; align-items:center;}
+  #inspBuild .btnPair{display:flex; gap:6px; flex:1; min-width:0;} #inspBuild .btnPair .btn{flex:1; white-space:nowrap; padding:0 6px;}
   #inspBuild:not(.buildMode) #buildDecoLink{display:none;}
   .decoLink{font-size:12px; color:var(--accent); cursor:pointer; background:none; border:none; padding:0; text-align:left;}
   body.calib #modeNote, body.calib #decoPanel{display:none !important;}
@@ -565,6 +572,7 @@
   .roomlabel tspan.dim{font-size:11px; fill:var(--drw-dim);}
   /* F5 / X26：房间名加一圈底色光晕 —— 地板色调亮了之后字压在纹理上也读得出（校准视图不加：像素基线） */
   body:not(.calib) .roomlabel{paint-order:stroke; stroke:rgba(18,16,13,.82); stroke-width:3px; stroke-linejoin:round;}
+  body:not(.calib) .roomlabel{fill:#b3b9c0;} body:not(.calib) .roomlabel tspan.dim{stroke-width:1.4px; stroke:rgba(18,16,13,.7); fill:#a3aab2;}   /* UX X49：地板画出来以后名字和尺寸字提亮一档 */   /* UX X49：小字的光晕按字号收窄，不然糊成一团 */
   .dimlabel{fill:var(--drw-dimlabel); font-size:9.5px; text-anchor:middle;}
   .furn{cursor:grab;}
   .furn.dragging{cursor:grabbing;}
@@ -754,10 +762,10 @@
     <select id="rmAngle" title="铺贴方向"><option value="0">0°</option><option value="45">45°</option><option value="90">90°</option><option value="135">135°</option></select>
     <label class="wlbl" id="rmWallL">墙色 <select id="rmWall" title="这个房间的墙面颜色（只影响 3D）"></select>
       <input id="rmWallC" type="color" value="#f2efe8" title="自定义墙色" style="width:34px;height:26px;padding:1px;vertical-align:middle"></label>
-    <label class="wlbl" id="rmCurtainL">窗帘 <select id="rmCurtain" title="给这个房间的每一扇窗配窗帘"></select>
+    <label class="wlbl" id="rmCurtainL">窗帘 <select id="rmCurtain" title="给这个房间的每一扇窗配窗帘"></select><span class="setNote" id="rmCurtainNote"></span>
       <input id="rmCurtainC" type="color" value="#c9b79c" title="窗帘颜色" style="width:34px;height:26px;padding:1px;vertical-align:middle"></label>
     <span class="wlbl" id="rmArea"></span>
-    <label class="wlbl" id="lvFloorL"><span id="lvFloorTtl">全屋地板</span> <select id="lvFloor" title="全屋地板：没单独设地板的房间都用它"></select><span class="setNote" id="lvFloorNote">没单独设地板的房间都用它</span></label>
+    <label class="wlbl" id="lvFloorL"><span id="lvFloorTtl">全屋地板</span> <button class="decoLink" id="lvFloorMini" type="button"></button> <select id="lvFloor" title="全屋地板：没单独设地板的房间都用它"></select><span class="setNote" id="lvFloorNote">没单独设地板的房间都用它</span></label>
   </span>
   <span id="runCtl">
     <label class="wlbl">深 <input id="runDepth" type="number" min="15" max="120" step="1" value="60"> cm</label>
@@ -770,8 +778,8 @@
   </span>
   </div>
   <select id="wType" title="墙类型">
-    <option value="w">实墙</option><option value="g">玻璃/窗</option>
-    <option value="d">门洞</option><option value="o">开口</option>
+    <option value="w">墙</option><option value="g">窗（玻璃段）</option>
+    <option value="d">门洞（能装门）</option><option value="o">通道（不装门）</option>
   </select>
   <button class="btn" id="wOpenWin" title="在选中的这段墙中点开一扇窗（宽 / 窗台 / 窗高用「加窗」工具里设的）；墙段比窗短就整段换成窗">在这段开窗</button>
   <label class="wlbl">厚 <input id="wThick" type="number" min="2" max="60" step="1" value="9"> cm</label>
@@ -1005,6 +1013,7 @@
     </div>
     <div id="emptyCard" style="display:none"><b>这份户型还没有墙</b><span>先把外墙画出来，或者导入一张户型图照着描。<br>画好第一段墙后这张卡就会消失。</span>
       <div class="mnBtns"><button class="btn" id="ecImport">导入户型图…</button><button class="btn primary" id="ecDraw">画外墙</button></div></div>
+    <div id="underlayNote" style="display:none"><span>已叠上原户型图，方便对照着改</span><button class="btn ghost" id="unHide">隐藏，以后不自动叠</button></div>
     <div id="modeNote" style="display:none"><b>改户型要在 2D 平面里画</b><span>3D 里能看、能选中，但画墙、开门窗要回到平面图。</span>
       <div class="mnBtns"><button class="btn" id="mnStay">留在 3D</button><button class="btn primary" id="mnGo2d">切到 2D 平面</button></div></div>
     <div id="stageTR">
@@ -1049,7 +1058,7 @@
       <div class="field"><label>旋转</label><input id="pRot" type="number" step="0.1" style="width:64px"> °
         <input id="pRotSlider" type="range" min="0" max="359.5" step="0.5" style="flex:1 1 60px;min-width:36px;width:auto;vertical-align:middle">
         <button class="btn" id="pRot90" style="padding:2px 8px;flex:none">+90°</button></div>
-      <div class="field" id="pZRow"><label>离地</label><input id="pZ" type="number" min="0" step="1" style="width:64px" title="壁挂电视 / 吊柜 / 挂画 / 墙上的搁板：底边离地多高（0 = 落地）"> cm</div>
+      <div class="field" id="pZRow"><label>离地</label><input id="pZ" type="number" min="0" step="1" style="width:64px" title="壁挂电视 / 吊柜 / 挂画 / 墙上的搁板：底边离地多高（0 = 落地）"> <span id="pZU">cm</span></div>
       <div class="field"><label title="只改画面里的颜色，不改买的款式">显示颜色</label><input id="pColor" type="color" style="width:50px;padding:2px;height:28px"><span class="muted" style="font-size:11px">只改画面，不改买的款式</span></div>
       <div id="pLightRow" style="display:none">
         <div class="field"><label>色温</label>
@@ -4920,7 +4929,8 @@ function makeFloorPattern(defs, id, p, ang){
   return pat;
 }
 function drawRoomFloors(root){
-  const lvMat = DOC.floorMat && floorPreset(DOC.floorMat) ? DOC.floorMat : null;
+  // UX X26：没设全屋地板 = 缺省的深烟熏橡木（3D 与装修面板都这么认），2D 也照它画（以前不画 = 同一种地板两种画法）
+  const lvMat = DOC.floorMat && floorPreset(DOC.floorMat) ? DOC.floorMat : (floorPts().length>=3 ? 'oakSmoke' : null);
   const rooms = effRooms().filter(r=>r.poly && r.poly.length>=3 && r.floor && floorPreset(r.floor.mat));
   if(!rooms.length && !lvMat) return;
   const defs=el('defs',{},root), made=new Set();
@@ -6709,8 +6719,9 @@ svg.addEventListener('pointerdown', ev=>{
     drag={mode:'marquee', p0:p, p1:p, base:selUids()};
     svg.setPointerCapture(ev.pointerId);
   } else {
+    const hadSel = selected!=null || selUids().length>0;
     selOnly(null); drawFurniture();
-    drag={mode:'pan', px:ev.clientX, py:ev.clientY, vx:vb.x, vy:vb.y, k:1/svg.getScreenCTM().a};
+    drag={mode:'pan', px:ev.clientX, py:ev.clientY, vx:vb.x, vy:vb.y, k:1/svg.getScreenCTM().a, tapRoom: !hadSel && !wallEdit.on && !meas.on ? p : null};
     svg.setPointerCapture(ev.pointerId);
   }
 });
@@ -6785,7 +6796,10 @@ svg.addEventListener('pointermove', ev=>{
   drawFurniture();
 });
 svg.addEventListener('pointerup', ev=>{
-  if(drag && drag.mode==='pan'){ drag=null; return; }   // 平移松手一定清掉（以前移动这一层 / 底图模式先 return，留下一个跟着鼠标漂的拖动）
+  if(drag && drag.mode==='pan'){   // 平移松手一定清掉
+    // UX X21（§2.7.12）：摆家具里什么都没选时点一下空地板（没拖开）= 检视面板出这个房间的摘要卡（不进装修）
+    const tp=drag.tapRoom, tapped = tp && Math.hypot(ev.clientX-drag.px, ev.clientY-drag.py) < 5;
+    drag=null; if(tapped){ roomSummaryAt(tp[0], tp[1]); } return; }   // （以前移动这一层 / 底图模式先 return，留下一个跟着鼠标漂的拖动）（以前移动这一层 / 底图模式先 return，留下一个跟着鼠标漂的拖动）
   if(lvMove){ lvMove.drag=null; return; }   // S17b
   if(imgMove){ imgMoveUp(ev); return; }
   if(wallEdit.on && wallEditUp(ev)) return;
@@ -8666,8 +8680,10 @@ function drawWallEdit(){
     el('polygon',{points:wallEdit.rmHover.map(p=>(p[0]*S)+','+(p[1]*S)).join(' '), fill:'rgba(245,197,66,0.10)', stroke:'#f5c542',
       'stroke-width':1.6/k, 'stroke-dasharray':`${5/k} ${3/k}`, 'pointer-events':'none', class:'rmPreview'}, gEdit);
   { const rs=selRoom(); if(rs && rs.poly)
-    el('polygon',{points:rs.poly.map(p=>(p[0]*S)+','+(p[1]*S)).join(' '), fill:'rgba(38,224,168,0.12)', stroke:'#26e0a8',
-      'stroke-width':2/k, 'pointer-events':'none', class:'rmSel'}, gEdit); }
+  { // UX X48：选中的房间只描边（琥珀虚线 + 外侧淡光晕），不铺颜色 —— 刚换的地板要看得见
+    const pts=rs.poly.map(p=>(p[0]*S)+','+(p[1]*S)).join(' ');
+    el('polygon',{points:pts, fill:'none', stroke:'rgba(232,185,60,0.28)', 'stroke-width':6/k, 'stroke-linejoin':'round', 'pointer-events':'none', class:'rmSelGlow'}, gEdit);
+    el('polygon',{points:pts, fill:'none', stroke:'#e8b93c', 'stroke-width':2.5/k, 'stroke-dasharray':`${7/k} ${4/k}`, 'pointer-events':'none', class:'rmSel'}, gEdit); } }
   // S14：插座命中区在洁具之上（它最小：贴在台柜 / 台面上的插座必须点得中，同 #34 的 z 序口径）
   effOutlets().forEach(o=>{
     const { cs, R }=outletSymbolCenters(o);
@@ -8744,9 +8760,11 @@ function updateWallBarFromSel(){
   if(typeof inspBuildUI==='function') inspBuildUI();
   if(typeof decoPanelUI==='function') decoPanelUI();   // QA Q04：装修左栏的房间行（地板缩略 / 墙色 / 跟全屋）跟着改动、撤销刷新
 }
+let _lastSelKey='';
 function updateWallBarFromSel_(){
   if(wallEdit.sel && !selAlive(wallEdit.sel)) wallEdit.sel=null;   // 悬空选中自愈：工具条不能描述不存在的东西
   const s=wallEdit.sel;
+  { const k=s ? s.kind+':'+s.id : ''; if(k!==_lastSelKey){ _lastSelKey=k; _lvFloorOpen=false; } }   // 换了选中 = 全屋卡重新收起
   fillLenCtl();
   /* QA Q02：门 / 窗 / 点位这几组只看「选中了什么」，在任何提前 return 之前就定下来（以前窗 → 门、门 → 洁具换着选，上一个对象的死控件留在检视面板里） */
   ctxOn('#doorCtl', s&&s.kind==='door');
@@ -8788,6 +8806,14 @@ function updateWallBarFromSel_(){
     for(const id of ['#rmNameL','#rmFloor','#rmAngle','#rmArea','#rmWallL','#rmCurtainL']) $(id).style.display = r ? '' : 'none';
     { const tt=$('#lvFloorTtl'); if(tt) tt.textContent='全屋地板'+(hasLevelsNow() ? '（'+levelName(curLevelId())+'）' : ''); }
     $('#lvFloorL').style.display = '';   // F2（X02）：全屋地板常驻——选中一个房间时也看得见（以前互斥显示）
+    /* UX X47（§2.7.8）：选中房间时全屋地板卡收成一行（「全屋：深烟熏橡木 · 换 ▸」），房间自己的地板紧接在标题下面 ——
+       以前两组一模一样的色块上下叠着，第一眼点到的是全屋 */
+    { const L=$('#lvFloorL'); const mini = !!r && !_lvFloorOpen;
+      L.classList.toggle('mini', mini);
+      const cur=floorPreset((DOC.floorMat && floorPreset(DOC.floorMat)) ? DOC.floorMat : 'oakSmoke');
+      $('#lvFloorMini').textContent = (cur ? cur.name : '') + ' · 换 ▸';
+      if(r && L.parentNode.lastElementChild!==L) L.parentNode.appendChild(L);          // 选中房间：全屋卡挪到房间区块后面
+      if(!r && L.parentNode.firstElementChild!==L) L.parentNode.insertBefore(L, L.parentNode.firstElementChild); }
     $('#lvFloor').value = (DOC.floorMat && floorPreset(DOC.floorMat)) ? DOC.floorMat : '';
     if(r){
       const canName=roomCanRename(r);
@@ -8806,10 +8832,12 @@ function updateWallBarFromSel_(){
       const wins = roomWindows(r), cs = [...new Set(wins.map(x=>x.win.curtain ? x.win.curtain.style : 'none'))];
       $('#rmCurtain').value = !wins.length ? '' : (cs.length===1 ? cs[0] : 'mixed');
       $('#rmCurtain').disabled = !wins.length;
+      $('#rmCurtainNote').textContent = wins.length ? '给这个房间的 '+wins.length+' 扇窗一起配' : '这个房间没有窗';
       const c0 = wins.find(x=>x.win.curtain); if(c0) $('#rmCurtainC').value = c0.win.curtain.color;
       wMsg('房间「'+roomFallbackName(r)+'」'+(r.poly ? ' · '+fmtArea(roomArea(r)) : '')+' · 地板：'+(fp ? fp.name : '跟全屋')+
            ' · 墙色：'+(wc ? paintName(wc) : '白墙')+' · '+(wins.length ? wins.length+' 扇窗' : '没有窗')+
-           ' ｜ 改名 · 选地板与方向 · 墙色 / 窗帘在 3D 里看 · Delete=清除'+(r.src==='user' ? '这个房间' : '轮廓与地板（房间名保留）'));
+           (wallEdit.area==='build' ? ' ｜ 改名 · Delete = 删除这个房间的范围（名字保留）· 地板、墙色 → 装修'
+                                    : ' ｜ 点色块换地板 / 墙色 · 3D 里照样能改 · Esc = 取消选中'));
     } else {
       wMsg('点一个房间：自动识别墙 / 窗 / 门洞围出来的那一块 → 命名、看面积、换地板 ｜ 鼠标先停一下看黄色虚线预览'+
            (wallEdit.rmLeak ? ' · ⚠ 这一块没有被墙围起来' : ''));
@@ -22554,7 +22582,7 @@ function fmtMoney(v, cur){
   return CUR_SYM[cur] + Math.round(v).toLocaleString();
 }
 function fmtPrice(spec, cur){
-  if(isBuiltIn(spec)) return '公寓自带';
+  if(isBuiltIn(spec)) return '房子自带';
   if((cur || curNow()) === 'cad' && spec.caNA && spec.priceCA == null) return '加拿大无售';
   const p = priceOf(spec, cur);
   if(!p) return '';
@@ -22791,6 +22819,23 @@ function propsTabFollowSel(){
 // 旋转口径：mod 360 且永远非负。输入框 / 滑块 / +90° / [ ] 微调必须同一个口径，
 // 否则同一时刻框里显示 720、滑块显示 0，再按 +90° 又跳到 90（bug 猎 #43）。
 function normDeg(x){ const v = (+x || 0) % 360; return v < 0 ? v + 360 : v; }
+/* UX X21：房间摘要卡 —— 摆家具里点空地板。不改文档、不进撤销环；点「换地板、墙色 → 装修」= 进装修并选中这个房间 */
+let _roomSummary=null;
+function roomSummaryAt(x, y){
+  let r = effRooms().find(q=>q.poly && q.poly.length>=3 && ptInPoly([x,y], q.poly)) || null;
+  if(!r){ try{ const res=roomRegionAt(x, y); if(res.region) r=roomForRegion(res.region); }catch(e){} }
+  _roomSummary = r ? r.id : null; updateProps();
+}
+function roomSummaryCard(){
+  const r = _roomSummary && effRooms().find(q=>q.id===_roomSummary); if(!r) return false;
+  const fp=floorPreset(r.floor && floorPreset(r.floor.mat) ? r.floor.mat : ((DOC.floorMat && floorPreset(DOC.floorMat)) ? DOC.floorMat : 'oakSmoke'));
+  const wins=roomWindows(r), cs=[...new Set(wins.map(x=>x.win.curtain ? CURTAIN_NAMES[x.win.curtain.style] : '不挂'))];
+  $('#pTitle').textContent = '房间 · '+roomFallbackName(r)+(r.poly ? ' · '+fmtArea(roomArea(r)) : '');
+  const p=$('#pInfo'); p.textContent = '地板 '+(fp?fp.name:'')+(r.floor?'':'（跟全屋）')+' · 墙色 '+(r.wallColor ? paintName(r.wallColor) : '白墙')+(r.poly ? ' · 窗帘 '+(wins.length ? cs.join(' / ') : '没有窗') : '')+'　';   // 还没识别范围时认不出窗，不报「没有窗」
+  const b=document.createElement('button'); b.className='decoLink'; b.textContent='换地板、墙色 → 装修';
+  b.onclick=()=>{ b.blur(); const id=r.id; _roomSummary=null; enterArea('deco'); wallEdit.sel={kind:'room', id}; drawWallEdit(); updateWallBarFromSel(); };
+  p.appendChild(b); return true;
+}
 /* QA Q17-3（§2.7.3）：空状态里的「→ 装修」「→ 改户型」是能点的 */
 function pInfoIdle(){ const p=$('#pInfo'); p.textContent='点平面图上的一件家具来调整它；从左边目录点一件就能放进来。换地板、刷墙色 → ';
   const a=(t,area)=>{ const b=document.createElement('button'); b.className='decoLink'; b.textContent=t; b.onclick=()=>{ b.blur(); enterArea(area); }; p.appendChild(b); };
@@ -22816,7 +22861,8 @@ function updateProps(){
     return;
   }
   const it = state.items.find(i=>i.uid===selected);
-  if(!it){ $('#pTitle').textContent='还没选中东西'; pInfoIdle(); $('#pInfo').style.display='block'; $('#pFields').style.display='none'; return; }
+  if(it) _roomSummary=null;
+  if(!it){ if(wallEdit.on || state.view!=='2d' || !roomSummaryCard()){ _roomSummary=null; $('#pTitle').textContent='还没选中东西'; pInfoIdle(); } $('#pInfo').style.display='block'; $('#pFields').style.display='none'; return; }
   const s = itemSpec(it);
   if(!s){
     /* 目录条目已不在（移除的目录包 / 旧布局引用的下架条目）：如实说明，别崩，也别假装它还在卖 */
@@ -22842,12 +22888,14 @@ function updateProps(){
   if(document.activeElement!==$('#pRotSlider')) $('#pRotSlider').value = ((it.rot%360)+360)%360;
   // S19：离地（灯具按天花定位，不给这个框）
   $('#pZRow').style.display = isLight(s) ? 'none' : '';
-  if(document.activeElement!==$('#pZ')) $('#pZ').value = Math.round(itemZ(it)*30.48);
+  // UX X34：离地跟着长度单位走（英尺单位下按英寸填）
+  $('#pZU').textContent = state.unit==='cm' ? 'cm' : 'in';
+  if(document.activeElement!==$('#pZ')) $('#pZ').value = state.unit==='cm' ? Math.round(itemZ(it)*30.48) : Math.round(itemZ(it)*12*10)/10;
   syncLightUI(it);
   $('#pColor').value = /^#/.test(itemColor(it))? itemColor(it) : '#8a7d6b';
   const _pp = priceOf(s);
-  $('#pPrice').textContent = isBuiltIn(s) ? '公寓自带（不计价）' : (fmtPrice(s) || '—');
-  $('#pPrice').title = isBuiltIn(s) ? '固定在墙/天花上的灯具属于公寓自带，不计入采购清单'
+  $('#pPrice').textContent = isBuiltIn(s) ? '房子自带 · 不计价' : (fmtPrice(s) || '—');
+  $('#pPrice').title = isBuiltIn(s) ? '固定在墙 / 天花上的灯具是房子自带的，不进采购清单'
     : (_pp && _pp.variant && typeof s.caVar === 'string' ? s.caVar
       : (_pp && !_pp.exact ? '当地没有实际标价，按汇率 1 USD = '+fxRate()+' CAD 折算，仅供参考' : ''));
   const a=$('#pUrl'); if(s.url){a.href=s.url; a.textContent='打开产品页 ↗';} else {a.removeAttribute('href'); a.textContent='—';}
@@ -22867,11 +22915,12 @@ function updateProps(){
 $('#pZ').addEventListener('change', e=>{
   if(photoFrozen('改家具')) return;
   const it=state.items.find(i=>i.uid===selected); if(!it) return; const sp=itemSpec(it); if(!sp || isLight(sp)) return;
-  const v=+e.target.value, cur=Math.round(itemZ(it)*30.48);
-  if(e.target.value==='' || !isFinite(v) || v<0){ e.target.value=cur; toast('离地要填 0 或正数（cm）'); return; }
+  const inch = state.unit!=='cm', raw=+e.target.value, v = inch ? Math.round(raw*2.54) : raw, cur=Math.round(itemZ(it)*30.48);
+  const show = cm=> inch ? Math.round(cm/2.54*10)/10 : cm;
+  if(e.target.value==='' || !isFinite(raw) || raw<0){ e.target.value=show(cur); toast('离地要填 0 或正数（'+(inch?'英寸':'cm')+'）'); return; }
   const lv = hasLevelsNow() ? levelById(itemLevel(it)) : null, ceil = lv ? LV.levelCeil(DOC, lv) : CEIL_H;
   const maxCm = Math.max(0, Math.floor((ceil - cm2ft(sp.h||60))*30.48));
-  if(v>maxCm){ e.target.value=cur; toast('这件高 '+Math.round(sp.h||60)+'cm，层高 '+Math.round(ceil*30.48)+'cm：离地最多 '+maxCm+'cm（再高就顶到天花了）', 5000); return; }
+  if(v>maxCm){ e.target.value=show(cur); toast('这件高 '+Math.round(sp.h||60)+'cm，层高 '+Math.round(ceil*30.48)+'cm：离地最多 '+maxCm+'cm（再高就顶到天花了）', 5000); return; }
   if(Math.round(v)===cur) return;
   pushUndo('z:'+it.uid, true);
   if(v>0) it.z=FT4(v/30.48); else delete it.z;
@@ -23423,7 +23472,9 @@ function setWallEdit(on, area){
   const sel0 = keep ? wallEdit.sel : null;
   wallEdit.tool=t0; invalidateEditLayer(); wallEdit.sel=sel0;
   document.querySelectorAll('#wtoolSeg button, #decoToolSeg button').forEach(x=>x.classList.toggle('on',x.dataset.t===t0));
-  if(build && state.view==='2d' && !showUnderlay && !was) setUnderlay(true, {auto:true});   // 进改户型默认叠底图对照（导入户型静默跳过）
+  // UX X46（§6.1）：进改户型默认叠底图对照（导入户型静默跳过）—— 叠上了就说一声，能一键隐藏，并记住「不要自动叠」
+  if(build && state.view==='2d' && !showUnderlay && !was && STORE.get('md_underlayAuto')!=='0'){ setUnderlay(true, {auto:true}); underlayNoteUI(showUnderlay); }
+  if(!build) underlayNoteUI(false);
   if(!wallEdit.on && closeMenus) closeMenus();
   selected=null; build2D();
   // 进 / 出「改户型」：左栏收起 / 展开、工具条出现 / 消失，画布尺寸变了 → 重新取景（不然墙角落到面包屑底下，手柄点不到）
@@ -23469,6 +23520,7 @@ function editModeViewUI(){
   const show = on && wallEdit.area==='build' && in3;
   if(!show) _modeNoteStay=false;
   mn.style.display = show ? 'flex' : 'none'; mn.classList.toggle('thin', show && _modeNoteStay);
+  if(in3) underlayNoteUI(false);
 }
 $('#mnStay').onclick=()=>{ $('#mnStay').blur(); _modeNoteStay=true; editModeViewUI(); };
 $('#mnGo2d').onclick=()=>{ $('#mnGo2d').blur(); setView('2d'); };
@@ -23485,8 +23537,8 @@ function decoPanelUI(){
     const b=document.createElement('button'); b.className='roomRow'+(wallEdit.sel && wallEdit.sel.kind==='room' && wallEdit.sel.id===r.id ? ' on' : ''); b.dataset.room=r.id;
     b.innerHTML='<span class="rt"></span><span class="rn"></span><span class="rw"></span>';
     b.querySelector('.rt').style.background = u ? `url(${u}) center/cover` : (fp ? fp.tint : '#555');
-    b.querySelector('.rn').innerHTML=escTxt(roomFallbackName(r))+'<small>'+escTxt((r.floor ? '' : '跟全屋 · ')+(fp ? fp.name : '')+(r.poly ? ' · '+fmtArea(roomArea(r)) : ' · 还没识别范围'))+'</small>';
-    b.querySelector('.rw').style.background = r.wallColor || '#f4f2ee';
+    b.querySelector('.rn').innerHTML=escTxt(roomFallbackName(r))+'<small>'+escTxt((r.floor ? '' : '跟全屋 · ')+(fp ? fp.name : '')+(r.poly ? ' · '+fmtArea(roomArea(r)) : ''))+'</small>';
+    b.querySelector('.rw').style.background = r.wallColor || '#f4f2ee'; b.querySelector('.rw').title = '墙色：'+(r.wallColor ? paintName(r.wallColor) : '白墙');
     b.onclick=()=>{ b.blur();
       /* QA Q03：还没识别范围的房间，在这里就按它的名字位置识别一次（和在平面图上点它同一条路）——
          否则地板 / 墙色写进去了、画面却不变（3D 里选房间只有这一个入口） */
@@ -23576,6 +23628,8 @@ $('#rmFloor').onchange=()=>{ const r=selRoom(); if(!r) return;
 $('#rmAngle').onchange=()=>{ const r=selRoom(); if(!r || !r.floor) return;
   const v=+$('#rmAngle').value||0; if(v===(r.floor.angle||0)) return;
   pushUndo('rmAngle:'+r.id, true); if(v) r.floor.angle=v; else delete r.floor.angle; geoChanged(); updateWallBarFromSel(); };
+let _lvFloorOpen=false;
+$('#lvFloorMini').onclick=()=>{ $('#lvFloorMini').blur(); _lvFloorOpen=true; updateWallBarFromSel(); };
 $('#lvFloor').onchange=()=>{ const v=$('#lvFloor').value; if(v===(DOC.floorMat||'')) return;
   pushUndo('lvFloor', true); if(v) DOC.floorMat=v; else delete DOC.floorMat; geoChanged(); updateWallBarFromSel(); };
 // S14 + S15：点位的类型 / 安装面 / 联数 / 离地高（选中时改选中的那个，各占一步撤销；没选中时是「下一个放的」）
@@ -23898,6 +23952,7 @@ $('#wDone').onclick=()=>{ $('#wDone').blur(); commitPendingDraw(); setWallEdit(f
   // 行标签
   wrap($('#dKind'), '款式'); wrap($('#dWood'), '颜色'); wrap($('#dEndBtn'), '方向键调'); wrap($('#dHinge'), '开向', [$('#dSide')]);
   $('#dHinge').textContent='⇆ 换铰链那边'; $('#dSide').textContent='⇅ 换开门方向';
+  { const g=document.createElement('span'); g.className='btnPair'; $('#dHinge').parentNode.insertBefore(g, $('#dHinge')); g.appendChild($('#dHinge')); g.appendChild($('#dSide')); }   // UX X54：两个按钮一组，不折成两行
   wrap($('#wWinStyle'), '开启方式'); wrap($('#wWinFrame'), '窗框'); wrap($('#wWinFrost'), '玻璃'); wrap($('#wWinFull'), '窗型');
   wrap($('#wWinCurtain'), '窗帘', [$('#wWinCurtainC'), $('#wWinCurtainSide')]); $('#wWinCurtainSide').textContent='换到另一侧';
   for(const el of [$('#dWidth').closest('label'), $('#dEndBtn').closest('.irow'), $('#dHinge').closest('.irow'),
@@ -23934,7 +23989,7 @@ function floorSwatch(id){
       const sc=96/Math.min(img.width, img.height); g.drawImage(img, 0, 0, img.width*sc, img.height*sc); url=c.toDataURL('image/png'); } }catch(e){}
   _swCache.set(id, url); return url;
 }
-function shadowFloorGrid(sel, followLabel){
+function shadowFloorGrid(sel, followLabel, followMat){
   const grid=document.createElement('div'); grid.className='swGrid'; grid.setAttribute('role','radiogroup');
   let built=false;
   const build=()=>{ if(built) return; built=true;
@@ -23948,7 +24003,10 @@ function shadowFloorGrid(sel, followLabel){
       const u=floorSwatch(f.id); mk(f.id, f.name, u ? `url(${u}) center/cover` : f.tint); }
   };
   sel.parentNode.insertBefore(grid, sel.nextSibling); sel.classList.add('vh');
-  _shadows.push(()=>{ if(grid.offsetParent===null && !built) return; build(); for(const b of grid.querySelectorAll('.sw')) b.setAttribute('aria-pressed', String(b.dataset.v===(sel.value||''))); });
+  _shadows.push(()=>{ if(grid.offsetParent===null && !built) return; build(); for(const b of grid.querySelectorAll('.sw')) b.setAttribute('aria-pressed', String(b.dataset.v===(sel.value||'')));
+    // UX X55：「默认 / 跟全屋」格显示它实际是哪种地板（缩略图 + 角标），不是一个空框
+    const fb=grid.querySelector('.sw.follow'); if(fb && followMat){ const m=followMat(), u=floorSwatch(m), fp=floorPreset(m);
+      fb.style.background = u ? `url(${u}) center/cover` : (fp ? fp.tint : ''); fb.innerHTML='<span>'+escTxt(followLabel)+'</span>'; fb.title=followLabel+'：'+(fp?fp.name:''); } });
 }
 function shadowPaintGrid(sel, picker){
   const grid=document.createElement('div'); grid.className='swGrid paint';
@@ -23983,10 +24041,11 @@ function refreshShadows(){ for(const f of _shadows) try{ f(); }catch(e){} }
     btn.parentNode.insertBefore(sel, btn); btn.classList.add('vh');
     const cur=()=>{ const e=winSelEnt(); return e && e.curtain ? e.curtain.style : ''; };
     sel.onchange=()=>{ cycleUntil(btn, ()=>cur()===sel.value, 6); refreshShadows(); };
-    _shadows.push(()=>{ if(document.activeElement!==sel) sel.value=cur(); }); }
+    _shadows.push(()=>{ if(document.activeElement!==sel) sel.value=cur(); });
+    const n=document.createElement('span'); n.className='setNote'; n.textContent='只改这一扇'; btn.parentNode.appendChild(n); }   // UX X24：两处窗帘入口的区别写在面板上
   shadowSeg($('#rmAngle'), [...$('#rmAngle').options].map(o=>({t:o.textContent, on:()=>$('#rmAngle').value===o.value, go:()=>{ if($('#rmAngle').disabled) return; $('#rmAngle').value=o.value; $('#rmAngle').dispatchEvent(new Event('change', {bubbles:true})); }})));
-  shadowFloorGrid($('#rmFloor'), '跟全屋');
-  shadowFloorGrid($('#lvFloor'), '默认');
+  shadowFloorGrid($('#rmFloor'), '跟全屋', ()=>(DOC.floorMat && floorPreset(DOC.floorMat)) ? DOC.floorMat : 'oakSmoke');
+  shadowFloorGrid($('#lvFloor'), '默认', ()=>'oakSmoke');
   shadowPaintGrid($('#rmWall'), $('#rmWallC'));
   // 色块网格那几行：标签在上、网格占满宽
   for(const el of [$('#rmFloor').closest('.irow'), $('#lvFloorL'), $('#rmWallL')]) if(el) el.classList.add('col');
@@ -24433,6 +24492,7 @@ function toast(msg, ms){   // 非阻塞提示（headless 下 window.alert 会永
   t.textContent=msg; t.style.opacity='1';
   clearTimeout(_toastTimer); _toastTimer=setTimeout(()=>{ t.style.opacity='0'; }, ms||3500);
 }
+function underlayNoteUI(on){ const n=$('#underlayNote'); if(n) n.style.display = on && !CALIB ? 'flex' : 'none'; }
 function setUnderlay(v, opts){
   if(v && docImported()){
     // 导入户型不适用内置底图。自动路径（进编辑模式）静默跳过，显式点按钮才提示
@@ -24444,7 +24504,10 @@ function setUnderlay(v, opts){
 }
 $('#btnUnderlay').onclick=()=>{ $('#btnUnderlay').blur();
   if(CALIB){ return; }               // 校准审计模式本身就带底图
-  setUnderlay(!showUnderlay); };
+  setUnderlay(!showUnderlay); underlayNoteUI(false); };
+$('#unHide').onclick=()=>{ $('#unHide').blur(); setUnderlay(false); underlayNoteUI(false);
+  try{ STORE.set('md_underlayAuto','0'); }catch(e){}
+  toast('以后进「改户型」不再自动叠原户型图；要看时点模式条上的「底图 ▾ → 叠原户型图对照」', 4500); };
 /* 原图 */
 $('#btnRefPhoto').onclick=()=>{ const p=$('#refPhoto'); p.style.display = p.style.display==='block'?'none':'block'; $('#stage').classList.toggle('refOn', p.style.display==='block'); };
 /* S5：DXF 导入（解析 → 映射 → 一次性确认 → applyImportedDoc） */
@@ -24926,7 +24989,7 @@ $('#fileJson').addEventListener('change', ev=>{
     /* 导入布局是「整体替换这份户型的家具」：原先它一个字的反馈都没有（34 件 → 0 件，
        界面只是安静地变空）。替换本身可以撤销，但「发生了替换」必须说出来（R10：零反馈 = 设计缺陷）。 */
     let s = null;
-    try{ s = JSON.parse(t); }catch(e){ toast('文件格式错误：不是有效 JSON'); ev.target.value=''; return; }
+    try{ s = JSON.parse(t); }catch(e){ toast('这个文件打不开：不是 MiniDen 导出的方案文件，什么都没改'); ev.target.value=''; return; }
     if(!s || typeof s !== 'object' || !Array.isArray(s.items)){
       toast('这不是 MiniDen 导出的方案文件，什么都没改。请选「方案 ▾ → 导出这套方案」生成的 .json 文件', 7000); ev.target.value=''; return;
     }
@@ -24940,7 +25003,7 @@ $('#fileJson').addEventListener('change', ev=>{
     const taken = new Set([...CATALOG, ...packEntries].map(c=>c.id));
     const clash = customIn.filter(c=>c && taken.has(c.id)).map(c=>c.id);
     if(clash.length){
-      toast(`这份方案里的 ${clash.length} 个自定义条目与目录同 id（${clash.slice(0,4).join('、')}${clash.length>4?'…':''}）：id 是查找键，撞了就没法分辨哪件是哪件。先移除相关目录扩展包，或改掉文件里的 id。`, 9000);
+      toast(`这份方案里有 ${clash.length} 件自定义家具和目录里的商品重名（${clash.slice(0,4).join('、')}${clash.length>4?'…':''}），分不清哪件是哪件，这次没有导入。先移除对应的目录扩展包再导入。`, 9000);
       ev.target.value=''; return;
     }
     /* F3（X11）：导入方案缺省**新建一套**——现在这套里已经摆了东西时，不再把它整个换掉（以前叫「导入布局」，会直接覆盖当前方案）。
