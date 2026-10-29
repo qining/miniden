@@ -1946,6 +1946,8 @@ function save(){
   const lay=LAYOUTS.serializeLayouts(LAY); if(lay) o.lay=lay;
   let ok=true; try{ STORE.set(ITEMS_KEY, JSON.stringify(o)); }catch(e){ ok=false; }
   if(typeof saveStateUI==='function') saveStateUI(ok);
+  // QA N2：户型列表上的「家具 N」以前只在存几何时更新（导入 / 恢复后摆的、恢复回来的家具一直显示 0）—— 件数变了就补一次
+  { const rp = PLANS.planById(PLAN_REG, PLAN_ID); if(rp && (!rp.counts || rp.counts.items!==state.items.length)) planTouch(); }
 }
 /* S13：布局跟着 app 走。
    家具「目录」是 app 数据（就在 app.html 里，275 条，永远跟着文件走）；
@@ -20774,11 +20776,14 @@ function updatePlacedList(){
 let _propsTab='insp', _propsTabUser='insp';
 function showPropsTab(t, auto){
   if(t!=='insp' && t!=='list') return;
+  const wasHidden = _propsTab!=='insp';
   _propsTab=t; if(!auto) _propsTabUser=t;
   $('#tabInsp').setAttribute('aria-selected', String(t==='insp'));
   $('#tabList').setAttribute('aria-selected', String(t==='list'));
   $('#tabInspPane').style.display = t==='insp' ? 'flex' : 'none';
   $('#tabListPane').style.display = t==='list' ? 'flex' : 'none';
+  // QA N1：色块网格只在看得见时才建 —— 从清单切回检视时补一次（不然全屋 / 房间地板网格是空的）
+  if(t==='insp' && wasHidden && typeof refreshShadows==='function') refreshShadows();
 }
 $('#tabInsp').onclick=()=>{ $('#tabInsp').blur(); showPropsTab('insp'); };
 $('#tabList').onclick=()=>{ $('#tabList').blur(); showPropsTab('list'); };
