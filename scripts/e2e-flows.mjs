@@ -1755,12 +1755,19 @@ export const FLOWS = [
       const mid = [(A[0] + C[0]) / 2, (A[1] + C[1]) / 2];
       await t.click(await t.planPoint(mid[0], mid[1]));
       await t.waitFor(`wallEdit.sel && wallEdit.sel.kind==='room'`, 5000, '选中房间');
+      // QA Q09：墙色 / 窗帘是「装修」的事 —— 改户型里点了范围，再点「装修」（选中的房间保留）
+      await t.click('#modeDeco');
+      await t.waitFor(
+        `wallEdit.area==='deco' && wallEdit.sel && wallEdit.sel.kind==='room'`,
+        5000,
+        '到装修、房间仍选中'
+      );
       t.assert(
         'wc-room-picked',
         (await t.eval(
           `getComputedStyle(document.querySelector('#rmWallL')).display!=='none' && roomWindows(selRoom()).length===1`
         )) === true,
-        '房间工具条里有「墙色」「窗帘」，这间房认出 1 扇窗'
+        '装修的检视面板里有「墙色」「窗帘」，这间房认出 1 扇窗'
       );
 
       await t.step('墙色选「鼠尾草绿」、窗帘选「落地帘 + 纱帘」');

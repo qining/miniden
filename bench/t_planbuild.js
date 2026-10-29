@@ -7065,6 +7065,9 @@ async function runPBTest() {
       const room = () => effRooms().find((r) => r.id === r27.id);
 
       /* 27.1 房间工具条：墙色 / 窗帘两个控件在；选「鼠尾草绿」→ wallColor 写进去、一步撤销；重选同一个不占步；这间房认出 1 扇窗 */
+      // QA Q09：墙色 / 窗帘只在「装修」里（改户型选中房间只管名称和范围）—— 到装修里看，再回来（选中的房间两边都保留）
+      enterArea('deco');
+      await tick();
       const shown =
         getComputedStyle(Q('#rmWallL')).display !== 'none' && getComputedStyle(Q('#rmCurtainL')).display !== 'none';
       const wins = roomWindows(room());
@@ -7134,7 +7137,7 @@ async function runPBTest() {
 
       /* 27.3 3D：从房间中心朝四面打射线（独立量：射线 + 材质身上的标记，不读实现的段表） */
       if (wallEdit.on) {
-        Q('#btnWallEdit').click();
+        setWallEdit(false); // 现在在「装修」里（27.1），点「改户型」是切过去而不是退出
         await tick();
       }
       setView('3d');
@@ -12131,7 +12134,7 @@ async function runPBTest() {
       const em = Q('#catList .catEmpty');
       T(
         'pb-s24d-empty-state',
-        cards().length === 0 && !!em && /宽 ≤ 1 cm/.test(em.textContent) && /清掉尺寸/.test(em.textContent),
+        cards().length === 0 && !!em && /宽 ≤ 1 cm/.test(em.textContent) && /「清除」/.test(em.textContent),
         em ? '「' + em.textContent + '」' : '没有空结果说明'
       );
 
@@ -12691,6 +12694,67 @@ async function runPBTest() {
         'textContent「' + wm.textContent + '」· 操作段「' + (wa ? wa.textContent : '无') + '」'
       );
       wMsg('');
+
+      /* 50.6 QA Q01：画墙点回起点 = 收口并结束（4 段）；手上还在画的一条链点「完成」= 先提交（以前整条静默丢掉、撤销找不回） */
+      {
+        enterArea('build');
+        await tick();
+        Q('#wtoolSeg button[data-t="wall"]').click();
+        await tick();
+        const w0 = effWalls().length;
+        const clk = async (x, y) => {
+          const [a, b] = SPT(x, y);
+          fire('pointerdown', a, b);
+          await tick();
+          fire('pointerup', a, b);
+          await tick();
+        };
+        for (const [x, y] of [
+          [X + 2, Y + 2],
+          [X + 6, Y + 2],
+          [X + 6, Y + 5],
+          [X + 2, Y + 5],
+          [X + 2, Y + 2],
+        ])
+          await clk(x, y);
+        const loopN = effWalls().length - w0,
+          loopPts = wallEdit.drawPts.length;
+        await clk(X + 8, Y + 2);
+        await clk(X + 11, Y + 2);
+        const w1 = effWalls().length;
+        Q('#wDone').click();
+        await tick();
+        const doneN = effWalls().length - w1;
+        T(
+          'pb-f5-qa-wall-loop-and-done-commit',
+          loopN === 4 && loopPts === 0 && doneN === 1 && !wallEdit.on,
+          '点回起点 = ' + loopN + ' 段、链上剩 ' + loopPts + ' 点 · 画了一半点「完成」= +' + doneN + ' 段'
+        );
+      }
+
+      /* 50.7 QA Q02：窗 → 洁具换着选，窗的那组控件不许留在检视面板里（死控件） */
+      {
+        enterArea('build');
+        await tick();
+        const wn = pushUserWindow(X + 3, Y + 10, X + 7, Y + 10, cmToWd(15));
+        const fx = pushUserFixture('toilet', X + 12, Y + 8, 0);
+        geoChanged();
+        await tick();
+        wallEdit.sel = { kind: 'w', id: wn.id };
+        updateWallBarFromSel();
+        const winOn = Q('#winCtl').classList.contains('on');
+        wallEdit.sel = { kind: 'fx', id: fx.id };
+        updateWallBarFromSel();
+        const left = ['#winCtl', '#doorCtl'].filter((id) => Q(id).classList.contains('on'));
+        T(
+          'pb-f5-qa-no-stale-ctl',
+          winOn && left.length === 0 && Q('#fxCtl').classList.contains('on'),
+          '选窗时窗控件亮=' + winOn + ' · 换成洁具后还亮着的：' + (left.join(' ') || '无')
+        );
+        wallEdit.sel = null;
+        setWallEdit(false);
+        await tick();
+      }
 
       /* 50.5 引导卡：「? 帮助 → 快速上手」重开后按钮也是活的（以前只在首次出现时才绑） */
       T(
