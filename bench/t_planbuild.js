@@ -12805,8 +12805,34 @@ async function runPBTest() {
           /^房间 · /.test(Q('#pTitle').textContent) && !!Q('#pInfo').querySelector('button.decoLink'),
           '「' + Q('#pTitle').textContent + '」' + Q('#pInfo').textContent.slice(0, 40)
         );
-        _roomSummary = null;
-        updateProps();
+        key('Escape'); // QA R3-2：Esc 收掉摘要卡
+        await tick();
+        T(
+          'pb-f5-ux-room-summary-esc',
+          Q('#pTitle').textContent === '还没选中东西' && !_roomSummary,
+          '「' + Q('#pTitle').textContent + '」'
+        );
+      }
+
+      /* 50.10 UX X57：装修里选中窗按 Delete 不删（结构改动去改户型），并说清楚 */
+      {
+        const wn = (DOC.windows || []).find((w) => w.src === 'user');
+        enterArea('deco');
+        await tick();
+        const nW = (DOC.windows || []).length;
+        if (wn) {
+          wallEdit.sel = { kind: 'w', id: wn.id };
+          updateWallBarFromSel();
+        }
+        key('Delete');
+        await tick();
+        T(
+          'pb-f5-ux-deco-delete-window-refused',
+          !!wn && (DOC.windows || []).length === nW && /改户型/.test(Q('#wMsg').textContent),
+          '窗 ' + nW + '→' + (DOC.windows || []).length + ' · 提示「' + Q('#wMsg').textContent.slice(0, 30) + '」'
+        );
+        setWallEdit(false);
+        await tick();
       }
 
       /* 50.5 引导卡：「? 帮助 → 快速上手」重开后按钮也是活的（以前只在首次出现时才绑） */
