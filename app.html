@@ -572,7 +572,8 @@
   .roomlabel tspan.dim{font-size:11px; fill:var(--drw-dim);}
   /* F5 / X26：房间名加一圈底色光晕 —— 地板色调亮了之后字压在纹理上也读得出（校准视图不加：像素基线） */
   body:not(.calib) .roomlabel{paint-order:stroke; stroke:rgba(18,16,13,.82); stroke-width:3px; stroke-linejoin:round;}
-  body:not(.calib) .roomlabel{fill:#b3b9c0;} body:not(.calib) .roomlabel tspan.dim{stroke-width:1.4px; stroke:rgba(18,16,13,.7); fill:#a3aab2;}   /* UX X49：地板画出来以后名字和尺寸字提亮一档 */   /* UX X49：小字的光晕按字号收窄，不然糊成一团 */
+  body:not(.calib) .roomlabel{fill:#b3b9c0;} body:not(.calib) .roomlabel tspan.dim{stroke-width:1.4px; stroke:rgba(18,16,13,.7); fill:#a3aab2;}   /* UX X49：地板画出来以后名字和尺寸字提亮一档 */
+  body:not(.calib) .roomlabel.onLight{fill:#2a2622; stroke:rgba(255,255,255,.55);} body:not(.calib) .roomlabel.onLight tspan.dim{fill:#3d3832; stroke:rgba(255,255,255,.5);}   /* UX X61：浅色地板上用深字 */   /* UX X49：小字的光晕按字号收窄，不然糊成一团 */
   .dimlabel{fill:var(--drw-dimlabel); font-size:9.5px; text-anchor:middle;}
   .furn{cursor:grab;}
   .furn.dragging{cursor:grabbing;}
@@ -2935,6 +2936,14 @@ function makeFloorPattern(defs, id, p, ang){
   }
   return pat;
 }
+/* UX X61：标签位置上画的是浅色地板吗（房间自己的地板 → 全屋地板 → 缺省深烟熏橡木）：浅地板上房间名 / 尺寸改深字浅晕 */
+function floorLightAt(x, y){
+  const r = effRooms().find(q=>q.poly && q.poly.length>=3 && q.floor && floorPreset(q.floor.mat) && ptInPoly([x,y], q.poly));
+  const mat = r ? r.floor.mat : ((DOC.floorMat && floorPreset(DOC.floorMat)) ? DOC.floorMat : 'oakSmoke');
+  const fp = floorPreset(mat); if(!fp || !/^#[0-9a-f]{6}$/i.test(fp.tint||'')) return false;
+  const n=parseInt(fp.tint.slice(1),16), L=(0.2126*((n>>16)&255)+0.7152*((n>>8)&255)+0.0722*(n&255))/255;
+  return L > 0.55;
+}
 function drawRoomFloors(root){
   // UX X26：没设全屋地板 = 缺省的深烟熏橡木（3D 与装修面板都这么认），2D 也照它画（以前不画 = 同一种地板两种画法）
   const lvMat = DOC.floorMat && floorPreset(DOC.floorMat) ? DOC.floorMat : (floorPts().length>=3 ? 'oakSmoke' : null);
@@ -3821,6 +3830,7 @@ function build2D(){
     const lx=L.p[0]*S, ly=L.p[1]*S;
     const t = el('text',{x:lx,y:ly,class:'roomlabel',fill:L.small?'#6b727b':'#8b929b',
       'font-size':L.small?9:13, transform:`rotate(${L.rot} ${lx} ${ly})`},root);
+    if(!CALIB && floorLightAt(L.p[0], L.p[1])) t.classList.add('onLight');
     const t1=el('tspan',{x:lx,dy:0},t); t1.textContent=L.t;
     const dtxt = (CALIB ? (L.d || '') : (L.wd ? fmtLen2(L.wd, L.dp) : (L.d || '')));
     if(dtxt){ const t2=el('tspan',{x:lx,dy:14,class:'dim'},t); t2.textContent=dtxt; }
@@ -3833,6 +3843,7 @@ function build2D(){
       if(!r.pos || !r.label) continue;          // S16：没起名的房间（只为了铺地板）不画名字
       const lx=r.pos[0]*S, ly=r.pos[1]*S;
       const t = el('text',{x:lx,y:ly,class:'roomlabel',fill:'#8b929b','font-size':13},root);
+      if(!CALIB && floorLightAt(r.pos[0], r.pos[1])) t.classList.add('onLight');
       const t1=el('tspan',{x:lx,dy:0},t); t1.textContent=r.label;
       // S16：识别过轮廓的房间显示面积（地板用量的依据）；否则沿用导入时读到的「宽 × 深」
       const sub = r.poly ? fmtArea(roomArea(r)) : (r.wd && r.dp ? fmtLen2(r.wd, r.dp) : '');
@@ -20844,9 +20855,13 @@ function roomSummaryAt(x, y){
 function roomSummaryCard(){
   const r = _roomSummary && effRooms().find(q=>q.id===_roomSummary); if(!r) return false;
   const fp=floorPreset(r.floor && floorPreset(r.floor.mat) ? r.floor.mat : ((DOC.floorMat && floorPreset(DOC.floorMat)) ? DOC.floorMat : 'oakSmoke'));
-  const wins=roomWindows(r), cs=[...new Set(wins.map(x=>x.win.curtain ? CURTAIN_NAMES[x.win.curtain.style] : '不挂'))];
-  $('#pTitle').textContent = '房间 · '+roomFallbackName(r)+(r.poly ? ' · '+fmtArea(roomArea(r)) : '');
-  const p=$('#pInfo'); p.textContent = '地板 '+(fp?fp.name:'')+(r.floor?'':'（跟全屋）')+' · 墙色 '+(r.wallColor ? paintName(r.wallColor) : '白墙')+(r.poly ? ' · 窗帘 '+(wins.length ? cs.join(' / ') : '没有窗') : '')+'　';   // 还没识别范围时认不出窗，不报「没有窗」
+  /* UX X59 / QA R4-1：还没识别范围的房间，按点的位置算出这块区域的轮廓（只读，不写文档）—— 照样有面积、窗帘和画布上的框 */
+  let poly = r.poly;
+  if(!poly && _roomSummaryPt){ try{ const res=roomRegionAt(_roomSummaryPt[0], _roomSummaryPt[1]); if(res.region) poly=res.region.poly; }catch(e){} }
+  const rv = poly ? Object.assign({}, r, {poly}) : r;
+  const wins=roomWindows(rv), cs=[...new Set(wins.map(x=>x.win.curtain ? CURTAIN_NAMES[x.win.curtain.style] : '不挂'))];
+  $('#pTitle').textContent = '房间 · '+roomFallbackName(r)+(poly ? ' · '+fmtArea(roomArea(rv)) : '');
+  const p=$('#pInfo'); p.textContent = '地板 '+(fp?fp.name:'')+(r.floor?'':'（跟全屋）')+' · 墙色 '+(r.wallColor ? paintName(r.wallColor) : '白墙')+(poly ? ' · 窗帘 '+(wins.length ? cs.join(' / ') : '没有窗') : '')+'　';   // 还没识别范围时认不出窗，不报「没有窗」
   const b=document.createElement('button'); b.className='decoLink'; b.textContent='换地板、墙色 → 装修';
   b.onclick=()=>{ b.blur(); const id=r.id, pt=_roomSummaryPt; _roomSummary=null; enterArea('deco');
     // UX X56：没识别过范围的房间在这里按点的位置识别（与在平面图上点它同一条路），不然改了地板画面不变
@@ -20854,8 +20869,9 @@ function roomSummaryCard(){
     wallEdit.sel={kind:'room', id}; drawWallEdit(); updateWallBarFromSel(); };
   p.appendChild(b);
   // UX X59：画布上标出是哪个房间（虚线描边，不铺色；下一次重画家具层时自然消失）
-  if(gSel && r.poly){ const k=1/Math.max(1e-6, svg.getScreenCTM().a);
-    el('polygon',{points:r.poly.map(q=>(q[0]*S)+','+(q[1]*S)).join(' '), fill:'none', stroke:'#e8b93c', 'stroke-width':2*k, 'stroke-dasharray':`${6*k} ${4*k}`, 'pointer-events':'none', class:'rmSum'}, gSel); }
+  if(gSel) gSel.querySelectorAll('.rmSum').forEach(x=>x.remove());   // 上一个房间的框先清掉
+  if(gSel && poly){ const k=1/Math.max(1e-6, svg.getScreenCTM().a);
+    el('polygon',{points:poly.map(q=>(q[0]*S)+','+(q[1]*S)).join(' '), fill:'none', stroke:'#e8b93c', 'stroke-width':2*k, 'stroke-dasharray':`${6*k} ${4*k}`, 'pointer-events':'none', class:'rmSum'}, gSel); }
   return true;
 }
 /* QA Q17-3（§2.7.3）：空状态里的「→ 装修」「→ 改户型」是能点的 */
@@ -22532,7 +22548,7 @@ $('#btnUnderlay').onclick=()=>{ $('#btnUnderlay').blur();
   if(CALIB){ return; }               // 校准审计模式本身就带底图
   setUnderlay(!showUnderlay); underlayNoteUI(false); };
 $('#unHideOnce').onclick=()=>{ $('#unHideOnce').blur(); setUnderlay(false); underlayNoteUI(false); };
-$('#btnUnderlayAuto').onclick=()=>{ $('#btnUnderlayAuto').blur(); let on=true; try{ on = STORE.get('md_underlayAuto')==='0'; STORE.set('md_underlayAuto', on ? '1' : '0'); }catch(e){} underlayMenuUI(); toast(on ? '进「改户型」时会自动叠上原户型图' : '进「改户型」时不再自动叠原户型图', 3000); };
+$('#btnUnderlayAuto').onclick=()=>{ $('#btnUnderlayAuto').blur(); let on=true; try{ on = STORE.get('md_underlayAuto')==='0'; STORE.set('md_underlayAuto', on ? '1' : '0'); }catch(e){} underlayMenuUI(); if(!on) underlayNoteUI(false); toast(on ? '进「改户型」时会自动叠上原户型图' : '进「改户型」时不再自动叠原户型图', 3000); };
 $('#unHide').onclick=()=>{ $('#unHide').blur(); setUnderlay(false); underlayNoteUI(false);
   try{ STORE.set('md_underlayAuto','0'); }catch(e){}
   toast('以后进「改户型」不再自动叠原户型图；想改回来：模式条「底图 ▾ → 进改户型时自动叠上」', 4500); };
