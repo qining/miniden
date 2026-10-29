@@ -192,6 +192,8 @@
   #modeNote.thin span, #modeNote.thin #mnStay{display:none;} #modeNote.thin .mnBtns{margin:0;}
   #wtoolSeg button:disabled, #decoToolSeg button:disabled{opacity:.38; cursor:default;}
   #inspBuild.decoMode .dimRow, #inspBuild.decoMode #segCtl{display:none !important;}
+  #inspBuild.buildMode .decoOnly{display:none !important;}
+  #inspBuild:not(.buildMode) #buildDecoLink{display:none;}
   .decoLink{font-size:12px; color:var(--accent); cursor:pointer; background:none; border:none; padding:0; text-align:left;}
   body.calib #modeNote, body.calib #decoPanel{display:none !important;}
   #wallbar{flex-wrap:nowrap; height:40px; min-height:40px; padding:0 14px;}
@@ -413,7 +415,7 @@
   /* 编辑墙体的提示 / 错误：与 #hint 共用画布左下角那一个位（两者不会同时需要）。
      以前它挤在工具条末尾 flex:1，1700px 窗口下被压成 9px 宽 —— 错误提示等于没有（R10：零反馈 = 缺陷）。 */
   #wMsg{
-    position:absolute; left:12px; bottom:10px; z-index:7; display:none; max-width:min(720px,72%);
+    position:absolute; left:12px; bottom:10px; z-index:7; display:none; max-width:min(720px, calc(100% - 24px - var(--totW, 220px) - 12px));   /* QA Q13：给右下角的清单芯片让位 */
     font-size:12px; line-height:1.55; color:var(--muted); background:var(--hint-bg);
     padding:6px 10px; border-radius:6px; pointer-events:none;
   }
@@ -1550,6 +1552,10 @@ const CATALOG = [
  {id:'knapper', cat:'绿植 / 装饰', name:'KNAPPER 立式穿衣镜 · 白色', w:47.9, d:53, h:160, price:129.99, priceCA:74.99, color:'#f2f2f0', kind:'mirror', model:'knapper', url:'https://www.ikea.com/us/en/p/knapper-floor-mirror-white-00396242/', note:'官网 18⅞×20⅞×63″，镜面宽 15⅜″；背后管架顶横杆可挂衣、镜板背面 5 个挂钩'},
 ];
 /* 目录侧栏分类的显示顺序（未列出的分类，如用户自定义，按出现顺序附后） */
+/* F4（X36 的分类部分）：目录顶部分类芯片 = 跳转（展开对应的组并滚过去）；「全部」= 回到顶部 */
+const CAT_CHIPS=[['全部',null],['卧室',['床 / 婴儿床','床头柜','衣柜']],['客厅',['沙发 / 单椅','茶几 / 边几','电视 / 家电']],['餐厅',['餐椅 / 吧凳','餐桌']],
+  ['书房',['书桌','办公椅']],['儿童',['儿童沙发','手推车','儿童游乐架','运动器材','骑乘玩具','儿童桌 / 活动','儿童玩具']],['收纳',['收纳 / 搁架','入户 / 衣物']],
+  ['灯具',['落地灯','固定灯具']],['地毯与装饰',['地毯 / 爬行垫','绿植 / 装饰']]];
 const CAT_ORDER = ['床 / 婴儿床','床头柜','衣柜','沙发 / 单椅','儿童沙发','餐椅 / 吧凳','办公椅','餐桌','茶几 / 边几','电视 / 家电','书桌','收纳 / 搁架','手推车','入户 / 衣物','绿植 / 装饰','落地灯','固定灯具','地毯 / 爬行垫','儿童游乐架','运动器材','骑乘玩具','儿童桌 / 活动','儿童玩具'];
 
 /* =====================================================================
@@ -2109,6 +2115,7 @@ function planLabel(p){
 }
 let planDelArmed = false;
 function disarmPlanDel(){
+  if(planDelArmed && !wallEdit.on) wMsg('');   // QA Q06：「再点一次确认」那行红字跟着解除（删完 / 切走 / 改名后不再挂着）
   planDelArmed = false;
   const b=$('#btnPlanDel'); if(!b) return;
   b.classList.remove('arm'); b.textContent='删除这份户型…';
@@ -2230,7 +2237,7 @@ function createBlankPlan(){
   buildCatalog(); refresh();
   if(state.view!=='2d') setView(state.view);
   planSelectUI();
-  toast('已新建空白户型「'+d.name+'」', 3200); emptyCardUI();
+  toast('已新建空白户型「'+d.name+'」', 2000); emptyCardUI();
   return id;
 }
 function applyPlanRename(){
@@ -2488,6 +2495,7 @@ function restoreState(s){
   if(!o || !o.d) return false;
   const spanBefore = floorSpan(), wasImported = docImported(), elevBefore = curElev();
   const ccBefore = JSON.stringify(state.customCat);
+  const selBefore = wallEdit.sel, planBefore = PLAN_ID;   // QA Q20：撤销外观改动后，还在的那个房间 / 窗 / 门照样选着
   /* E26：快照里的户型/注册表也一并回去（导入可退、新建可退），并且存档键跟着切回去。
      键没变时不重新 loadDoc：DOC 就是快照里那份，重读会拿主存的旧值覆盖它。 */
   if(typeof o.p === 'string' && o.p !== PLAN_ID){
@@ -2509,6 +2517,7 @@ function restoreState(s){
   if(selected !== null && !state.items.some(i=>i.uid===selected)) selected = null;
   // 快照里的实体可能已不存在 → 编辑层选中/进行中的拖动一律作废
   invalidateEditLayer(); if(imgMove) setImgMove(false);
+  if(wallEdit.on && wallEdit.area==='deco' && selBefore && PLAN_ID===planBefore && selAlive(selBefore)) wallEdit.sel = selBefore;   // 只在装修里（外观改动）；改户型的撤销照旧取消选中
   /* 量尺寸标注跟着撤销环走：整图缩放现在会把标注一起缩（rescaleDocPlan），
      撤销那次缩放时几何回去了、标注不回就会留下「标注只跨一半」的不一致。 */
   meas.list = Array.isArray(o.m) ? o.m : [];
@@ -3420,7 +3429,7 @@ function insertDoorAt(p, ev){
   wallEdit.dEndSel=null; wallEdit.sel={kind:'door', id:ent.id};
   geoChanged(); updateWallBarFromSel();
   wMsg('已在墙上开门洞并放门：宽 '+lenLabel(sp.w)+(sp.narrowed ? '（这段墙放不下 '+lenLabel(want)+'，按放得下的宽开）' : '')+
-       (r.dropped ? '（门洞里的 '+r.dropped+' 个点位一起去掉了）' : '')+' ｜ 上方按钮换类型 / 铰链 / 开向 · 拖门身 = 滑动');
+       (r.dropped ? '（门洞里的 '+r.dropped+' 个点位一起去掉了）' : '')+' ｜ 右边检视面板里换款式 / 铰链 / 开向 · 拖门身 = 滑动');
   return ent;
 }
 /* 「在这段开窗」：选中的墙段中点开一扇工具条尺寸的窗；墙段放不下（比窗 + 两头 5cm 还短）= 整段换成窗 */
@@ -4934,7 +4943,8 @@ function closeFirstRun(){
   try{ STORE.set(FIRST_KEY, '1'); }catch(e){}
 }
 /* F5：按钮一律绑上 —— 「? 帮助 → 快速上手」随时能重开这张卡（以前只在首次出现时才绑，重开后按钮是死的） */
-$('#frStart').onclick=()=>{ $('#frStart').blur(); closeFirstRun(); };
+$('#frStart').onclick=()=>{ $('#frStart').blur(); closeFirstRun();
+  if(PLAN_ID!==BUILTIN_PLAN_ID && PLANS.planById(PLAN_REG, BUILTIN_PLAN_ID)) switchPlan(BUILTIN_PLAN_ID); };   // QA Q15：按钮写着「用示例户型开始」就要真的回到它
 /* 路 3 的下文：空白户型建好由画布中间的空状态卡 #emptyCard 接手引导（facelift §2.9.1，不再自动进改户型） */
 $('#frBlank').onclick=()=>{ $('#frBlank').blur(); closeFirstRun(); createBlankPlan(); };
 // F3 / X13：直接弹出文件选择框（按类型分流），不再打开工具行再说「在下面选」
@@ -5001,6 +5011,9 @@ window.addEventListener('keydown', ev=>{
   }
   if(!inField && !modalOpen() && navKey(ev)){ ev.preventDefault(); return; }
   if(wallEdit.on && state.view==='2d'){
+    // QA Q05：焦点在检视面板 / 模式条的输入框里按 Esc = 先结束这次输入（失焦，改动照常提交）；再按一次才一层层退
+    if(ev.key==='Escape' && ['INPUT','SELECT','TEXTAREA'].includes(tag) && ev.target.closest && ev.target.closest('#props, #wallbar')){
+      ev.preventDefault(); ev.stopPropagation(); ev.target.blur(); return; }   // 失焦时浏览器自己会派发 change
     if(['INPUT','SELECT','TEXTAREA'].includes(tag)) return; // 输入框正常输入；按钮焦点不挡编辑快捷键
     ev.stopPropagation();
     if(ev.key==='Escape'){
@@ -5213,7 +5226,13 @@ function groupRotate(items, deg, fine){
 }
 /* 整组复制：偏移 1.5ft，复制出来的那一组成为选择集（主选 = 主选的那件的副本）；自定义件的 custom 也要拷一份（不共用一个对象） */
 function groupDuplicate(items){
-  const copies=items.map(it=>{ const n={...it, uid:uidSeq++, x:it.x+1.5, y:it.y+1.5}; if(it.custom) n.custom={...it.custom}; return n; });
+  /* QA Q11：错开量 1.5ft 起步；副本会和组外某一件同款同位重合（连按 ⌘D 再整组复制就会这样）时再多错开一格，最多 6 格 */
+  const others=state.items;   // 组里别的件也算（A、B 相隔 1.5ft 时，A 的副本正好落在 B 上）
+  let k0=1;
+  for(; k0<6; k0++){ const d=1.5*k0;
+    if(!items.some(it=>others.some(o=>o.ref===it.ref && Math.abs(o.x-(it.x+d))<0.05 && Math.abs(o.y-(it.y+d))<0.05))) break; }
+  const off=1.5*k0;
+  const copies=items.map(it=>{ const n={...it, uid:uidSeq++, x:it.x+off, y:it.y+off}; if(it.custom) n.custom={...it.custom}; return n; });
   state.items.push(...copies);
   const k=items.findIndex(i=>i.uid===selected);
   selSetMany(copies.map(c=>c.uid), (copies[k]||copies[copies.length-1]).uid);
@@ -6727,11 +6746,16 @@ function srcU(id){ const e=entById(id); return e && e.src==='user'; }
 function updateWallBarFromSel(){
   updateWallBarFromSel_();
   if(typeof inspBuildUI==='function') inspBuildUI();
+  if(typeof decoPanelUI==='function') decoPanelUI();   // QA Q04：装修左栏的房间行（地板缩略 / 墙色 / 跟全屋）跟着改动、撤销刷新
 }
 function updateWallBarFromSel_(){
   if(wallEdit.sel && !selAlive(wallEdit.sel)) wallEdit.sel=null;   // 悬空选中自愈：工具条不能描述不存在的东西
   const s=wallEdit.sel;
   fillLenCtl();
+  /* QA Q02：门 / 窗 / 点位这几组只看「选中了什么」，在任何提前 return 之前就定下来（以前窗 → 门、门 → 洁具换着选，上一个对象的死控件留在检视面板里） */
+  ctxOn('#doorCtl', s&&s.kind==='door');
+  ctxOn('#winCtl', s&&s.kind==='w'&&isWinEnt(entById(s.id)));
+  ctxOn('#outletCtl', wallEdit.tool==='outlet' || (s&&s.kind==='outlet'));
   /* S22a：「在这段开窗」只对选中的实墙 / 细墙（直线）亮；加窗工具没选中窗时亮出「下一扇窗」的尺寸框（后面几个分支会提前 return，放在开头） */
   { const e0 = s && s.kind==='w' ? entById(s.id) : null, w0 = isWinEnt(e0);
     $('#wOpenWin').style.display = (e0 && !w0 && e0.kind && ['w','i'].includes(KIND2T[e0.kind]||'w') && e0.geom && e0.geom.t==='seg') ? '' : 'none';
@@ -7102,6 +7126,13 @@ function applyDrawWallChain(){ pushUndo('drawChain', true);
   wallEdit.drawPts=[]; wallEdit.hover=null;
   if(added){ geoChanged(); wMsg('已添加 '+added+' 段墙'); } else drawWallEdit();
 }
+/* QA Q01：手上正在画的东西，在换工具 / 点「完成」/ 换分区时先提交（以前整条没收口的墙链被 invalidateEditLayer 静默丢掉，撤销也找不回） */
+function commitPendingDraw(){
+  if(!wallEdit.on || !wallEdit.drawPts || !wallEdit.drawPts.length) return false;
+  if(wallEdit.tool==='wall' && wallEdit.drawPts.length>=2){ applyDrawWallChain(); return true; }
+  if(wallEdit.tool==='poly' && wallEdit.drawPts.length>=3){ closeDrawPoly(); return true; }
+  return false;
+}
 function closeDrawPoly(){ pushUndo('polyClose', true);
   let pts=wallEdit.drawPts;
   wallEdit.drawPts=[]; wallEdit.hover=null;
@@ -7271,7 +7302,7 @@ function wallEditDown(ev){
     const ent=pushUserDoor(best.x1,best.y1,best.x2,best.y2);
     wallEdit.dEndSel=null;
     wallEdit.sel={kind:'door', id:ent.id};
-    geoChanged(); updateWallBarFromSel(); wMsg('已加门（可用上方按钮换类型/铰链/开向）');
+    geoChanged(); updateWallBarFromSel(); wMsg('已加门 ｜ 右边检视面板里换款式 / 铰链 / 开向');
     return;
   }
   if(wallEdit.tool==='win'){
@@ -7363,6 +7394,10 @@ function wallEditDown(ev){
       }
       if(wallEdit.tool==='poly' && pts.length>=3 &&
          Math.hypot(p[0]-pts[0][0],p[1]-pts[0][1])<Math.min(0.35, 11/pxPerFt())){ closeDrawPoly(); return; }
+      // QA Q01：画墙点回起点 = 收口并结束（画一圈外墙的自然动作；以前只是又加了一个点、绘制还在继续）
+      if(wallEdit.tool==='wall' && pts.length>=3 &&
+         Math.hypot(p[0]-pts[0][0],p[1]-pts[0][1])<Math.min(0.35, 11/pxPerFt())){
+        pts.push([pts[0][0], pts[0][1]]); applyDrawWallChain(); return; }
     }
     pts.push(p); drawWallEdit(); return;
   }
@@ -20442,11 +20477,13 @@ function buildCatalog(filter){
   if(!nShown && (q || sized)){
     const em=document.createElement('div'); em.className='catEmpty';
     em.textContent = '没有'+(q ? '名字里带「'+String(filter).trim()+'」' : '')+(q && sized ? '、' : '')+(sized ? catSizeText()+' ' : '')+'的家具'+
-      (sized ? '——把尺寸放宽一点，或点「×」清掉尺寸' : '——换个词试试（英文名、中文名、分类都能搜）');
+      (sized ? '——把尺寸放宽一点，或点「清除」去掉尺寸条件' : '——换个词试试（英文名、中文名、分类都能搜）');
     listEl.appendChild(em);
   }
   let first=true;
-  const _ordered = CAT_ORDER.filter(k=>cats[k]);
+  // QA Q12：目录面板按分类芯片的分组排（同一个芯片的组挨在一起，点芯片跳过去就是整段）；采购清单仍按 CAT_ORDER
+  const _chipOrder = CAT_CHIPS.flatMap(c=>c[1]||[]);
+  const _ordered = [..._chipOrder, ...CAT_ORDER.filter(k=>!_chipOrder.includes(k))].filter(k=>cats[k]);
   const _rest = Object.keys(cats).filter(k=>!_ordered.includes(k));
   for(const cat of [..._ordered, ..._rest]){
     const open = (q || sized) ? true : catOpenState.has(cat) ? catOpenState.get(cat) : first;
@@ -20755,6 +20792,10 @@ function propsTabFollowSel(){
 // 旋转口径：mod 360 且永远非负。输入框 / 滑块 / +90° / [ ] 微调必须同一个口径，
 // 否则同一时刻框里显示 720、滑块显示 0，再按 +90° 又跳到 90（bug 猎 #43）。
 function normDeg(x){ const v = (+x || 0) % 360; return v < 0 ? v + 360 : v; }
+/* QA Q17-3（§2.7.3）：空状态里的「→ 装修」「→ 改户型」是能点的 */
+function pInfoIdle(){ const p=$('#pInfo'); p.textContent='点平面图上的一件家具来调整它；从左边目录点一件就能放进来。换地板、刷墙色 → ';
+  const a=(t,area)=>{ const b=document.createElement('button'); b.className='decoLink'; b.textContent=t; b.onclick=()=>{ b.blur(); enterArea(area); }; p.appendChild(b); };
+  a('装修','deco'); p.append('；改墙、开门窗 → '); a('改户型','build'); p.append('。'); }
 const PINFO_IDLE='点平面图上的一件家具来调整它；从左边目录点一件就能放进来。换地板、刷墙色 → 装修；改墙、开门窗 → 改户型。';
 function updateProps(){
   if(typeof propsTabFollowSel==='function') propsTabFollowSel();
@@ -20776,7 +20817,7 @@ function updateProps(){
     return;
   }
   const it = state.items.find(i=>i.uid===selected);
-  if(!it){ $('#pTitle').textContent='还没选中东西'; $('#pInfo').textContent=PINFO_IDLE; $('#pInfo').style.display='block'; $('#pFields').style.display='none'; return; }
+  if(!it){ $('#pTitle').textContent='还没选中东西'; pInfoIdle(); $('#pInfo').style.display='block'; $('#pFields').style.display='none'; return; }
   const s = itemSpec(it);
   if(!s){
     /* 目录条目已不在（移除的目录包 / 旧布局引用的下架条目）：如实说明，别崩，也别假装它还在卖 */
@@ -21079,12 +21120,9 @@ $('#cfAdd').onclick=()=>{
   if(openMenuId==='cfOpen') closeMenus();
 };
 $('#cfCancel').onclick=()=>{ $('#cfCancel').blur(); closeMenus(); };
-/* F4（X36 的分类部分）：目录顶部分类芯片 = 跳转（展开对应的组并滚过去）；「全部」= 回到顶部 */
-const CAT_CHIPS=[['全部',null],['客厅',['沙发 / 单椅','茶几 / 边几','电视 / 家电']],['卧室',['床 / 婴儿床','床头柜','衣柜']],['餐厅',['餐椅 / 吧凳','餐桌']],
-  ['书房',['书桌','办公椅']],['儿童',['儿童沙发','手推车','儿童游乐架','运动器材','骑乘玩具','儿童桌 / 活动','儿童玩具']],['收纳',['收纳 / 搁架','入户 / 衣物']],
-  ['灯具',['落地灯','固定灯具']],['地毯与装饰',['地毯 / 爬行垫','绿植 / 装饰']]];
 function catChipsUI(){
   const box=$('#catChips'); if(!box || box.childElementCount) return;
+  $('#catSearch').addEventListener('input', ()=>box.querySelectorAll('button.on').forEach(x=>x.classList.remove('on')));   // QA Q12：搜索后芯片不再亮着
   for(const [label, cats] of CAT_CHIPS){
     const b=document.createElement('button'); b.textContent=label; b.dataset.chip=label;
     b.onclick=()=>{ b.blur();
@@ -21395,7 +21433,8 @@ function setWallEdit(on, area){
   updateWallBarFromSel(); editModeViewUI();
   if(typeof decoPanelUI==='function') decoPanelUI();
   { const tt=$('#catalog .panelHead .ttl'); if(tt) tt.textContent = deco ? '装修' : '家具目录'; }
-  if(!wallEdit.on){ showPropsTab(_propsTabUser, true); updateProps(); }
+  if(!wallEdit.on){ showPropsTab(_propsTabUser, true); updateProps(); wMsg(''); }   // QA Q06：回到摆家具 = 改户型 / 装修的提示一并收掉（不然和家具提示叠在左下角）
+  else showPropsTab('insp', true);   // QA Q08：进装修 / 改户型 = 右栏切到检视（全屋地板卡、构件属性都在那里）
   emptyCardUI();
 }
 /* F5（facelift §2.9.1）：空白户型的空状态卡 —— 一段墙都没有、又不在改户型里时持续显示；画好第一段墙就消失 */
@@ -21410,13 +21449,14 @@ $('#ecDraw').onclick=()=>{ $('#ecDraw').blur();
   setWallEdit(true, 'build');
   const b=document.querySelector('#wtoolSeg button[data-t="wall"]'); if(b) b.click(); };
 function enterArea(a){
+  commitPendingDraw();   // 用户主动换分区：手上画的先提交（换户型 / 导入走的是别的路，那时旧链必须作废）
   if(a==='furn'){ if(wallEdit.on) setWallEdit(false); return; }
   if(wallEdit.on && wallEdit.area===a) return;
   setWallEdit(true, a);
 }
 $('#btnWallEdit').onclick=()=>{
   $('#btnWallEdit').blur();
-  if(wallEdit.on && wallEdit.area==='build') setWallEdit(false); else enterArea('build');
+  if(wallEdit.on && wallEdit.area==='build'){ commitPendingDraw(); setWallEdit(false); } else enterArea('build');
 };
 $('#modeDeco').onclick=()=>{ $('#modeDeco').blur(); enterArea('deco'); };
 /* 编辑模式在 3D 里：装修照常（放洁具 / 画台面这两个要点位置的工具灰掉）；改户型 = 提示卡 + 结构工具灰掉 */
@@ -21448,7 +21488,11 @@ function decoPanelUI(){
     b.querySelector('.rt').style.background = u ? `url(${u}) center/cover` : (fp ? fp.tint : '#555');
     b.querySelector('.rn').innerHTML=escTxt(roomFallbackName(r))+'<small>'+escTxt((r.floor ? '' : '跟全屋 · ')+(fp ? fp.name : '')+(r.poly ? ' · '+fmtArea(roomArea(r)) : ' · 还没识别范围'))+'</small>';
     b.querySelector('.rw').style.background = r.wallColor || '#f4f2ee';
-    b.onclick=()=>{ b.blur(); wallEdit.sel={kind:'room', id:r.id}; drawWallEdit(); updateWallBarFromSel(); decoPanelUI(); };
+    b.onclick=()=>{ b.blur();
+      /* QA Q03：还没识别范围的房间，在这里就按它的名字位置识别一次（和在平面图上点它同一条路）——
+         否则地板 / 墙色写进去了、画面却不变（3D 里选房间只有这一个入口） */
+      if(!r.poly && r.pos){ const got=pickRoomAt(r.pos[0], r.pos[1]); if(got && got.id===r.id){ decoPanelUI(); return; } }
+      wallEdit.sel={kind:'room', id:r.id}; drawWallEdit(); updateWallBarFromSel(); decoPanelUI(); };
     box.appendChild(b);
   }
   const in3 = state.view!=='2d';
@@ -21459,6 +21503,7 @@ $('#dpRun').onclick=()=>{ $('#dpRun').blur(); const b=document.querySelector('#d
 document.querySelectorAll('#wtoolSeg button, #decoToolSeg button').forEach(b=>{
   b.onclick=()=>{ b.blur(); if(b.disabled) return;
     if(wallEdit.tool===b.dataset.t) return; // 同工具重复点击不清空进行中的绘制
+    commitPendingDraw();
     wallEdit.tool=b.dataset.t; wallEdit.drawPts=[]; wallEdit.hover=null;
     if(b.dataset.t!=='select'){ $('#wType').value='w'; $('#wThick').value=9; } // 防止上次选中的门洞类型粘滞
     if(b.dataset.t!=='fx'){ $('#fxRot').value=0; }   // 切走洁具工具时旋转角复位
@@ -21831,7 +21876,7 @@ $('#wRestore').onclick=()=>{
   if(confirm('恢复原始户型？原有的墙、门窗和洁具回到最初的样子（你自己加的墙、柱、门和洁具会保留；在原有墙上开的窗 / 门会跟着原墙一起还原）')){
     restoreBuiltins();
     wallEdit.sel=null; geoChanged(); updateWallBarFromSel(); } };
-$('#wDone').onclick=()=>{ $('#wDone').blur(); setWallEdit(false); };
+$('#wDone').onclick=()=>{ $('#wDone').blur(); commitPendingDraw(); setWallEdit(false); };
 /* ---------- F2（facelift §2.7）：统一检视面板 ----------
    原来挤在顶部工具条里的上下文控件（门 / 窗 / 洁具 / 点位 / 楼梯 / 房间 / 台面 / 墙段）整组搬进右栏「检视」（元素 id 与处理器一个不动）；
    二选一 / 循环按钮换成分段控件、地板 / 墙色 / 窗框换成色块——原控件留在 DOM 里当「影子」（状态源 + 处理器入口），新视图只负责赋值。 */
@@ -21947,6 +21992,10 @@ function refreshShadows(){ for(const f of _shadows) try{ f(); }catch(e){} }
   // 色块网格那几行：标签在上、网格占满宽
   for(const el of [$('#rmFloor').closest('.irow'), $('#lvFloorL'), $('#rmWallL')]) if(el) el.classList.add('col');
   $('#lvFloorL').classList.add('lvCard');
+  // QA Q09（§2.7.8）：改户型里选中房间只管名称和范围；地板 / 墙色 / 窗帘是装修的事 —— 这几行标成 decoOnly，改户型里藏起来、给一条去装修的链接
+  for(const el of [$('#rmFloor').closest('.irow'), $('#rmAngle').closest('.irow'), $('#rmWallL'), $('#rmCurtainL'), $('#lvFloorL')]) if(el) el.classList.add('decoOnly');
+  { const l=document.createElement('button'); l.id='buildDecoLink'; l.className='decoLink'; l.textContent='换地板、墙色、窗帘 → 装修';
+    l.onclick=()=>{ l.blur(); enterArea('deco'); }; $('#roomCtl').appendChild(l); }
 })();
 /* 检视面板在改户型 / 装修里：标题 = 选中的东西（或「下一个要画的」），删除按钮跟着对象变 */
 const _kindName={w:'墙', door:'门', fx:'洁具', run:'台面 / 橱柜', outlet:'插座与水电点位', stair:'楼梯', room:'房间', p:'柱子 / 墙块'};
@@ -21955,10 +22004,14 @@ function inspBuildUI(){
   if(!wallEdit.on || CALIB || selUids().length){ ib.style.display='none'; acts.style.display='none'; kk.textContent=''; return; }
   ib.style.display='flex';
   ib.classList.toggle('decoMode', wallEdit.area==='deco');
+  ib.classList.toggle('buildMode', wallEdit.area==='build');
   $('#pFields').style.display='none'; $('#pGroup').style.display='none';
   const s=wallEdit.sel, t=wallEdit.tool;
   let kind = s ? s.kind : null, e = s && s.id ? entById(s.id) : null, isWin = kind==='w' && isWinEnt(e);
-  const src = s && s.id ? (srcU(s.id) ? '自己加的' : '原有') : '';
+  // QA Q07：洁具 / 台面 / 点位 / 楼梯 / 房间不在 entById 里，按各自的对象读 src
+  const objOf = k => k==='fx' ? selFixture() : k==='run' ? selRun() : k==='outlet' ? selOutlet() : k==='stair' ? selStair() : k==='room' ? selRoom() : null;
+  const so = s && objOf(s.kind);
+  const src = s && s.id ? ((so ? so.src==='user' : srcU(s.id)) ? '自己加的' : '原有') : '';
   let title='', info='';
   if(s){
     if(isWin){ title='窗 · '+winStyleLabel(e); }
@@ -21988,9 +22041,13 @@ function inspBuildUI(){
   { const dl=$('#decoDimLink'); if(dl) dl.style.display = wallEdit.area==='deco' && (kind==='door' || isWin) ? '' : 'none'; }
   del.textContent = '删除这'+(isWin ? '扇窗' : kind==='door' ? '扇门' : kind==='w' ? '段墙' : kind==='room' ? '个房间的范围' : kind==='stair' ? '部楼梯' : kind==='outlet' ? '个点位' : kind==='run' ? '段台面' : kind==='fx' ? '个洁具' : '个')+' ';
   { const k=document.createElement('span'); k.className='kbd'; k.textContent='Del'; del.appendChild(k); }
+  // QA Q16（§2.7.9）：原有的洁具不能删 —— 按钮直接灰掉并说清，不要点了才报错
+  const fxLocked = kind==='fx' && so && so.src!=='user';
+  del.disabled = !!fxLocked; del.title = fxLocked ? '原有的洁具不能删（自己放的可以删）' : '';
+  if(fxLocked) del.firstChild.textContent='原有的洁具不能删 ';
   refreshShadows();
 }
-$('#modeFurn').onclick=()=>{ $('#modeFurn').blur(); if(wallEdit.on) setWallEdit(false); };   // 回到摆家具 = 退出装修 / 改户型
+$('#modeFurn').onclick=()=>{ $('#modeFurn').blur(); commitPendingDraw(); if(wallEdit.on) setWallEdit(false); };   // 回到摆家具 = 退出装修 / 改户型
 /* 预设 */
 function show3DLoading(msg){ const b=$('#loading3d'); if(!b) return;
   $('#loadTxt').textContent=msg||'正在生成 3D 场景…'; b.style.display='flex'; }
@@ -22998,7 +23055,7 @@ $('#btnBackup').onclick=()=>{
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
   const d = new Date(), ds = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
   a.download = (currentDoc().name || '我的户型') + '-完整备份-' + ds + '.json'; a.click();
-  toast('完整备份已下载：户型 + '+LAY.list.length+' 套方案的家具。换电脑或浏览器时用「文件 ▾ → 从备份恢复…」读回来', 6000);
+  toast('完整备份已下载：「'+((DOC&&DOC.name)||'这份户型')+'」+ '+LAY.list.length+' 套方案的家具（只含当前这份户型；别的户型切过去再各下载一份）。换电脑或浏览器时用「文件 ▾ → 从备份恢复…」读回来', 6000);
 };
 $('#btnExportDoc').onclick=()=>{
   const s = exportDocJSON();
@@ -23026,6 +23083,8 @@ $('#docOk').onclick=()=>{
   if(photoFrozen('导入户型')) return;
   const d = _docPending, fu = _docFurniture; _docPending = null; _docFurniture = null;
   $('#docModal').style.display = 'none';
+  // QA Q21：恢复出来的户型和已有的同名（最常见：示例户型的备份）→ 名字后面标一下，列表里分得清
+  if(d && PLAN_REG.plans.some(p=>p.name===(d.name||''))) d.name = (d.name||'户型')+'（备份恢复）';
   try{
     applyImportedDoc(d, { source:'projectdoc' });
     if(fu){   // 完整备份：家具与方案一起回来（与读存档同一条路）
