@@ -12756,6 +12756,22 @@ async function runPBTest() {
         await tick();
       }
 
+      /* 50.8 QA N1：右栏停在「清单」时进装修 = 切到检视，全屋地板色块网格是满的（色块只在看得见时才建） */
+      {
+        showPropsTab('list');
+        enterArea('deco');
+        await tick();
+        const nSw = Q('#lvFloorL').querySelectorAll('button').length;
+        T(
+          'pb-f5-qa-deco-from-list-swatches',
+          _propsTab === 'insp' && nSw > 5,
+          '进装修后右栏=' + _propsTab + ' · 全屋地板色块 ' + nSw + ' 个'
+        );
+        setWallEdit(false);
+        showPropsTab('insp');
+        await tick();
+      }
+
       /* 50.5 引导卡：「? 帮助 → 快速上手」重开后按钮也是活的（以前只在首次出现时才绑） */
       T(
         'pb-f5-firstrun-buttons-bound',
