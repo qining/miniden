@@ -12772,6 +12772,43 @@ async function runPBTest() {
         await tick();
       }
 
+      /* 50.9 UX r2：X26 缺省全屋地板 2D 也画；X47 选中房间时全屋卡收成一行、房间地板紧接标题；X48 选中只描边不铺色；X21 摆家具里点空地板 = 房间摘要 */
+      {
+        const lvF = pbSvg.querySelector('.levelFloor');
+        const r50 = pickRoomAt(X + 7, Y + 5);
+        enterArea('deco');
+        wallEdit.sel = { kind: 'room', id: r50.id };
+        drawWallEdit();
+        updateWallBarFromSel();
+        await tick();
+        const L = Q('#lvFloorL');
+        const roomRowTop = Q('#rmFloor').closest('.irow').getBoundingClientRect().top;
+        const lvTop = L.getBoundingClientRect().top;
+        const sel = pbSvg.querySelector('.rmSel');
+        T(
+          'pb-f5-ux-room-first-default-floor',
+          !!lvF && L.classList.contains('mini') && roomRowTop < lvTop && !!sel && sel.getAttribute('fill') === 'none',
+          '缺省全屋地板画了=' +
+            !!lvF +
+            ' · 全屋卡收起=' +
+            L.classList.contains('mini') +
+            ' · 房间地板在上=' +
+            (roomRowTop < lvTop) +
+            ' · 选中填充=' +
+            (sel ? sel.getAttribute('fill') : '无')
+        );
+        setWallEdit(false);
+        await tick();
+        roomSummaryAt(X + 7, Y + 5);
+        T(
+          'pb-f5-ux-room-summary',
+          /^房间 · /.test(Q('#pTitle').textContent) && !!Q('#pInfo').querySelector('button.decoLink'),
+          '「' + Q('#pTitle').textContent + '」' + Q('#pInfo').textContent.slice(0, 40)
+        );
+        _roomSummary = null;
+        updateProps();
+      }
+
       /* 50.5 引导卡：「? 帮助 → 快速上手」重开后按钮也是活的（以前只在首次出现时才绑） */
       T(
         'pb-f5-firstrun-buttons-bound',

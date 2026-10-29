@@ -3355,11 +3355,11 @@ async function run3DTest() {
             { id: p29ClashId, cat: '茶几 / 边几', name: '文件里的自制件', w: 90, d: 30, h: 45, kind: 'sideTable' },
           ],
         },
-        /同 id/
+        /重名/
       );
       T(
         'cat29-import-layout-id-clash-refused',
-        state.items.length === p29ItemsBefore && /同 id/.test(p29Toast()),
+        state.items.length === p29ItemsBefore && /重名/.test(p29Toast()),
         '布局 ' +
           p29ItemsBefore +
           ' → ' +
