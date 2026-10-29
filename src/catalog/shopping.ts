@@ -165,7 +165,7 @@ export function shoppingTail(list: ShopList): string[] {
   if (list.variant) tail.push(`${list.variant} 件带 * = 加拿大在售的是另一配置`);
   if (list.na) tail.push(`${list.na} 件加拿大无售`);
   if (list.unknown) tail.push(`${list.unknown} 件无价`);
-  if (list.builtin) tail.push(`${list.builtin} 件固定灯具不计价`);
+  if (list.builtin) tail.push(`${list.builtin} 件房子自带的灯不计价`);
   if (list.ghost) tail.push(`${list.ghost} 件目录里没有（不计价）`);
   return tail;
 }
