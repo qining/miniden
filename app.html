@@ -199,7 +199,7 @@
   #inspBuild.buildMode .decoOnly{display:none !important;}
   #lvFloorMini{display:none;} #lvFloorL.mini #lvFloorMini{display:inline;} #lvFloorL.mini .swGrid, #lvFloorL.mini #lvFloorNote{display:none !important;}
   #lvFloorL.mini{flex-direction:row !important; align-items:center;}
-  #inspBuild .btnPair{display:flex; gap:6px; flex:1; min-width:0;} #inspBuild .btnPair .btn{flex:1; white-space:nowrap; padding:0 6px;}
+  #inspBuild .btnPair{display:flex; flex-wrap:wrap; gap:6px; flex:1; min-width:0;} #inspBuild .btnPair .btn{flex:1 1 auto; min-width:0; white-space:nowrap; padding:0 6px;}   /* QA R3-4：窄面板里换行而不是溢出 */
   #inspBuild:not(.buildMode) #buildDecoLink{display:none;}
   .decoLink{font-size:12px; color:var(--accent); cursor:pointer; background:none; border:none; padding:0; text-align:left;}
   body.calib #modeNote, body.calib #decoPanel{display:none !important;}
@@ -669,6 +669,7 @@
   <button class="mi chk" id="btnRefPhoto">右上角小窗看原图</button>
   <button title="移动底图：按住拖动，方向键 1cm（Shift 10cm），Esc 结束（只对带底图的导入户型）" class="mi" id="btnImgMove">移动底图…</button>
   <button title="从底图里自动找出墙线，画墙时磁性吸附；再点一次关掉" class="mi chk" id="btnTrace">画墙时吸附图上的墙线</button>
+  <button title="进「改户型」时自动把原户型图叠上（只对带原户型图的户型）" class="mi chk" id="btnUnderlayAuto">进改户型时自动叠上</button>
 </div>
 <div id="firstRun" style="display:none">
   <h3>欢迎来到 MiniDen</h3>
@@ -1013,7 +1014,7 @@
     </div>
     <div id="emptyCard" style="display:none"><b>这份户型还没有墙</b><span>先把外墙画出来，或者导入一张户型图照着描。<br>画好第一段墙后这张卡就会消失。</span>
       <div class="mnBtns"><button class="btn" id="ecImport">导入户型图…</button><button class="btn primary" id="ecDraw">画外墙</button></div></div>
-    <div id="underlayNote" style="display:none"><span>已叠上原户型图，方便对照着改</span><button class="btn ghost" id="unHide">隐藏，以后不自动叠</button></div>
+    <div id="underlayNote" style="display:none"><span>已叠上原户型图，方便对照着改</span><button class="btn ghost" id="unHideOnce">这次隐藏</button><button class="btn ghost" id="unHide">以后不自动叠</button></div>
     <div id="modeNote" style="display:none"><b>改户型要在 2D 平面里画</b><span>3D 里能看、能选中，但画墙、开门窗要回到平面图。</span>
       <div class="mnBtns"><button class="btn" id="mnStay">留在 3D</button><button class="btn primary" id="mnGo2d">切到 2D 平面</button></div></div>
     <div id="stageTR">
@@ -4897,6 +4898,7 @@ for(const id of ['btnImportAny','btnImportDxf','btnImportPdf','btnImportImg','bt
 function underlayMenuUI(){
   const set=(id, on)=>{ const b=$(id); if(b) b.classList.toggle('on', !!on); };
   set('#btnUnderlay', showUnderlay); set('#btnTrace', showTrace);
+  try{ set('#btnUnderlayAuto', STORE.get('md_underlayAuto')!=='0'); }catch(e){}
   const rp=$('#refPhoto'); set('#btnRefPhoto', rp && rp.style.display==='block');
   const im=$('#btnImgMove'); if(im){ const can = !!(DOC && DOC.baseImage); im.disabled = !can; im.title = can ? '移动底图：按住拖动，方向键 1cm（Shift 10cm），Esc 结束' : '这份户型没有可移动的底图（只对带底图的导入户型）'; }
 }
@@ -5031,6 +5033,10 @@ window.addEventListener('keydown', ev=>{
     if(ev.key==='Escape' && ['INPUT','SELECT','TEXTAREA'].includes(tag) && ev.target.closest && ev.target.closest('#props, #wallbar')){
       ev.preventDefault(); ev.stopPropagation(); ev.target.blur(); return; }   // 失焦时浏览器自己会派发 change
     if(['INPUT','SELECT','TEXTAREA'].includes(tag)) return; // 输入框正常输入；按钮焦点不挡编辑快捷键
+    // UX X57：装修只改外观 —— 门 / 窗 / 墙的删除与挪动是结构改动，在装修里按 Delete / 方向键不生效并说清去哪改
+    if(wallEdit.area==='deco' && wallEdit.sel && ['w','door','p'].includes(wallEdit.sel.kind) &&
+       (ev.key==='Delete' || ev.key==='Backspace' || /^Arrow/.test(ev.key))){
+      ev.preventDefault(); wMsg('装修里只改外观：删掉或挪动门窗要到「改户型」里', true); return; }
     ev.stopPropagation();
     if(ev.key==='Escape'){
       if(drag && drag.mode==='wEnd'){ Object.assign(drag.seg, drag.o); drag=null; build2D(); return; }
@@ -5130,7 +5136,8 @@ window.addEventListener('keydown', ev=>{
     document.querySelectorAll('.furn.dragging').forEach(e=>e.classList.remove('dragging'));
     drag=null; drawFurniture(); pruneDeadRing(); return;
   }
-  if(ev.key==='Escape' && selected!=null){ selOnly(null); drawFurniture(); return; }   // S20：Esc = 全不选（不改场景，光追中也允许）
+  if(ev.key==='Escape' && selected!=null){ selOnly(null); drawFurniture(); return; }
+  if(ev.key==='Escape' && _roomSummary){ _roomSummary=null; updateProps(); drawFurniture(); return; }   // QA R3-2：Esc 收掉房间摘要卡   // S20：Esc = 全不选（不改场景，光追中也允许）
   /* S23 K1：室内视角里改家具的快捷键一律不作用——方向键 / WASD 在走路，以前按 D（向右走）同时在复制选中的家具（按住不放复制一串），
      方向键边走边挪它，R / Delete 作用在可能根本看不见的那件上 */
   if(state.view==='fp'){
@@ -6905,7 +6912,7 @@ function updateWallBarFromSel_(){
       $('#dwU').textContent=doorLenUnit();
       $('#dEndBtn').textContent='端点：'+(wallEdit.dEndSel===null?'整体':wallEdit.dEndSel===0?'起点':'终点');
       $('#dWood').textContent=d.wood?'改白色':'深木色';
-      wMsg((srcU(s.id)?'自己加的门':'原有的门')+' · '+DK_NAMES[d.kind]+' ｜ 门宽可直接输入 · 拖门身=滑动 · 拖端点/方向键=调宽（Shift 粗调） · Delete 删除'); }
+      wMsg((srcU(s.id)?'自己加的门':'原有的门')+' · '+DK_NAMES[d.kind]+(wallEdit.area==='deco' ? ' ｜ 右边换款式、颜色 · 门宽和开向 → 改户型' : ' ｜ 门宽可直接输入 · 拖门身=滑动 · 拖端点/方向键=调宽（Shift 粗调） · Delete 删除')); }
     return;
   }
   ctxOn('#winCtl', s && s.kind==='w' && isWinEnt(entById(s.id)));
@@ -6935,7 +6942,8 @@ function updateWallBarFromSel_(){
         if(document.activeElement!==$('#wWinH')) $('#wWinH').value=hCm;
         const rt=winRunsText(seg, doorLinkage(seg, s, {win:true}).runs());
         wMsg((srcU(s.id)?'自己加的窗':'原有的窗')+' · '+winStyleLabel(e)+(e.frost?' · 磨砂':'')+(e.fullHeight?' · 落地':' · 窗台 '+sillCm+'cm · 窗高 '+hCm+'cm')+(e.curtain?' · '+CURTAIN_NAMES[e.curtain.style]:'')+' · 宽 '+lenLabel(L)+(rt?' · '+rt:'')+
-             ' ｜ 拖 = 沿墙滑 · 拖端点 = 改宽 · 方向键 = 沿墙挪 1cm（Shift 10cm）· 窗台 / 窗高直接输入 · Delete = 删掉（墙封回去）');
+             (wallEdit.area==='deco' ? ' ｜ 右边换开启方式、窗框、玻璃、窗帘 · 尺寸和位置 → 改户型'
+              : ' ｜ 拖 = 沿墙滑 · 拖端点 = 改宽 · 方向键 = 沿墙挪 1cm（Shift 10cm）· 窗台 / 窗高直接输入 · Delete = 删掉（墙封回去）'));   // UX X44：装修里只讲外观操作
       } else {
         wMsg((srcU(s.id)?'自己加的墙':'原有的墙')+' · 长 '+lenLabel(L)+' · 厚 '+wdToCm(seg.wd)+'cm ｜ 拖圆点=改端点 · 拖墙身=平移 · Delete=删除');
       }
@@ -7176,6 +7184,7 @@ function closeDrawPoly(){ pushUndo('polyClose', true);
 }
 function deleteSel(){
   const s=wallEdit.sel; if(!s) return;
+  if(wallEdit.area==='deco' && ['w','door','p'].includes(s.kind)){ wMsg('装修里只改外观：删掉门窗要到「改户型」里', true); return; }   // UX X57
   if(!selAlive(s)){
     /* 选中指向的实体不在当前这份户型里（悬空引用）。以前照走删除流程：
        pushUndo 塞一步死快照 + 界面说「已删除」，而文档一个字节都没变 ——
@@ -7231,7 +7240,7 @@ function deleteSel(){
   if(s.kind==='w' && isWinEnt(e)){   // W12：开在墙上的窗删掉 = 墙封回去（不留洞）
     const k=closeWindowInWall(e);
     if(k){ wallEdit.sel={kind:'w', id:k.id}; geoChanged(); updateWallBarFromSel();
-      wMsg('已删除窗：墙封上了（想留个洞：Ctrl+Z 撤回，再把这一截的「类型」改成开口）'); return; }
+      wMsg('已删除窗：墙封上了（想留个洞：Ctrl+Z 撤回，再把这一截的「类型」改成「通道（不装门）」）'); return; }
   }
   if(s.kind==='door'){
     if(e && e.src==='user') DOC.doors=DOC.doors.filter(x=>x.id!==s.id);
@@ -20826,11 +20835,11 @@ function propsTabFollowSel(){
 // 否则同一时刻框里显示 720、滑块显示 0，再按 +90° 又跳到 90（bug 猎 #43）。
 function normDeg(x){ const v = (+x || 0) % 360; return v < 0 ? v + 360 : v; }
 /* UX X21：房间摘要卡 —— 摆家具里点空地板。不改文档、不进撤销环；点「换地板、墙色 → 装修」= 进装修并选中这个房间 */
-let _roomSummary=null;
+var _roomSummary=null, _roomSummaryPt=null;   // var：setView 在初始化时就可能被调到（早于这一行），let 会落进暂时性死区
 function roomSummaryAt(x, y){
   let r = effRooms().find(q=>q.poly && q.poly.length>=3 && ptInPoly([x,y], q.poly)) || null;
   if(!r){ try{ const res=roomRegionAt(x, y); if(res.region) r=roomForRegion(res.region); }catch(e){} }
-  _roomSummary = r ? r.id : null; updateProps();
+  _roomSummary = r ? r.id : null; _roomSummaryPt = [x, y]; updateProps();
 }
 function roomSummaryCard(){
   const r = _roomSummary && effRooms().find(q=>q.id===_roomSummary); if(!r) return false;
@@ -20839,8 +20848,15 @@ function roomSummaryCard(){
   $('#pTitle').textContent = '房间 · '+roomFallbackName(r)+(r.poly ? ' · '+fmtArea(roomArea(r)) : '');
   const p=$('#pInfo'); p.textContent = '地板 '+(fp?fp.name:'')+(r.floor?'':'（跟全屋）')+' · 墙色 '+(r.wallColor ? paintName(r.wallColor) : '白墙')+(r.poly ? ' · 窗帘 '+(wins.length ? cs.join(' / ') : '没有窗') : '')+'　';   // 还没识别范围时认不出窗，不报「没有窗」
   const b=document.createElement('button'); b.className='decoLink'; b.textContent='换地板、墙色 → 装修';
-  b.onclick=()=>{ b.blur(); const id=r.id; _roomSummary=null; enterArea('deco'); wallEdit.sel={kind:'room', id}; drawWallEdit(); updateWallBarFromSel(); };
-  p.appendChild(b); return true;
+  b.onclick=()=>{ b.blur(); const id=r.id, pt=_roomSummaryPt; _roomSummary=null; enterArea('deco');
+    // UX X56：没识别过范围的房间在这里按点的位置识别（与在平面图上点它同一条路），不然改了地板画面不变
+    if(!r.poly && pt){ const got=pickRoomAt(pt[0], pt[1]); if(got) return; }
+    wallEdit.sel={kind:'room', id}; drawWallEdit(); updateWallBarFromSel(); };
+  p.appendChild(b);
+  // UX X59：画布上标出是哪个房间（虚线描边，不铺色；下一次重画家具层时自然消失）
+  if(gSel && r.poly){ const k=1/Math.max(1e-6, svg.getScreenCTM().a);
+    el('polygon',{points:r.poly.map(q=>(q[0]*S)+','+(q[1]*S)).join(' '), fill:'none', stroke:'#e8b93c', 'stroke-width':2*k, 'stroke-dasharray':`${6*k} ${4*k}`, 'pointer-events':'none', class:'rmSum'}, gSel); }
+  return true;
 }
 /* QA Q17-3（§2.7.3）：空状态里的「→ 装修」「→ 改户型」是能点的 */
 function pInfoIdle(){ const p=$('#pInfo'); p.textContent='点平面图上的一件家具来调整它；从左边目录点一件就能放进来。换地板、刷墙色 → ';
@@ -20921,13 +20937,16 @@ function updateProps(){
 $('#pZ').addEventListener('change', e=>{
   if(photoFrozen('改家具')) return;
   const it=state.items.find(i=>i.uid===selected); if(!it) return; const sp=itemSpec(it); if(!sp || isLight(sp)) return;
-  const inch = state.unit!=='cm', raw=+e.target.value, v = inch ? Math.round(raw*2.54) : raw, cur=Math.round(itemZ(it)*30.48);
-  const show = cm=> inch ? Math.round(cm/2.54*10)/10 : cm;
+  // QA R3-3：英尺单位下按英寸原样存（不先取整到厘米：12.5″ 存成 12.6″、30″ 变 29.9″）
+  const inch = state.unit!=='cm', raw=+e.target.value, v = inch ? raw*2.54 : raw, cur = inch ? itemZ(it)*30.48 : Math.round(itemZ(it)*30.48);
+  const show = cm=> inch ? Math.round(cm/2.54*10)/10 : Math.round(cm);
   if(e.target.value==='' || !isFinite(raw) || raw<0){ e.target.value=show(cur); toast('离地要填 0 或正数（'+(inch?'英寸':'cm')+'）'); return; }
   const lv = hasLevelsNow() ? levelById(itemLevel(it)) : null, ceil = lv ? LV.levelCeil(DOC, lv) : CEIL_H;
   const maxCm = Math.max(0, Math.floor((ceil - cm2ft(sp.h||60))*30.48));
-  if(v>maxCm){ e.target.value=show(cur); toast('这件高 '+Math.round(sp.h||60)+'cm，层高 '+Math.round(ceil*30.48)+'cm：离地最多 '+maxCm+'cm（再高就顶到天花了）', 5000); return; }
-  if(Math.round(v)===cur) return;
+  if(v>maxCm+(inch?0.5:0)){ e.target.value=show(cur);
+    toast(inch ? '这件高 '+show(sp.h||60)+'″，层高 '+show(ceil*30.48)+'″：离地最多 '+show(maxCm)+'″（再高就顶到天花了）'
+               : '这件高 '+Math.round(sp.h||60)+'cm，层高 '+Math.round(ceil*30.48)+'cm：离地最多 '+maxCm+'cm（再高就顶到天花了）', 5000); return; }
+  if(inch ? Math.abs(v-cur)<0.05 : Math.round(v)===cur) return;
   pushUndo('z:'+it.uid, true);
   if(v>0) it.z=FT4(v/30.48); else delete it.z;
   drawFurniture(); save();
@@ -21311,6 +21330,7 @@ function schedule3DRebuild(){
   }, 40);
 }
 function setView(v){
+  if(_roomSummary){ _roomSummary=null; setTimeout(()=>updateProps(), 0); }   // QA R3-2：摘要卡只属于 2D 摆家具
   if(v === '3d') v = 'doll';                       // 兼容旧调用
   // 光追进行中不许换视角：相机位姿是渲染的输入（开始那一刻就冻结），切走等于让出图属于另一个取景。
   // restoreState 传的是当前视图，不会被这条挡住。
@@ -22511,9 +22531,11 @@ function setUnderlay(v, opts){
 $('#btnUnderlay').onclick=()=>{ $('#btnUnderlay').blur();
   if(CALIB){ return; }               // 校准审计模式本身就带底图
   setUnderlay(!showUnderlay); underlayNoteUI(false); };
+$('#unHideOnce').onclick=()=>{ $('#unHideOnce').blur(); setUnderlay(false); underlayNoteUI(false); };
+$('#btnUnderlayAuto').onclick=()=>{ $('#btnUnderlayAuto').blur(); let on=true; try{ on = STORE.get('md_underlayAuto')==='0'; STORE.set('md_underlayAuto', on ? '1' : '0'); }catch(e){} underlayMenuUI(); toast(on ? '进「改户型」时会自动叠上原户型图' : '进「改户型」时不再自动叠原户型图', 3000); };
 $('#unHide').onclick=()=>{ $('#unHide').blur(); setUnderlay(false); underlayNoteUI(false);
   try{ STORE.set('md_underlayAuto','0'); }catch(e){}
-  toast('以后进「改户型」不再自动叠原户型图；要看时点模式条上的「底图 ▾ → 叠原户型图对照」', 4500); };
+  toast('以后进「改户型」不再自动叠原户型图；想改回来：模式条「底图 ▾ → 进改户型时自动叠上」', 4500); };
 /* 原图 */
 $('#btnRefPhoto').onclick=()=>{ const p=$('#refPhoto'); p.style.display = p.style.display==='block'?'none':'block'; $('#stage').classList.toggle('refOn', p.style.display==='block'); };
 /* S5：DXF 导入（解析 → 映射 → 一次性确认 → applyImportedDoc） */
