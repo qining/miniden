@@ -1439,7 +1439,7 @@ async function run3DTest() {
       state.cur = 'cad'; // * 号只在加元视图出现（美元视图用的是美国实价）
       state.items = [{ uid: 99001, ref: ciVar[0].id, x: 1, y: 1, rot: 0 }];
       updateTotals();
-      const ciTxt = document.querySelector('#totals').textContent;
+      const ciTxt = document.querySelector('#totals').textContent + ' ' + document.querySelector('#totals').title; // facelift F4：芯片只留件数 + 合计，说明在悬停提示里
       state.items = ciKeep;
       selected = ciSelKeep;
       state.cur = ciCurKeep;
@@ -3220,7 +3220,8 @@ async function run3DTest() {
       );
 
       /* 19.3 幽灵件在合计文案与已放置清单里都必须有归属（图上有、清单里没有 = 说不清） */
-      const p29TotalsBlank = (document.querySelector('#totals') || {}).textContent || '';
+      const p29TotalsBlank =
+        (document.querySelector('#totals').textContent || '') + ' ' + (document.querySelector('#totals').title || ''); // facelift F4：说明在悬停提示里
       const p29RowsBlank = [...document.querySelectorAll('#plRows .plRow')];
       const p29GhostRowsBlank = p29RowsBlank.filter((r) => /目录里没有这件/.test(r.textContent)).length;
       T(
@@ -3370,8 +3371,9 @@ async function run3DTest() {
           '」'
       );
 
-      /* 19.9 导入布局是整体替换：必须说出「几件变成几件」并给出找回办法（原来一个字的反馈都没有） */
-      const p29BeforeN = state.items.length;
+      /* 19.9 导入方案（F3 起：当前这套摆了东西 = 新建一套，不覆盖）：必须说出导进来几件、原来那套在哪（原来一个字的反馈都没有） */
+      const p29BeforeN = state.items.length,
+        p29Lay0 = LAY.list.length;
       const p29TriesOk = await p29Import(
         {
           items: [
@@ -3380,14 +3382,15 @@ async function run3DTest() {
           ],
           customCat: [],
         },
-        /已导入布局/
+        /已导入/
       );
       const p29ImportToast = p29Toast();
       T(
         'cat29-import-layout-tells-what-it-did',
         state.items.length === 2 &&
-          new RegExp('家具 ' + p29BeforeN + ' 件 → 2 件').test(p29ImportToast) &&
-          /撤销/.test(p29ImportToast),
+          (p29BeforeN === 0
+            ? new RegExp('家具 0 件 → 2 件').test(p29ImportToast)
+            : LAY.list.length === p29Lay0 + 1 && /已导入为新方案.*（2 件）.*原来那套/.test(p29ImportToast)),
         '布局 ' +
           p29BeforeN +
           ' → ' +
@@ -3401,10 +3404,10 @@ async function run3DTest() {
 
       /* 19.10 坏文件不许静默清空布局（原先 items 缺失 → state.items = [] 且没有任何说明） */
       const p29KeepN = state.items.length;
-      const p29TriesBad = await p29Import({ notItems: true }, /没有改动任何东西/);
+      const p29TriesBad = await p29Import({ notItems: true }, /什么都没改/);
       T(
         'cat29-import-layout-malformed-rejected',
-        state.items.length === p29KeepN && /没有改动任何东西/.test(p29Toast()),
+        state.items.length === p29KeepN && /什么都没改/.test(p29Toast()),
         '布局保持 ' +
           state.items.length +
           ' 件（投递 ' +
@@ -3413,6 +3416,12 @@ async function run3DTest() {
           p29Toast().replace(/\s+/g, ' ').slice(0, 40) +
           '」'
       );
+
+      // 收掉导进来的那套方案（两步删除），后面的块（S24c）从「只有一套」开始
+      if (LAY.list.length > p29Lay0) {
+        deleteLayoutUI();
+        deleteLayoutUI();
+      }
 
       /* 19.11 确认框里那句「解析失败 N 个」必须是真的（走真实文件选择路径，不是手工塞 _packPending） */
       const p29Honest = {
@@ -3702,7 +3711,7 @@ async function run3DTest() {
       );
       T(
         'cat30-digest-mismatch-tells-user',
-        p30Toast.indexOf('指纹') >= 0 && p30Toast.indexOf('没有加载') >= 0,
+        p30Toast.indexOf('不一致') >= 0 && p30Toast.indexOf('没有加载') >= 0 && p30Toast.indexOf('重新导入') >= 0,
         '提示：' + (p30Toast.slice(0, 78) || '（没有提示）')
       );
       STORE.remove(CATPACK.packKeyFor('bench-ver'));
@@ -3963,7 +3972,7 @@ async function run3DTest() {
       const p31HRemoved = p31H('bench-dupm-a-e0');
       T(
         'cat31-cross-pack-model-dialog-honest',
-        p31Info.indexOf('已被别的目录包占用') >= 0 &&
+        p31Info.indexOf('已被别的目录扩展包占用') >= 0 &&
           p31Info.indexOf('bench-dupm-a') >= 0 &&
           Math.abs(p31HRemoved - p31HBefore) < 0.6,
         '确认框：' +

@@ -277,7 +277,7 @@ async function runPBTest() {
   };
   const setTool = async (t) => {
     await enterEdit();
-    Q('#wtoolSeg button[data-t="' + t + '"]').click();
+    Q('#wtoolSeg button[data-t="' + t + '"], #decoToolSeg button[data-t="' + t + '"]').click(); // F1：洁具 / 台面在「装修」工具组
     await tick();
   };
   // 3D 重建是异步的（setView → init3D/buildStatic3D 在 setTimeout 里），要轮询
@@ -2651,7 +2651,7 @@ async function runPBTest() {
       );
       updateTotals();
       const zTot = Q('#totals') ? Q('#totals').textContent : '';
-      T('pb-zero-totals-counted', /采购\s*3\s*件/.test(zTot), '#totals = ' + JSON.stringify(zTot.slice(0, 40)));
+      T('pb-zero-totals-counted', /清单\s*3\s*件/.test(zTot), '#totals = ' + JSON.stringify(zTot.slice(0, 40)));
 
       /* 13.6 3D：画的墙立到顶、洁具与家具都在场景里 */
       setView('3d');
@@ -3843,7 +3843,16 @@ async function runPBTest() {
         wallEdit.on === true && !!wallEdit.sel && wallEdit.sel.id === wid25,
         'on=' + wallEdit.on + ' sel=' + JSON.stringify(wallEdit.sel)
       );
-      T('pb-edit-toolbar-hidden-in-3d', bar25() === 'none', '3D 俯瞰里 #wallbar display=' + bar25());
+      /* F1：改户型在 3D 里不再藏工具条 / 强切 2D——结构工具灰掉（只剩「选择」）、画布中间出提示卡「切到 2D 平面」 */
+      const dis25 = Array.from(document.querySelectorAll('#wtoolSeg button'))
+        .filter((b) => b.dataset.t !== 'select')
+        .every((b) => b.disabled);
+      const note25 = getComputedStyle(Q('#modeNote')).display;
+      T(
+        'pb-edit-toolbar-hidden-in-3d',
+        bar25() !== 'none' && dis25 && !Q('#wtoolSeg button[data-t="select"]').disabled && note25 !== 'none',
+        '3D 俯瞰里工具条=' + bar25() + ' · 结构工具都灰=' + dis25 + ' · 提示卡=' + note25
+      );
 
       /* 17.2 在 3D 里按方向键：2D 被藏着，用户看不见被改的几何 —— 不该隔空偷偷改 */
       const g25a = JSON.stringify(entById(wid25).geom);
@@ -4581,7 +4590,7 @@ async function runPBTest() {
       const groups = Array.from(Q('#olKind').querySelectorAll('optgroup'));
       T(
         'pb-pt-kinds-from-schema',
-        Q('#wtoolSeg button[data-t="outlet"]').textContent.trim() === '点位' &&
+        Q('#wtoolSeg button[data-t="outlet"]').textContent.trim() === '插座与水电' &&
           groups.length === 5 &&
           Q('#olKind').options.length === SCHEMA.Project.OUTLET_KINDS.length &&
           SCHEMA.Project.OUTLET_KINDS.length === 16,
@@ -4913,7 +4922,7 @@ async function runPBTest() {
       const pv2 = pbSvg.querySelectorAll('.rmPreview').length;
       T(
         'pb-room-tool-preview',
-        Q('#wtoolSeg button[data-t="room"]').textContent.trim() === '房间' &&
+        Q('#wtoolSeg button[data-t="room"]').textContent.trim() === '房间范围' &&
           vis('#roomCtl') === 'visible' &&
           pv1 === 1 &&
           pv2 === 0,
@@ -5241,15 +5250,23 @@ async function runPBTest() {
       await pbReset();
       const p23Plans = PLAN_REG.plans.length;
       const builtin23 = !docImported();
-      const barB = getComputedStyle(Q('#levelBar')).display;
+      // F3：楼层 = 面包屑第二段，内置户型也显示（只读）；「能不能加楼层」看下拉里的「＋ 往上加一层」
+      const canAdd = () => Q('#lvAddUp').style.display !== 'none';
+      const barB = getComputedStyle(Q('#levelBar')).display + (canAdd() ? '/可加层' : '/只读');
+      const noteB = Q('#lvNote').textContent;
       Q('#btnPlanNew').click();
       await tick();
       const p23Plan = PLAN_ID;
-      const barN = getComputedStyle(Q('#levelBar')).display;
+      const barN = getComputedStyle(Q('#levelBar')).display + (canAdd() ? '/可加层' : '/只读');
       const lvBtns = () => Array.from(document.querySelectorAll('#lvBtns button'));
       T(
         'pb-lv-bar-self-contained',
-        builtin23 && barB === 'none' && barN !== 'none' && lvBtns().length === 1 && lvBtns()[0].textContent === '一层',
+        builtin23 &&
+          barB === 'flex/只读' &&
+          /只有一层/.test(noteB) &&
+          barN === 'flex/可加层' &&
+          lvBtns().length === 1 &&
+          lvBtns()[0].textContent === '一层',
         '内置户型楼层条 ' +
           barB +
           ' · 空白户型 ' +
@@ -5293,13 +5310,13 @@ async function runPBTest() {
       /* 23.0b 带内置专属构件的户型（内置户型导出再导入）：不画楼层条、加楼层被拒并说明 —— 厨房 / 中岛 / 内部示意墙不分楼层 */
       DOC.plan = { inner: [] };
       levelBarUI();
-      const barHard = getComputedStyle(Q('#levelBar')).display;
+      const barHard = Q('#lvAddUp').style.display;
       const refuse = addLevelUI('above');
       delete DOC.plan;
       levelBarUI();
       T(
         'pb-lv-refused-with-builtin-parts',
-        barHard === 'none' && refuse === null && !hasLevelsNow() && getComputedStyle(Q('#levelBar')).display !== 'none',
+        barHard === 'none' && refuse === null && !hasLevelsNow() && Q('#lvAddUp').style.display !== 'none',
         '楼层条 ' +
           barHard +
           ' · addLevelUI → ' +
@@ -6889,7 +6906,7 @@ async function runPBTest() {
           /"合计","6","","249\.96"/.test(csv) &&
           txt.indexOf('· SANSEVIERIA 虎尾兰（盆径 20） — US$24.99 × 2 = US$49.98 ') > 0 &&
           txt.split('\n').slice(-1)[0] ===
-            '采购 6 件 · 合计约 US$249.96（2 件无价、1 件固定灯具不计价、1 件目录里没有（不计价））',
+            '采购 6 件 · 合计约 US$249.96（2 件无价、1 件房子自带的灯不计价、1 件目录里没有（不计价））',
         'CSV ' + csv.length + ' 字 · 文本末行「' + txt.split('\n').slice(-1)[0] + '」'
       );
 
@@ -7397,7 +7414,7 @@ async function runPBTest() {
         rowShown &&
           /新的一层/.test(noteLv) &&
           btnLv === '导入为新的一层' &&
-          Q('#dxfOk').textContent === '导入并替换户型',
+          Q('#dxfOk').textContent === '导入（新建一份户型）',
         '「放到哪」在=' + rowShown + ' · 选新楼层后按钮「' + btnLv + '」· 说明「' + noteLv.slice(0, 24) + '…」'
       );
 
@@ -11805,7 +11822,7 @@ async function runPBTest() {
         await tick();
       }
 
-      /* 46.10 导入布局只换当前方案：别的方案还在用的自定义件留在目录里（以前整份替换自定义目录 —— 那时一份户型只有一套家具） */
+      /* 46.10 导入方案（F3 起：当前这套摆了东西 = 新建一套，不覆盖）：别的方案还在用的自定义件留在目录里，导进来的条目合并进来 */
       {
         Q('#layList').querySelector('.layRow[data-id="L1"]').click();
         await tick();
@@ -11824,36 +11841,47 @@ async function runPBTest() {
           const before = toastTxt();
           const dt = new DataTransfer();
           dt.items.add(
-            new File([JSON.stringify({ items: [], customCat: [] })], '家具布局.json', { type: 'application/json' })
+            new File([JSON.stringify({ name: '导进来的', items: [], customCat: [] })], '方案-导进来的.json', {
+              type: 'application/json',
+            })
           );
           Q('#fileJson').files = dt.files;
           Q('#fileJson').dispatchEvent(new Event('change', { bubbles: true }));
           let got = false;
           for (let i2 = 0; i2 < 40 && !got; i2++) {
             await tick();
-            got = toastTxt() !== before && /已导入布局/.test(toastTxt());
+            got = toastTxt() !== before && /已导入/.test(toastTxt());
           }
           if (got) break;
         }
+        const newOne =
+          LAY.list.length === 3 && LAYOUTS.layoutById(LAY, LAY.cur).name === '导进来的' && LAY.other.L2.length === 3;
         const kept = !!cc && state.customCat.some((c) => c.id === cc.id);
         const resolves = !!cc && LAY.other.L1.filter((i) => i.ref === cc.id).every((i) => !!itemSpec(i));
         T(
           'pb-s24c-layout-import-keeps-others-custom',
-          usedIn1 && state.items.length === 0 && kept && resolves,
+          usedIn1 && newOne && state.items.length === 0 && kept && resolves,
           '方案 1 用着自制件=' +
             usedIn1 +
-            ' · 方案 2 导入空布局后 ' +
+            ' · 新建了「导进来的」、方案 2 的 3 件不动=' +
+            newOne +
+            ' · 新方案 ' +
             state.items.length +
             ' 件 · 自制件还在目录里=' +
             kept +
             ' · 方案 1 那件认得出=' +
             resolves
         );
-        undoStep(); // 方案 2 的家具回来
+        // 收掉导进来的那套（两步删除），回到方案 2
+        Q('#layDel').click();
+        await tick();
+        Q('#layDel').click();
+        await tick();
+        if (LAY.cur !== 'L2') Q('#layList').querySelector('.layRow[data-id="L2"]').click();
         await tick();
       }
 
-      /* 46.10b Esc 一层一层退：正在拖家具时 Esc 先让家具回原处（面板不动），再按一次才关面板 */
+      /* 46.10b（F3 起方案面板是下拉菜单）：在画布上按下 = 先关掉菜单；拖动中 Esc 让家具回原处；菜单开着时 Esc 关菜单 */
       {
         const it = state.items[0];
         selOnly(it.uid);
@@ -11868,18 +11896,21 @@ async function runPBTest() {
         const moved = Math.abs(it.x - x0) > 0.5;
         key('Escape');
         await tick();
-        const back = Math.abs(it.x - x0) < 1e-9 && Q('#layPanel').style.display !== 'none';
+        const back = Math.abs(it.x - x0) < 1e-9 && Q('#layPanel').style.display === 'none';
         fire('pointerup', sx + 40, sy, { buttons: 0 });
         await tick();
+        Q('#layBtn').click();
+        await tick();
+        const reopened = Q('#layPanel').style.display !== 'none';
         key('Escape');
         await tick();
-        const closed = Q('#layPanel').style.display === 'none';
+        const closed = reopened && Q('#layPanel').style.display === 'none';
         Q('#layBtn').click(); // 后面的断言要面板开着
         await tick();
         T(
           'pb-s24c-esc-drag-first-then-panel',
           moved && back && closed,
-          '拖开了=' + moved + ' · 第一下 Esc：家具回原处且面板还开着=' + back + ' · 第二下 Esc 关面板=' + closed
+          '拖开了=' + moved + ' · 按下就关了菜单、Esc 让家具回原处=' + back + ' · 菜单开着时 Esc 关菜单=' + closed
         );
       }
 
@@ -12343,7 +12374,7 @@ async function runPBTest() {
       await tick();
       ck('v', 'KeyV');
       await tick();
-      const inEdit = state.items.length === n0 && /编辑墙体里没有复制粘贴/.test((Q('#wMsg') || {}).textContent || '');
+      const inEdit = state.items.length === n0 && /改户型时不能复制家具/.test((Q('#wMsg') || {}).textContent || '');
       Q('#btnWallEdit').click();
       await tick();
       T(
@@ -12554,6 +12585,131 @@ async function runPBTest() {
         'pb-s24f-clean-exit',
         PLAN_ID !== p49Plan && PLAN_REG.plans.length === p49Plans,
         'plans ' + p49Plans + '→' + PLAN_REG.plans.length
+      );
+    }
+
+    /* ===== 50. facelift F5（research/14 X12 X26 X34 X41 · facelift §2.9 §4）：空状态卡、色温只标选中那盏、检视面板不报坐标、提示两段 ===== */
+    {
+      await pbReset();
+      if (wallEdit.on) setWallEdit(false);
+      await tick();
+      const p50Plans = PLAN_REG.plans.length;
+      Q('#btnPlanNew').click();
+      await tick();
+      const p50Plan = PLAN_ID;
+      const ecShown = () => getComputedStyle(Q('#emptyCard')).display !== 'none';
+      /* 50.1 空白户型 = 画布中间「这份户型还没有墙」；「画外墙」= 改户型 + 画墙工具，卡片让位；画了墙再出来也不回来 */
+      const shown0 = ecShown() && !wallEdit.on;
+      Q('#ecDraw').click();
+      await tick();
+      const drawOn = wallEdit.on && wallEdit.area === 'build' && wallEdit.tool === 'wall' && !ecShown();
+      setWallEdit(false);
+      await tick();
+      const backAgain = ecShown(); // 还没墙：出来卡片照样在
+      const fp50 = floorPts();
+      const X =
+          Math.min.apply(
+            null,
+            fp50.map((p) => p[0])
+          ) + 1,
+        Y =
+          Math.min.apply(
+            null,
+            fp50.map((p) => p[1])
+          ) + 1;
+      const wd = cmToWd(15);
+      pushUserWall(X, Y, X + 14, Y, 'w', wd);
+      pushUserWall(X + 14, Y, X + 14, Y + 10, 'w', wd);
+      pushUserWall(X + 14, Y + 10, X, Y + 10, 'w', wd);
+      pushUserWall(X, Y + 10, X, Y, 'w', wd);
+      geoChanged();
+      fit2DToContent();
+      await tick();
+      T(
+        'pb-f5-empty-card',
+        shown0 && drawOn && backAgain && !ecShown(),
+        '新建时显示=' +
+          shown0 +
+          ' · 画外墙进了画墙工具且卡片让位=' +
+          drawOn +
+          ' · 没墙出来仍在=' +
+          backAgain +
+          ' · 有墙后=' +
+          ecShown()
+      );
+
+      /* 50.2 吸顶 / 筒灯的「3000K」只在选中那盏时标（以前每盏都标：满图色温噪声） */
+      const lamp = { uid: uidSeq++, ref: 'dl-4', x: X + 7, y: Y + 5, rot: 0 };
+      state.items.push(lamp);
+      selOnly(null);
+      drawFurniture();
+      await tick();
+      const kOf = () => {
+        const g = pbSvg.querySelector('g.furn[data-uid="' + lamp.uid + '"]');
+        return g ? [...g.querySelectorAll('text')].filter((t) => /\d+K$/.test(t.textContent)).length : -1;
+      };
+      const k0 = kOf();
+      selOnly(lamp.uid);
+      drawFurniture();
+      await tick();
+      const k1 = kOf();
+      T('pb-f5-cct-only-selected', k0 === 0 && k1 === 1, '没选中时色温字 ' + k0 + ' 个 · 选中后 ' + k1 + ' 个');
+      state.items = state.items.filter((i) => i !== lamp);
+
+      /* 50.3 检视面板：尺寸一种写法「宽 × 深 × 高 cm」；不报坐标，改报离最近的墙多远（独立量：沙发上沿到墙皮 = 15cm） */
+      const face = Y + wd / S / 2;
+      const sofa = {
+        uid: uidSeq++,
+        custom: { name: '测试沙发', w: 200, d: 90, h: 80, color: '#7d6e5c' },
+        x: X + 7,
+        y: face + 15 / 30.48 + 45 / 30.48,
+        rot: 0,
+      };
+      state.items.push(sofa);
+      selOnly(sofa.uid);
+      drawFurniture();
+      updateProps();
+      await tick();
+      const clr = Q('#pClear').textContent,
+        dims = Q('#pDims').textContent;
+      T(
+        'pb-f5-props-dims-and-clearance',
+        dims === '200 × 90 × 80 cm' && /^离最近的墙 15 cm$/.test(clr) && !/位置|\(/.test(clr),
+        '尺寸「' + dims + '」· 面板「' + clr + '」'
+      );
+      state.items = state.items.filter((i) => i !== sofa);
+      selOnly(null);
+      drawFurniture();
+
+      /* 50.4 改户型提示行「状态 ｜ 操作」：两段分开着色，文字本身不变 */
+      wMsg('原有的墙 · 长 3 m ｜ 拖圆点=改端点');
+      const wm = Q('#wMsg'),
+        wa = wm.querySelector('.wa');
+      T(
+        'pb-f5-wmsg-two-tone',
+        wm.textContent === '原有的墙 · 长 3 m ｜ 拖圆点=改端点' && !!wa && wa.textContent.indexOf('｜') === 0,
+        'textContent「' + wm.textContent + '」· 操作段「' + (wa ? wa.textContent : '无') + '」'
+      );
+      wMsg('');
+
+      /* 50.5 引导卡：「? 帮助 → 快速上手」重开后按钮也是活的（以前只在首次出现时才绑） */
+      T(
+        'pb-f5-firstrun-buttons-bound',
+        typeof Q('#frStart').onclick === 'function' &&
+          typeof Q('#frBlank').onclick === 'function' &&
+          typeof Q('#frImport').onclick === 'function' &&
+          Q('#firstRun h3').textContent === '欢迎来到 MiniDen',
+        '三个按钮都绑上了'
+      );
+
+      Q('#btnPlanDel').click();
+      await tick();
+      Q('#btnPlanDel').click();
+      await tick();
+      T(
+        'pb-f5-clean-exit',
+        PLAN_ID !== p50Plan && PLAN_REG.plans.length === p50Plans,
+        'plans ' + p50Plans + '→' + PLAN_REG.plans.length
       );
     }
 

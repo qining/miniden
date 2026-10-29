@@ -24,7 +24,7 @@ async function ensureProTools(t) {
   const open = await t.eval(`getComputedStyle(document.querySelector('#proTools')).display!=='none'`);
   if (open) return;
   await t.click('#btnMore');
-  await t.waitFor(`getComputedStyle(document.querySelector('#proTools')).display!=='none'`, 5000, '「工具」第二层展开');
+  await t.waitFor(`getComputedStyle(document.querySelector('#proTools')).display!=='none'`, 5000, '「文件 ▾」展开');
 }
 async function pickPlan(t, id) {
   // BUILTIN_PLAN_ID / 生成的 id 都是页面里的名字，Node 侧要先取回来再传进去
@@ -123,7 +123,20 @@ export const FLOWS = [
         await t.eval(`PLAN_ID!==BUILTIN_PLAN_ID && effWalls().length===0`),
         '切到一份空白户型'
       );
-      t.assert('firstrun-edit-on', await t.eval(`wallEdit.on===true`), '直接进了「编辑墙体」');
+      /* F5（facelift §2.9.1）：不再自动进改户型 —— 画布中间的空状态卡接手；点「画外墙」= 改户型 + 画墙工具 */
+      t.assert(
+        'firstrun-empty-card',
+        await t.eval(`wallEdit.on===false && getComputedStyle(document.querySelector('#emptyCard')).display!=='none'`),
+        '空状态卡「这份户型还没有墙」出现'
+      );
+      await t.click('#ecDraw');
+      t.assert(
+        'firstrun-edit-on',
+        await t.eval(
+          `wallEdit.on===true && wallEdit.area==='build' && wallEdit.tool==='wall' && getComputedStyle(document.querySelector('#emptyCard')).display==='none'`
+        ),
+        '点「画外墙」进了「改户型 → 画墙」，空状态卡让位'
+      );
       const hint = await t.eval(
         `(()=>{const h=document.querySelector('#wMsg'); if(!h) return '';
           const cs=getComputedStyle(h); const r=h.getBoundingClientRect();
@@ -153,7 +166,7 @@ export const FLOWS = [
       /* 先记下内置户型现在的样子：切回来要与它逐项一样（S24c #93 之后才写得对——以前断言是「家具 > 0」，
          公开入口的内置户型本来一件家具都没有，那条断言之所以能过，是因为从零建的那份户型的家具漏了过去，正是 #93） */
       const b0 = await t.eval(`({walls:effWalls().length, doors:effDoors().length, items:state.items.length})`);
-      await t.step('新建空白户型（工具 ⌄ → 新建空白户型）');
+      await t.step('新建空白户型（左上角户型 ▾ → 新建空白户型）');
       await ensureProTools(t);
       await t.click('#btnPlanNew');
       await t.waitFor(`PLAN_ID!==BUILTIN_PLAN_ID`, 8000, '切到空白户型');
@@ -233,7 +246,7 @@ export const FLOWS = [
       await t.shot('zero-door');
 
       await t.step('放洁具：马桶 + 洗手盆 + 镜子（镜子自动贴墙）');
-      await t.click('#wtoolSeg button[data-t="fx"]');
+      await t.click('#decoToolSeg button[data-t="fx"]');
       await t.waitFor(`wallEdit.tool==='fx'`, 5000, 'tool=fx');
       const fxAt = async (type, fx, fy) => {
         await t.eval(`document.querySelector('#fxType').value=${JSON.stringify(type)}`);
@@ -455,9 +468,10 @@ export const FLOWS = [
         hit ? '在墙的中点向下打射线，命中墙顶 y=' + hit.y.toFixed(2) + 'ft' : '3D 里没有这段墙'
       );
       t.assert(
-        'edit-toolbar-hidden-in-3d',
-        await t.eval(`getComputedStyle(document.querySelector('#wallbar')).display==='none'`),
-        '3D 画布上没有 2D 编辑工具条（「画墙/画柱/门/洁具」在 3D 里做不了任何事）'
+        'edit-toolbar-disabled-in-3d',
+        await t.eval(`[...document.querySelectorAll('#wtoolSeg button')].every(b=>b.disabled===(b.dataset.t!=='select')) &&
+          getComputedStyle(document.querySelector('#modeNote')).display!=='none'`),
+        'F1：3D 里改户型的画图工具变灰（「选择」照常能用）+ 提示卡「改户型要在 2D 平面里画」（不静默强切、也不藏起模式条）'
       );
       t.assert(
         'edit-mode-still-visible',
@@ -528,7 +542,7 @@ export const FLOWS = [
       await t.step('进入编辑墙体 → 洁具');
       await t.click('#btnWallEdit');
       await t.waitFor(`wallEdit.on`, 5000, 'wallEdit.on');
-      await t.click('#wtoolSeg button[data-t="fx"]');
+      await t.click('#decoToolSeg button[data-t="fx"]');
       await t.waitFor(`wallEdit.tool==='fx'`, 5000, 'tool=fx');
       await t.eval(`document.querySelector('#fxType').value='toilet'`);
       await t.step('点击空地放一个马桶');
@@ -565,7 +579,7 @@ export const FLOWS = [
       await t.step('进入编辑墙体 → 台面');
       await t.click('#btnWallEdit');
       await t.waitFor(`wallEdit.on`, 5000, 'wallEdit.on');
-      await t.click('#wtoolSeg button[data-t="run"]');
+      await t.click('#decoToolSeg button[data-t="run"]');
       await t.waitFor(`wallEdit.tool==='run'`, 5000, 'tool=run');
 
       /* 选一条「身上没有内置洁具」的长实墙：台面带（偏移 0.9ft + 深 60cm）与任何洁具
@@ -1124,9 +1138,14 @@ export const FLOWS = [
       await t.click('#btnPlanDel');
       await t.waitFor(`PLAN_ID===BUILTIN_PLAN_ID`, 8000, '删完切回内置');
       const fin = await t.eval(
-        `({levels:!!DOC.levels, bar:getComputedStyle(document.querySelector('#levelBar')).display})`
+        `({levels:!!DOC.levels, add:document.querySelector('#lvAddUp').style.display, crumb:document.querySelector('#crumbLevelName').textContent})`
       );
-      t.assert('lv-cleaned', !fin.levels && fin.bar === 'none', '回到内置户型：没有楼层、楼层条隐藏');
+      // F3：楼层段在内置户型上也显示（只读：「一层」，不能加层）
+      t.assert(
+        'lv-cleaned',
+        !fin.levels && fin.add === 'none' && fin.crumb === '一层',
+        '回到内置户型：没有楼层、楼层段只读（' + fin.crumb + '）'
+      );
     },
   },
 
@@ -1248,7 +1267,7 @@ export const FLOWS = [
       const c = await planCenter(t);
 
       await t.step('放一个马桶 → Delete 删掉 → 「撤销」按钮要变亮');
-      await t.click('#wtoolSeg button[data-t="fx"]');
+      await t.click('#decoToolSeg button[data-t="fx"]');
       await t.waitFor(`wallEdit.tool==='fx'`, 5000, 'tool=fx');
       await t.eval(`document.querySelector('#fxType').value='toilet'`);
       await t.click(await t.planPoint(c.x, c.y - 3));
@@ -1312,7 +1331,7 @@ export const FLOWS = [
       if (!two)
         t.assert('undo-two-fixtures-points-found', false, '这份户型里找不到两个相距 ≥3ft 的空落点，测不了「连放两件」');
       else {
-        await t.click('#wtoolSeg button[data-t="fx"]');
+        await t.click('#decoToolSeg button[data-t="fx"]');
         await t.waitFor(`wallEdit.tool==='fx'`, 5000, 'tool=fx');
         await t.eval(`document.querySelector('#fxType').value='toilet'`);
         await t.click(await t.planPoint(two.p1[0], two.p1[1]));
@@ -1889,12 +1908,12 @@ export const FLOWS = [
       await t.eval(
         `(()=>{const s=document.querySelector('#wWinStyle');s.value='casement:l';s.dispatchEvent(new Event('change'));})()`
       );
-      await t.click('#wWinFrost');
+      await t.click('#wWinFrostSeg button:nth-child(2)'); // F2：分段控件「玻璃 [透明｜磨砂]」，原按钮是隐藏的影子控件
       const sty = await t.eval(
         `(()=>{const w=DOC.windows[0],g=w.geom;
           const ls=[...document.querySelectorAll('#svg2d line[stroke="#5f9fd8"]')].map(l=>[+l.getAttribute('x1')/S,+l.getAttribute('y1')/S,+l.getAttribute('x2')/S,+l.getAttribute('y2')/S]).filter(l=>Math.hypot(l[2]-l[0],l[3]-l[1])>3);
           return {style:w.style, hand:w.hand||'', frost:!!w.frost, west:Math.min(g.x1,g.x2), y:g.y1, leaf:ls[0]||null,
-            frostLine:document.querySelectorAll('#svg2d line[stroke="#f4f7fa"]').length, btn:document.querySelector('#wWinFrost').textContent};})()`
+            frostLine:document.querySelectorAll('#svg2d line[stroke="#f4f7fa"]').length, btn:(document.querySelector('#wWinFrostSeg button.on')||{}).textContent};})()`
       );
       t.assert(
         'aw-style-hand-frost',
@@ -1905,7 +1924,7 @@ export const FLOWS = [
           Math.abs(sty.leaf[0] - sty.west) < 0.02 &&
           sty.leaf[3] > sty.y + 0.5 &&
           sty.frostLine === 1 &&
-          sty.btn === '磨砂玻璃',
+          sty.btn === '磨砂',
         `款式 ${sty.style} / ${sty.hand} · 扇从 x=${sty.leaf ? sty.leaf[0].toFixed(2) : '?'}（西端 ${sty.west.toFixed(2)}）开向 y=${sty.leaf ? sty.leaf[3].toFixed(2) : '?'}（墙线 ${sty.y.toFixed(2)}，室内在南）· 磨砂=${sty.frost}「${sty.btn}」`
       );
 
@@ -2121,7 +2140,7 @@ export const FLOWS = [
       await t.waitFor('state.items.length>' + before.items, 6000, '家具数 +1');
       const uid = await t.eval('state.items[state.items.length-1].uid');
       const title = await t.eval(`document.querySelector('#pTitle').textContent`);
-      t.assert('props-panel-open', title !== '未选中家具', `检视面板：${title}`);
+      t.assert('props-panel-open', title !== '还没选中东西', `检视面板：${title}`);
 
       await t.step('把颜色换成红色', '颜色选择器 → 红色');
       await t.eval(
@@ -2524,7 +2543,8 @@ export const FLOWS = [
     title: '目录按尺寸筛（S24d）：真键盘在「宽 ≤」里打数 → 只剩放得下的；选中一件点「＝选中」→ 不比它大的；× 清掉',
     run: async (t) => {
       const all = await t.eval(`document.querySelectorAll('.catCard').length`);
-      await t.step('在「宽 ≤」里打 90');
+      await t.step('点「筛选 ▾」，在「宽 ≤」里打 90');
+      await t.click('#catFilterBtn'); // F4：尺寸筛收进「筛选 ▾」
       await t.type('#catW', '90');
       await t.waitFor(`document.querySelectorAll('.catCard').length<${all}`, 5000, '目录变少');
       const w90 = await t.eval(
@@ -2700,9 +2720,9 @@ export const FLOWS = [
       const base = await t.eval('CATALOG.length');
       const items0 = await t.eval('state.items.length');
 
-      await t.step('展开「工具 ⌄」（导入目录包 / 移除包 都在这一排里）');
-      await t.click('#btnMore');
-      await t.waitFor(`document.querySelector('#proTools').style.display==='flex'`, 6000, '工具 ⌄ 展开');
+      await t.step('打开 ⚙ 设置（目录扩展包在「高级」里）');
+      await t.click('#btnSettings');
+      await t.waitFor(`document.querySelector('#settingsPanel').style.display!=='none'`, 6000, '设置展开');
 
       await t.step('选择示例目录包文件');
       await t.setFiles('#filePack', t.fixturePack);
@@ -2872,6 +2892,8 @@ export const FLOWS = [
       );
 
       await t.step('幽灵件必须在采购清单里露出来（图上有、清单里没有 = 说不清）');
+      await t.eval(`closeMenus()`); // ⚙ 设置面板（目录扩展包在里面）盖着右栏：先收起
+      await t.click('#tabList'); // F4：清单是右栏的一个标签页
       /* 清单是可滚动容器：rect 非零不等于「在容器里看得见」（§8.4 第一层探针要算容器）。
          先滚到位再量，并且断它落在容器的可见区间内。 */
       const ghostRow = await t.eval(
@@ -2922,226 +2944,77 @@ export const FLOWS = [
 
   {
     name: 'layout-import',
-    title: '导入布局：整体替换必须说出「几件变成几件」，坏文件不许静默清空，撤销能找回',
+    title: '导入方案：说出「导进来几件、原来那套在哪」；当前这套是空的就直接导进来（能撤销）；坏文件不许静默清空',
     run: async (t) => {
       /* 轮㉙：导入布局原先一个字的反馈都没有（34 件 → 0 件，界面只是安静地变空）。
-         替换本身可以撤销，但「发生了替换」必须说出来（R10：零反馈 = 设计缺陷）。 */
-      const before = await t.eval(
-        `({items: state.items.length, totals: document.querySelector('#totals').textContent.replace(/\\s+/g,' ')})`
-      );
+         F3（X11）：改叫「导入方案」，当前这套摆了东西 = 新建一套方案（不再覆盖）；当前这套是空的 = 直接导进来（照旧一步撤销）。 */
+      const before = await t.eval(`({items: state.items.length, lays: LAY.list.length})`);
 
-      await t.step('「工具 ⌄」里点「导入布局」并选一份两份家具的文件');
-      await t.click('#btnMore');
+      await t.step('面包屑「方案 ▾」里点「导入方案…」并选一份两件家具的文件');
       await t.click('#btnLoadJson');
       await t.setFiles('#fileJson', t.fixtureLayout);
       await t.waitFor(
-        `(()=>{const x=document.querySelector('#toast');return x&&/已导入布局/.test(x.textContent)})()`,
+        `(()=>{const x=document.querySelector('#toast');return x&&/已导入/.test(x.textContent)})()`,
         20000,
-        '出现「已导入布局」提示'
+        '出现「已导入」提示'
       );
       const toast1 = await t.eval(`document.querySelector('#toast').textContent.replace(/\\s+/g,' ')`);
       const after = await t.eval(
-        `({items: state.items.length, shapes: document.querySelectorAll('#furn [data-uid]').length,
-           totals: document.querySelector('#totals').textContent.replace(/\\s+/g,' ')})`
+        `({items: state.items.length, lays: LAY.list.length, shapes: document.querySelectorAll('#furn [data-uid]').length})`
       );
+      const intoNew = before.items > 0;
       t.assert(
         'layout-import-tells-what-it-did',
         after.items === 2 &&
           after.shapes === 2 &&
-          new RegExp('家具 ' + before.items + ' 件 → 2 件').test(toast1) &&
-          /撤销/.test(toast1),
-        `布局 ${before.items} → ${after.items} 件 · 2D 图例 ${after.shapes} 个 · 「${toast1.slice(0, 110)}」`
+          (intoNew
+            ? after.lays === before.lays + 1 && /已导入为新方案.*（2 件）.*原来那套/.test(toast1)
+            : new RegExp('家具 0 件 → 2 件').test(toast1) && /撤销/.test(toast1)),
+        `方案 ${before.lays} → ${after.lays} 套 · 当前 ${after.items} 件 · 2D 图例 ${after.shapes} 个 · 「${toast1.slice(0, 110)}」`
       );
       await t.shot('layout-imported');
 
-      await t.step('Ctrl+Z：原来那几件回来');
-      await t.key('z', 'KeyZ', 90, 2);
-      await t.waitFor(`state.items.length===${before.items}`, 8000, '撤销回到导入前');
+      await t.step(intoNew ? '删掉导进来的那套（两步），回到原来那套' : 'Ctrl+Z：撤掉这次导入');
+      if (intoNew) {
+        await t.click('#layDel');
+        await t.waitFor(`document.querySelector('#layDel').classList.contains('arm')`, 3000, '第一下只是确认');
+        await t.click('#layDel');
+        await t.waitFor(`LAY.list.length===${before.lays}`, 6000, '删掉了');
+        await t.eval('closeMenus()');
+      } else {
+        await t.key('z', 'KeyZ', 90, 2);
+      }
+      await t.waitFor(`state.items.length===${before.items}`, 8000, '回到导入前');
       const undone = await t.eval(`state.items.length`);
-      t.assert('layout-import-undoable', undone === before.items, `撤销后布局 ${undone} 件（期望 ${before.items}）`);
+      t.assert('layout-import-undoable', undone === before.items, `回到导入前 ${undone} 件（期望 ${before.items}）`);
 
-      await t.step('坏文件（没有 items 数组）不许静默清空布局');
+      await t.step('坏文件（不是方案文件）不许静默清空');
       await t.eval(
         `(()=>{const dt=new DataTransfer();dt.items.add(new File(['{"nope":1}'],'坏文件.json',{type:'application/json'}));` +
           `const f=document.querySelector('#fileJson');f.files=dt.files;f.dispatchEvent(new Event('change',{bubbles:true}));})()`
       );
       await t.waitFor(
-        `(()=>{const x=document.querySelector('#toast');return x&&/没有改动任何东西/.test(x.textContent)})()`,
+        `(()=>{const x=document.querySelector('#toast');return x&&/什么都没改/.test(x.textContent)})()`,
         12000,
-        '出现「没有改动任何东西」提示'
+        '出现「什么都没改」提示'
       );
       const kept = await t.eval(
         `({items: state.items.length, toast: document.querySelector('#toast').textContent.replace(/\\s+/g,' ')})`
       );
       t.assert(
         'layout-import-malformed-rejected',
-        kept.items === before.items && /没有改动任何东西/.test(kept.toast),
-        `布局保持 ${kept.items} 件 · 「${kept.toast.slice(0, 80)}」`
+        kept.items === before.items && /什么都没改/.test(kept.toast),
+        `保持 ${kept.items} 件 · 「${kept.toast.slice(0, 80)}」`
       );
 
-      await t.step('收尾：布局回到导入前的样子');
-      const clean = await t.eval(`({items: state.items.length, custom: state.customCat.length})`);
+      await t.step('收尾：回到导入前的样子');
+      const clean = await t.eval(
+        `({items: state.items.length, custom: state.customCat.length, lays: LAY.list.length})`
+      );
       t.assert(
         'layout-import-cleanup',
-        clean.items === before.items && clean.custom === 0,
-        `布局 ${clean.items} 件 · 自定义目录 ${clean.custom} 条`
-      );
-    },
-  },
-
-  {
-    name: 'layouts',
-    title:
-      '方案（S24c）：复制当前方案 → 在方案 2 里挪家具 → 切回方案 1 原样 → 撤销只撤这一套 → 刷新后都在 → 改名 → 两步删除',
-    run: async (t) => {
-      const before = await stateOf(t);
-      await t.step('摆一件家具（方案 1）');
-      await t.click('.catCard');
-      await t.waitFor(`state.items.length>${before.items}`, 6000, '家具 +1');
-      const it0 = await t.eval(`(()=>{const i=state.items[state.items.length-1];return {uid:i.uid,x:i.x,y:i.y};})()`);
-
-      await t.step('右上角「方案」打开面板，点「复制当前方案」');
-      const bar = await t.rectOf('#layBtn');
-      const stage = await t.eval(
-        `(()=>{const b=document.querySelector('#stage').getBoundingClientRect();return {l:b.left,t:b.top,r:b.right,b:b.bottom};})()`
-      );
-      t.assert(
-        'layouts-button-top-right-of-stage',
-        bar.x > (stage.l + stage.r) / 2 &&
-          bar.y - bar.h / 2 >= stage.t &&
-          bar.y < stage.t + 60 &&
-          bar.x + bar.w / 2 <= stage.r,
-        `按钮中心 (${Math.round(bar.x)}, ${Math.round(bar.y)}) · 画布 ${Math.round(stage.l)}–${Math.round(stage.r)} × ${Math.round(stage.t)}–`
-      );
-      await t.click('#layBtn');
-      await t.waitFor(`document.querySelector('#layPanel').style.display!=='none'`, 4000, '面板打开');
-      await t.click('#layDup');
-      await t.waitFor(`LAY.list.length===2 && LAY.cur!=='L1'`, 6000, '切到方案 2');
-      const cur2 = await t.eval(`document.querySelector('#layCur').textContent`);
-      t.assert('layouts-duplicated', cur2 === '方案 2', `按钮上写「${cur2}」`);
-      await t.shot('layouts-panel');
-
-      await t.step('在方案 2 里选中它，Shift+→ 挪 10cm');
-      await t.click(await t.planPoint(it0.x, it0.y));
-      await t.waitFor(`selected===${it0.uid}`, 4000, '选中那件');
-      await t.key('ArrowRight', 'ArrowRight', 39, 8);
-      await t.waitFor(`Math.abs(state.items.find(i=>i.uid===${it0.uid}).x-${it0.x})>0.3`, 4000, '挪了 10cm');
-
-      await t.step('点面板里「方案 1」：那件还在原位，采购清单跟着换');
-      await t.click('#layList .layRow[data-id="L1"]');
-      await t.waitFor(`LAY.cur==='L1'`, 4000, '切回方案 1');
-      const back = await t.eval(
-        `(()=>{const i=state.items.find(i=>i.uid===${it0.uid});return i?{x:i.x,y:i.y}:null;})()`
-      );
-      t.assert(
-        'layouts-switch-back-unchanged',
-        !!back && Math.abs(back.x - it0.x) < 1e-6 && Math.abs(back.y - it0.y) < 1e-6,
-        back ? `方案 1 里那件在 (${back.x}, ${back.y})` : '方案 1 里找不到那件'
-      );
-
-      await t.step('Ctrl+Z：撤的是方案 1 自己的「摆上那件」，方案 2 里那件还在');
-      await t.key('z', 'KeyZ', 90, 2);
-      await t.waitFor(`!state.items.some(i=>i.uid===${it0.uid})`, 6000, '方案 1 撤掉那件');
-      const other2 = await t.eval(`(LAY.other.L2||[]).some(i=>i.uid===${it0.uid})`);
-      t.assert('layouts-undo-only-this-layout', other2 === true, '方案 2 里那件还在=' + other2);
-      await t.key('z', 'KeyZ', 90, 10); // Ctrl+Shift+Z 重做
-      await t.waitFor(`state.items.some(i=>i.uid===${it0.uid})`, 6000, '重做回来');
-      await t.eval('save()');
-
-      await t.step('真实刷新：两套方案、当前是哪套都还在');
-      await t.reload();
-      const after = await t.eval(
-        `({n:LAY.list.length, cur:LAY.cur, names:LAY.list.map(l=>l.name), btn:document.querySelector('#layCur').textContent,
-           x2:((LAY.other.L2||[]).find(i=>i.uid===${it0.uid})||{}).x})`
-      );
-      t.assert(
-        'layouts-persist-after-reload',
-        after.n === 2 && after.cur === 'L1' && after.btn === '方案 1' && Math.abs(after.x2 - it0.x - 10 / 30.48) < 1e-3,
-        JSON.stringify(after)
-      );
-
-      await t.step('改名：在名字框里打字、回车');
-      await t.click('#layBtn');
-      await t.waitFor(`document.querySelector('#layPanel').style.display!=='none'`, 4000, '面板打开');
-      await t.type('#layName', '沙发靠窗');
-      await t.key('Enter', 'Enter', 13);
-      await t.waitFor(`LAY.list[0].name==='沙发靠窗'`, 4000, '改名生效');
-      t.assert(
-        'layouts-renamed',
-        (await t.eval(`document.querySelector('#layCur').textContent`)) === '沙发靠窗',
-        '按钮跟着变'
-      );
-
-      await t.step('收尾：切到方案 2、两步删除；方案 1 删掉那件、名字改回去');
-      await t.click('#layList .layRow[data-id="L2"]');
-      await t.waitFor(`LAY.cur==='L2'`, 4000, '切到方案 2');
-      await t.click('#layDel');
-      await t.waitFor(`document.querySelector('#layDel').classList.contains('arm')`, 3000, '第一下只是确认');
-      await t.click('#layDel');
-      await t.waitFor(`LAY.list.length===1 && LAY.cur==='L1'`, 4000, '删掉方案 2');
-      await t.eval(
-        `(()=>{state.items=state.items.filter(i=>i.uid!==${it0.uid}); LAY=LAYOUTS.renameLayout(LAY,'L1','方案 1')||LAY; selOnly(null); drawFurniture(); save(); layoutBarUI();})()`
-      );
-      await t.click('#layBtn');
-      const clean = await t.eval(
-        `({items:state.items.length, n:LAY.list.length, lay:(STORE.get(ITEMS_KEY)||'').indexOf('"lay"')>=0, open:document.querySelector('#layPanel').style.display!=='none'})`
-      );
-      t.assert(
-        'layouts-cleanup',
-        clean.items === before.items && clean.n === 1 && !clean.lay && !clean.open,
-        JSON.stringify(clean)
-      );
-    },
-  },
-
-  {
-    name: 'clipboard',
-    title: '家具剪贴板（S24e）：真键盘 Ctrl+C → 新建一套空白方案 → Ctrl+V 粘过来 → Ctrl+X 剪掉 → Ctrl+V 再粘回来',
-    run: async (t) => {
-      const before = await stateOf(t);
-      await t.step('摆一件、点选它');
-      await t.click('.catCard');
-      await t.waitFor(`state.items.length>${before.items}`, 6000, '家具 +1');
-      const it0 = await t.eval(`(()=>{const i=state.items[state.items.length-1];return {uid:i.uid,ref:i.ref};})()`);
-      await t.waitFor(`selected===${it0.uid}`, 4000, '选中刚摆的那件');
-      await t.step('Ctrl+C');
-      await t.key('c', 'KeyC', 67, 2);
-      await t.waitFor(`!!furnClip && furnClip.items.length===1`, 4000, '进了剪贴板');
-      await t.step('新建一套空白方案，Ctrl+V');
-      await t.click('#layBtn');
-      await t.waitFor(`document.querySelector('#layPanel').style.display!=='none'`, 4000, '方案面板打开');
-      await t.click('#layNew');
-      await t.waitFor(`LAY.list.length===2 && state.items.length===0`, 6000, '空白方案');
-      await t.key('v', 'KeyV', 86, 2);
-      await t.waitFor(`state.items.length===1`, 4000, '粘过来一件');
-      const p1 = await t.eval(
-        `(()=>{const i=state.items[0];return {ref:i.ref, sel:selected===i.uid, why:(furnWhy.get(i.uid)||[]).length};})()`
-      );
-      t.assert(
-        'clipboard-paste-into-new-layout',
-        p1.ref === it0.ref && p1.sel && p1.why === 0,
-        `粘的是 ${p1.ref}（要 ${it0.ref}）· 选中=${p1.sel} · 冲突 ${p1.why} 条`
-      );
-      await t.step('Ctrl+X 剪掉、Ctrl+V 粘回来');
-      await t.key('x', 'KeyX', 88, 2);
-      await t.waitFor(`state.items.length===0`, 4000, '剪掉了');
-      await t.key('v', 'KeyV', 86, 2);
-      await t.waitFor(`state.items.length===1`, 4000, '粘回来了');
-      t.assert('clipboard-cut-paste', (await t.eval(`state.items.length`)) === 1, '剪切后再粘回 1 件');
-      await t.shot('clipboard');
-      await t.step('收尾：删掉这套方案（两步）、删掉方案 1 里那件');
-      await t.click('#layDel');
-      await t.waitFor(`document.querySelector('#layDel').classList.contains('arm')`, 3000, '第一下只是确认');
-      await t.click('#layDel');
-      await t.waitFor(`LAY.list.length===1`, 4000, '删掉了');
-      await t.click('#layBtn');
-      await t.eval(
-        `(()=>{state.items=state.items.filter(i=>i.uid!==${it0.uid}); selOnly(null); drawFurniture(); save();})()`
-      );
-      t.assert(
-        'clipboard-cleanup',
-        (await t.eval(`state.items.length`)) === before.items && (await t.eval(`LAY.list.length`)) === 1,
-        '方案 1 套、家具回到原数'
+        clean.items === before.items && clean.custom === 0 && clean.lays === before.lays,
+        `${clean.items} 件 · 自定义目录 ${clean.custom} 条 · 方案 ${clean.lays} 套`
       );
     },
   },
@@ -3557,8 +3430,7 @@ export const FLOWS = [
       );
 
       await t.step('楼层条 ⚙ →「移动这一层」→ 真鼠标拖');
-      await t.click('#lvMore');
-      await t.click('#lvMove');
+      await t.click('#lvMove'); // F3：楼层设置平铺在面包屑「楼层 ▾」的下拉里（驱动自动点开它）
       await t.waitFor(`!!lvMove`, 4000, '进入「移动这一层」');
       const g0 = await t.eval(`(()=>{const g=DOC.walls[0].geom;return {x:g.x1,y:g.y1};})()`);
       const c = await t.eval(
@@ -3603,7 +3475,7 @@ export const FLOWS = [
     name: 'doc-export-import',
     title: '导出户型 JSON → 再导入回来（真实下载 + 真实文件选择）',
     run: async (t) => {
-      await t.step('展开「工具 ⌄」');
+      await t.step('展开「文件 ▾」');
       // 导入/导出是渐进披露的第二层（R9 §4）：不展开就点不到
       await t.click('#btnMore');
       await t.waitFor(`proToolsOpen===true`, 5000, 'pro 工具层展开');
@@ -3658,20 +3530,21 @@ export const FLOWS = [
     run: async (t) => {
       const before = await stateOf(t);
       const c = await planCenter(t);
-      await t.step('打开「工具」第二层');
-      await ensureProTools(t);
-      const selRect = await t.rectOf('#planSel').catch(() => null);
+      await t.step('左上角面包屑「户型 ▾」打开户型列表（F3：户型管理从「工具」第二层搬到面包屑）');
+      const selRect = await t.rectOf('#crumbPlan').catch(() => null);
+      await t.click('#crumbPlan');
+      const listN = await t.eval(`document.querySelectorAll('#planList .mi').length`);
       t.assert(
         'plan-select-visible',
-        !!selRect && selRect.w >= 80 && selRect.h >= 18,
-        selRect ? Math.round(selRect.w) + '×' + Math.round(selRect.h) + 'px' : '不在视口'
+        !!selRect && selRect.w >= 60 && selRect.h >= 18 && listN >= 1,
+        (selRect ? Math.round(selRect.w) + '×' + Math.round(selRect.h) + 'px' : '不在视口') + ' · 列表 ' + listN + ' 项'
       );
       const opts0 = await t.eval(`[...document.querySelectorAll('#planSel option')].map(o=>o.textContent.trim())`);
       t.assert('plan-select-listed', Array.isArray(opts0) && opts0.length >= 1, opts0.join(' / '));
       const fit = await t.eval(
-        `(()=>{const p=document.querySelector('#proTools'); return {sw:p.scrollWidth, cw:p.clientWidth};})()`
+        `(()=>{const p=document.querySelector('#planMenu'); return {sw:p.scrollWidth, cw:p.clientWidth};})()`
       );
-      t.assert('plan-row-fits', fit.sw <= fit.cw + 1, 'proTools scrollWidth=' + fit.sw + ' clientWidth=' + fit.cw);
+      t.assert('plan-row-fits', fit.sw <= fit.cw + 1, 'planMenu scrollWidth=' + fit.sw + ' clientWidth=' + fit.cw);
       t.assert(
         'plan-delete-locked-on-builtin',
         await t.eval(`document.querySelector('#btnPlanDel').disabled===true`),
@@ -3763,8 +3636,8 @@ export const FLOWS = [
       );
       t.assert(
         'plan-rename-does-not-touch-builtin',
-        names.some((n) => /内置/.test(n) && !/测试户型 E2E/.test(n)),
-        '内置那份的名字没被改'
+        names.some((n) => /（(示例|自带)/.test(n) && !/测试户型 E2E/.test(n)),
+        '示例户型的名字没被改'
       );
 
       await t.step('两步删除：第一下只确认');
@@ -4011,7 +3884,7 @@ export const FLOWS = [
 
       /* ===== ④ 固定的物品（上）：洁具 4 件，台柜 / 镜子自动贴墙 ===== */
       await t.step('洁具工具：放台柜 / 镜子 / 马桶 / 浴缸');
-      await t.click('#wtoolSeg button[data-t="fx"]');
+      await t.click('#decoToolSeg button[data-t="fx"]');
       await t.waitFor(`wallEdit.tool==='fx'`, 6000, 'tool=fx');
       for (let i = 0; i < FX.length; i++) {
         await t.eval(`document.querySelector('#fxType').value=${JSON.stringify(FX[i].type)}`);
@@ -4118,7 +3991,7 @@ export const FLOWS = [
       );
       t.assert('demo-lights-count', lights.length === 6, `固定灯具 ${lights.length} 件：${lights.join(' / ')}`);
       const totals1 = await t.eval(`document.querySelector('#totals').textContent.replace(/\\s+/g,' ')`);
-      t.assert('demo-totals-builtin', /固定灯具不计价/.test(totals1), '#totals = ' + totals1);
+      t.assert('demo-totals-builtin', /房子自带的灯不计价/.test(totals1), '#totals = ' + totals1);
       await t.shot('lights');
 
       /* ===== ⑥ 摆家具：逐件搜索 → 点卡片 → 拖到位 ===== */
@@ -4266,7 +4139,7 @@ export const FLOWS = [
       await t.waitFor(`getComputedStyle(document.querySelector('#photoModal')).display==='none'`, 8000, '关掉光追出图');
 
       /* ===== ⑪ 带走它：导出户型 ===== */
-      await t.step('回 2D → 导出户型（工具 ⌄ → 导出户型）');
+      await t.step('回 2D → 只导出户型结构（文件 ▾）');
       await t.click('#btn2d');
       await t.waitFor(`state.view==='2d'`, 10000, '回到 2D');
       await ensureProTools(t);

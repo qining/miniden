@@ -9,7 +9,7 @@
  *
  * 用法：
  *   node scripts/e2e.mjs                    headful（人可看着），默认两个入口：dist/planner + dist/app
- *   node scripts/e2e.mjs --flow=units       只跑一条
+ *   node scripts/e2e.mjs --flow=units       只跑一条（逗号分隔可跑几条）
  *   node scripts/e2e.mjs --fast             不减速（CI / 快速回归）
  *   node scripts/e2e.mjs --public           只跑公开入口 dist/app.html（generic 户型）
  *   node scripts/e2e.mjs --entry=all        四个入口全跑：dist/planner · dist/app · planner.html · app.html
@@ -452,7 +452,33 @@ async function runEntry(entry) {
     async mouse(type, x, y, extra) {
       await cdp('Input.dispatchMouseEvent', Object.assign({ type, x: Math.round(x), y: Math.round(y) }, extra || {}));
     },
+    /** F3（facelift）：目标在一个关着的下拉菜单里 → 先真实点开它的按钮（文件 ▾ / 户型 ▾ / 楼层 ▾ / 方案 ▾ / ⚙ / ? / 场景 / 底图） */
+    async openMenuFor(sel) {
+      for (let k = 0; k < 2; k++) {
+        const opener = await ev(
+          `(()=>{const e=document.querySelector(${JSON.stringify(sel)}); if(!e || typeof MENUS==='undefined') return null;
+            const m=e.closest('.menu,#layPanel'); if(!m || getComputedStyle(m).display!=='none') return null;
+            const id=Object.keys(MENUS).find(x=>document.querySelector(MENUS[x])===m); return id ? '#'+id : null;})()`
+        );
+        if (!opener) {
+          // F1：工具按钮在另一个分区的工具组里 → 先点那个分区（装修 / 改户型）；F4：清单 / 检视在右栏另一个标签页 → 先点那个标签
+          const area = await ev(
+            `(()=>{const e=document.querySelector(${JSON.stringify(sel)}); if(!e || e.offsetParent) return null;
+              if(e.closest('#decoToolSeg')) return '#modeDeco'; if(e.closest('#wtoolSeg')) return '#btnWallEdit';
+              if(e.closest('#tabListPane')) return '#tabList'; if(e.closest('#tabInspPane')) return '#tabInsp'; return null;})()`
+          );
+          if (area) {
+            await t.click(area);
+            await sleep(80);
+          }
+          return;
+        }
+        await t.click(opener);
+        await sleep(80);
+      }
+    },
     async click(target, opt = {}) {
+      if (typeof target === 'string') await t.openMenuFor(target);
       const p = typeof target === 'string' ? await t.rectOf(target) : target;
       if (typeof target === 'string') {
         // 遮挡检查（AGENTS §8.4 三层探针的几何 + 遮挡两层）：
@@ -538,6 +564,7 @@ async function runEntry(entry) {
       });
     },
     async type(sel, text) {
+      await t.openMenuFor(sel);
       const r = await t.rectOf(sel);
       await t.click({ x: r.x, y: r.y });
       // 先清空：Input.insertText 是在光标处**插入**，不清空就会接在旧值后面
@@ -591,7 +618,7 @@ async function runEntry(entry) {
   // ciSkip：演示类长流程（含光追这类真 GPU 步骤）在 CI 上跑只会变慢，不会多抓住什么——
   // 同一条路径的断言密度已经在 bench 里了。本地 / 手动跑照跑。
   const pool = CI ? FLOWS.filter((f) => !f.ciSkip) : FLOWS;
-  const flows = ONLY ? FLOWS.filter((f) => f.name === ONLY) : pool;
+  const flows = ONLY ? FLOWS.filter((f) => ONLY.split(',').includes(f.name)) : pool;
   if (!flows.length) {
     console.error('没有匹配的 flow（可选：' + FLOWS.map((f) => f.name).join(', ') + '）');
     ws.close();

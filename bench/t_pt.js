@@ -701,9 +701,14 @@ async function runPT() {
        「工具」里的新建户型 / 导入户型 / 导入布局。任何一个改了场景，交出来的图就属于一个已经不存在的房间。 */
     {
       const labK = (LABELS.find((l) => /客厅/.test(l.t)) || {}).p || [20, 26];
-      state.items = [{ uid: 9299, ref: 'kallax-a-0', x: labK[0], y: labK[1], rot: 0 }];
+      // facelift F4：清单按商品合并后只有「目录里没有了的件」那一行还带 ✕ —— 摆一件幽灵件让这条入口存在
+      state.items = [
+        { uid: 9299, ref: 'kallax-a-0', x: labK[0], y: labK[1], rot: 0 },
+        { uid: 9298, ref: 'pt32-no-such-entry', x: labK[0] + 3, y: labK[1], rot: 0 },
+      ];
       selOnly(null);
       drawFurniture();
+      updatePlacedList();
       // 撤销环里先放两步真改动：不然「撤销被挡住」与「没有可撤销的」分不开（键盘与按钮各撤一步）
       for (const k of [1, 2]) {
         pushUndo('pt32-probe-' + k, true);
@@ -747,7 +752,7 @@ async function runPT() {
         )
       );
       await probe('undo-btn', '顶栏「撤销」', () => document.getElementById('btnUndo').click());
-      await probe('list-del', '已摆清单的 ✕', () => {
+      await probe('list-del', '清单里幽灵行的 ✕', () => {
         const x = document.querySelector('#plRows .plRow .x');
         if (!x) throw new Error('清单里找不到 ✕（测试前提没成立）');
         x.click();
