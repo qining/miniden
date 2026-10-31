@@ -263,7 +263,7 @@ export function shoppingText(list: ShopList, opts: TextOpts): string {
       (tail.length ? `（${tail.join('、')}）` : '')
   );
   if (opts.floors && opts.floors.length) {
-    L.push('', '地板用量（按房间面积，不含损耗）');
+    L.push('', '地面用量（按房间面积，不含损耗）');
     for (const f of opts.floors) L.push(`· ${f.name} — ${f.areaText}（${f.rooms.join('、')}）`);
   }
   return L.join('\n');

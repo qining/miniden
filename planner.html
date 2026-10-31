@@ -165,7 +165,7 @@
   .swCat{font-size:11px; color:var(--muted); grid-column:1/-1; margin:2px 0 -2px;}
   .vh{display:none !important;}
   /* F1：装修 = 左栏换成房间列表；改户型 = 左栏收起（画布变宽） */
-  body.deco #catalog > :not(#decoPanel):not(.panelHead){display:none !important;}
+  body.deco #catalog > :not(#decoPanel):not(.panelHead):not(#matPicker){display:none !important;}
   body.deco #decoPanel{display:flex !important;}
   body.build #catalog, body.build #splitL, body.build #catTab{display:none !important;}
   #decoPanel{flex-direction:column; gap:8px; padding:10px 12px; overflow-y:auto; flex:1;}
@@ -196,6 +196,66 @@
   #modeNote.thin span, #modeNote.thin #mnStay{display:none;} #modeNote.thin .mnBtns{margin:0;}
   #wtoolSeg button:disabled, #decoToolSeg button:disabled{opacity:.38; cursor:default;}
   #inspBuild.decoMode .dimRow, #inspBuild.decoMode #segCtl{display:none !important;}
+  /* ---------- S26a 材质行 + 选择器（design/materials §10） ---------- */
+  :root{ --preview-line:#7fb8ff; --sw-line:rgba(255,255,255,.14); --mat-thumb:36px; }
+  .mrow{display:flex; align-items:center; gap:10px; width:100%; min-height:46px; padding:6px 8px; text-align:left; box-sizing:border-box;
+    border:1px solid var(--line); border-radius:8px; background:var(--panel2); cursor:pointer; color:var(--text); font:inherit;}
+  .mrow:hover{border-color:var(--muted);} .mrow:focus-visible{outline:2px solid var(--accent-line); outline-offset:1px;}
+  .mrow.open{background:var(--sel-bg); border-color:var(--accent-line); box-shadow:inset 3px 0 0 var(--accent);}
+  .mrow .mt{width:var(--mat-thumb); height:var(--mat-thumb); flex:none; border-radius:6px; border:1px solid var(--sw-line); background:center/cover;}
+  .mrow .mx{flex:1; min-width:0;}
+  .mrow .lb{display:block; font-size:11px; color:var(--muted);}
+  .mrow .nm{display:block; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .mrow .sp{display:block; font-size:11px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .mrow .st{font-size:10.5px; padding:1px 6px; border-radius:9px; border:1px solid var(--line); color:var(--muted); white-space:nowrap; flex:none;}
+  .mrow .st.own{border-color:var(--accent-line); color:var(--accent);}
+  .mrow .ar{color:var(--muted); flex:none;}
+  #matPicker{position:absolute; inset:0; z-index:6; display:flex; flex-direction:column; background:var(--panel);}
+  body.calib #matPicker, body.calib #bandLegend{display:none !important;}
+  #matPicker .mpHead{display:flex; align-items:center; gap:8px; padding:8px 10px; min-height:44px; box-sizing:border-box;}
+  #matPicker .mpT{flex:1; min-width:0; display:flex; flex-direction:column;}
+  #matPicker .mpT span{font-size:11px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  #matPicker .mpT b{font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  #matPicker .mpTools{display:flex; gap:6px; padding:0 12px 6px;}
+  #mpSearch{flex:1; min-width:0; height:28px; box-sizing:border-box;}
+  #mpTabs{display:flex; flex-wrap:wrap; gap:4px; padding:0 12px 6px;}
+  #mpTabs .chip, #mpTone button{height:22px; padding:0 8px; border-radius:11px; border:1px solid var(--line); background:none; color:var(--muted); font-size:11.5px; cursor:pointer;}
+  #mpTabs .chip.on, #mpTone button.on{background:var(--sel-bg); color:var(--sel-text); border-color:var(--accent-line);}
+  #mpTone{display:flex; align-items:center; gap:4px; padding:0 12px 8px;} #mpTone .tl{font-size:11px; color:var(--muted); margin-right:2px;} #mpTone .tsep{width:1px; height:14px; background:var(--line); margin:0 4px;}
+  #mpBody{flex:1; overflow-y:auto; padding:6px 12px 12px; border-top:1px solid var(--line);}
+  .mpH{font-size:11px; color:var(--muted); margin:8px 0 4px;} .mpH.full{grid-column:1/-1;}
+  .mpStrip{display:flex; gap:5px; flex-wrap:wrap;} .mpStrip .mpTile{width:36px;} .mpStrip .mpTile .th{aspect-ratio:1;}
+  .mpTile{position:relative; display:flex; flex-direction:column; gap:2px; min-width:0; padding:0; border:none; background:none; color:var(--text); text-align:left; cursor:pointer; font:inherit;}
+  .mpTile .th{display:block; width:100%; aspect-ratio:4/3; border-radius:7px; border:1px solid var(--sw-line); background:center/cover; position:relative; box-sizing:border-box;}
+  .mpTile .nm{font-size:11.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;} .mpTile .sp{font-size:10.5px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .mpTile .bd{position:absolute; left:3px; bottom:3px; padding:0 4px; border-radius:4px; background:rgba(0,0,0,.62); color:#fff; font-size:10px; font-style:normal; line-height:15px;}
+  .mpTile .cnt{position:absolute; right:-3px; top:-5px; font-size:9.5px; font-style:normal; background:var(--panel2); border:1px solid var(--line); border-radius:7px; padding:0 3px; color:var(--muted);}
+  .mpGrid{display:grid; grid-template-columns:repeat(3,1fr); gap:8px;}
+  .mpGrid.small{grid-template-columns:repeat(5,1fr); gap:6px;}
+  .mpGrid.small .mpTile .th{aspect-ratio:1;} .mpGrid.small .mpTile .nm, .mpGrid.small .mpTile .sp{display:none;}
+  .mpTile[aria-checked=true] .th, .mpPal .sw[aria-checked=true]{box-shadow:0 0 0 2px var(--panel), 0 0 0 4px var(--accent);}
+  .mpTile.preview .th, .mpPal .sw.preview{box-shadow:0 0 0 2px var(--panel), 0 0 0 4px var(--preview-line);}
+  .mpFirst{display:grid; grid-template-columns:repeat(3,1fr); margin-bottom:8px;}
+  .mpPal{display:grid; grid-template-columns:40px repeat(6,1fr); gap:5px; align-items:center;}
+  .mpPal .fl{font-size:11px; color:var(--muted); white-space:nowrap;}
+  .mpPal .sw{height:28px; border-radius:6px; border:1px solid var(--sw-line); padding:0; cursor:pointer;}
+  .mpEmpty{grid-column:1/-1; font-size:12px; color:var(--muted); padding:12px 0;}
+  .mpCustomBtn{margin-top:10px; width:100%;}
+  #mpCustom{padding:8px 12px; border-top:1px solid var(--line); display:flex; flex-direction:column; gap:6px;}
+  #mpCustom .mcH{display:flex; align-items:center; gap:8px;} #mpCustom .mcH span{flex:1; font-size:11px; color:var(--muted);}
+  #mpCustom label{display:grid; grid-template-columns:30px 1fr 38px; align-items:center; gap:6px; font-size:11.5px; color:var(--muted);}
+  #mpCustom input[type=range]{-webkit-appearance:none; appearance:none; height:10px; border-radius:5px;}
+  #mpHue{background:linear-gradient(90deg,#f00,#ff0,#0f0,#0ff,#00f,#f0f,#f00);}
+  #mpCustom em{font-style:normal; font-size:11px; text-align:right;}
+  #mpCustom .mcF{display:flex; align-items:center; gap:6px;} #mpSw{width:28px; height:28px; border-radius:6px; border:1px solid var(--sw-line); flex:none;}
+  #mpHex{width:80px; height:28px; box-sizing:border-box; font-family:ui-monospace,monospace;} #mpCustomOk{margin-left:auto;}
+  #mpReadout{display:grid; grid-template-columns:36px 1fr auto; grid-template-rows:auto auto; align-items:center; column-gap:8px; padding:8px 12px; border-top:1px solid var(--line); min-height:56px; box-sizing:border-box;}
+  #mpReadout .th{grid-row:1/3; width:36px; height:36px; border-radius:6px; border:1px solid var(--sw-line); background:center/cover;}
+  #mpReadout .rn{font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  #mpReadout small{grid-column:2/4; font-size:10.5px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  #mpReadout .tag{font-size:10.5px; padding:1px 6px; border-radius:9px; border:1px solid var(--preview-line); color:var(--preview-line);}
+  #lvFloorL.mini #mrLvFloor{display:none !important;}
+  .swBtn{width:26px; height:26px; flex:none; border-radius:6px; border:1px solid var(--sw-line); cursor:pointer; padding:0;} .swBtn:disabled{opacity:.35; cursor:default;} .swBtn.open{box-shadow:0 0 0 2px var(--panel), 0 0 0 4px var(--accent);}
   #inspBuild.buildMode .decoOnly{display:none !important;}
   #lvFloorMini{display:none;} #lvFloorL.mini #lvFloorMini{display:inline;} #lvFloorL.mini .swGrid, #lvFloorL.mini #lvFloorNote{display:none !important;}
   #lvFloorL.mini{flex-direction:row !important; align-items:center;}
@@ -767,7 +827,7 @@
     <label class="wlbl" id="rmCurtainL">窗帘 <select id="rmCurtain" title="给这个房间的每一扇窗配窗帘"></select><span class="setNote" id="rmCurtainNote"></span>
       <input id="rmCurtainC" type="color" value="#c9b79c" title="窗帘颜色" style="width:34px;height:26px;padding:1px;vertical-align:middle"></label>
     <span class="wlbl" id="rmArea"></span>
-    <label class="wlbl" id="lvFloorL"><span id="lvFloorTtl">全屋地板</span> <button class="decoLink" id="lvFloorMini" type="button"></button> <select id="lvFloor" title="全屋地板：没单独设地板的房间都用它"></select><span class="setNote" id="lvFloorNote">没单独设地板的房间都用它</span></label>
+    <label class="wlbl" id="lvFloorL"><span id="lvFloorTtl">全屋地面</span> <button class="decoLink" id="lvFloorMini" type="button"></button> <select id="lvFloor" title="全屋地板：没单独设地板的房间都用它"></select><span class="setNote" id="lvFloorNote">没单独设地板的房间都用它</span></label>
   </span>
   <span id="runCtl">
     <label class="wlbl">深 <input id="runDepth" type="number" min="15" max="120" step="1" value="60"> cm</label>
@@ -953,6 +1013,26 @@
       <button class="btn" id="dpRun">⌐ 画台面 / 橱柜（沿墙点折线）</button>
       <div class="dpNote">放置要在 2D 平面里点位置；选中、改材质在 3D 里也能做。</div>
     </div>
+    <!-- S26a：左栏选择器（盖在左栏上；沿用左栏宽度） -->
+    <div id="matPicker" style="display:none" role="dialog" aria-label="选材质">
+      <div class="mpHead"><button class="btn icon ghost" id="mpBack" title="关闭（Esc）">←</button>
+        <div class="mpT"><span id="mpKicker"></span><b id="mpTitle"></b></div>
+        <button class="btn ghost" id="mpRevert" title="回到打开选择器之前的样子（一步撤销）">↺ 还原</button></div>
+      <div class="mpTools"><input id="mpSearch" placeholder="搜索：名字、规格、颜色" autocomplete="off">
+        <span class="seg sm" id="mpDensity"><button data-d="big" title="大图">▦</button><button data-d="small" title="小图">▪▪</button></span></div>
+      <div id="mpTabs"></div>
+      <div id="mpTone"><span class="tl">色调</span><button data-t="hi">浅</button><button data-t="mid">中</button><button data-t="lo">深</button><span class="tsep"></span><button data-t="warm">暖</button><button data-t="cool">冷</button></div>
+      <div id="mpBody"></div>
+      <div id="mpCustom" style="display:none">
+        <div class="mcH"><b>自定义颜色</b><span>会进「最近用过」</span><button class="btn icon ghost" id="mpCustomX" title="收起">×</button></div>
+        <label>色相 <input type="range" id="mpHue" min="0" max="359"><em></em></label>
+        <label>浓淡 <input type="range" id="mpSat" min="0" max="100"><em></em></label>
+        <label>明暗 <input type="range" id="mpLight" min="0" max="100"><em></em></label>
+        <div class="mcF"><span id="mpSw"></span><input id="mpHex" maxlength="7" autocomplete="off"><button class="btn primary" id="mpCustomOk">用这个颜色</button></div>
+      </div>
+      <div id="mpReadout"><span class="th"></span><span class="rn"></span><span class="tag" style="display:none"></span>
+        <small>悬停 = 预览 · 点击 = 确定 · Esc = 撤回预览并返回</small></div>
+    </div>
     <div id="cfBar"><button class="btn" id="cfOpen" aria-expanded="false" title="网上看中的、目录里没有的：填名称和尺寸就能摆进来，价格和链接会进采购清单">＋ 加一件目录里没有的</button></div>
     <div id="customForm" class="menu" style="display:none">
       <h3>加一件目录里没有的（网上看中的）</h3>
@@ -1111,7 +1191,7 @@
    build.mjs 校验本块与最新编译输出逐字节一致。 */
 "use strict";(()=>{var J=Object.defineProperty;var v=(n,t)=>{for(var i in t)J(n,i,{get:t[i],enumerable:!0})};var N={};v(N,{BUILTIN_LIGHT_KINDS:()=>X,ENTRY_MAX_CM:()=>U,ENTRY_MAX_PRICE:()=>Q,ENTRY_MIN_CM:()=>G,ENTRY_SCHEMA:()=>W,KNOWN_KINDS:()=>K,KNOWN_WOODS:()=>Y,duplicateIds:()=>$,validateEntry:()=>S});var W=1,G=1,U=1200,Q=1e5,K=["accentConsole","armchair","art","balanceBike","ballPit","bed","bedMetal","bookcase","cart","ceilingLight","chair","climber","clothesRail","coatRack","coffeeTable","crib","desk","deskSitStand","downlight","dresser","dryer","easel","fridge","goal","lamp","magTiles","mirror","nightstand","officeChair","pendant","pikler","plant","playCouch","playKitchen","playMat","playset","recliner","rideOn","rocking","rug","sandTable","scooter","shelf","shoeCab","sideTable","sofa","sofaL","sportsZone","stool","swivelChair","tableDrawer","tableFold","tableRect","tableRound","trampoline","tubChair","tv","tvBench","vanityLight","wagon","walker","wardrobe","washer","wobble","xylophone"],Y=["pine","beech","birch","oak","walnut"],X=["downlight","ceilingLight","vanityLight","pendant"],F=new Set(["id","cat","name","w","d","h","kind","model","price","priceCA","caNA","caVar","color","color2","seatH","z","wood","dimmable","url","note","cct","lum","glassShelf","spShelves","noCal","sourcePack","noPrice","seat","col2"]),z=/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/,ee=/^[a-z][A-Za-z0-9]{0,31}$/,ne=/^#[0-9a-fA-F]{3,8}$/,k=n=>typeof n=="string",x=n=>typeof n=="number"&&Number.isFinite(n);function S(n,t){let i=[];if(!n||typeof n!="object"||Array.isArray(n))return{issues:[{level:"error",where:t||"?",field:"",message:"\u6761\u76EE\u5FC5\u987B\u662F\u5BF9\u8C61"}],ok:!1};let e=Object.assign({},n),o=k(e.id)&&e.id?e.id:t||"?",r=(s,p,g)=>i.push({level:s,where:o,field:p,message:g});e.col2!==void 0&&(e.color2===void 0?(e.color2=e.col2,r("warning","col2","col2 \u662F\u65E7\u522B\u540D\uFF08\u5185\u7F6E\u76EE\u5F55\u66FE\u8BEF\u7528\u8FC7\uFF09\uFF0C\u5DF2\u6309 color2 \u5904\u7406 \u2014\u2014 \u8BF7\u6539\u5199 color2")):r("warning","col2","\u540C\u65F6\u7ED9\u4E86 col2 \u4E0E color2\uFF1A\u6309 color2 \u5904\u7406"),delete e.col2),!k(e.id)||!e.id?r("error","id","\u7F3A\u5C11 id"):z.test(e.id)||r("error","id",`id \u53EA\u80FD\u7528\u5B57\u6BCD/\u6570\u5B57/._-\uFF0C\u4E14\u4E0D\u8D85\u8FC7 64 \u5B57\u7B26\uFF08\u5F53\u524D "${e.id}"\uFF09`),!k(e.cat)||!e.cat.trim()?r("error","cat","\u7F3A\u5C11\u5206\u7C7B\uFF08cat\uFF09"):e.cat.length>60&&r("error","cat","\u5206\u7C7B\u540D\u8FC7\u957F\uFF08>60 \u5B57\u7B26\uFF09"),!k(e.name)||!e.name.trim()?r("error","name","\u7F3A\u5C11\u540D\u79F0\uFF08name\uFF09"):e.name.length>140&&r("error","name","\u540D\u79F0\u8FC7\u957F\uFF08>140 \u5B57\u7B26\uFF09");let c=["w","d","h"];for(let s of c){let p=e[s];x(p)?(p<1||p>1200)&&r("error",s,`${s}=${p}cm \u8D85\u51FA 1\u20131200cm \u7684\u5408\u7406\u8303\u56F4`):r("error",s,`${s} \u5FC5\u987B\u662F\u6570\u5B57\uFF08cm\uFF09`)}!k(e.kind)||!e.kind?r("error","kind","\u7F3A\u5C11 kind\uFF08\u51B3\u5B9A 2D \u56FE\u4F8B / \u6750\u8D28 / \u901A\u7528\u56DE\u9000\u5EFA\u6A21\uFF09"):ee.test(e.kind)?K.includes(e.kind)||r("warning","kind",`\u964C\u751F\u7684 kind "${e.kind}"\uFF1A\u80FD\u653E\u80FD\u641C\uFF0C\u4F46\u5EFA\u6A21\u4F1A\u8D70\u901A\u7528\u56DE\u9000\u30012D \u56FE\u4F8B\u662F\u901A\u7528\u77E9\u5F62`):r("error","kind",`kind \u53EA\u80FD\u7528\u5B57\u6BCD\u5F00\u5934\u7684 [A-Za-z0-9]\uFF08\u5F53\u524D "${e.kind}"\uFF09`),e.model!==void 0&&(!k(e.model)||!z.test(e.model))&&r("error","model","model \u5FC5\u987B\u662F\u5408\u6CD5\u7684\u6A21\u578B\u540D");for(let s of["price","priceCA"]){let p=e[s];p!==void 0&&(!x(p)||p<0||p>1e5)&&r("error",s,`${s} \u5FC5\u987B\u662F 0\u2013100000 \u7684\u6570\u5B57`)}e.caNA!==void 0&&typeof e.caNA!="boolean"&&r("error","caNA","caNA \u5FC5\u987B\u662F\u5E03\u5C14"),e.caVar!==void 0&&typeof e.caVar!="boolean"&&!(k(e.caVar)&&e.caVar.length<=240)&&r("error","caVar","caVar \u5FC5\u987B\u662F\u5E03\u5C14\uFF0C\u6216 \u2264240 \u5B57\u7B26\u7684\u8BF4\u660E\u6587\u672C"),e.noPrice!==void 0&&e.noPrice!==!0&&r("error","noPrice","noPrice \u53EA\u7528\u6765\u663E\u5F0F\u58F0\u660E\u300C\u6CA1\u6709\u72EC\u7ACB\u552E\u4EF7\u300D\uFF0C\u5199 true \u6216\u4E0D\u5199"),e.price===void 0&&e.priceCA===void 0&&e.caNA!==!0&&e.noPrice!==!0&&!X.includes(String(e.kind))&&r("warning","price","\u6CA1\u6709\u4EFB\u4F55\u4EF7\u683C\uFF1A\u754C\u9762\u4F1A\u663E\u793A\u4E3A\u7A7A\uFF08\u56FA\u5B9A\u706F\u5177\u672C\u6765\u5C31\u8BE5\u6CA1\u6709\u4EF7\u683C\uFF0C\u5176\u5B83\u6761\u76EE\u901A\u5E38\u662F\u6F0F\u91C7\u4E86\uFF09");for(let s of["color","color2"]){let p=e[s];p!==void 0&&(!k(p)||!ne.test(p))&&r("error",s,`${s} \u5FC5\u987B\u662F #hex\uFF08\u5982 "#D4C4A8"\uFF09`)}e.wood!==void 0&&!Y.includes(String(e.wood))&&r("warning","wood",`\u964C\u751F\u7684 wood "${String(e.wood)}"\uFF1A\u4F1A\u9000\u56DE\u9ED8\u8BA4\u6728\u7EB9`),e.seatH!==void 0&&(!x(e.seatH)||e.seatH<1||e.seatH>120)&&r("error","seatH","seatH \u5FC5\u987B\u5728 1\u2013120cm"),e.z!==void 0&&(!x(e.z)||e.z<0||e.z>300)&&r("error","z","z\uFF08\u7F3A\u7701\u79BB\u5730\u9AD8\uFF09\u5FC5\u987B\u5728 0\u2013300cm"),e.dimmable!==void 0&&typeof e.dimmable!="boolean"&&r("error","dimmable","dimmable \u5FC5\u987B\u662F\u5E03\u5C14"),e.url!==void 0&&(!k(e.url)||e.url.length>300?r("error","url","url \u5FC5\u987B\u662F \u2264300 \u5B57\u7B26\u7684\u6587\u672C"):/^https?:\/\//.test(e.url)||r("error","url","url \u5FC5\u987B\u4EE5 http:// \u6216 https:// \u5F00\u5934")),e.note!==void 0&&(!k(e.note)||e.note.length>400)&&r("error","note","note \u5FC5\u987B\u662F \u2264400 \u5B57\u7B26\u7684\u6587\u672C");for(let s of Object.keys(e))!F.has(s)&&s!=="sourcePack"&&r("warning",s,`\u672A\u77E5\u5B57\u6BB5 "${s}"\uFF08\u4F1A\u88AB\u4FDD\u7559\u4F46\u4E0D\u6D88\u8D39\uFF09`);if(i.some(s=>s.level==="error"))return{issues:i,ok:!1};let f={id:String(e.id),cat:String(e.cat).trim(),name:String(e.name).trim(),w:Number(e.w),d:Number(e.d),h:Number(e.h),kind:String(e.kind)};for(let s of["model","price","priceCA","caNA","caVar","color","color2","seatH","z","wood","dimmable","url","note","cct","lum","glassShelf","spShelves","noCal","noPrice","seat"])e[s]!==void 0&&(f[s]=e[s]);for(let s of Object.keys(e))F.has(s)||(f[s]=e[s]);return{entry:f,issues:i,ok:!0}}function $(n){let t=new Set,i=new Set;for(let e of n)t.has(e.id)&&i.add(e.id),t.add(e.id);return Array.from(i)}var O={};v(O,{DIGEST_RE:()=>Z,MAX_MODEL_SRC:()=>_,MAX_PACKS:()=>I,MAX_PACK_ENTRIES:()=>w,MAX_PACK_MODELS:()=>M,MAX_PACK_MODELS_BYTES:()=>E,PACKS_KEY:()=>re,PACK_SCHEMA:()=>y,canonicalJson:()=>C,compileModel:()=>P,contentDigest:()=>q,mergeCatalog:()=>se,normalizeRegistry:()=>ue,packDigest:()=>R,packKeyFor:()=>te,packMetaFor:()=>ge,packUpdateDecision:()=>ce,removePackMeta:()=>fe,serializeRegistry:()=>de,upsertPackMeta:()=>pe,validatePack:()=>ie});var y=2,re="planner_packs_v1",te=n=>"planner_pack:"+n,w=2e3,M=500,_=6e4,E=4e5,I=32,V=/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/,oe=/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/,m=n=>typeof n=="string",A=n=>typeof n=="number"&&Number.isFinite(n);function ie(n){let t=[],i=[],e=(a,l)=>t.push({level:"error",where:"?",field:a,message:l});if(!n||typeof n!="object"||Array.isArray(n))return e("","\u76EE\u5F55\u5305\u5FC5\u987B\u662F\u4E00\u4E2A JSON \u5BF9\u8C61"),{issues:t,entryIssues:i,ok:!1};let o=n,r=m(o.pack)&&o.pack?o.pack:"?",c=(a,l,d)=>t.push({level:a,where:r,field:l,message:d});!m(o.pack)||!o.pack?e("pack","\u7F3A\u5C11\u5305 id\uFF08pack\uFF09"):V.test(o.pack)?o.pack==="builtin"&&e("pack",'\u5305 id \u4E0D\u80FD\u53EB "builtin"\uFF08\u90A3\u662F\u5185\u7F6E\u76EE\u5F55\u7684\u547D\u540D\u7A7A\u95F4\uFF09'):e("pack",`\u5305 id \u53EA\u80FD\u7528\u5B57\u6BCD/\u6570\u5B57/._-\uFF0C\u4E14\u4E0D\u8D85\u8FC7 64 \u5B57\u7B26\uFF08\u5F53\u524D "${o.pack}"\uFF09`);let f=1;o.version!==void 0&&(!A(o.version)||!Number.isInteger(o.version)||o.version<1?e("version","version \u5FC5\u987B\u662F \u22651 \u7684\u6574\u6570"):f=o.version);let s=m(o.pack)?o.pack:"\u672A\u547D\u540D\u76EE\u5F55\u5305";o.name!==void 0&&(!m(o.name)||!o.name.trim()||o.name.length>80?e("name","name \u5FC5\u987B\u662F 1\u201380 \u5B57\u7B26\u7684\u6587\u672C"):s=o.name.trim()),Array.isArray(o.entries)?o.entries.length===0?e("entries","entries \u662F\u7A7A\u7684\uFF1A\u8FD9\u4E2A\u5305\u6CA1\u6709\u4EFB\u4F55\u6761\u76EE"):o.entries.length>w&&e("entries",`entries \u8D85\u8FC7 ${w} \u6761\u4E0A\u9650\uFF08\u5F53\u524D ${o.entries.length}\uFF09`):e("entries","\u7F3A\u5C11 entries\uFF08\u6761\u76EE\u6570\u7EC4\uFF09");let p={};if(o.models!==void 0)if(!o.models||typeof o.models!="object"||Array.isArray(o.models))e("models","models \u5FC5\u987B\u662F {\u540D\u5B57: \u51FD\u6570\u6E90\u7801\u5B57\u7B26\u4E32} \u5BF9\u8C61");else{let a=Object.keys(o.models);a.length>M&&e("models",`models \u8D85\u8FC7 ${M} \u4E2A\u4E0A\u9650\uFF08\u5F53\u524D ${a.length}\uFF09`);let l=0;for(let d of a){let h=o.models[d];if(!oe.test(d)){c("error",`models.${d}`,"\u6A21\u578B\u540D\u53EA\u80FD\u7528\u5B57\u6BCD/\u6570\u5B57/._-\uFF0C\u4E14\u4E0D\u8D85\u8FC7 64 \u5B57\u7B26");continue}if(!m(h)){c("error",`models.${d}`,'\u6A21\u578B\u5FC5\u987B\u662F\u51FD\u6570\u6E90\u7801\u5B57\u7B26\u4E32\uFF08\u5982 "(C)=>{ \u2026 }"\uFF09');continue}if(h.length>_){c("error",`models.${d}`,`\u5355\u4E2A\u6A21\u578B\u6E90\u7801\u8D85\u8FC7 ${_} \u5B57\u7B26`);continue}l+=h.length,p[d]=h}l>E&&e("models",`\u6574\u5305\u6A21\u578B\u6E90\u7801\u8D85\u8FC7 ${E} \u5B57\u7B26\u4E0A\u9650\uFF08\u5F53\u524D ${l}\uFF09`)}for(let a of Object.keys(o))a!=="pack"&&a!=="name"&&a!=="version"&&a!=="entries"&&a!=="models"&&a!=="homepage"&&a!=="note"&&c("warning",a,`\u672A\u77E5\u5B57\u6BB5 "${a}"\uFF08\u4F1A\u88AB\u5FFD\u7565\uFF09`);o.homepage!==void 0&&(!m(o.homepage)||!/^https?:\/\//.test(o.homepage)||o.homepage.length>300)&&c("error","homepage","homepage \u5FC5\u987B\u662F http(s) \u94FE\u63A5\uFF08\u2264300 \u5B57\u7B26\uFF09"),o.note!==void 0&&(!m(o.note)||o.note.length>600)&&c("error","note","note \u5FC5\u987B\u662F \u2264600 \u5B57\u7B26\u7684\u6587\u672C");let g=[];if(Array.isArray(o.entries)){for(let d of o.entries){let h=S(d);i.push(...h.issues),h.ok&&h.entry&&g.push({...h.entry,sourcePack:r})}for(let d of $(g))t.push({level:"error",where:r,field:"entries",message:`\u5305\u5185 id \u91CD\u590D\uFF1A"${d}"\uFF08\u540E\u4E00\u6761\u88AB\u4E22\u5F03\uFF09`});let a=new Set,l=g.filter(d=>a.has(d.id)?!1:(a.add(d.id),!0));g.length=0,g.push(...l)}if(t.some(a=>a.level==="error"))return{issues:t,entryIssues:i,ok:!1};if(g.length===0)return{issues:t,entryIssues:i,ok:!1};let u={pack:String(o.pack),name:s,version:f,entries:g,models:p};return m(o.homepage)&&(u.homepage=o.homepage),m(o.note)&&(u.note=o.note),{pack:u,issues:t,entryIssues:i,ok:!0}}function P(n){try{let t=new Function('"use strict";return ('+n+");")();return typeof t!="function"?{error:"\u6E90\u7801\u6C42\u503C\u7ED3\u679C\u4E0D\u662F\u51FD\u6570"}:{fn:t}}catch(t){return{error:(t instanceof Error?t.message:"")||"\u7F16\u8BD1\u5931\u8D25"}}}function se(n,t){let i=[],e=[],o=new Set;for(let r of n)o.has(r.id)||(o.add(r.id),i.push(r));for(let r of t)for(let c of r.entries){if(o.has(c.id)){e.push({id:c.id,pack:r.pack,reason:"\u4E0E\u5DF2\u52A0\u8F7D\u7684\u6761\u76EE\u540C id\uFF08\u5185\u7F6E\u76EE\u5F55 / \u5148\u52A0\u8F7D\u7684\u5305\u8D62\uFF09"});continue}o.add(c.id),i.push({...c,sourcePack:r.pack})}return{entries:i,conflicts:e}}function C(n){if(n==null)return"null";let t=typeof n;if(t==="number")return Number.isFinite(n)?JSON.stringify(n):"null";if(t==="string"||t==="boolean")return JSON.stringify(n);if(Array.isArray(n))return"["+n.map(C).join(",")+"]";if(t==="object"){let i=n;return"{"+Object.keys(i).sort().map(o=>JSON.stringify(o)+":"+(i[o]===void 0?"null":C(i[o]))).join(",")+"}"}return"null"}var ae=16777619;function H(n,t){let i=t>>>0;for(let e=0;e<n.length;e++)i^=n.charCodeAt(e),i=Math.imul(i,ae)>>>0;return i>>>0}function q(n){let t=C(n),i=H(t,2166136261),e=H(t+"",(16777619^t.length)>>>0);return i.toString(16).padStart(8,"0")+e.toString(16).padStart(8,"0")}var Z=/^[0-9a-f]{16}$/,R=n=>q({pack:n.pack,version:n.version,name:n.name,entries:n.entries,models:n.models});function ce(n,t){return n?t.version>n.version?{action:"update",reason:`\u7248\u672C ${n.version} \u2192 ${t.version}`}:t.version<n.version?{action:"reject",reason:`\u5DF2\u52A0\u8F7D\u7684\u662F\u7248\u672C ${n.version}\uFF0C\u8FD9\u4EFD\u662F\u7248\u672C ${t.version}\uFF1A\u8981\u6362\u65E7\u7248\u8BF7\u5148\u79FB\u9664\u5F53\u524D\u8FD9\u4EFD`}:n.digest?n.digest===R(t)?{action:"same",reason:`\u5185\u5BB9\u4E0E\u5DF2\u52A0\u8F7D\u7684\u8FD9\u4EFD\u5B8C\u5168\u76F8\u540C\uFF08\u7248\u672C ${n.version}\uFF09`}:{action:"reject",reason:`\u540C\u540D\u540C\u7248\u672C\uFF08\u7248\u672C ${n.version}\uFF09\u4F46\u5185\u5BB9\u4E0D\u540C\uFF1A\u6539\u5185\u5BB9\u8BF7\u628A version \u63D0\u9AD8\u5230 ${n.version+1} \u4EE5\u4E0A\u518D\u5BFC\u5165`}:{action:"update",reason:`\u540C\u7248\u672C\uFF08${n.version}\uFF09\uFF1A\u65E7\u8BB0\u5F55\u6CA1\u6709\u5185\u5BB9\u6307\u7EB9\uFF08\u6307\u7EB9\u529F\u80FD\u4E4B\u524D\u5BFC\u5165\u7684\uFF09\uFF0C\u6309\u65B0\u6587\u4EF6\u66FF\u6362\u5E76\u8865\u4E0A\u6307\u7EB9`}:{action:"add",reason:""}}function le(n){if(!n||typeof n!="object"||Array.isArray(n))return null;let t=n;if(!m(t.pack)||!V.test(t.pack))return null;let i=m(t.name)&&t.name&&t.name.length<=80?t.name:t.pack,e=(o,r)=>A(o)&&o>=0?Math.min(Math.floor(o),r):0;return{pack:t.pack,name:i,version:A(t.version)&&t.version>=1?Math.floor(t.version):1,entries:e(t.entries,w),models:e(t.models,M),addedAt:A(t.addedAt)&&t.addedAt>=0?Math.floor(t.addedAt):0,digest:m(t.digest)&&Z.test(t.digest)?t.digest:null}}function ue(n){let t=[];if(n&&typeof n=="object"&&!Array.isArray(n)){let i=n;if(Array.isArray(i.packs)){let e=new Map;for(let o of i.packs){let r=le(o);r&&e.set(r.pack,r)}t.push(...Array.from(e.values()))}}return{v:y,packs:t.slice(0,I)}}var de=n=>JSON.stringify({v:y,packs:n.packs});function pe(n,t,i){let e={...t,addedAt:t.addedAt||i},r=n.packs.some(c=>c.pack===e.pack)?n.packs.map(c=>c.pack===e.pack?e:c):[...n.packs,e];return{v:y,packs:r.slice(0,I)}}function fe(n,t){return{v:y,packs:n.packs.filter(i=>i.pack!==t)}}var ge=n=>({pack:n.pack,name:n.name,version:n.version,entries:n.entries.length,models:Object.keys(n.models).length,addedAt:0,digest:R(n)});var j={};v(j,{MAX_RESIDENT_MODELS:()=>B,buildModelIndex:()=>me,createModelCache:()=>ke,precompilePack:()=>he});var B=400;function me(n){let t=new Map;for(let i of n)for(let[e,o]of Object.entries(i.models))t.has(e)||t.set(e,{pack:i.pack,src:o});return t}function ke(n,t){let i=Math.max(1,t?.limit??B),e=n,o=new Map,r=new Map,c=new Map,f=0,s=0,p=0,g=(u,a,l)=>{for(o.delete(u),o.set(u,a),l!==void 0&&r.set(u,l);o.size>i;){let d=o.keys().next().value;if(d===void 0||d===u)break;o.delete(d),r.delete(d),p++}};return{get(u){let a=o.get(u);if(a!==void 0)return g(u,a),s++,a;if(c.has(u))return null;let l=e.get(u);if(!l)return null;let d=P(l.src);return d.error||!d.fn?(c.set(u,d.error||"\u7F16\u8BD1\u5931\u8D25"),null):(f++,g(u,d.fn,l.src),d.fn)},has:u=>o.has(u),setIndex(u){e=u;for(let a of Array.from(o.keys()))e.get(a)?.src!==r.get(a)&&(o.delete(a),r.delete(a));for(let a of Array.from(c.keys()))e.has(a)||c.delete(a)},dropPack(u){let a=0;for(let l of Array.from(o.keys()))e.get(l)?.pack===u&&(o.delete(l),r.delete(l),a++);for(let l of Array.from(c.keys()))e.get(l)?.pack===u&&(c.delete(l),a++);return a},seed(u,a,l){return e.get(u)?.src!==l?!1:(c.delete(u),g(u,a,l),!0)},stats:()=>({resident:o.size,compiled:f,reused:s,evicted:p,failed:c.size}),failuresFor(u){let a=[];for(let[l,d]of c)e.get(l)?.pack===u&&a.push({model:l,error:d});return a},residentFor(u){let a=0;for(let l of o.keys())e.get(l)?.pack===u&&a++;return a}}}function he(n,t){let i=[],e=0;for(let[o,r]of Object.entries(n.models)){let c=P(r);if(c.error||!c.fn){i.push({model:o,error:c.error||"\u7F16\u8BD1\u5931\u8D25"});continue}e++,t.seed(o,c.fn,r)}return{ok:e,errors:i}}var D={};v(D,{buildShoppingList:()=>be,csvCell:()=>b,shoppingCSV:()=>ve,shoppingTail:()=>L,shoppingText:()=>xe});var T=n=>+n.toFixed(1),ye=n=>n?`${T(n.w)}\xD7${T(n.d)}\xD7${T(n.h)}`:"";function be(n){let t={rows:[],total:0,buy:0,approx:0,variant:0,na:0,unknown:0,builtin:0,ghost:0,levels:0},i=new Map,e=new Set;for(let r of n){if(r.kind==="builtin"){t.builtin++;continue}e.add(r.level);let c=r.kind==="buy"&&!!r.price&&Number.isFinite(r.price.v);r.kind==="ghost"?t.ghost++:(t.buy++,c&&r.price?(t.total+=r.price.v,r.price.exact||t.approx++,r.price.variant&&t.variant++):r.caNA?t.na++:t.unknown++);let f=[r.kind,r.levelOrder,r.level,r.key].join("\0"),s=i.get(f);s?s.qty++:i.set(f,{inp:r,qty:1})}t.levels=e.size;let o=[...i.values()];o.sort((r,c)=>r.inp.levelOrder-c.inp.levelOrder||(r.inp.kind==="ghost"?1:0)-(c.inp.kind==="ghost"?1:0)||r.inp.catOrder-c.inp.catOrder||r.inp.cat.localeCompare(c.inp.cat)||r.inp.name.localeCompare(c.inp.name));for(let{inp:r,qty:c}of o){let f=r.kind==="ghost",s=!f&&r.price&&Number.isFinite(r.price.v)?r.price:null;t.rows.push({level:r.level,cat:r.cat,name:r.name,qty:c,unit:s?s.v:null,subtotal:s?s.v*c:null,approx:!!s&&!s.exact,variant:!!s&&!!s.variant,dims:ye(r.dims),url:r.url||"",why:f?"\u76EE\u5F55\u91CC\u6CA1\u6709\u8FD9\u4EF6\uFF08\u4E0D\u8BA1\u4EF7\uFF09":s?"":r.caNA?"\u52A0\u62FF\u5927\u65E0\u552E":r.noPriceWhy||"\u65E0\u4EF7",extra:r.note||"",ghost:f})}return t}function L(n){let t=[];return n.approx&&t.push(`${n.approx} \u4EF6\u6309\u6C47\u7387\u6298\u7B97`),n.variant&&t.push(`${n.variant} \u4EF6\u5E26 * = \u52A0\u62FF\u5927\u5728\u552E\u7684\u662F\u53E6\u4E00\u914D\u7F6E`),n.na&&t.push(`${n.na} \u4EF6\u52A0\u62FF\u5927\u65E0\u552E`),n.unknown&&t.push(`${n.unknown} \u4EF6\u65E0\u4EF7`),n.builtin&&t.push(`${n.builtin} \u4EF6\u623F\u5B50\u81EA\u5E26\u7684\u706F\u4E0D\u8BA1\u4EF7`),n.ghost&&t.push(`${n.ghost} \u4EF6\u76EE\u5F55\u91CC\u6CA1\u6709\uFF08\u4E0D\u8BA1\u4EF7\uFF09`),t}function b(n){let t=n==null?"":typeof n=="number"?Number.isFinite(n)?String(+n.toFixed(2)):"":String(n);return/^[=+\-@\t\r]/.test(t)&&(t="'"+t),'"'+t.replace(/"/g,'""')+'"'}function ve(n,t){let e=[["\u697C\u5C42","\u5206\u7C7B","\u540D\u79F0","\u6570\u91CF",`\u5355\u4EF7\uFF08${t.currency}\uFF09`,`\u5C0F\u8BA1\uFF08${t.currency}\uFF09`,"\u5C3A\u5BF8\uFF08cm\uFF0C\u5BBD\xD7\u6DF1\xD7\u9AD8\uFF09","\u94FE\u63A5","\u5907\u6CE8"].map(b).join(",")];for(let o of n.rows){let r=[o.approx?"\u2248 \u6309\u6C47\u7387\u6298\u7B97":"",o.variant?"* \u52A0\u62FF\u5927\u5728\u552E\u7684\u662F\u53E6\u4E00\u914D\u7F6E":"",o.why,o.extra].filter(Boolean).join("\uFF1B");e.push([o.level,o.cat,o.name,o.qty,o.unit,o.subtotal,o.dims,o.url,r].map(b).join(","))}for(let o of t.floors||[])e.push(["","\u5730\u677F",o.name,o.area,"","","","",`\u6309\u623F\u95F4\u9762\u79EF\uFF08${o.unit}\uFF09\uFF0C\u4E0D\u542B\u635F\u8017\uFF1B\u7528\u5728\uFF1A${o.rooms.join("\u3001")}`].map(b).join(","));return e.push(["","","\u5408\u8BA1",n.buy,"",n.total,"","",L(n).join("\uFF1B")].map(b).join(",")),"\uFEFF"+e.join(`\r
 `)+`\r
-`}function xe(n,t){let i=[t.title],e=null;for(let r of n.rows){n.levels>1&&r.level!==e&&(i.push("",`\u3010${r.level||"\u672A\u5206\u5C42"}\u3011`),e=r.level);let c=r.approx?"\u2248":"",f=r.variant?"*":"",s="";r.unit!=null&&r.subtotal!=null?s=" \u2014 "+c+t.money(r.unit)+f+(r.qty>1?` \xD7 ${r.qty} = ${c}${t.money(r.subtotal)}`:""):r.qty>1&&(s=` \xD7 ${r.qty}`);let p=[r.why,r.extra].filter(Boolean).join("\uFF1B");i.push(`\xB7 ${r.name}${s}${p?`\uFF08${p}\uFF09`:""}${r.url?" "+r.url:""}`)}let o=L(n);if(i.push("",`\u91C7\u8D2D ${n.buy} \u4EF6 \xB7 \u5408\u8BA1\u7EA6 ${n.approx?"\u2248":""}${t.money(n.total)}`+(o.length?`\uFF08${o.join("\u3001")}\uFF09`:"")),t.floors&&t.floors.length){i.push("","\u5730\u677F\u7528\u91CF\uFF08\u6309\u623F\u95F4\u9762\u79EF\uFF0C\u4E0D\u542B\u635F\u8017\uFF09");for(let r of t.floors)i.push(`\xB7 ${r.name} \u2014 ${r.areaText}\uFF08${r.rooms.join("\u3001")}\uFF09`)}return i.join(`
+`}function xe(n,t){let i=[t.title],e=null;for(let r of n.rows){n.levels>1&&r.level!==e&&(i.push("",`\u3010${r.level||"\u672A\u5206\u5C42"}\u3011`),e=r.level);let c=r.approx?"\u2248":"",f=r.variant?"*":"",s="";r.unit!=null&&r.subtotal!=null?s=" \u2014 "+c+t.money(r.unit)+f+(r.qty>1?` \xD7 ${r.qty} = ${c}${t.money(r.subtotal)}`:""):r.qty>1&&(s=` \xD7 ${r.qty}`);let p=[r.why,r.extra].filter(Boolean).join("\uFF1B");i.push(`\xB7 ${r.name}${s}${p?`\uFF08${p}\uFF09`:""}${r.url?" "+r.url:""}`)}let o=L(n);if(i.push("",`\u91C7\u8D2D ${n.buy} \u4EF6 \xB7 \u5408\u8BA1\u7EA6 ${n.approx?"\u2248":""}${t.money(n.total)}`+(o.length?`\uFF08${o.join("\u3001")}\uFF09`:"")),t.floors&&t.floors.length){i.push("","\u5730\u9762\u7528\u91CF\uFF08\u6309\u623F\u95F4\u9762\u79EF\uFF0C\u4E0D\u542B\u635F\u8017\uFF09");for(let r of t.floors)i.push(`\xB7 ${r.name} \u2014 ${r.areaText}\uFF08${r.rooms.join("\u3001")}\uFF09`)}return i.join(`
 `)}var Ae=globalThis;Ae.MINIDEN_CATALOG={...N,...O,...j,...D};})();
 
 </script><!-- /miniden-catalog -->
@@ -6997,6 +7077,8 @@ window.addEventListener('keydown', ev=>{
   }
   if(meas.on && ev.key==='Escape' && !['INPUT','SELECT','TEXTAREA'].includes(tag)){ measEnd(); return; }
   if(proToolsOpen && ev.key==='Escape' && !['INPUT','SELECT','TEXTAREA'].includes(tag)){ setProTools(false); $('#btnMore').focus(); return; }
+  // S26a：选择器开着 → Esc 先撤回预览并关掉它（焦点在画布上也一样）
+  if(ev.key==='Escape' && typeof MP!=='undefined' && MP.slot && !drag){ ev.preventDefault(); mpClose(); return; }
   // S24c / F3：开着的下拉菜单（方案 / 户型 / 楼层 / 文件 / 设置 / 帮助 / 场景 / 底图）→ Esc 先关它（正在拖的家具先回原处，那一下归拖动）
   if(ev.key==='Escape' && openMenuId && !['INPUT','SELECT','TEXTAREA'].includes(tag) &&
      !drag && !(three && three.dragging3D)){ closeMenus(); return; }
@@ -8022,7 +8104,7 @@ function floorUsage(){
    只取颜色值和通用名（不用任何品牌色号）。原来的 12 色全部保留（hex 就是 id，旧存档照读）。第三项 = 色系 */
 const PAINT_FAMS = [['white','白'],['beige','米 / 燕麦'],['grey','灰'],['green','绿'],['blue','蓝'],['pink','粉 / 陶 / 红'],['yellow','黄 / 赭'],['purple','紫'],['dark','深色']];
 const PAINT_PRESETS = [
-  ['#f7f6f2','纯白','white'], ['#f2efe8','暖白','white'], ['#f3ecdf','奶白','white'], ['#efe8da','象牙白','white'], ['#eef0ef','冷白','white'],
+  ['#f7f6f2','纯白','white'], ['#eef0ef','冷白','white'], ['#f3ecdf','奶白','white'], ['#f2efe8','暖白','white'], ['#efe8da','象牙白','white'],   // 按明度排（materials §4.1）
   ['#e9e4da','米白','beige'], ['#dcd6cb','燕麦','beige'], ['#d8cdb9','亚麻','beige'], ['#c9c0b1','灰褐','beige'], ['#b9a68b','驼色','beige'], ['#a79a7d','卡其','beige'],
   ['#cfd1cd','浅灰','grey'], ['#bfc2c1','云灰','grey'], ['#9ea2a1','中灰','grey'], ['#6d7072','石墨','grey'], ['#5a5c60','炭灰','grey'],
   ['#cfe0d4','薄荷','green'], ['#b9c2b2','鼠尾草绿','green'], ['#8fa294','灰绿','green'], ['#8d8f6a','橄榄','green'], ['#4f604f','墨绿','green'], ['#2f3d35','深松绿','green'],
@@ -8788,6 +8870,7 @@ function srcU(id){ const e=entById(id); return e && e.src==='user'; }
 function updateWallBarFromSel(){
   updateWallBarFromSel_();
   if(typeof inspBuildUI==='function') inspBuildUI();
+  if(typeof matSync==='function') matSync();
   if(typeof decoPanelUI==='function') decoPanelUI();   // QA Q04：装修左栏的房间行（地板缩略 / 墙色 / 跟全屋）跟着改动、撤销刷新
 }
 let _lastSelKey='';
@@ -8834,14 +8917,14 @@ function updateWallBarFromSel_(){
   if(wallEdit.tool==='room' || (wallEdit.tool==='deco' && !s) || (s&&s.kind==='room')){
     const r = s&&s.kind==='room' ? selRoom() : null;
     for(const id of ['#rmNameL','#rmFloor','#rmAngle','#rmArea','#rmWallL','#rmCurtainL']) $(id).style.display = r ? '' : 'none';
-    { const tt=$('#lvFloorTtl'); if(tt) tt.textContent='全屋地板'+(hasLevelsNow() ? '（'+levelName(curLevelId())+'）' : ''); }
+    { const tt=$('#lvFloorTtl'); if(tt) tt.textContent='全屋地面'+(hasLevelsNow() ? '（'+levelName(curLevelId())+'）' : ''); }
     $('#lvFloorL').style.display = '';   // F2（X02）：全屋地板常驻——选中一个房间时也看得见（以前互斥显示）
     /* UX X47（§2.7.8）：选中房间时全屋地板卡收成一行（「全屋：深烟熏橡木 · 换 ▸」），房间自己的地板紧接在标题下面 ——
        以前两组一模一样的色块上下叠着，第一眼点到的是全屋 */
     { const L=$('#lvFloorL'); const mini = !!r && !_lvFloorOpen;
       L.classList.toggle('mini', mini);
       const cur=floorPreset((DOC.floorMat && floorPreset(DOC.floorMat)) ? DOC.floorMat : 'oakSmoke');
-      $('#lvFloorMini').textContent = (cur ? cur.name : '') + ' · 换 ▸';
+      $('#lvFloorMini').textContent = '全屋地面：' + (cur ? cur.name : '') + '  改 ▸';
       if(r && L.parentNode.lastElementChild!==L) L.parentNode.appendChild(L);          // 选中房间：全屋卡挪到房间区块后面
       if(!r && L.parentNode.firstElementChild!==L) L.parentNode.insertBefore(L, L.parentNode.firstElementChild); }
     $('#lvFloor').value = (DOC.floorMat && floorPreset(DOC.floorMat)) ? DOC.floorMat : '';
@@ -8864,12 +8947,12 @@ function updateWallBarFromSel_(){
       $('#rmCurtain').disabled = !wins.length;
       $('#rmCurtainNote').textContent = wins.length ? '给这个房间的 '+wins.length+' 扇窗一起配' : '这个房间没有窗';
       const c0 = wins.find(x=>x.win.curtain); if(c0) $('#rmCurtainC').value = c0.win.curtain.color;
-      wMsg('房间「'+roomFallbackName(r)+'」'+(r.poly ? ' · '+fmtArea(roomArea(r)) : '')+' · 地板：'+(fp ? fp.name : '跟全屋')+
-           ' · 墙色：'+(wc ? paintName(wc) : '白墙')+' · '+(wins.length ? wins.length+' 扇窗' : '没有窗')+
+      wMsg('房间「'+roomFallbackName(r)+'」'+(r.poly ? ' · '+fmtArea(roomArea(r)) : '')+' · 地面：'+(fp ? fp.name : '跟全屋')+
+           ' · 墙面：'+(wc ? paintName(wc) : '白墙')+' · '+(wins.length ? wins.length+' 扇窗' : '没有窗')+
            (wallEdit.area==='build' ? ' ｜ 改名 · Delete = 删除这个房间的范围（名字保留）· 地板、墙色 → 装修'
-                                    : ' ｜ 点色块换地板 / 墙色 · 3D 里照样能改 · Esc = 取消选中'));
+                                    : ' ｜ 点右边的「地面」「墙面」换材质 · 3D 里照样能改 · Esc = 取消选中'));
     } else {
-      wMsg('点一个房间：自动识别墙 / 窗 / 门洞围出来的那一块 → 命名、看面积、换地板 ｜ 鼠标先停一下看黄色虚线预览'+
+      wMsg('点一个房间：自动识别墙 / 窗 / 门洞围出来的那一块 → 命名、看面积、换地面 ｜ 鼠标先停一下看黄色虚线预览'+
            (wallEdit.rmLeak ? ' · ⚠ 这一块没有被墙围起来' : ''));
     }
     // 排在后面的几组上下文控件要在这里熄掉（直接 return 就会留着上一个状态亮着）
@@ -22923,7 +23006,7 @@ function roomSummaryCard(){
   const wins=roomWindows(rv), cs=[...new Set(wins.map(x=>x.win.curtain ? CURTAIN_NAMES[x.win.curtain.style] : '不挂'))];
   $('#pTitle').textContent = '房间 · '+roomFallbackName(r)+(poly ? ' · '+fmtArea(roomArea(rv)) : '');
   const p=$('#pInfo'); p.textContent = '地板 '+(fp?fp.name:'')+(r.floor?'':'（跟全屋）')+' · 墙色 '+(r.wallColor ? paintName(r.wallColor) : '白墙')+(poly ? ' · 窗帘 '+(wins.length ? cs.join(' / ') : '没有窗') : '')+'　';   // 还没识别范围时认不出窗，不报「没有窗」
-  const b=document.createElement('button'); b.className='decoLink'; b.textContent='换地板、墙色 → 装修';
+  const b=document.createElement('button'); b.className='decoLink'; b.textContent='换地面、墙面 → 装修';
   b.onclick=()=>{ b.blur(); const id=r.id, pt=_roomSummaryPt; _roomSummary=null; enterArea('deco');
     // UX X56：没识别过范围的房间在这里按点的位置识别（与在平面图上点它同一条路），不然改了地板画面不变
     if(!r.poly && pt){ const got=pickRoomAt(pt[0], pt[1]); if(got) return; }
@@ -22936,10 +23019,10 @@ function roomSummaryCard(){
   return true;
 }
 /* QA Q17-3（§2.7.3）：空状态里的「→ 装修」「→ 改户型」是能点的 */
-function pInfoIdle(){ const p=$('#pInfo'); p.textContent='点平面图上的一件家具来调整它；从左边目录点一件就能放进来。换地板、刷墙色 → ';
+function pInfoIdle(){ const p=$('#pInfo'); p.textContent='点平面图上的一件家具来调整它；从左边目录点一件就能放进来。换地面、墙面 → ';
   const a=(t,area)=>{ const b=document.createElement('button'); b.className='decoLink'; b.textContent=t; b.onclick=()=>{ b.blur(); enterArea(area); }; p.appendChild(b); };
   a('装修','deco'); p.append('；改墙、开门窗 → '); a('改户型','build'); p.append('。'); }
-const PINFO_IDLE='点平面图上的一件家具来调整它；从左边目录点一件就能放进来。换地板、刷墙色 → 装修；改墙、开门窗 → 改户型。';
+const PINFO_IDLE='点平面图上的一件家具来调整它；从左边目录点一件就能放进来。换地面、墙面 → 装修；改墙、开门窗 → 改户型。';
 function updateProps(){
   if(typeof propsTabFollowSel==='function') propsTabFollowSel();
   catSizeUI();
@@ -23586,7 +23669,7 @@ function setWallEdit(on, area){
   updateWallBarFromSel(); editModeViewUI();
   if(typeof decoPanelUI==='function') decoPanelUI();
   { const tt=$('#catalog .panelHead .ttl'); if(tt) tt.textContent = deco ? '装修' : '家具目录'; }
-  if(!wallEdit.on){ showPropsTab(_propsTabUser, true); updateProps(); wMsg(''); }   // QA Q06：回到摆家具 = 改户型 / 装修的提示一并收掉（不然和家具提示叠在左下角）
+  if(!wallEdit.on){ if(typeof mpClose==='function') mpClose(); showPropsTab(_propsTabUser, true); updateProps(); wMsg(''); }   // QA Q06：回到摆家具 = 改户型 / 装修的提示一并收掉（不然和家具提示叠在左下角）
   else showPropsTab('insp', true);   // QA Q08：进装修 / 改户型 = 右栏切到检视（全屋地板卡、构件属性都在那里）
   emptyCardUI();
 }
@@ -23641,7 +23724,7 @@ function decoPanelUI(){
     b.innerHTML='<span class="rt"></span><span class="rn"></span><span class="rw"></span>';
     b.querySelector('.rt').style.background = u ? `url(${u}) center/cover` : (fp ? fp.tint : '#555');
     b.querySelector('.rn').innerHTML=escTxt(roomFallbackName(r))+'<small>'+escTxt((r.floor ? '' : '跟全屋 · ')+(fp ? fp.name : '')+(r.poly ? ' · '+fmtArea(roomArea(r)) : ''))+'</small>';
-    b.querySelector('.rw').style.background = r.wallColor || '#f4f2ee'; b.querySelector('.rw').title = '墙色：'+(r.wallColor ? paintName(r.wallColor) : '白墙');
+    b.querySelector('.rw').style.background = r.wallColor || '#f4f2ee'; b.querySelector('.rw').title = '墙面：'+(r.wallColor ? paintName(r.wallColor) : '白墙');
     b.onclick=()=>{ b.blur();
       /* QA Q03：还没识别范围的房间，在这里就按它的名字位置识别一次（和在平面图上点它同一条路）——
          否则地板 / 墙色写进去了、画面却不变（3D 里选房间只有这一个入口） */
@@ -24147,17 +24230,384 @@ function refreshShadows(){ for(const f of _shadows) try{ f(); }catch(e){} }
     _shadows.push(()=>{ if(document.activeElement!==sel) sel.value=cur(); });
     const n=document.createElement('span'); n.className='setNote'; n.textContent='只改这一扇'; btn.parentNode.appendChild(n); }   // UX X24：两处窗帘入口的区别写在面板上
   shadowSeg($('#rmAngle'), [...$('#rmAngle').options].map(o=>({t:o.textContent, on:()=>$('#rmAngle').value===o.value, go:()=>{ if($('#rmAngle').disabled) return; $('#rmAngle').value=o.value; $('#rmAngle').dispatchEvent(new Event('change', {bubbles:true})); }})));
-  shadowFloorGrid($('#rmFloor'), '跟全屋', ()=>(DOC.floorMat && floorPreset(DOC.floorMat)) ? DOC.floorMat : 'oakSmoke');
-  shadowFloorGrid($('#lvFloor'), '默认', ()=>'oakSmoke');
-  shadowPaintGrid($('#rmWall'), $('#rmWallC'));
+  // S26a：地面 / 墙面的色块网格不再铺在检视面板里 —— 材质行 + 左栏选择器（matInit）
+  for(const id of ['#rmFloor','#lvFloor','#rmWall','#rmWallC']) $(id).classList.add('vh');
   // 色块网格那几行：标签在上、网格占满宽
   for(const el of [$('#rmFloor').closest('.irow'), $('#lvFloorL'), $('#rmWallL')]) if(el) el.classList.add('col');
   $('#lvFloorL').classList.add('lvCard');
   // QA Q09（§2.7.8）：改户型里选中房间只管名称和范围；地板 / 墙色 / 窗帘是装修的事 —— 这几行标成 decoOnly，改户型里藏起来、给一条去装修的链接
   for(const el of [$('#rmFloor').closest('.irow'), $('#rmAngle').closest('.irow'), $('#rmWallL'), $('#rmCurtainL'), $('#lvFloorL')]) if(el) el.classList.add('decoOnly');
-  { const l=document.createElement('button'); l.id='buildDecoLink'; l.className='decoLink'; l.textContent='换地板、墙色、窗帘 → 装修';
+  { const l=document.createElement('button'); l.id='buildDecoLink'; l.className='decoLink'; l.textContent='换地面、墙面、窗帘 → 装修';
     l.onclick=()=>{ l.blur(); enterArea('deco'); }; $('#roomCtl').appendChild(l); }
 })();
+/* =====================================================================
+   S26a（research/15 · design/materials）：材质行 + 左栏选择器
+   检视面板只列「材质行」（缩略图 · 名字 · 规格 ▸）；点一行 = 左栏盖上选择器（沿用左栏宽度，不加宽：
+   加宽会重新取景，悬停预览的位置就跳了）。悬停 120ms = 预览（不写文档、不进撤销、不存档），
+   移开 80ms 恢复；点一格 = 确定（一步撤销，选择器不关，方便接着比）；Esc / ← = 撤回预览并关闭；↺ 还原 = 回到打开之前。
+   槽位（slot）把「这一行在改什么」包起来：items / get / set / peek（预览写入）/ unpeek（还原）。
+   set 一律走原来的影子控件（#rmFloor / #lvFloor / #rmWall …）的 change 处理器，撤销与存档沿用原来那一条路。
+   ===================================================================== */
+const MAT_RECENT_KEY='md_matRecent_v1', MAT_DENSITY_KEY='md_matDensity_v1';
+const _matThumbCache=new Map();
+/* 地面缩略图：统一按 120 × 90 cm 的真实比例画（宽板和窄板放一起比，大小是对的），JPEG dataURL 缓存 */
+function floorThumb(id, w, h){
+  w=w||192; h=h||144;
+  const k=id+'@'+w+'x'+h; if(_matThumbCache.has(k)) return _matThumbCache.get(k);
+  let url='';
+  try{ const t=floorTexture(id), img=t && t.map && t.map.image;
+    if(img && img.width){
+      const c=document.createElement('canvas'); c.width=w; c.height=h; const g=c.getContext('2d');
+      const ft=120/30.48, pxPerFt=w/ft;                                 // 120cm 横跨整张缩略图
+      const sz=t.legacy ? [1/t.map.repeat.x, 1/t.map.repeat.y] : t.size; // 贴图一张覆盖多少 ft
+      const tw=sz[0]*pxPerFt, th=sz[1]*pxPerFt;
+      for(let x=0;x<w;x+=tw) for(let y=0;y<h;y+=th) g.drawImage(img, x, y, tw, th);
+      url=c.toDataURL('image/jpeg', 0.85); } }catch(e){}
+  _matThumbCache.set(k, url); return url;
+}
+/* 色调：CIELAB 明度 L*、彩度 C*、色相 h（research/15 · materials §3.5） */
+function hexLab(hex){
+  const m=/^#?([0-9a-f]{6})$/i.exec(String(hex||'')); if(!m) return {L:50,C:0,h:0};
+  const n=parseInt(m[1],16), lin=v=>{ v/=255; return v<=0.04045 ? v/12.92 : Math.pow((v+0.055)/1.055, 2.4); };
+  const r=lin((n>>16)&255), g=lin((n>>8)&255), b=lin(n&255);
+  const X=(0.4124*r+0.3576*g+0.1805*b)/0.95047, Y=0.2126*r+0.7152*g+0.0722*b, Z=(0.0193*r+0.1192*g+0.9505*b)/1.08883;
+  const f=t=> t>0.008856 ? Math.cbrt(t) : 7.787*t+16/116;
+  const L=116*f(Y)-16, A=500*(f(X)-f(Y)), B=200*(f(Y)-f(Z));
+  return {L, C:Math.hypot(A,B), h:((Math.atan2(B,A)*180/Math.PI)+360)%360};
+}
+function toneOf(hex){ const l=hexLab(hex); return {light: l.L>=75 ? 'hi' : l.L>=45 ? 'mid' : 'lo', warm: l.C<=6 ? '' : ((l.h<90 || l.h>=300) ? 'warm' : 'cool')}; }
+/* 公共色板项（墙面涂料 / 门 / 柜 / 布料都从这里取） */
+function paintItems(){ return PAINT_PRESETS.map(([hex,name,fam])=>({id:hex, name, spec:(PAINT_FAMS.find(f=>f[0]===fam)||[])[1]||'', fam, tint:hex, color:hex})); }
+function floorItems(){ const order=Object.keys(FLOOR_CATS); return FLOOR_PRESETS.slice().sort((a,b)=>order.indexOf(a.cat)-order.indexOf(b.cat)).map(f=>{ const m=/^(.*?)\s*·\s*(.*)$/.exec(f.name)||[null,f.name,''];
+  return {id:f.id, name:m[1], spec:m[2] + (f.pat==='plank'||f.pat==='herring'||f.pat==='chevron' ? ' · '+f.unit[0]+'×'+f.unit[1] : ''), cat:f.cat, tint:f.tint, thumb:(w,h)=>floorThumb(f.id,w,h)}; }); }
+function matRecent(kind){ try{ const o=JSON.parse(STORE.get(MAT_RECENT_KEY)||'{}'); return Array.isArray(o[kind]) ? o[kind] : []; }catch(e){ return []; } }
+function matRecentPush(kind, id){
+  if(!id) return;
+  let o={}; try{ o=JSON.parse(STORE.get(MAT_RECENT_KEY)||'{}')||{}; }catch(e){}
+  const a=(Array.isArray(o[kind]) ? o[kind] : []).filter(x=>x!==id); a.unshift(id); o[kind]=a.slice(0,8);
+  try{ STORE.set(MAT_RECENT_KEY, JSON.stringify(o)); }catch(e){}
+}
+function matDensity(kind){ try{ const o=JSON.parse(STORE.get(MAT_DENSITY_KEY)||'{}'); return o[kind]||''; }catch(e){ return ''; } }
+function matDensitySet(kind, v){ let o={}; try{ o=JSON.parse(STORE.get(MAT_DENSITY_KEY)||'{}')||{}; }catch(e){} o[kind]=v; try{ STORE.set(MAT_DENSITY_KEY, JSON.stringify(o)); }catch(e){} }
+/* 这套房子已用（所有楼层）：按次数降序 */
+function matUsed(kind){
+  const m=new Map(), add=v=>{ if(v) m.set(v, (m.get(v)||0)+1); };
+  const docs = (typeof hasLevelsNow==='function' && hasLevelsNow()) ? LV.sortedLevels(DOC).map(l=>LV.levelContentOf(DOC, l.id)).filter(Boolean) : [DOC];
+  for(const d of docs){
+    if(kind==='floor'){ add(DOC.floorMat); for(const r of (d.rooms||[])) if(r.floor) add(r.floor.mat); }
+    else if(kind==='wall'){ for(const r of (d.rooms||[])){ add(r.wallColor); for(const f of (r.faces||[])) add(f.color); } }
+    else if(kind==='tile'){ for(const r of (d.rooms||[])){ if(r.tile) add(r.tile.mat); for(const f of (r.faces||[])) if(f.tile) add(f.tile.mat); } }
+    else if(kind==='color'){ for(const x of (d.doors||[])) add(x.color); for(const x of (d.runs||[])) add(x.door); for(const x of (d.fixtures||[])) add(x.cab); for(const x of (d.windows||[])) if(x.curtain) add(x.curtain.color); }
+  }
+  if(kind==='floor' && docs.length>1) m.set(DOC.floorMat, (m.get(DOC.floorMat)||1)-(docs.length-1));   // 全屋地面只算一次
+  return [...m.entries()].filter(([k,n])=>k && n>0).sort((a,b)=>b[1]-a[1]).slice(0,8);
+}
+/* 预览：只改内存里的文档、重画 2D / 3D，不存档、不进撤销 */
+function matPreviewRedraw(){
+  build2D(); if(wallEdit.on) drawWallEdit();
+  geoDirty3D=true; if(typeof is3D==='function' && is3D()) schedule3DRebuild();
+}
+/* ---------- 槽位 ---------- */
+const MAT_SLOTS={
+  /* 房间地面（第一格 = 跟全屋） */
+  roomFloor: (r)=>({ key:'roomFloor', kind:'floor', kicker: roomFallbackName(r), title:'地面',
+    tabs:[['all','全部']].concat(Object.entries(FLOOR_CATS)), tabOf:it=>it.cat,
+    first:{id:'', name:'跟全屋', spec:(floorPreset(lvMatNow())||{}).name||'', thumb:(w,h)=>floorThumb(lvMatNow(),w,h), badge:'跟全屋'},
+    items: floorItems, get:()=> r.floor && floorPreset(r.floor.mat) ? r.floor.mat : '',
+    set:(id)=>{ wallEdit.sel={kind:'room', id:r.id}; updateWallBarFromSel(); const s=$('#rmFloor'); s.value=id; s.dispatchEvent(new Event('change', {bubbles:true})); },
+    peek:(id)=>{ if(id) r.floor=Object.assign({}, r.floor||{}, {mat:id}); else delete r.floor; },
+    snap:()=>JSON.stringify(r.floor||null), restore:(v)=>{ const o=JSON.parse(v); if(o) r.floor=o; else delete r.floor; } }),
+  /* 全屋地面（第一格 = 缺省深烟熏橡木） */
+  lvFloor: ()=>({ key:'lvFloor', kind:'floor', kicker: hasLevelsNow() ? levelName(curLevelId()) : '全屋', title:'全屋地面',
+    tabs:[['all','全部']].concat(Object.entries(FLOOR_CATS)), tabOf:it=>it.cat,
+    first:{id:'', name:'缺省', spec:floorPreset('oakSmoke').name, thumb:(w,h)=>floorThumb('oakSmoke',w,h), badge:'缺省'},
+    items: floorItems, get:()=> DOC.floorMat && floorPreset(DOC.floorMat) ? DOC.floorMat : '',
+    set:(id)=>{ const s=$('#lvFloor'); s.value=id; s.dispatchEvent(new Event('change', {bubbles:true})); },
+    peek:(id)=>{ if(id) DOC.floorMat=id; else delete DOC.floorMat; },
+    snap:()=>JSON.stringify(DOC.floorMat||null), restore:(v)=>{ const o=JSON.parse(v); if(o) DOC.floorMat=o; else delete DOC.floorMat; } }),
+  /* 房间墙面（涂料；墙纸在 S26b 加进同一个槽） */
+  roomWall: (r)=>({ key:'roomWall', kind:'wall', kicker: roomFallbackName(r), title:'墙面 · 涂料', palette:true,
+    tabs:[['paint','涂料 42']], tabOf:()=>'paint',
+    first:{id:'', name:'白墙（缺省）', spec:'涂料', color:'#f4f2ee'},
+    items: paintItems, get:()=> r.wallColor||'',
+    set:(id)=>{ wallEdit.sel={kind:'room', id:r.id}; updateWallBarFromSel(); setRoomWallColor(r, id); },
+    peek:(id)=>{ if(id) r.wallColor=id; else delete r.wallColor; },
+    snap:()=>JSON.stringify(r.wallColor||null), restore:(v)=>{ const o=JSON.parse(v); if(o) r.wallColor=o; else delete r.wallColor; },
+    custom:true }),
+};
+/* 布料（窗帘颜色）：常用 16 + 全部色板（materials §4.1） */
+const FABRIC_COMMON=['#f7f6f2','#efe8da','#d8cdb9','#dcd6cb','#c9c0b1','#b9a68b','#cfd1cd','#bfc2c1','#6d7072','#b9c2b2','#4f604f','#a9b8c2','#2f3e55','#e3c4b6','#c98c6c','#c9a54a'];
+function fabricItems(){ return paintItems(); }
+const FABRIC_TABS=[['common','布料常用 16'],['paint','全部色板 41']];
+const fabricTabOf=it=> FABRIC_COMMON.includes(it.id) ? ['common','paint'] : ['paint'];
+MAT_SLOTS.roomFabric=(r)=>{ const wins=roomWindows(r).filter(x=>x.win.curtain); if(!wins.length) return null;
+  return { key:'roomFabric', kind:'color', kicker:roomFallbackName(r), title:'窗帘颜色 · '+wins.length+' 扇', palette:true, palTab:'paint',
+    tabs:FABRIC_TABS, tabOf:fabricTabOf, first:{id:wins[0].win.curtain.color, name:'现在的颜色', color:wins[0].win.curtain.color}, items:fabricItems,
+    get:()=>{ const w=roomWindows(r).find(x=>x.win.curtain); return w ? w.win.curtain.color : ''; },
+    set:(id)=>{ wallEdit.sel={kind:'room', id:r.id}; updateWallBarFromSel(); const c=$('#rmCurtainC'); c.value=id; c.dispatchEvent(new Event('change', {bubbles:true})); },
+    peek:(id)=>{ for(const x of roomWindows(r)) if(x.win.curtain) x.win.curtain.color=id; },
+    snap:()=>JSON.stringify(roomWindows(r).map(x=>x.win.curtain ? x.win.curtain.color : null)),
+    restore:(v)=>{ const a=JSON.parse(v); roomWindows(r).forEach((x,i)=>{ if(x.win.curtain && a[i]) x.win.curtain.color=a[i]; }); }, custom:true }; };
+MAT_SLOTS.winFabric=(e)=>{ if(!e || !e.curtain) return null;
+  return { key:'winFabric', kind:'color', kicker:'窗 · '+winStyleLabel(e), title:'帘子颜色', palette:true, palTab:'paint',
+    tabs:FABRIC_TABS, tabOf:fabricTabOf, first:{id:e.curtain.color, name:'现在的颜色', color:e.curtain.color}, items:fabricItems,
+    get:()=> e.curtain ? e.curtain.color : '',
+    set:(id)=>{ const c=$('#wWinCurtainC'); c.value=id; c.dispatchEvent(new Event('change', {bubbles:true})); },
+    peek:(id)=>{ if(e.curtain) e.curtain.color=id; }, snap:()=>JSON.stringify(e.curtain ? e.curtain.color : null),
+    restore:(v)=>{ const o=JSON.parse(v); if(e.curtain && o) e.curtain.color=o; }, custom:true }; };
+function lvMatNow(){ return (DOC.floorMat && floorPreset(DOC.floorMat)) ? DOC.floorMat : 'oakSmoke'; }
+/* ---------- 选择器 ---------- */
+const MP={ slot:null, row:null, orig:null, prevSnap:null, previewing:null, tab:'all', tone:new Set(), q:'', hoverT:0, leaveT:0, collapsedBefore:false };
+function mpOpen(slot, rowEl){
+  if(!slot) return;
+  if(MP.slot) mpUnpreview();
+  const same = MP.slot && MP.slot.key===slot.key && MP.row===rowEl;
+  MP.slot=slot; MP.row=rowEl||null;
+  if(!same){ MP.orig=slot.get(); MP.tab=slot.tabs[0][0]; MP.q=''; MP.tone.clear(); $('#mpSearch').value=''; }
+  document.querySelectorAll('.mrow.open').forEach(x=>x.classList.remove('open')); if(rowEl) rowEl.classList.add('open');
+  const cat=$('#catalog'); MP.collapsedBefore = cat.classList.contains('collapsed');
+  if(MP.collapsedBefore) cat.classList.remove('collapsed');          // 左栏收起时临时展开（不写进面板状态）
+  $('#matPicker').style.display='flex';
+  mpRender();
+}
+function mpClose(){
+  if(!MP.slot) return;
+  mpUnpreview();
+  $('#matPicker').style.display='none'; $('#mpCustom').style.display='none';
+  document.querySelectorAll('.mrow.open').forEach(x=>x.classList.remove('open'));
+  if(MP.collapsedBefore) $('#catalog').classList.add('collapsed');
+  MP.slot=null; MP.row=null;
+}
+function mpPreview(id){
+  const s=MP.slot; if(!s) return;
+  if(MP.previewing===id) return;
+  if(MP.prevSnap===null) MP.prevSnap=s.snap();
+  else s.restore(MP.prevSnap);
+  MP.previewing=id; s.peek(id); matPreviewRedraw(); mpMarks(); mpReadout(id, true);
+}
+function mpUnpreview(){
+  const s=MP.slot; if(!s || MP.prevSnap===null) return;
+  s.restore(MP.prevSnap); MP.prevSnap=null; MP.previewing=null; matPreviewRedraw(); mpMarks(); mpReadout(null);
+}
+function mpPick(id, noRecent){
+  const s=MP.slot; if(!s) return;
+  if(MP.prevSnap!==null){ s.restore(MP.prevSnap); MP.prevSnap=null; MP.previewing=null; }
+  if(id!==s.get()){ s.set(id); if(!noRecent) matRecentPush(s.kind, id); }
+  mpRender(); mpReadout(id, false, true);
+}
+function mpItemById(id){ const s=MP.slot; if(!s) return null; if(id===s.first.id) return s.first; return s.items().find(x=>x.id===id) || (s.palette && /^#/.test(id) ? {id, name:'自定义', spec:id, color:id} : null); }
+function mpReadout(id, preview, done){
+  const r=$('#mpReadout'); if(!r) return;
+  const show = id!=null ? id : (MP.slot ? MP.slot.get() : null);
+  const it = show!=null ? mpItemById(show) : null;
+  r.querySelector('.rn').textContent = it ? it.name+(it.spec ? ' · '+it.spec : '') : '';
+  const tg=r.querySelector('.tag'); tg.style.display = (preview||done) ? '' : 'none'; tg.textContent = preview ? '预览中' : '已用上';
+  if(done){ clearTimeout(MP.doneT); MP.doneT=setTimeout(()=>{ tg.style.display='none'; }, 1200); }
+  const th=r.querySelector('.th'); mpPaintThumb(th, it, 72, 72);
+}
+function mpPaintThumb(el, it, w, h){
+  if(!el) return;
+  if(!it){ el.style.background=''; return; }
+  if(it.color){ el.style.background=it.color; return; }
+  el.style.background = it.tint || '';
+  const u = it.thumb ? it.thumb(w||192, h||144) : ''; if(u) el.style.background=`url(${u}) center/cover`;
+}
+function mpFiltered(){
+  const s=MP.slot; let it=s.items();
+  if(MP.q){ const q=MP.q.toLowerCase().replace(/[×x＊*]/g,'×');
+    const syn={'白':['白','white'], '灰':['灰'], '木':['木','橡','胡桃','枫','柚','蜡'], '砖':['砖'], '大理石':['大理石'], '地铁':['地铁'], '人字':['人字']};
+    const keys=[q].concat(syn[q]||[]);
+    it=it.filter(x=>{ const hay=(x.name+' '+(x.spec||'')+' '+(FLOOR_CATS[x.cat]||'')+' '+(x.fam ? (PAINT_FAMS.find(f=>f[0]===x.fam)||[])[1] : '')).toLowerCase().replace(/[x＊*]/g,'×');
+      return keys.some(k=>hay.indexOf(k)>=0); }); }
+  if(MP.tone.size){
+    const L=['hi','mid','lo'].filter(t=>MP.tone.has(t)), W=['warm','cool'].filter(t=>MP.tone.has(t));
+    it=it.filter(x=>{ const t=toneOf(x.tint||x.color); return (!L.length || L.includes(t.light)) && (!W.length || W.includes(t.warm)); });
+  }
+  return it;
+}
+function mpInTab(s, x, t){ const v=s.tabOf(x); return Array.isArray(v) ? v.includes(t) : v===t; }
+function mpCell(it, small){
+  const s=MP.slot, b=document.createElement('button'); b.className='mpTile'; b.dataset.id=it.id; b.setAttribute('role','radio'); b.setAttribute('aria-label', it.name);
+  b.innerHTML='<span class="th"></span>'+(small ? '' : '<span class="nm"></span><span class="sp"></span>');
+  if(!small){ b.querySelector('.nm').textContent=it.name; b.querySelector('.sp').textContent=it.spec||''; }
+  if(it.badge){ const g=document.createElement('i'); g.className='bd'; g.textContent=it.badge; b.querySelector('.th').appendChild(g); }
+  mpPaintThumbLazy(b.querySelector('.th'), it);
+  b.onmouseenter=()=>{ clearTimeout(MP.leaveT); clearTimeout(MP.hoverT); MP.hoverT=setTimeout(()=>mpPreview(it.id), 120); };
+  b.onfocus=()=>mpPreview(it.id);
+  b.onclick=()=>{ b.blur(); clearTimeout(MP.hoverT); mpPick(it.id); };
+  return b;
+}
+let _mpIO=null;
+function mpPaintThumbLazy(el, it){
+  if(it.color || !it.thumb){ mpPaintThumb(el, it); return; }
+  el.style.background=it.tint||''; el._it=it;
+  if(!_mpIO) _mpIO=new IntersectionObserver(es=>{ for(const e of es) if(e.isIntersecting){ _mpIO.unobserve(e.target); mpPaintThumb(e.target, e.target._it); } }, {root:$('#mpBody')});
+  _mpIO.observe(el);
+}
+function mpMarks(){
+  const s=MP.slot; if(!s) return; const cur=s.get();
+  for(const b of document.querySelectorAll('#matPicker .mpTile, #matPicker .mpPal .sw')){
+    b.setAttribute('aria-checked', String(b.dataset.id===cur)); b.classList.toggle('preview', MP.previewing!=null && b.dataset.id===MP.previewing); }
+  $('#mpRevert').disabled = cur===MP.orig;
+  mrowsPaint();
+}
+function mpRender(){
+  const s=MP.slot; if(!s) return;
+  $('#mpKicker').textContent=s.kicker; $('#mpTitle').textContent=s.title;
+  // 页签（带数）
+  const all=s.items(), filt=mpFiltered(), tabs=$('#mpTabs'); tabs.innerHTML='';
+  for(const [id,label] of s.tabs){
+    const n = id==='all' ? filt.length : filt.filter(x=>mpInTab(s,x,id)).length;
+    const b=document.createElement('button'); b.className='chip'+(MP.tab===id ? ' on' : ''); b.textContent=label.replace(/\s*\d+$/,'')+' '+n;
+    b.onclick=()=>{ b.blur(); MP.tab=id; mpRender(); }; tabs.appendChild(b); }
+  // 色调
+  for(const b of document.querySelectorAll('#mpTone button')) b.classList.toggle('on', MP.tone.has(b.dataset.t));
+  const dens = matDensity(s.kind) || (s.palette ? 'small' : 'big');
+  for(const b of document.querySelectorAll('#mpDensity button')) b.classList.toggle('on', b.dataset.d===dens);
+  const body=$('#mpBody'); body.innerHTML='';
+  const items = MP.tab==='all' ? filt : filt.filter(x=>mpInTab(s,x,MP.tab));
+  const byId=new Map(all.map(x=>[x.id,x]));
+  // 最近用过 / 这套房子已用（没筛选时显示）
+  if(!MP.q && !MP.tone.size){
+    const strip=(title, list, counts)=>{ if(!list.length) return; const h=document.createElement('div'); h.className='mpH'; h.textContent=title; body.appendChild(h);
+      const row=document.createElement('div'); row.className='mpStrip';
+      list.forEach((id,i)=>{ const it=byId.get(id) || (s.palette && /^#/.test(id) ? {id, name:'自定义 '+id, color:id} : null); if(!it) return;
+        const b=mpCell(it, true); if(counts){ const c=document.createElement('i'); c.className='cnt'; c.textContent='×'+counts[i]; b.appendChild(c); } row.appendChild(b); });
+      if(row.childElementCount) body.appendChild(row); };
+    strip('最近用过', matRecent(s.kind).filter(id=>byId.has(id) || (s.palette && /^#/.test(id))));
+    const u=matUsed(s.kind).filter(([id])=>byId.has(id)); strip('这套房子已用', u.map(x=>x[0]), u.map(x=>x[1]));
+  }
+  if(s.palette && dens==='small' && (!s.palTab || MP.tab===s.palTab)){
+    // 色板矩阵：每个色系一行、从浅到深；第一格（白墙 / 跟房间）单独一行
+    const f=document.createElement('div'); f.className='mpFirst'; f.appendChild(mpCell(s.first, false)); body.appendChild(f);
+    const pal=document.createElement('div'); pal.className='mpPal';
+    for(const [fam,label] of PAINT_FAMS){
+      const its=items.filter(x=>x.fam===fam); if(!its.length) continue;
+      const l=document.createElement('span'); l.className='fl'; l.textContent=label.replace(/ \/ .*$/,''); pal.appendChild(l);
+      for(let i=0;i<6;i++){ const it=its[i];
+        if(!it){ pal.appendChild(document.createElement('span')); continue; }
+        const b=document.createElement('button'); b.className='sw'; b.dataset.id=it.id; b.style.background=it.color; b.title=it.name+' · '+it.id; b.setAttribute('role','radio'); b.setAttribute('aria-label', it.name);
+        b.onmouseenter=()=>{ clearTimeout(MP.leaveT); clearTimeout(MP.hoverT); MP.hoverT=setTimeout(()=>mpPreview(it.id), 120); };
+        b.onfocus=()=>mpPreview(it.id); b.onclick=()=>{ b.blur(); clearTimeout(MP.hoverT); mpPick(it.id); };
+        pal.appendChild(b); }
+    }
+    body.appendChild(pal);
+  } else {
+    const grid=document.createElement('div'); grid.className='mpGrid'+(dens==='small' ? ' small' : ''); grid.setAttribute('role','radiogroup');
+    if(s.first && !s.noFirst && (MP.tab==='all' || MP.tab===s.tabs[0][0])) grid.appendChild(mpCell(s.first, dens==='small'));
+    let lastCat=null;
+    for(const it of items){
+      if(MP.tab==='all' && s.tabs.length>1 && !Array.isArray(s.tabOf(it)) && s.tabOf(it)!==lastCat){ lastCat=s.tabOf(it);
+        const h=document.createElement('div'); h.className='mpH full'; h.textContent=(s.tabs.find(t=>t[0]===lastCat)||[])[1]||''; grid.appendChild(h); }
+      grid.appendChild(mpCell(it, dens==='small'));
+    }
+    if(!items.length){ const n=document.createElement('div'); n.className='mpEmpty'; n.textContent = MP.q ? '没找到“'+MP.q+'”。试试颜色（白、灰）或规格（60×60）。' : '这几个条件下没有材质。'; grid.appendChild(n); }
+    body.appendChild(grid);
+  }
+  if(s.custom){ const c=document.createElement('button'); c.className='btn ghost mpCustomBtn'; c.textContent='＋ 自定义颜色…'; c.onclick=()=>{ c.blur(); mpCustomOpen(); }; body.appendChild(c); }
+  mpMarks(); mpReadout(null);
+}
+/* 自定义颜色：内嵌 HSL 面板（系统取色器不再露在外面） */
+function hexToHsl(hex){ const n=parseInt(String(hex).replace('#',''),16), r=((n>>16)&255)/255, g=((n>>8)&255)/255, b=(n&255)/255;
+  const mx=Math.max(r,g,b), mn=Math.min(r,g,b), l=(mx+mn)/2; let h=0, s=0;
+  if(mx!==mn){ const d=mx-mn; s=l>0.5 ? d/(2-mx-mn) : d/(mx+mn); h = mx===r ? (g-b)/d+(g<b?6:0) : mx===g ? (b-r)/d+2 : (r-g)/d+4; h*=60; }
+  return [Math.round(h), Math.round(s*100), Math.round(l*100)]; }
+function hslToHex(h,s,l){ s/=100; l/=100; const k=n=>(n+h/30)%12, a=s*Math.min(l,1-l), f=n=>l-a*Math.max(-1,Math.min(k(n)-3,Math.min(9-k(n),1)));
+  return '#'+[f(0),f(8),f(4)].map(v=>Math.round(v*255).toString(16).padStart(2,'0')).join(''); }
+function mpCustomOpen(){
+  const p=$('#mpCustom'); p.style.display='block';
+  const cur=(MP.slot && /^#/.test(MP.slot.get())) ? MP.slot.get() : '#8a7d6b', [h,s,l]=hexToHsl(cur);
+  $('#mpHue').value=h; $('#mpSat').value=s; $('#mpLight').value=l; mpCustomSync(false);
+  p.scrollIntoView({block:'nearest'});
+}
+function mpCustomSync(fromHex){
+  let hex;
+  if(fromHex){ const v=$('#mpHex').value.trim(); if(!/^#?([0-9a-f]{3}|[0-9a-f]{6})$/i.test(v)) return; hex=('#'+v.replace('#','')).toLowerCase();
+    if(hex.length===4) hex='#'+hex[1]+hex[1]+hex[2]+hex[2]+hex[3]+hex[3]; const [h,s,l]=hexToHsl(hex); $('#mpHue').value=h; $('#mpSat').value=s; $('#mpLight').value=l; }
+  else { hex=hslToHex(+$('#mpHue').value, +$('#mpSat').value, +$('#mpLight').value); $('#mpHex').value=hex.toUpperCase(); }
+  $('#mpSw').style.background=hex;
+  $('#mpSat').style.background=`linear-gradient(90deg, ${hslToHex(+$('#mpHue').value,0,+$('#mpLight').value)}, ${hslToHex(+$('#mpHue').value,100,+$('#mpLight').value)})`;
+  $('#mpLight').style.background=`linear-gradient(90deg, #000, ${hslToHex(+$('#mpHue').value,+$('#mpSat').value,50)}, #fff)`;
+  for(const id of ['mpHue','mpSat','mpLight']) $('#'+id).nextElementSibling.textContent = $('#'+id).value + (id==='mpHue' ? '°' : '%');
+  mpPreview(hex);
+  return hex;
+}
+/* ---------- 材质行 ---------- */
+function mrowMake(id, label, slotFn){
+  const b=document.createElement('button'); b.className='mrow'; b.id=id; b.type='button';
+  b.innerHTML='<span class="mt"></span><span class="mx"><span class="lb"></span><span class="nm"></span><span class="sp"></span></span><span class="st" style="display:none"></span><span class="ar">▸</span>';
+  b.querySelector('.lb').textContent=label; b._slot=slotFn;
+  b.onclick=()=>{ b.blur(); const s=slotFn(); if(!s) return; if(MP.slot && MP.row===b){ mpClose(); return; } mpOpen(s, b); };
+  return b;
+}
+function mrowPaint(b){
+  if(!b || !b._slot || !b.classList.contains('mrow')) return;
+  const s=b._slot(); if(!s){ b.style.display='none'; return; } b.style.display='';
+  const isPrev = MP.row===b && MP.previewing!=null;
+  const id = isPrev ? MP.previewing : s.get();
+  const it = (id===s.first.id) ? s.first : (s.items().find(x=>x.id===id) || (/^#/.test(id) ? {id, name:'自定义 '+id, color:id} : s.first));
+  const mt=b.querySelector('.mt'); mpPaintThumb(mt, it, 72, 72);
+  b.querySelector('.nm').textContent = it.name + (isPrev ? '（预览中）' : '');
+  b.querySelector('.sp').textContent = it===s.first ? (s.first.spec||'') : (it.spec||'');
+  const st=b.querySelector('.st'); const chip = s.chip ? s.chip() : null;
+  st.style.display = chip ? '' : 'none'; if(chip){ st.textContent=chip[0]; st.classList.toggle('own', !!chip[1]); }
+  b.classList.toggle('open', MP.row===b && !!MP.slot); b.querySelector('.ar').textContent = (MP.row===b && MP.slot) ? '◂' : '▸';
+}
+function mrowsPaint(){ document.querySelectorAll('.mrow').forEach(mrowPaint);
+  const sb=$('#rmCurtainSw'); if(sb){ const sl=sb._slot(); sb.disabled=!sl; sb.style.background = sl ? (MP.row===sb && MP.previewing ? MP.previewing : sl.get()) : ''; sb.classList.toggle('open', MP.row===sb && !!MP.slot); } }
+/* 选中变了：材质行重画；选择器的目标跟着换（同一种槽位）或关掉（新对象没有这个槽位） */
+function matSync(){
+  mrowsPaint();
+  if(!MP.slot) return;
+  if(!wallEdit.on){ mpClose(); return; }
+  const row=MP.row, ns = row && row._slot ? row._slot() : null;
+  if(!ns || (row && row.offsetParent===null && row.id!=='mrLvFloor')){ mpClose(); return; }
+  const changed = ns.key!==MP.slot.key || ns.kicker!==MP.slot.kicker;
+  MP.slot=ns;
+  if(changed){ MP.orig=ns.get(); MP.prevSnap=null; MP.previewing=null; mpRender(); } else mpMarks();
+}
+(function matInit(){
+  // 选择器 DOM 事件
+  $('#mpBack').onclick=()=>{ $('#mpBack').blur(); mpClose(); };
+  $('#mpRevert').onclick=()=>{ $('#mpRevert').blur(); if(MP.slot && MP.orig!==MP.slot.get()) mpPick(MP.orig, true); };
+  $('#mpSearch').oninput=()=>{ MP.q=$('#mpSearch').value.trim(); if(MP.q) MP.tab='all'; mpRender(); };
+  for(const b of document.querySelectorAll('#mpTone button')) b.onclick=()=>{ b.blur(); const t=b.dataset.t; MP.tone.has(t) ? MP.tone.delete(t) : MP.tone.add(t); mpRender(); };
+  for(const b of document.querySelectorAll('#mpDensity button')) b.onclick=()=>{ b.blur(); if(MP.slot) matDensitySet(MP.slot.kind, b.dataset.d); mpRender(); };
+  $('#mpBody').addEventListener('mouseleave', ()=>{ clearTimeout(MP.hoverT); MP.leaveT=setTimeout(()=>{ if($('#mpCustom').style.display!=='none') return; mpUnpreview(); }, 80); });
+  for(const id of ['mpHue','mpSat','mpLight']) $('#'+id).oninput=()=>mpCustomSync(false);
+  $('#mpHex').onkeydown=(ev)=>{ if(ev.key==='Enter'){ ev.preventDefault(); const h=mpCustomSync(true); if(h){ const v=$('#mpHex').value.trim(); const hx=('#'+v.replace('#','')).toLowerCase(); mpPick(hx.length===4 ? '#'+hx[1]+hx[1]+hx[2]+hx[2]+hx[3]+hx[3] : hx); $('#mpCustom').style.display='none'; } } };
+  $('#mpHex').oninput=()=>mpCustomSync(true);
+  $('#mpCustomOk').onclick=()=>{ $('#mpCustomOk').blur(); const hex=hslToHex(+$('#mpHue').value, +$('#mpSat').value, +$('#mpLight').value); mpPick(hex); $('#mpCustom').style.display='none'; };
+  $('#mpCustomX').onclick=()=>{ $('#mpCustomX').blur(); $('#mpCustom').style.display='none'; mpUnpreview(); };
+  // 键盘：Esc = 撤回预览并关闭（输入框里也一样）；方向键在网格里挪焦点 = 预览
+  $('#matPicker').addEventListener('keydown', ev=>{
+    if(ev.key==='Escape'){ ev.preventDefault(); ev.stopPropagation(); mpClose(); return; }
+    if(/^Arrow/.test(ev.key) && ev.target.closest && ev.target.closest('.mpGrid, .mpPal, .mpStrip')){
+      const cells=[...ev.target.closest('.mpGrid, .mpPal, .mpStrip').querySelectorAll('button')], i=cells.indexOf(ev.target); if(i<0) return;
+      const cols = ev.target.closest('.mpPal') ? 6 : (ev.target.closest('.mpGrid.small') ? 5 : 3);
+      const j = ev.key==='ArrowRight' ? i+1 : ev.key==='ArrowLeft' ? i-1 : ev.key==='ArrowDown' ? i+cols : i-cols;
+      if(cells[j]){ ev.preventDefault(); cells[j].focus(); } }
+  });
+  // 材质行：全屋地面（什么都没选）、房间地面、房间墙面
+  const lvRow=mrowMake('mrLvFloor', '全屋地面', ()=>MAT_SLOTS.lvFloor());
+  lvRow.querySelector('.lb').textContent='全屋地面'; $('#lvFloorL').appendChild(lvRow);
+  const fr=mrowMake('mrFloor', '地面', ()=>{ const r=selRoom(); return r ? Object.assign(MAT_SLOTS.roomFloor(r), {chip:()=> r.floor ? ['这个房间',1] : ['跟全屋',0]}) : null; });
+  const rf=$('#rmFloor').closest('.irow'); rf.parentNode.insertBefore(fr, rf); rf.classList.add('vh');
+  const wr=mrowMake('mrWall', '墙面', ()=>{ const r=selRoom(); return r ? Object.assign(MAT_SLOTS.roomWall(r), {chip:()=>['整个房间', r.wallColor ? 1 : 0]}) : null; });
+  const rw=$('#rmWallL'); rw.parentNode.insertBefore(wr, rw); rw.classList.add('vh');
+  for(const el of [fr, wr]) el.classList.add('decoOnly');
+  // 窗帘颜色：房间 = 「窗帘」那一行里的一个色块；窗 = 一个材质行（布料）—— 系统取色器不再露在外面
+  $('#rmCurtainC').classList.add('vh'); $('#wWinCurtainC').classList.add('vh');
+  { const b=document.createElement('button'); b.id='rmCurtainSw'; b.type='button'; b.className='swBtn'; b.title='窗帘颜色';
+    b.onclick=()=>{ b.blur(); const r=selRoom(); const sl=r && MAT_SLOTS.roomFabric(r); if(sl) mpOpen(Object.assign(sl,{noFirst:true}), b); };
+    b._slot=()=>{ const r=selRoom(); return r ? MAT_SLOTS.roomFabric(r) : null; };
+    $('#rmCurtainC').parentNode.insertBefore(b, $('#rmCurtainC')); }
+  { const wr=mrowMake('mrWinCurtainC', '帘子颜色', ()=>{ const sl=MAT_SLOTS.winFabric(winSelEnt()); return sl ? Object.assign(sl,{noFirst:true}) : null; });
+    const row=$('#wWinCurtainSide').closest('.irow'); row.parentNode.insertBefore(wr, row.nextSibling); }
+  // 全屋地面：选中房间时那一行收成页脚链接（点了 = 选择器，目标是全屋）
+  $('#lvFloorMini').onclick=()=>{ $('#lvFloorMini').blur(); mpOpen(MAT_SLOTS.lvFloor(), $('#mrLvFloor')); };
+})();
+
 /* 检视面板在改户型 / 装修里：标题 = 选中的东西（或「下一个要画的」），删除按钮跟着对象变 */
 const _kindName={w:'墙', door:'门', fx:'洁具', run:'台面 / 橱柜', outlet:'插座与水电点位', stair:'楼梯', room:'房间', p:'柱子 / 墙块'};
 function inspBuildUI(){
@@ -24185,7 +24635,7 @@ function inspBuildUI(){
   } else {
     kk.textContent='';
     const next={wall:'画墙 · 下一段', win:'窗 · 下一扇', stair:'楼梯 · 下一部', outlet:'插座与水电 · 下一个', fx:'洁具 · 下一个', run:'台面 · 下一段', door:'门 · 下一扇', poly:'柱子 / 墙块 · 下一个', room:'房间'};
-    title = t==='deco' ? '全屋地板与房间' : (next[t] || '还没选中东西');
+    title = t==='deco' ? '全屋地面与房间' : (next[t] || '还没选中东西');
     info = t==='deco' ? '点平面图上的房间，或者在左边列表里选一个；点门窗改外观。' : t==='select' ? '点墙、门、窗、楼梯来调整它；画新的用上面的工具。' : t==='door' ? '点门洞或墙放门，缺省宽 80 cm。' : t==='room' ? '点平面图上一块被墙围起来的地方 = 选中这个房间。' : '';
   }
   $('#pTitle').textContent=title;
