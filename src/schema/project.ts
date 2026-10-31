@@ -29,8 +29,9 @@ export const WINDOW_STYLES: WindowStyle[] = ['fixed', 'slide', 'casement', 'awni
 export type WindowHand = 'l' | 'r' | 'pair';
 export const WINDOW_HANDS: WindowHand[] = ['l', 'r', 'pair'];
 export type DoorKind = 'swing' | 'double' | 'slide' | 'bifold';
-export type FixtureType = 'counter' | 'basin' | 'toilet' | 'tub' | 'shower' | 'mirror';
-export const FIXTURE_TYPES: FixtureType[] = ['counter', 'basin', 'toilet', 'tub', 'shower', 'mirror'];
+/** S26d：vanity = 洗手台（台柜 + 洗手盆合成一件，form / wcm / mount / cab 可选）；counter / basin 是旧式分开放的两件，照读照画 */
+export type FixtureType = 'counter' | 'basin' | 'toilet' | 'tub' | 'shower' | 'mirror' | 'vanity';
+export const FIXTURE_TYPES: FixtureType[] = ['counter', 'basin', 'toilet', 'tub', 'shower', 'mirror', 'vanity'];
 export type EntitySrc = 'builtin' | 'user';
 
 export interface Wall {
