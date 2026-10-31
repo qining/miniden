@@ -244,6 +244,13 @@ export function translateLevelContent(view: Content, dx: number, dy: number): vo
   for (const r of V.rooms || []) {
     if (Array.isArray(r.pos)) r.pos = [r4(r.pos[0] + dx), r4(r.pos[1] + dy)];
     if (r.poly) r.poly = movePts(r.poly, dx, dy);
+    // S26b：单面墙覆盖按墙线（两端点）存，跟着房间一起挪
+    const faces = (r as { faces?: Array<{ a: number[]; b: number[] }> }).faces;
+    if (Array.isArray(faces))
+      for (const f of faces) {
+        f.a = [r4(f.a[0]! + dx), r4(f.a[1]! + dy)];
+        f.b = [r4(f.b[0]! + dx), r4(f.b[1]! + dy)];
+      }
   }
   for (const f of V.fixtures || []) {
     f.x1 = r4(f.x1 + dx);

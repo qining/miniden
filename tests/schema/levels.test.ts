@@ -432,6 +432,18 @@ describe('整层平移 / 导入为一层（S17b）', () => {
     expect(validate(d)).toEqual([]);
   });
 
+  it('S26b：房间的单面墙覆盖（按墙线两端点存）跟着一起平移；其余装修字段原样', () => {
+    const d = full();
+    (d.rooms[0] as any).faces = [{ a: [0, 0], b: [10, 0], wall: { color: '#4f604f' } }];
+    (d.rooms[0] as any).tile = { mat: 'subwayWhite', h: 'shower' };
+    translateLevelContent(d, 2.5, -1);
+    expect((d.rooms[0] as any).faces[0].a).toEqual([2.5, -1]);
+    expect((d.rooms[0] as any).faces[0].b).toEqual([12.5, -1]);
+    expect((d.rooms[0] as any).faces[0].wall).toEqual({ color: '#4f604f' });
+    expect((d.rooms[0] as any).tile).toEqual({ mat: 'subwayWhite', h: 'shower' });
+    expect(validate(d)).toEqual([]);
+  });
+
   it('平移不攒浮点尾巴（坐标取到 1e-4ft）；位移为 0 什么都不动', () => {
     const d = full();
     const before = JSON.stringify(d);
