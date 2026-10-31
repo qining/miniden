@@ -284,7 +284,7 @@
   #bandLegend i{display:inline-block; width:14px; height:6px; margin-right:3px; vertical-align:middle; border-radius:2px;} #bandLegend .bl1{background:#a9b8c2;} #bandLegend .bl2{background:repeating-linear-gradient(90deg,#e9e4da 0 2px,#a9b8c2 2px 3px);} #bandLegend .bl3{background:repeating-linear-gradient(45deg,#f0f0ec 0 2px,#999 2px 3px);}
   .note.danger{background:var(--danger-soft); border:1px solid var(--danger-line); color:var(--danger);}
   #inspBuild .irow.col > .il{width:auto;}   /* UX M08：标签在上的行，标签不限宽（「窗帘 / 百叶」不折行） */
-  #lvFloorL:not(.mini) #lvFloorTtl{display:none;}   /* UX M11：全屋地面那一行的标题只出现一次 */
+  #lvFloorL #lvFloorTtl{display:none;}   /* UX M11：标题只出现一次（不选东西 = 材质行自己带「全屋地面」；选中房间 = 页脚链接自己写「全屋地面：…」） */   /* UX M11：全屋地面那一行的标题只出现一次 */
   .swBtn{width:26px; height:26px; flex:none; border-radius:6px; border:1px solid var(--sw-line); cursor:pointer; padding:0;} .swBtn:disabled{opacity:.35; cursor:default;} .swBtn.open{box-shadow:0 0 0 2px var(--panel), 0 0 0 4px var(--accent);}
   #inspBuild.buildMode .decoOnly{display:none !important;}
   #lvFloorMini{display:none;} #lvFloorL.mini #lvFloorMini{display:inline;} #lvFloorL.mini .swGrid, #lvFloorL.mini #lvFloorNote{display:none !important;}
@@ -7125,6 +7125,8 @@ function updateWallBarFromSel_(){
     }
   } else if(s && s.kind==='p'){
     wMsg((srcU(s.id)?'自己加的柱子 / 墙块':'原有的柱子 / 墙块')+' ｜ 拖圆点=移顶点 · 拖黄方块=插入顶点 · Alt+点顶点=删顶点 · Delete=删除');
+  } else if(s && s.kind==='face'){ const F=selFace(); wMsg('墙面 · '+(F ? roomFallbackName(F.r)+' '+faceName(F.r,F.a,F.b) : '')+' ｜ 右边换墙面 / 墙砖 · Esc = 回到房间');   // UX M09
+  } else if(s && s.kind==='kitchen'){ wMsg('厨房（户型自带） ｜ 右边换柜门颜色和台面 · Esc = 取消选中');
   } else wMsg(wallEdit.tool==='wall'?'连续点击画墙（磁吸端点 / 墙线，放大后更精密；Shift = 锁 0° / 45° / 90°，Alt = 不吸附）；双击 / 回车 / 再点末点 = 结束；Backspace = 撤掉上一个点':
               wallEdit.tool==='poly'?'连续点击放顶点；点回起点 / 双击 / 回车 = 闭合；Esc 取消':wallEdit.tool==='door'?'点门洞 / 开口放门；点在实墙上 = 先开一个 80cm 的门洞再放门（会让开接过来的墙）；点已有的门 = 选中（换平开 / 双开 / 推拉、铰链侧、开向）':'悬停会亮出墙体；点击选中（含门扇），拖空白平移，滚轮缩放');
 }
@@ -10030,6 +10032,12 @@ function buildLevelStatic(scene, lv, holes, lowest){
     if(kp.sh) m.castShadow = true;
     if(kp.rc) m.receiveShadow = true;
     scene.add(m);
+  }
+  // UX M02b：叫「台面」的结构块（示例户型的厨房）以前 3D 里不画；现在画成柜体 + 台面，跟着自带厨房的外观走
+  for(const f of counterSolids()){
+    const sh=new THREE.Shape(); sh.moveTo(f.poly[0][0], f.poly[0][1]); for(let i=1;i<f.poly.length;i++) sh.lineTo(f.poly[i][0], f.poly[i][1]); sh.closePath();
+    const body=new THREE.Mesh(new THREE.ExtrudeGeometry(sh,{depth:2.83, bevelEnabled:false}), matKCab); body.rotation.x=Math.PI/2; body.position.y=2.83; body.castShadow=body.receiveShadow=true; scene.add(body);
+    const top=new THREE.Mesh(new THREE.ExtrudeGeometry(sh,{depth:0.12, bevelEnabled:false}), matKTop); top.rotation.x=Math.PI/2; top.position.y=2.95; top.castShadow=top.receiveShadow=true; scene.add(top);
   }
   // S12：用户画的台面/柜体 run（文档实体，随 ProjectDoc 走）。
   // 柜体从 path（靠墙前沿）向户型内侧伸 depth；台面石板等厚外挑。
@@ -21958,7 +21966,7 @@ function editModeViewUI(){
   const show = on && wallEdit.area==='build' && in3;
   if(!show) _modeNoteStay=false;
   mn.style.display = show ? 'flex' : 'none'; mn.classList.toggle('thin', show && _modeNoteStay);
-  if(in3) underlayNoteUI(false);
+  if(in3){ underlayNoteUI(false); if(typeof bandLegendUI==='function') bandLegendUI(false); }   // UX M12：色带只在 2D 画，图例也只在 2D
 }
 $('#mnStay').onclick=()=>{ $('#mnStay').blur(); _modeNoteStay=true; editModeViewUI(); };
 $('#mnGo2d').onclick=()=>{ $('#mnGo2d').blur(); setView('2d'); };
@@ -22781,7 +22789,7 @@ function hslToHex(h,s,l){ s/=100; l/=100; const k=n=>(n+h/30)%12, a=s*Math.min(l
   return '#'+[f(0),f(8),f(4)].map(v=>Math.round(v*255).toString(16).padStart(2,'0')).join(''); }
 function mpCustomOpen(){
   const p=$('#mpCustom'); p.style.display='block';
-  const cur=(MP.slot && /^#/.test(MP.slot.get())) ? MP.slot.get() : '#8a7d6b', [h,s,l]=hexToHsl(cur);
+  const cur=(MP.slot && /^#/.test(MP.slot.get())) ? MP.slot.get() : (MP.slot && MP.slot.first && /^#/.test(MP.slot.first.color||'') ? MP.slot.first.color : '#8a7d6b'), [h,s,l]=hexToHsl(cur);   // QA S11：白墙（没设）时从白墙开始
   $('#mpHue').value=h; $('#mpSat').value=s; $('#mpLight').value=l;
   $('#mpHex').value=cur.toUpperCase(); $('#mpSw').style.background=cur;   // QA S11：打开时就是当前颜色（不先按取整后的 HSL 预览一个略偏的色）
   for(const id of ['mpHue','mpSat','mpLight']) $('#'+id).nextElementSibling.textContent = $('#'+id).value + (id==='mpHue' ? '°' : '%');
@@ -23302,7 +23310,8 @@ function setFxShape(f, patch){
   const DEF={toilet:'two', shower:'square', tub:'alcove'};
   Object.assign(f, patch); for(const k of Object.keys(patch)) if(patch[k]===undefined) delete f[k];
   let dm=fxDimsFor(f.t, fxForm(f), f.wcm, f.size);
-  if(f.origDims && f.form===DEF[f.t] && ('form' in patch)){ dm=f.origDims; delete f.form; delete f.size; delete f.origDims; }
+  if(f.origDims && ((f.form===DEF[f.t] && ('form' in patch)) || patch.__orig)){ dm=f.origDims; delete f.form; delete f.size; delete f.origDims; }
+  delete f.__orig;
   if(dm){
     const [w,d]=dm, cx=(f.x1+f.x2)/2, cy=(f.y1+f.y2)/2, keepBack = f.t==='vanity' || f.t==='toilet';
     const r=(f.rot||0)*Math.PI/180, dd=(d-old[1])/2;
@@ -23446,8 +23455,13 @@ function fxPanelUI(){
   else if(t==='toilet'){ fixed.textContent=(TOILET_FORMS.find(x=>x[0]===form)||[])[2]||''; }
   $('#fxSizeRow').querySelector('.il').textContent=label;
   show('fxSizeRow', !legacy && ['vanity','toilet','shower','tub'].includes(t));
+  // QA S06 / R2-2：旧档的原尺寸、换成洗手台后不在档位上的宽度，都在分段里留一格（不然一个都不亮、也回不去）
+  if(opts && f && f.origDims && (t==='shower' || t==='tub' || t==='toilet')) opts=[['__orig', '原尺寸 '+Math.round(f.origDims[0]*30.48)+' × '+Math.round(f.origDims[1]*30.48)]].concat(opts);
+  if(opts && f && t==='vanity' && cur && !opts.some(o=>String(o[0])===String(cur))) opts=[[cur, cur+'（原）']].concat(opts);
+  if(f && t!=='vanity' && !f.form && !f.size && f.t!=='vanity' && opts){ const dm0=[Math.round((f.x2-f.x1)*30.48), Math.round((f.y2-f.y1)*30.48)];
+    if(!opts.some(o=>o[0]===dm0[0]+'x'+dm0[1])) { opts=[['__cur', '原尺寸 '+dm0[0]+' × '+dm0[1]]].concat(opts); cur='__cur'; } }
   if(opts) for(const [v,txt] of opts){ const b=document.createElement('button'); b.type='button'; b.textContent=txt; b.classList.toggle('on', String(v)===String(cur));
-    b.onclick=()=>{ b.blur(); pick(t==='vanity' ? {wcm:+v} : {size:v}); }; sz.appendChild(b); }
+    b.onclick=()=>{ b.blur(); if(v==='__cur') return; pick(v==='__orig' ? {__orig:true} : t==='vanity' ? {wcm:+v} : {size:v}); }; sz.appendChild(b); }
   // 安装（悬挂柜）；柜色
   const canHang = t==='vanity' && form!=='pedestal' && form!=='wall';
   show('fxMountRow', !legacy && t==='vanity'); for(const b of $('#fxMount').querySelectorAll('button')){ b.disabled=!canHang; b.classList.toggle('on', canHang && ((f ? f.mount : nx.mount)||'')===b.dataset.v); }
@@ -23606,13 +23620,16 @@ function lookPanelsUI(){
 /* ---------- S26 M02：户型原有的厨房（plan.kitchen 盒子 + 中岛）也能换外观 ---------- */
 function kitchenPolys(){
   const out=[];
-  for(const kp of (planOf('kitchen')||[])){ if(!kp.box || (kp.m!=='cab' && kp.m!=='top')) continue; const [bx,,bz]=kp.box, [px,,pz]=kp.p; if(bx*bz<0.1) continue;
+  for(const kp of (planOf('kitchen')||[])){ if(!kp.box || (kp.m!=='cab' && kp.m!=='top' && kp.m!=='steel')) continue;   /* 冰箱（steel）也算厨房的一部分：点它同样选中厨房 */ const [bx,,bz]=kp.box, [px,,pz]=kp.p; if(bx*bz<0.1) continue;
     out.push([[px-bx/2,pz-bz/2],[px+bx/2,pz-bz/2],[px+bx/2,pz+bz/2],[px-bx/2,pz+bz/2]]); }
+  for(const f of counterSolids()) out.push(f.poly);
   const isl = typeof ISL==='function' ? ISL() : null;
   if(isl){ const pts=[isl.a, isl.b, isl.e]; for(let k=1;k<=16;k++){ const t=k/16, m1=1-t; pts.push([m1*m1*isl.e[0]+2*m1*t*isl.cp2[0]+t*t*isl.d[0], m1*m1*isl.e[1]+2*m1*t*isl.cp2[1]+t*t*isl.d[1]]); } out.push(pts); }
   return out;
 }
 function kitchenAt(x, y){ return !docImported() && kitchenPolys().some(P=>ptInPoly([x,y], P)); }
+/* UX M02b：示例户型的厨房是两块叫「台面」的结构块（不是 plan.kitchen）—— 也算户型自带的厨房：能选、3D 里按柜体 + 台面画出来 */
+function counterSolids(){ return effFixed().filter(f=>f.name==='台面' && f.poly && f.poly.length>=3); }
 function setKitchenLook(patch){
   pushUndo('kitchenLook', true);
   const kl=Object.assign({}, DOC.kitchenLook||{});
