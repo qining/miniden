@@ -23961,6 +23961,7 @@ function editModeViewUI(){
   if(!show) _modeNoteStay=false;
   mn.style.display = show ? 'flex' : 'none'; mn.classList.toggle('thin', show && _modeNoteStay);
   if(in3){ underlayNoteUI(false); if(typeof bandLegendUI==='function') bandLegendUI(false); }   // UX M12：色带只在 2D 画，图例也只在 2D
+  else if(typeof bandLegendUI==='function') bandLegendUI(on && wallEdit.area==='deco' && effRooms().some(roomHasFinish));   // QA R3-1：回 2D 时 SVG 不一定重画，图例在这里补回
 }
 $('#mnStay').onclick=()=>{ $('#mnStay').blur(); _modeNoteStay=true; editModeViewUI(); };
 $('#mnGo2d').onclick=()=>{ $('#mnGo2d').blur(); setView('2d'); };
