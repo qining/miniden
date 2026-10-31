@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>MiniDen S26 装修材料库 · 设计稿（静态原型，不依赖 app.html）</title>
+<!--
+  状态用 hash 切换（规格见 docs/design/materials.md §0.2）：
+  #room 选中卫生间 · #wall 选中单面墙 + 色板选择器（悬停预览墨绿）· #floor 地面选择器（大图）· #tile 墙砖选择器 + 高度
+  #paper 墙纸选择器 · #custom 自定义颜色 · #vanity 洗手台 · #toilet 马桶 · #shower 淋浴 · #tub 浴缸
+  #door 门 · #window 窗 · #cabinet 台面 / 橱柜 · #nosel 装修里什么都没选
+  只是设计稿：数据写死。缩略图是 canvas 程序化画的（验证规格 §7 的做法），没有外部图片。
+-->
+<style>
+:root{
+  --bg:#1b1815; --panel:#232019; --panel2:#2c2822; --line:#332f29;
+  --text:#ece7df; --muted:#a89f92; --accent:#d9a05b; --ok:#5cbf72; --danger:#e06c5a; --warn:#e0b341;
+  --stage-bg:#141210; --field-bg:#141210; --on-fg:#141210;
+  --hint-bg:rgba(27,24,21,.8); --totals-bg:rgba(27,24,21,.85);
+  --warn-bg:rgba(224,179,65,.10); --warn-line:rgba(224,179,65,.35);
+  --accent-hover:#e4b06f; --accent-soft:rgba(217,160,91,.14); --accent-line:rgba(217,160,91,.55);
+  --sel-bg:#3b342b; --sel-text:#f6f1e9; --danger-soft:rgba(224,108,90,.12); --danger-line:rgba(224,108,90,.45);
+  --menu-bg:#25211b; --shadow-pop:0 10px 36px rgba(0,0,0,.5);
+  --fs-1:12px; --fs-2:13px; --fs-3:14px; --fs-4:16px; --r-1:6px; --r-2:10px;
+  /* S26 新增（规格 §6.1） */
+  --mat-thumb:36px; --tile-gap:8px; --sw-line:rgba(255,255,255,.14); --preview-line:#7fb8ff;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;background:var(--bg);color:var(--text);display:flex;flex-direction:column;font-size:13px}
+button{font:inherit;color:inherit}
+.btn{height:28px;display:inline-flex;align-items:center;gap:6px;padding:0 10px;border-radius:var(--r-1);font-size:var(--fs-2);cursor:pointer;white-space:nowrap;border:1px solid var(--line);background:var(--panel2);color:var(--text)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--on-fg);font-weight:600}
+.btn.ghost{background:none;border-color:transparent;color:var(--muted)}
+.btn.danger{color:var(--danger)}
+.btn.sm{height:24px;font-size:var(--fs-1);padding:0 8px}
+.kbd{font-size:11px;opacity:.7;font-weight:400}
+.seg{display:inline-flex;background:var(--field-bg);border:1px solid var(--line);border-radius:var(--r-1);padding:2px;gap:2px}
+.seg button{height:26px;border:1px solid transparent;background:none;color:var(--muted);padding:0 11px;border-radius:4px;font-size:var(--fs-2);cursor:pointer;white-space:nowrap}
+.seg button.on{background:var(--sel-bg);color:var(--sel-text);border-color:var(--accent-line)}
+.seg.sm button{height:22px;padding:0 8px;font-size:var(--fs-1)}
+.seg button:disabled{opacity:.38}
+
+/* 顶栏 + 模式条（同 S25） */
+#topbar{height:49px;flex:none;display:flex;align-items:center;gap:10px;padding:0 14px;background:var(--panel);border-bottom:1px solid var(--line);white-space:nowrap}
+.brand{font-weight:700;font-size:16px}
+.vsep{width:1px;height:20px;background:var(--line)}
+#modeSeg{display:flex;gap:2px;height:100%}
+#modeSeg button{position:relative;background:none;border:none;color:var(--muted);font-size:var(--fs-3);font-weight:600;padding:0 12px}
+#modeSeg button.on{color:var(--text)}
+#modeSeg button.on::after{content:'';position:absolute;left:10px;right:10px;bottom:-1px;height:2px;border-radius:2px;background:var(--accent)}
+.spacer{flex:1}
+#modebar{height:40px;flex:none;display:flex;align-items:center;gap:10px;padding:0 14px;background:var(--bg);border-bottom:1px solid var(--line);white-space:nowrap}
+.tools{display:flex;gap:2px}
+.tools button{height:30px;padding:0 10px;border-radius:var(--r-1);border:1px solid transparent;background:none;color:var(--muted)}
+.tools button.on{background:var(--sel-bg);color:var(--sel-text);border-color:var(--accent-line)}
+.mbLbl{font-size:var(--fs-1);color:var(--muted)}
+
+#main{flex:1;display:flex;min-height:0}
+.left{width:clamp(260px,24vw,400px);flex:none;background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0;position:relative}
+#props{width:clamp(240px,21vw,300px);flex:none;background:var(--panel);border-left:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
+.panelHead{display:flex;align-items:center;gap:8px;padding:10px 12px 6px}
+.panelHead .ttl{font-size:var(--fs-1);color:var(--muted);font-weight:600;flex:1}
+.xbtn{height:22px;padding:0 8px;font-size:11px;border-radius:var(--r-1);border:1px solid var(--line);background:none;color:var(--muted)}
+
+/* 装修左栏：房间行加 3 个小色块（地 / 墙 / 砖） */
+.roomRow{display:flex;align-items:center;gap:10px;padding:7px 12px;border-left:2px solid transparent}
+.roomRow.on{background:var(--sel-bg);border-left-color:var(--accent)}
+.roomRow .nm{flex:1;min-width:0;font-size:var(--fs-2)}
+.roomRow .nm small{display:block;color:var(--muted);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chips3{display:flex;gap:3px}
+.chips3 i{width:14px;height:14px;border-radius:3px;border:1px solid var(--sw-line);display:block;background-size:cover}
+.chips3 i.none{background:none;border-style:dashed;opacity:.5}
+.placeGrid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;padding:0 12px}
+.placeBtn{height:58px;border:1px solid var(--line);border-radius:8px;background:var(--panel2);font-size:11px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;color:var(--text)}
+.placeBtn svg{width:26px;height:26px}
+
+/* ---------- 材质选择器（左栏） ---------- */
+#picker{position:absolute;inset:0;background:var(--panel);display:none;flex-direction:column;z-index:5}
+.picking #picker{display:flex}
+.mpHead{display:flex;align-items:center;gap:6px;padding:8px 10px 6px 6px}
+.mpHead .back{width:28px;height:28px;border:none;background:none;color:var(--muted);font-size:16px;border-radius:6px}
+.mpHead .ttl{flex:1;min-width:0}
+.mpHead .ttl b{display:block;font-size:var(--fs-3);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mpHead .ttl small{display:block;font-size:11px;color:var(--muted)}
+.mpScope{padding:0 12px 8px;display:flex;align-items:center;gap:8px;font-size:var(--fs-1);color:var(--muted)}
+.mpTools{display:flex;gap:6px;padding:0 12px 8px}
+.mpTools input{flex:1;min-width:0;height:28px;background:var(--field-bg);border:1px solid var(--line);border-radius:var(--r-1);color:var(--text);padding:0 8px;font-size:var(--fs-2)}
+.mpTabs{display:flex;flex-wrap:wrap;gap:6px;padding:0 12px 8px}
+.chip{height:24px;padding:0 10px;border-radius:12px;border:1px solid var(--line);background:none;color:var(--muted);font-size:var(--fs-1);white-space:nowrap}
+.chip.on{background:var(--sel-bg);color:var(--sel-text);border-color:var(--accent-line)}
+.chip .n{opacity:.6;margin-left:3px}
+.mpTone{display:flex;align-items:center;gap:4px;padding:0 12px 8px;font-size:11px;color:var(--muted)}
+.mpTone .chip{height:22px;padding:0 8px;font-size:11px}
+.mpTone .div{width:1px;height:14px;background:var(--line);margin:0 4px}
+.mpBody{flex:1;overflow:hidden;padding:0 12px;border-top:1px solid var(--line)}
+.mpSec{font-size:11px;color:var(--muted);font-weight:600;margin:10px 0 6px;display:flex;justify-content:space-between}
+.strip{display:flex;gap:6px}
+.strip .t{width:36px;height:36px;border-radius:6px;border:1px solid var(--sw-line);position:relative;background-size:cover;flex:none}
+.strip .t .cnt{position:absolute;right:-4px;top:-5px;font-size:9px;font-weight:700;background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:7px;padding:0 3px;line-height:13px}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--tile-gap)}
+.tile{border:none;background:none;text-align:left;cursor:pointer;min-width:0}
+.tile .th{display:block;width:100%;aspect-ratio:4/3;border-radius:7px;border:1px solid var(--sw-line);background-size:cover;position:relative}
+.tile .nm{display:block;font-size:11.5px;line-height:1.3;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text)}
+.tile .sp{display:block;font-size:10.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tile.on .th{box-shadow:0 0 0 2px var(--panel),0 0 0 4px var(--accent)}
+.tile.on .th::after,.pal i.on::after{content:'✓';position:absolute;right:3px;top:3px;width:15px;height:15px;border-radius:50%;background:var(--accent);color:var(--on-fg);font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center}
+.tile.hov .th,.pal i.hov{box-shadow:0 0 0 2px var(--panel),0 0 0 4px var(--preview-line)}
+.grid.small{grid-template-columns:repeat(5,1fr);gap:6px}
+.grid.small .tile .nm,.grid.small .tile .sp{display:none}
+.grid.small .tile .th{aspect-ratio:1}
+/* 公共色板：每个色系一行，左边色系名，从浅到深 */
+.pal{display:grid;grid-template-columns:40px repeat(6,1fr);gap:5px;align-items:center}
+.pal .fam{font-size:11px;color:var(--muted);white-space:nowrap}
+.pal i{display:block;height:28px;border-radius:6px;border:1px solid var(--sw-line);position:relative;cursor:pointer}
+.pal i.on{box-shadow:0 0 0 2px var(--panel),0 0 0 4px var(--accent)}
+.pal i.plus{background:conic-gradient(#e06c5a,#e0b341,#5cbf72,#5f9fd9,#a47ad9,#e06c5a);border-color:transparent}
+.pal i.plus::before{content:'＋';position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;text-shadow:0 1px 2px rgba(0,0,0,.6)}
+.mpFoot{border-top:1px solid var(--line);padding:8px 12px 10px;display:flex;flex-direction:column;gap:6px;flex:none;background:var(--panel)}
+.readout{display:flex;align-items:center;gap:8px;font-size:var(--fs-1)}
+.readout i{width:22px;height:22px;border-radius:5px;border:1px solid var(--sw-line);display:block;background-size:cover}
+.readout b{font-weight:600}
+.readout .tag{margin-left:auto;font-size:10.5px;padding:1px 6px;border-radius:9px;border:1px solid var(--preview-line);color:var(--preview-line)}
+.mpHelp{display:flex;justify-content:space-between;font-size:11px;color:var(--muted)}
+/* 自定义颜色：选择器里的内嵌面板（不再裸露系统取色器） */
+.custom{border:1px solid var(--line);border-radius:10px;padding:10px;margin-top:10px;background:var(--bg);display:flex;flex-direction:column;gap:8px}
+.custom .bar{height:14px;border-radius:7px;position:relative;border:1px solid var(--sw-line)}
+.custom .bar i{position:absolute;top:-3px;width:18px;height:18px;border-radius:50%;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.6);transform:translateX(-9px)}
+.custom .lbl{font-size:11px;color:var(--muted);display:flex;justify-content:space-between}
+.custom .row{display:flex;gap:8px;align-items:center}
+.custom input{width:90px;height:26px;background:var(--field-bg);border:1px solid var(--line);border-radius:6px;color:var(--text);padding:0 6px;font-family:ui-monospace,Menlo,monospace;font-size:12px}
+
+/* ---------- 画布 ---------- */
+#stage{flex:1;position:relative;background:var(--stage-bg);min-width:0;overflow:hidden}
+#stage svg{position:absolute;inset:0;width:100%;height:100%}
+.ovl{position:absolute;z-index:9;display:flex;align-items:center;gap:6px}
+#crumbs{left:12px;top:12px;background:var(--totals-bg);border:1px solid var(--line);border-radius:8px;padding:2px 8px;height:34px;font-size:var(--fs-2)}
+#crumbs .sep{color:var(--muted)}
+#hint{left:12px;bottom:12px;max-width:calc(100% - 210px);background:var(--hint-bg);padding:6px 10px;border-radius:var(--r-1);font-size:var(--fs-1);color:var(--muted);line-height:1.5}
+#hint b{color:var(--text);font-weight:600}
+#totals{right:12px;bottom:12px;height:34px;padding:0 12px;background:var(--totals-bg);border:1px solid var(--line);border-radius:8px;font-size:var(--fs-2)}
+#totals b{color:var(--ok)}
+#legend{right:12px;top:12px;background:var(--totals-bg);border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:11px;color:var(--muted);flex-direction:column;align-items:flex-start;gap:3px}
+#legend span{display:flex;align-items:center;gap:6px}
+#legend i{width:18px;height:6px;border-radius:1px;display:block}
+
+/* ---------- 右栏：检视 ---------- */
+.tabs{display:flex;align-items:flex-end;gap:2px;padding:0 8px 0 12px;border-bottom:1px solid var(--line);height:40px;flex:none}
+.tab{height:39px;display:flex;align-items:center;gap:6px;padding:0 10px;font-size:var(--fs-2);font-weight:600;color:var(--muted);border-bottom:2px solid transparent}
+.tab.on{color:var(--text);border-bottom-color:var(--accent)}
+.tab .n{font-size:11px;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--panel2);color:var(--muted);display:inline-flex;align-items:center;justify-content:center}
+.pbody{flex:1;overflow:hidden;padding:12px;display:none;flex-direction:column;gap:12px}
+.kicker{font-size:11px;color:var(--muted)}
+.pbody>*{flex-shrink:0}
+.pbody h3{font-size:var(--fs-3);font-weight:600;line-height:1.35}
+.secH{font-size:var(--fs-1);color:var(--muted);font-weight:600;display:flex;justify-content:space-between;align-items:center;margin-bottom:-4px}
+.secH a{color:var(--accent);font-weight:400;font-size:11px;text-decoration:none}
+/* 材质行：缩略图 + 名字 + 规格 + 状态 + ▸ */
+.mrow{display:flex;align-items:center;gap:10px;width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--panel2);text-align:left;cursor:pointer;min-height:46px}
+.mrow:hover{border-color:var(--muted)}
+.mrow.open{background:var(--sel-bg);border-color:var(--accent-line);box-shadow:inset 3px 0 0 var(--accent)}
+.mrow .mt{width:var(--mat-thumb);height:var(--mat-thumb);border-radius:6px;border:1px solid var(--sw-line);flex:none;background-size:cover}
+.mrow .mt.none{background:repeating-linear-gradient(45deg,transparent 0 4px,rgba(255,255,255,.07) 4px 5px);}
+.mrow .mx{flex:1;min-width:0}
+.mrow .lb{display:block;font-size:11px;color:var(--muted)}
+.mrow .nm{display:block;font-size:var(--fs-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mrow .sp{display:block;font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mrow .st{font-size:10.5px;padding:1px 6px;border-radius:9px;border:1px solid var(--line);color:var(--muted);white-space:nowrap}
+.mrow .st.own{border-color:var(--accent-line);color:var(--accent)}
+.mrow .go{color:var(--muted);font-size:12px}
+.sub{display:flex;flex-direction:column;gap:6px;padding:2px 0 2px 8px;border-left:2px solid var(--line);margin-left:6px}
+.sub .irow>.il{width:40px}
+.irow{display:flex;align-items:center;gap:8px;font-size:var(--fs-2)}
+.irow>.il{width:56px;flex:none;color:var(--muted);font-size:var(--fs-1)}
+.num{width:58px;height:26px;background:var(--field-bg);border:1px solid var(--line);border-radius:6px;color:var(--text);padding:0 6px;font-size:var(--fs-2)}
+.unit{color:var(--muted);font-size:var(--fs-1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.sel{flex:none;white-space:nowrap;height:26px;background:var(--panel2);border:1px solid var(--line);border-radius:6px;color:var(--text);padding:0 8px;font-size:var(--fs-2);display:inline-flex;align-items:center;gap:6px}
+/* 小图示单选（洗手台 / 马桶 / 淋浴 / 浴缸 / 门板 / 窗格 / 帘型 / 柜门） */
+.icons{display:grid;gap:5px}
+.icons.c5{grid-template-columns:repeat(5,1fr)} .icons.c4{grid-template-columns:repeat(4,1fr)} .icons.c3{grid-template-columns:repeat(3,1fr)} .icons.c2{grid-template-columns:repeat(2,1fr)}
+.ic{border:1px solid var(--line);border-radius:7px;background:var(--field-bg);padding:5px 2px 4px;display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;min-width:0}
+.ic svg{width:30px;height:30px;stroke:#cfc8bc;fill:none;stroke-width:1.4}
+.ic span{font-size:10.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.ic.on{background:var(--sel-bg);border-color:var(--accent-line)}
+.ic.on svg{stroke:var(--accent)}
+.ic.on span{color:var(--sel-text)}
+.ic:disabled{opacity:.35}
+/* 一排色块（≤ 8 个时直接放在检视面板里） */
+.swRow{display:flex;gap:5px;flex-wrap:nowrap}
+.swRow i{width:24px;height:24px;border-radius:6px;border:1px solid var(--sw-line);display:block;position:relative;flex:none;background-size:cover}
+.swRow i.on{box-shadow:0 0 0 2px var(--panel),0 0 0 4px var(--accent)}
+.swRow i.more{background:conic-gradient(#e06c5a,#e0b341,#5cbf72,#5f9fd9,#a47ad9,#e06c5a)}
+.swRow.big i{width:34px;height:34px}
+.note{font-size:var(--fs-1);line-height:1.55;padding:7px 9px;border-radius:var(--r-1)}
+.note.info{background:var(--panel2);border:1px solid var(--line);color:var(--muted)}
+.note.warn{background:var(--warn-bg);border:1px solid var(--warn-line);color:var(--warn)}
+.note.danger{background:var(--danger-soft);border:1px solid var(--danger-line);color:var(--danger)}
+.link{color:var(--accent);font-size:var(--fs-1);background:none;border:none;text-align:left;padding:0;cursor:pointer}
+.wallList{display:flex;flex-direction:column;gap:2px}
+.wallList div{display:flex;align-items:center;gap:8px;font-size:var(--fs-1);padding:4px 6px;border-radius:6px}
+.wallList div:hover{background:var(--panel2)}
+.wallList i{width:16px;height:16px;border-radius:4px;border:1px solid var(--sw-line);display:block}
+.wallList .x{margin-left:auto;color:var(--muted)}
+.actions{display:flex;gap:8px;border-top:1px solid var(--line);padding-top:10px}
+</style>
+</head>
+<body>
+<div id="topbar">
+  <span class="brand">MiniDen</span><span class="vsep"></span>
+  <div id="modeSeg"><button>摆家具</button><button class="on">装修</button><button>改户型</button></div>
+  <span class="vsep"></span>
+  <div class="seg"><button class="on">2D 平面</button><button>3D 俯瞰</button><button>室内</button></div>
+  <div class="seg"><button>↶ 撤销</button><button style="opacity:.4">↷ 重做</button></div>
+  <div class="spacer"></div>
+  <span style="font-size:12px;color:var(--muted)">● 已自动保存</span>
+  <button class="btn ghost">文件 ▾</button><button class="btn ghost" style="width:32px;justify-content:center">⚙</button><button class="btn ghost" style="width:32px;justify-content:center">?</button>
+</div>
+<div id="modebar">
+  <div class="tools"><button class="on">选择</button><button>放洁具</button><button>画台面</button></div>
+  <span class="mbLbl" id="mbLbl">点地板选房间 · 点墙边选这面墙 · 点门窗洁具选中它</span>
+  <div class="spacer"></div>
+  <button class="btn primary">完成 <span class="kbd">Esc</span></button>
+</div>
+
+<div id="main">
+  <div class="left" id="catalog">
+    <!-- 装修左栏（S25 的 #decoPanel，房间行加 3 个小色块） -->
+    <div id="decoPanel">
+      <div class="panelHead"><span class="ttl">装修</span><button class="xbtn">收起 ◂</button></div>
+      <div class="panelHead" style="padding-top:2px"><span class="ttl">房间 · 一层</span><span style="font-size:10.5px;color:var(--muted)">地 · 墙 · 砖</span></div>
+      <div id="dpRooms"></div>
+      <div class="panelHead" style="margin-top:8px"><span class="ttl">房子自带 · 放到平面图上</span></div>
+      <div class="placeGrid" id="placeGrid"></div>
+      <div style="padding:8px 12px"><button class="btn" style="width:100%;justify-content:center">⌐ 画台面 / 橱柜（沿墙点折线）</button></div>
+      <div style="padding:0 12px;font-size:11px;color:var(--muted);line-height:1.5">放置要在 2D 平面里点位置；选中、换材质在 3D 里也能做。</div>
+    </div>
+    <!-- 材质选择器（新 #matPicker）：盖在左栏上，宽度沿用左栏 -->
+    <div id="picker">
+      <div class="mpHead"><button class="back" title="返回（Esc）">←</button>
+        <div class="ttl"><small id="mpKicker">卧室 1 · 上墙</small><b id="mpTitle">墙面 · 涂料</b></div>
+        <button class="btn sm ghost" title="把这个对象恢复到打开选择器之前的样子（一步撤销）">↺ 还原</button></div>
+      <div class="mpScope" id="mpScope">应用到 <div class="seg sm"><button class="on">这面墙</button><button>整个房间</button></div></div>
+      <div class="mpTools"><input id="mpSearch" placeholder="搜索：名字、规格、颜色"><div class="seg sm" title="网格密度"><button id="dBig" title="大图（名字 + 规格）">▦</button><button id="dSmall" title="小图（只有图）">▪▪</button></div></div>
+      <div class="mpTabs" id="mpTabs"></div>
+      <div class="mpTone" id="mpTone">色调 <button class="chip">浅</button><button class="chip">中</button><button class="chip">深</button><span class="div"></span><button class="chip">暖</button><button class="chip">冷</button></div>
+      <div class="mpBody" id="mpBody"></div>
+      <div class="mpFoot">
+        <div class="readout" id="readout"></div>
+        <div class="mpHelp"><span>悬停 = 预览 · 点击 = 确定</span><span>Esc = 撤回预览并返回</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="stage">
+    <svg viewBox="0 0 795 811" preserveAspectRatio="xMidYMid meet" id="plan"></svg>
+    <div class="ovl" id="crumbs">迷你窝 · 2室2卫 ▾ <span class="sep">›</span> 一层 ▾ <span class="sep">›</span> 方案 1 ▾</div>
+    <div class="ovl" id="legend"><b style="color:var(--text);font-weight:600">墙面色带</b><span><i style="background:#a9b8c2"></i>涂料</span><span><i style="background:repeating-linear-gradient(90deg,#d8cdb9 0 3px,#b9a68b 3px 4px)"></i>墙纸</span><span><i style="background:repeating-linear-gradient(135deg,#f2f1ec 0 2px,#8a8a88 2px 3px)"></i>墙砖</span></div>
+    <div class="ovl" id="hint"></div>
+    <div class="ovl" id="totals">清单 18 件 · <b>US$6,077</b> ›</div>
+  </div>
+
+  <div id="props">
+    <div class="tabs"><div class="tab on">检视</div><div class="tab">清单 <span class="n">18</span></div><button class="xbtn" style="margin:0 0 8px auto">收起 ▸</button></div>
+    <div class="pbody" id="insp"></div>
+  </div>
+</div>
+
+<script>
+/* ===== 数据（与规格 §3、§4 一致） ===== */
+const PAL=[ // 9 个色系，从浅到深
+ ['白',[['纯白','#f7f6f2'],['冷白','#eef0ef'],['奶白','#f3ecdf'],['暖白','#f2efe8'],['象牙白','#efe8da']]],
+ ['米 · 褐',[['米白','#e9e4da'],['燕麦','#dcd6cb'],['亚麻','#d8cdb9'],['灰褐','#c9c0b1'],['驼色','#b9a68b'],['卡其','#a79a7d']]],
+ ['灰',[['浅灰','#cfd1cd'],['云灰','#bfc2c1'],['中灰','#9ea2a1'],['石墨','#6d7072'],['炭灰','#5a5c60']]],
+ ['绿',[['薄荷','#cfe0d4'],['鼠尾草绿','#b9c2b2'],['灰绿','#8fa294'],['橄榄','#8d8f6a'],['墨绿','#4f604f'],['深松绿','#2f3d35']]],
+ ['蓝',[['冰蓝','#d4e0e6'],['雾蓝','#a9b8c2'],['灰蓝','#8a9cab'],['牛仔蓝','#5f7a96'],['石板蓝','#5f7486'],['海军蓝','#2f3e55']]],
+ ['粉 · 陶',[['藕粉','#e6d2ca'],['裸粉','#e3c4b6'],['玫瑰灰','#c9a7a3'],['陶土','#c98c6c'],['砖红','#a65f4a'],['酒红','#6e3a3c']]],
+ ['黄 · 赭',[['奶油黄','#e8d3a6'],['芥末黄','#c9a54a'],['赭石','#b97a45']]],
+ ['紫',[['薰衣草','#cfc7d8'],['灰紫','#8f8199']]],
+ ['深色',[['墨黑','#2b2b2d'],['巧克力','#5a4637']]],
+];
+const ROOMS=[
+ {id:'b1',nm:'卧室 1',x:0,y:0,w:230,h:170,floor:['plank','#d6c0a0',19],fn:'浅色白橡 · 直铺',wall:'#a9b8c2',wn:'雾蓝',tile:null,area:'22.3 m²'},
+ {id:'ba',nm:'卫生间',x:0,y:170,w:230,h:110,floor:['grid','#e2e0da',60],fn:'白色哑光砖 60×60',wall:'#f2efe8',wn:'暖白',tile:'#f2f1ec',area:'14.9 m²'},
+ {id:'b2',nm:'卧室 2',x:0,y:280,w:230,h:150,floor:['plank','#b28c60',19],fn:'跟全屋 · 自然橡木',wall:'#d8cdb9',wn:'墙纸 · 细格纹 亚麻',paper:true,tile:null,area:'18.6 m²'},
+ {id:'lv',nm:'客厅',x:230,y:0,w:330,h:360,floor:['plank','#b28c60',19],fn:'跟全屋 · 自然橡木',wall:'#f2efe8',wn:'暖白',tile:null,area:'52.0 m²'},
+ {id:'kt',nm:'厨房',x:230,y:360,w:330,h:70,floor:['grid','#929290',60],fn:'灰色大板砖 60×120',wall:'#f2efe8',wn:'暖白',tile:'#3a4a5c',area:'6.0 m²'},
+];
+
+/* ===== 程序化缩略图（规格 §7）：统一按真实尺寸画——缩略图代表 120 × 90 cm 的一块 ===== */
+const TH={w:192,h:144,pxcm:1.6};          // 2 倍屏：显示 96 × 72
+const cache=new Map();
+function rng(s){ return ()=>((s=Math.imul(s^s>>>15,1|s)+0x6D2B79F5|0)>>>0)%1000/1000; }
+function shade(hex,k){ const n=parseInt(hex.slice(1),16); let r=n>>16,g=n>>8&255,b=n&255; r=Math.max(0,Math.min(255,r*k)); g=Math.max(0,Math.min(255,g*k)); b=Math.max(0,Math.min(255,b*k)); return `rgb(${r|0},${g|0},${b|0})`; }
+function thumb(kind,c,a,b,seed){
+  const key=[kind,c,a,b,seed].join('|'); if(cache.has(key)) return cache.get(key);
+  const cv=document.createElement('canvas'); cv.width=TH.w; cv.height=TH.h; const g=cv.getContext('2d'); const R=rng(seed||7), P=TH.pxcm;
+  g.fillStyle=c; g.fillRect(0,0,TH.w,TH.h);
+  if(kind==='plank'||kind==='spc'){ const w=(a||19)*P, L=(b||120)*P; let col=0;
+    for(let x=0;x<TH.w;x+=w,col++){ const off=(col%2? L/2 : (col%3? L/3:0));
+      for(let y=-off;y<TH.h;y+=L){ g.fillStyle=shade(c,.9+R()*.2); g.fillRect(x,y,w-1,L-1);
+        g.strokeStyle='rgba(0,0,0,.06)'; for(let k=0;k<4;k++){ g.beginPath(); const xx=x+R()*w; g.moveTo(xx,y); g.lineTo(xx+R()*3,y+L); g.stroke(); } } }
+    g.fillStyle='rgba(0,0,0,.18)'; for(let x=0;x<TH.w;x+=w) g.fillRect(x-1,0,1,TH.h); }
+  else if(kind==='herr'){ const w=(a||9)*P, L=w*6; g.save(); g.translate(TH.w/2,TH.h/2); g.rotate(Math.PI/4);
+    for(let i=-20;i<20;i++) for(let j=-20;j<20;j++){ const x=i*w, y=j*w*2+(i%2?w:0); g.fillStyle=shade(c,.88+R()*.24);
+      if((i+j)%2){ g.fillRect(x,y,w-1,L/3-1);} else { g.fillRect(x,y,L/3-1,w-1);} }
+    g.restore(); }
+  else if(kind==='grid'||kind==='subway'||kind==='subwayS'){ const tw=(a||60)*P, th=(b||a||60)*P;
+    for(let y=0,r=0;y<TH.h+th;y+=th,r++) for(let x=-tw;x<TH.w+tw;x+=tw){ const xo=(kind==='subway'&&r%2)? tw/2:0; g.fillStyle=shade(c,.95+R()*.08); g.fillRect(x+xo,y,tw-1.5,th-1.5); }
+    if(kind!=='grid'||a<30){ g.fillStyle='rgba(255,255,255,.18)'; g.fillRect(0,0,TH.w,2); } }
+  else if(kind==='check'){ const t=30*P; for(let y=0;y<TH.h;y+=t) for(let x=0;x<TH.w;x+=t){ g.fillStyle=((x+y)/t)%2?'#262628':'#e8e6e0'; g.fillRect(x,y,t-1,t-1);} }
+  else if(kind==='hex'){ const r=(a||20)/2*P; g.strokeStyle=shade(c,.7); g.lineWidth=1.5;
+    for(let y=0,k=0;y<TH.h+r*2;y+=r*1.73,k++) for(let x=(k%2?r*1.5:0);x<TH.w+r*3;x+=r*3){ g.beginPath(); for(let i=0;i<6;i++){ const t=Math.PI/3*i; g.lineTo(x+r*Math.cos(t), y+r*Math.sin(t)); } g.closePath(); g.stroke(); } }
+  else if(kind==='marble'){ g.strokeStyle=b||'rgba(90,90,95,.35)'; for(let k=0;k<7;k++){ g.lineWidth=.6+R()*1.6; g.beginPath(); let x=R()*TH.w, y=0; g.moveTo(x,y); while(y<TH.h){ x+=R()*30-12; y+=10+R()*14; g.lineTo(x,y);} g.stroke(); } }
+  else if(kind==='terrazzo'){ for(let k=0;k<160;k++){ g.fillStyle=['#8a8a86','#b9a68b','#5a5c60','#efe8da'][k%4]; g.beginPath(); g.ellipse(R()*TH.w,R()*TH.h,1+R()*3,1+R()*2,R()*3,0,7); g.fill(); } }
+  else if(kind==='noise'||kind==='concrete'){ const img=g.getImageData(0,0,TH.w,TH.h); for(let i=0;i<img.data.length;i+=4){ const n=(R()-.5)*(kind==='noise'?34:18); img.data[i]+=n; img.data[i+1]+=n; img.data[i+2]+=n; } g.putImageData(img,0,0); }
+  else if(kind==='travertine'){ for(let y=0;y<TH.h;y+=3){ g.fillStyle=`rgba(120,95,60,${R()*.12})`; g.fillRect(0,y,TH.w,1+R()*2);} g.fillStyle='rgba(0,0,0,.2)'; g.fillRect(0,TH.h/2,TH.w,1.5); g.fillRect(TH.w/2,0,1.5,TH.h/2); }
+  else if(kind==='encaustic'){ const t=20*P; for(let y=0;y<TH.h;y+=t) for(let x=0;x<TH.w;x+=t){ g.fillStyle='#e9e4da'; g.fillRect(x,y,t-1,t-1); g.fillStyle=b||'#2f3e55'; g.beginPath(); g.moveTo(x+t/2,y+3); g.lineTo(x+t-3,y+t/2); g.lineTo(x+t/2,y+t-3); g.lineTo(x+3,y+t/2); g.fill(); g.fillStyle='#e9e4da'; g.beginPath(); g.arc(x+t/2,y+t/2,t/6,0,7); g.fill(); } }
+  /* 墙纸（幅宽 53 cm 一个周期内画图案） */
+  else if(kind==='wp-stripe'){ for(let x=0;x<TH.w;x+=18){ g.fillStyle=b; g.fillRect(x,0,6,TH.h);} }
+  else if(kind==='wp-grid'){ g.strokeStyle=b; g.lineWidth=1; for(let x=0;x<TH.w;x+=14){ g.beginPath(); g.moveTo(x+.5,0); g.lineTo(x+.5,TH.h); g.stroke(); } for(let y=0;y<TH.h;y+=14){ g.beginPath(); g.moveTo(0,y+.5); g.lineTo(TH.w,y+.5); g.stroke(); } }
+  else if(kind==='wp-geo'){ g.strokeStyle=b; g.lineWidth=1.4; for(let y=0;y<TH.h+30;y+=26) for(let x=0;x<TH.w+30;x+=30){ g.beginPath(); g.moveTo(x,y); g.lineTo(x+15,y+13); g.lineTo(x+30,y); g.stroke(); } }
+  else if(kind==='wp-leaf'){ g.fillStyle=b; for(let k=0;k<26;k++){ const x=R()*TH.w,y=R()*TH.h,rot=R()*3; g.save(); g.translate(x,y); g.rotate(rot); g.beginPath(); g.ellipse(0,0,9,3.5,0,0,7); g.fill(); g.restore(); } }
+  else if(kind==='wp-floral'){ for(let y=8,k=0;y<TH.h;y+=20,k++) for(let x=(k%2?14:4);x<TH.w;x+=24){ g.fillStyle=b; for(let i=0;i<5;i++){ g.beginPath(); g.arc(x+3*Math.cos(i*1.26),y+3*Math.sin(i*1.26),2,0,7); g.fill(); } g.fillStyle='#e8d3a6'; g.beginPath(); g.arc(x,y,1.4,0,7); g.fill(); } }
+  else if(kind==='wp-herr'){ g.strokeStyle=b; g.lineWidth=1.2; for(let x=0;x<TH.w;x+=16) for(let y=0;y<TH.h;y+=10){ g.beginPath(); if((x/16)%2){ g.moveTo(x,y); g.lineTo(x+16,y+8);} else { g.moveTo(x,y+8); g.lineTo(x+16,y);} g.stroke(); } }
+  else if(kind==='wp-scale'){ g.strokeStyle=b; g.lineWidth=1.2; for(let y=0,k=0;y<TH.h+12;y+=10,k++) for(let x=(k%2?10:0);x<TH.w+20;x+=20){ g.beginPath(); g.arc(x,y,10,0,Math.PI); g.stroke(); } }
+  else if(kind==='wp-linen'){ for(let y=0;y<TH.h;y+=2){ g.fillStyle=`rgba(0,0,0,${R()*.06})`; g.fillRect(0,y,TH.w,1);} for(let x=0;x<TH.w;x+=2){ g.fillStyle=`rgba(255,255,255,${R()*.05})`; g.fillRect(x,0,1,TH.h);} }
+  else if(kind==='wood'){ for(let y=0;y<TH.h;y+=2){ g.fillStyle=`rgba(0,0,0,${.03+R()*.08})`; g.fillRect(0,y,TH.w,1); } }
+  else if(kind==='steel'){ const gr=g.createLinearGradient(0,0,TH.w,TH.h); gr.addColorStop(0,'#d7d9da'); gr.addColorStop(.5,'#a9adb0'); gr.addColorStop(1,'#cfd2d4'); g.fillStyle=gr; g.fillRect(0,0,TH.w,TH.h); for(let y=0;y<TH.h;y+=1.5){ g.fillStyle=`rgba(255,255,255,${R()*.08})`; g.fillRect(0,y,TH.w,.7);} }
+  const u=cv.toDataURL('image/jpeg',.85); cache.set(key,u); return u;
+}
+const bg=(t)=>`background-image:url(${t})`;
+
+/* 地面 45 种（现有 20 + 新增 25；★ = 新） */
+const FLOORS={
+ '木地板':[['深烟熏橡木','直铺 17×120','plank','#5e5650',17],['自然橡木','直铺 19×190','plank','#b28c60',19],['浅色白橡','直铺 19×190','plank','#d6c0a0',19],['胡桃木','直铺 19×190','plank','#6a4830',19],['灰洗橡木','直铺 19×190','plank','#988f86',19],
+   ['★ 蜂蜜橡','直铺 19×190','plank','#c4934f',19],['★ 浅灰橡','直铺 19×190','plank','#b5aca0',19],['★ 白蜡','直铺 19×190','plank','#e2d3b8',19],['★ 樱桃木','直铺 19×190','plank','#9a5a3c',19],['★ 柚木','直铺 19×190','plank','#8a6438',19],
+   ['★ 宽板白橡','宽板 22×220','plank','#d9c6a6',22],['★ 窄板胡桃','窄板 10×90','plank','#6f4c33',10],['自然橡木','人字拼 9×54','herr','#b28c60',9],['胡桃木','人字拼 9×54','herr','#6a4830',9],['浅色白橡','鱼骨拼 9×54','herr','#d6c0a0',9],['★ 浅灰橡','人字拼 9×54','herr','#b5aca0',9]],
+ 'SPC':[['仿木纹 SPC','直铺 18×122','spc','#a68664',18],['灰色仿木 SPC','直铺 18×122','spc','#807c78',18],['★ 白橡 SPC','直铺 18×122','spc','#d3bf9f',18],['★ 深胡桃 SPC','直铺 18×122','spc','#5b3f2c',18]],
+ '瓷砖':[['白色哑光砖','60×60','grid','#e2e0da',60],['灰色大板砖','60×120','grid','#929290',60,120],['米色砖','30×30','grid','#d4c4a8',30],['黑白棋盘格','30×30','check','#888',30],['白色六角砖','20','hex','#e8e8e4',20],
+   ['★ 木纹砖','20×120 · 错缝','subway','#b08a62',20,120],['★ 水泥砖','60×60 · 灰','grid','#a3a19c',60],['★ 暖灰砖','80×80','grid','#bdb4a7',80],['★ 黑色哑光砖','60×60','grid','#2e2e30',60],['★ 花砖','20×20','encaustic','#e9e4da',20],['★ 赤陶砖','30×30','grid','#b8693f',30],['★ 赤陶六角','20','hex','#b8693f',20],['★ 马赛克','5×5','grid','#dfe3e2',5]],
+ '石材':[['水磨石','60×60','terrazzo','#d6d2ca'],['白色大理石','60×120','marble','#ecebe6'],['★ 灰纹大理石','卡拉拉风格','marble','#e4e3df'],['★ 黑色大理石','60×120','marble','#262628',0,'rgba(230,230,230,.35)'],['★ 洞石','60×120','travertine','#d9c9ae']],
+ '地毯':[['满铺地毯 · 浅灰','','noise','#a4a29e'],['满铺地毯 · 米色','','noise','#c4b69e'],['★ 深灰','','noise','#5f5f60'],['★ 燕麦','','noise','#cbbfa8'],['★ 蓝灰','','noise','#7f8b96']],
+ '水泥':[['水泥自流平','','concrete','#969490'],['★ 浅灰微水泥','','concrete','#c3c0ba']],
+};
+const TILES={'地铁砖':[['白色地铁砖','7.5×15 · 亮面','subway','#f2f1ec',7.5,15],['白色地铁砖','7.5×30 · 哑光','subway','#ebe8e1',7.5,30],['灰绿地铁砖','7.5×15','subway','#8fa294',7.5,15],['深蓝地铁砖','10×20','subway','#2f3e55',10,20]],
+ '方砖':[['白色方砖','10×10','grid','#f0efea',10],['陶土方砖','15×15','grid','#b97a55',15]],
+ '六角':[['白色六角砖','20','hex','#efefeb',20]],
+ '大板':[['仿大理石大板','60×120','marble','#ecebe6']]};
+const PAPERS=[['素色布纹','wp-linen',[['#e9e4da',''],['#cfd1cd',''],['#b9c2b2','']]],['竖条纹','wp-stripe',[['#f2efe8','#d8cdb9'],['#e9e4da','#a9b8c2'],['#2f3e55','#5f7a96']]],
+ ['细格纹','wp-grid',[['#efe8da','#c9c0b1'],['#d8cdb9','#a79a7d'],['#d4e0e6','#8a9cab']]],['几何','wp-geo',[['#f2efe8','#b9a68b'],['#cfc7d8','#8f8199'],['#2f3d35','#8d8f6a']]],
+ ['叶子','wp-leaf',[['#efe8da','#8fa294'],['#e9e4da','#4f604f'],['#2f3d35','#8fa294']]],['小碎花','wp-floral',[['#f3ecdf','#c9a7a3'],['#e6d2ca','#a65f4a'],['#d4e0e6','#5f7a96']]],
+ ['人字纹','wp-herr',[['#e9e4da','#b9a68b'],['#cfd1cd','#6d7072'],['#d8cdb9','#8d8f6a']]],['鱼鳞 / 扇形','wp-scale',[['#f2efe8','#c9a54a'],['#cfe0d4','#8fa294'],['#e3c4b6','#c98c6c']]]];
+
+/* ===== 小图示（检视面板里的形式选择；和 2D 图例同一套线稿，规格 §5.6） ===== */
+const I={
+ vanity1:'<rect x="4" y="9" width="22" height="13" rx="1.5"/><rect x="8" y="11" width="14" height="8" rx="3"/><circle cx="15" cy="10" r=".9"/>',
+ vanity2:'<rect x="4" y="9" width="22" height="13" rx="1.5"/><ellipse cx="15" cy="15" rx="6" ry="4.5"/><ellipse cx="15" cy="15" rx="4" ry="2.6"/>',
+ vanity3:'<rect x="4" y="9" width="22" height="13" rx="1.5"/><rect x="9" y="12" width="12" height="7" rx="3.5" stroke-dasharray="2 1.5"/>',
+ vanity4:'<line x1="3" y1="7" x2="27" y2="7"/><ellipse cx="15" cy="13" rx="8" ry="6"/><circle cx="15" cy="11" r="2.4"/>',
+ vanity5:'<line x1="3" y1="7" x2="27" y2="7"/><path d="M8 7 h14 v6 a7 7 0 0 1 -14 0 z"/>',
+ toilet1:'<rect x="9" y="4" width="12" height="6" rx="1"/><ellipse cx="15" cy="18" rx="6" ry="8"/>',
+ toilet2:'<path d="M9 4 h12 v5 c0 1 -1 2 -2 2.5 c3 1.5 4 4 4 7.5 a8 8 0 0 1 -16 0 c0 -3.5 1 -6 4 -7.5 c-1 -.5 -2 -1.5 -2 -2.5 z"/>',
+ toilet3:'<line x1="3" y1="7" x2="27" y2="7"/><rect x="9" y="2" width="12" height="5" stroke-dasharray="2 1.5"/><ellipse cx="15" cy="16" rx="6" ry="7.5"/>',
+ shower1:'<rect x="5" y="5" width="20" height="20"/><line x1="5" y1="5" x2="25" y2="25"/><line x1="25" y1="5" x2="5" y2="25"/>',
+ shower2:'<rect x="3" y="8" width="24" height="15"/><line x1="3" y1="8" x2="27" y2="23"/><line x1="27" y1="8" x2="3" y2="23"/>',
+ shower3:'<path d="M5 5 h20 v12 l-8 8 h-12 z"/><circle cx="12" cy="12" r="1.4"/>',
+ shower4:'<path d="M5 5 h20 v8 a12 12 0 0 1 -12 12 h-8 z"/><circle cx="12" cy="12" r="1.4"/>',
+ shower5:'<line x1="5" y1="5" x2="25" y2="5"/><line x1="17" y1="5" x2="17" y2="24" stroke-width="2.2"/><circle cx="10" cy="13" r="1.4"/>',
+ tub1:'<rect x="3" y="8" width="24" height="14" rx="1"/><rect x="6" y="10.5" width="18" height="9" rx="4"/>',
+ tub2:'<ellipse cx="15" cy="15" rx="12" ry="7.5"/><ellipse cx="15" cy="15" rx="9.5" ry="5.2"/>',
+ door1:'<rect x="9" y="3" width="12" height="24"/><circle cx="18.5" cy="15" r=".9"/>',
+ door2:'<rect x="9" y="3" width="12" height="24"/><line x1="9" y1="9" x2="21" y2="9"/><line x1="9" y1="15" x2="21" y2="15"/><line x1="9" y1="21" x2="21" y2="21"/>',
+ door3:'<rect x="9" y="3" width="12" height="24"/><line x1="12" y1="3" x2="12" y2="27"/><line x1="15" y1="3" x2="15" y2="27"/><line x1="18" y1="3" x2="18" y2="27"/>',
+ door4:'<rect x="9" y="3" width="12" height="24"/><rect x="11" y="5" width="8" height="9"/><rect x="11" y="16" width="8" height="9"/>',
+ door5:'<rect x="9" y="3" width="12" height="24"/><rect x="10.5" y="4.5" width="4" height="5"/><rect x="15.5" y="4.5" width="4" height="5"/><rect x="10.5" y="11" width="4" height="6"/><rect x="15.5" y="11" width="4" height="6"/><rect x="10.5" y="18.5" width="4" height="7"/><rect x="15.5" y="18.5" width="4" height="7"/>',
+ mun1:'<rect x="5" y="5" width="20" height="20"/>',
+ mun2:'<rect x="5" y="5" width="20" height="20"/><line x1="15" y1="5" x2="15" y2="25"/><line x1="5" y1="15" x2="25" y2="15"/>',
+ mun3:'<rect x="5" y="5" width="20" height="20"/><line x1="5" y1="11" x2="25" y2="11"/><line x1="11.5" y1="5" x2="11.5" y2="11"/><line x1="18.5" y1="5" x2="18.5" y2="11"/>',
+ mun4:'<rect x="5" y="5" width="20" height="20"/><line x1="11.7" y1="5" x2="11.7" y2="25"/><line x1="18.3" y1="5" x2="18.3" y2="25"/><line x1="5" y1="11.7" x2="25" y2="11.7"/><line x1="5" y1="18.3" x2="25" y2="18.3"/>',
+ cur0:'<rect x="6" y="5" width="18" height="20"/>',
+ cur1:'<line x1="4" y1="4" x2="26" y2="4"/><path d="M5 4 q2 11 0 22 M9 4 q2 11 0 22 M21 4 q-2 11 0 22 M25 4 q-2 11 0 22"/>',
+ cur2:'<line x1="4" y1="4" x2="26" y2="4"/><path d="M5 4 v22 M9 4 v22 M13 4 v22 M17 4 v22 M21 4 v22 M25 4 v22" stroke-opacity=".5"/>',
+ cur3:'<line x1="4" y1="4" x2="26" y2="4"/><path d="M5 4 q2 11 0 22 M25 4 q-2 11 0 22"/><path d="M10 4 v22 M15 4 v22 M20 4 v22" stroke-opacity=".5"/>',
+ cur4:'<rect x="6" y="4" width="18" height="3"/><rect x="7" y="7" width="16" height="10"/>',
+ cur5:'<rect x="6" y="4" width="18" height="2"/><path d="M6 9 h18 M6 12 h18 M6 15 h18 M6 18 h18 M6 21 h18"/>',
+ cur6:'<rect x="6" y="4" width="18" height="2"/><path d="M6 8 h18 M6 10 h18 M6 12 h18 M6 14 h18 M6 16 h18 M6 18 h18" stroke-width="1"/>',
+ cur7:'<rect x="6" y="4" width="18" height="2"/><path d="M6 6 v6 q9 3 18 0 v-6 M6 12 q9 3 18 0 M6 15 q9 3 18 0"/>',
+ cab1:'<rect x="6" y="5" width="18" height="20"/><line x1="15" y1="5" x2="15" y2="25"/><line x1="13" y1="13" x2="13" y2="17"/><line x1="17" y1="13" x2="17" y2="17"/>',
+ cab2:'<rect x="6" y="5" width="18" height="20"/><line x1="15" y1="5" x2="15" y2="25"/><rect x="8" y="7" width="5" height="16"/><rect x="17" y="7" width="5" height="16"/>',
+ cab3:'<rect x="6" y="7" width="18" height="18"/><line x1="15" y1="7" x2="15" y2="25"/><line x1="6" y1="5" x2="24" y2="5" stroke-width="2"/>',
+};
+const ic=(k,t,on,dis)=>`<button class="ic${on?' on':''}"${dis?' disabled':''}><svg viewBox="0 0 30 30">${I[k]}</svg><span>${t}</span></button>`;
+const mrow=(lb,thumbStyle,nm,sp,st,open,cls)=>`<button class="mrow${open?' open':''}"><span class="mt ${cls||''}" style="${thumbStyle}"></span><span class="mx"><span class="lb">${lb}</span><span class="nm">${nm}</span>${sp?`<span class="sp">${sp}</span>`:''}</span>${st?`<span class="st${st.own?' own':''}">${st.t}</span>`:''}<span class="go">${open?'◂':'▸'}</span></button>`;
+const sw=(c,on,more,title)=>`<i title="${title||''}" class="${on?'on':''} ${more?'more':''}" style="${c.startsWith('url')||c.startsWith('background')?c:'background:'+c}"></i>`;
+const seg=(arr,on)=>`<div class="seg sm">${arr.map((t,i)=>`<button class="${i===on?'on':''}">${t}</button>`).join('')}</div>`;
+const irow=(l,html)=>`<div class="irow"><span class="il">${l}</span>${html}</div>`;
+const T=(k,c,a,b,s)=>`background-image:url(${thumb(k,c,a,b,s)})`;
+
+/* ===== 状态 ===== */
+const S=(location.hash||'#room').slice(1);
+const body=document.body;
+const pickStates={wall:1,floor:1,tile:1,paper:1,custom:1};
+if(pickStates[S]) body.classList.add('picking');
+
+/* 左栏：房间行 */
+document.getElementById('dpRooms').innerHTML=ROOMS.map(r=>{
+  const fl=T(r.floor[0],r.floor[1],r.floor[2],null,3);
+  const on=(S==='room'||S==='tile'||S==='vanity'||S==='toilet'||S==='shower'||S==='tub')?r.id==='ba':(S==='paper'?r.id==='b2':(S==='cabinet'?r.id==='kt':r.id==='b1'&&S!=='nosel'&&S!=='door'&&S!=='window'));
+  return `<div class="roomRow${on?' on':''}"><span class="nm">${r.nm}<small>${r.fn} · ${r.area}</small></span><span class="chips3"><i style="${fl}"></i><i style="background:${r.paper?'repeating-linear-gradient(90deg,#d8cdb9 0 3px,#a79a7d 3px 4px)':r.wall}"></i>${r.tile?`<i style="${T('subway',r.tile,7.5,15,2)}"></i>`:'<i class="none"></i>'}</span></div>`; }).join('');
+document.getElementById('placeGrid').innerHTML=[['vanity1','洗手台'],['toilet1','马桶'],['shower1','淋浴'],['tub1','浴缸'],['mun1','镜子']].map(([k,t])=>`<button class="placeBtn"><svg viewBox="0 0 30 30" style="stroke:#cfc8bc;fill:none;stroke-width:1.4">${I[k]}</svg>${t}</button>`).join('');
+
+/* ===== 平面图（含装修模式的墙面色带，calib 不画） ===== */
+(function plan(){
+  const svg=document.getElementById('plan'); let h='<defs>';
+  h+=`<pattern id="hatch" width="4" height="4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="4" height="4" fill="#f2f1ec"/><line x1="0" y1="0" x2="0" y2="4" stroke="#8a8a88" stroke-width="1.2"/></pattern>`;
+  h+=`<pattern id="hatchB" width="4" height="4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="4" height="4" fill="#3a4a5c"/><line x1="0" y1="0" x2="0" y2="4" stroke="#9fb0c4" stroke-width="1.2"/></pattern>`;
+  h+=`<pattern id="paper" width="4" height="4" patternUnits="userSpaceOnUse"><rect width="4" height="4" fill="#d8cdb9"/><rect width="1" height="4" fill="#a79a7d"/></pattern>`;
+  ROOMS.forEach(r=>{ h+=`<pattern id="f${r.id}" width="48" height="36" patternUnits="userSpaceOnUse"><image href="${thumb(r.floor[0],r.floor[1],r.floor[2],null,3)}" width="48" height="36"/></pattern>`; });
+  h+='</defs><g transform="translate(118,150)">';
+  ROOMS.forEach(r=>{ h+=`<rect x="${r.x}" y="${r.y}" width="${r.w}" height="${r.h}" fill="url(#f${r.id})"/>`; });
+  /* 墙面色带：墙的房间一侧，6px 宽（屏幕恒定），涂料 = 实色，墙纸 = 细竖纹，墙砖 = 斜线 */
+  const band=(x,y,w,hh,fill)=>`<rect x="${x}" y="${y}" width="${w}" height="${hh}" fill="${fill}"/>`;
+  const B=6, inn=4.5;
+  ROOMS.forEach(r=>{
+    let base=r.paper?'url(#paper)':r.wall;
+    const isWhite=(r.wall==='#f2efe8'&&!r.paper);
+    const tile=r.tile ? (r.id==='kt'?'url(#hatchB)':'url(#hatch)') : null;
+    const sides=[['n',r.x+inn,r.y+inn,r.w-2*inn,B],['s',r.x+inn,r.y+r.h-inn-B,r.w-2*inn,B],['w',r.x+inn,r.y+inn,B,r.h-2*inn],['e',r.x+r.w-inn-B,r.y+inn,B,r.h-2*inn]];
+    sides.forEach(([sd,x,y,w,hh])=>{
+      let f = tile && (r.id==='ba' || (r.id==='kt' && sd==='n')) ? tile : (isWhite? null : base);
+      if(r.id==='b1' && sd==='n') f = (S==='wall') ? '#4f604f' : '#4f604f';
+      if(f) h+=band(x,y,w,hh,f);
+    });
+  });
+  /* 单面墙选中：卧室 1 上墙（色带外框 + 端点标签） */
+  if(S==='wall'){ h+=`<rect x="${inn-1}" y="${inn-1}" width="${230-2*inn+2}" height="${B+2}" fill="none" stroke="#7fb8ff" stroke-width="2"/><text x="115" y="${inn+B+14}" font-size="10" fill="#7fb8ff" text-anchor="middle" style="paint-order:stroke;stroke:#141210;stroke-width:3px">预览：墨绿（上墙 · 366 cm）</text>`; }
+  if(['room','tile','vanity','toilet','shower','tub'].includes(S)) h+=`<rect x="1" y="171" width="228" height="108" fill="none" stroke="#d9a05b" stroke-width="2.5"/>`;
+  if(S==='floor') h+=`<rect x="1" y="1" width="228" height="168" fill="none" stroke="#7fb8ff" stroke-width="2.5" stroke-dasharray="8 5"/>`;
+  if(S==='paper') h+=`<rect x="1" y="281" width="228" height="148" fill="none" stroke="#d9a05b" stroke-width="2.5"/>`;
+  if(S==='cabinet') h+=`<rect x="231" y="361" width="328" height="68" fill="none" stroke="#d9a05b" stroke-width="2.5"/>`;
+  /* 墙 */
+  h+=`<g stroke="#0c0d0f" stroke-width="9" fill="none"><rect x="0" y="0" width="560" height="430"/><line x1="230" y1="0" x2="230" y2="120"/><line x1="230" y1="165" x2="230" y2="430"/><line x1="0" y1="170" x2="80" y2="170"/><line x1="125" y1="170" x2="230" y2="170"/><line x1="0" y1="280" x2="60" y2="280"/><line x1="105" y1="280" x2="230" y2="280"/><line x1="230" y1="360" x2="330" y2="360"/></g>`;
+  h+=`<g stroke="#7fb8ff" stroke-width="4"><line x1="70" y1="0" x2="160" y2="0"/><line x1="560" y1="110" x2="560" y2="240"/><line x1="90" y1="430" x2="170" y2="430"/></g>`;
+  if(S==='window') h+=`<line x1="560" y1="110" x2="560" y2="240" stroke="#d9a05b" stroke-width="8"/>`;
+  /* 门 */
+  h+=`<g stroke="#e8e4dc" stroke-width="1.6" fill="none"><line x1="230" y1="120" x2="268" y2="146"/><path d="M230 165 A45 45 0 0 1 268 146" stroke-dasharray="3 3" stroke-width="1"/><line x1="80" y1="170" x2="105" y2="205"/></g>`;
+  if(S==='door') h+=`<line x1="230" y1="120" x2="268" y2="146" stroke="#d9a05b" stroke-width="3.5"/>`;
+  /* 卫浴 2D 图例（规格 §5.6）：洗手台（一体柜盆 80）、马桶（分体）、淋浴（方形 90）、浴缸（嵌入 170） */
+  const L=(k,x,y,s,sel,rot)=>`<g transform="translate(${x},${y}) scale(${s})${rot?' rotate('+rot+' 15 15)':''}" stroke="${sel?'#d9a05b':'#3b3a37'}" stroke-width="${1.3/s*1.4}" fill="rgba(240,238,232,.92)">${I[k].replace(/<line /g,'<line ').replace(/fill="none"/g,'')}</g>`;
+  h+=`<g>${L('vanity1',8,172,1.25,S==='vanity')}${L('toilet1',52,170,1.2,S==='toilet')}${L(S==='shower'?'shower3':'shower1',186,174,1.35,S==='shower')}${L('tub1',8,238,2.6,S==='tub')}</g>`;
+  /* 厨房台面 */
+  h+=`<rect x="240" y="400" width="310" height="25" fill="${S==='cabinet'?'#2f3e55':'#6b5d4e'}" stroke="#2a2622"/><rect x="240" y="400" width="310" height="3" fill="#ecebe6"/>`;
+  /* 房间名 */
+  h+=`<g font-size="12" fill="#2a2622" text-anchor="middle" style="paint-order:stroke;stroke:rgba(255,255,255,.55);stroke-width:3px"><text x="115" y="90">卧室 1</text><text x="140" y="232">卫生间</text><text x="115" y="360">卧室 2</text><text x="395" y="190">客厅</text><text x="395" y="385">厨房</text></g>`;
+  h+='</g>'; svg.innerHTML=h;
+})();
+
+/* ===== 检视面板 ===== */
+const insp=document.getElementById('insp'); insp.style.display='flex';
+const curRow=(t)=>t;
+let H='';
+const roomFloor=T('grid','#e2e0da',60,null,3), tileT=T('subway','#f2f1ec',7.5,15,2);
+if(S==='room'||S==='tile'){
+  H=`<div><div class="kicker">房间 · 原有</div><h3>卫生间 · 14.9 m²</h3></div>
+  ${mrow('地面',roomFloor,'白色哑光砖','60 × 60 · 直缝',{t:'单独设置',own:1})}
+  <div class="sub">${irow('铺法',seg(['直缝','错缝 1/2','错缝 1/3'],0))}${irow('方向',seg(['0°','45°','90°','135°'],0))}</div>
+  ${mrow('墙面','background:#f2efe8','暖白','涂料 · 整个房间',null)}
+  ${mrow('墙砖',tileT,'白色地铁砖','7.5 × 15 · 亮面',{t:'整个房间',own:1},S==='tile')}
+  <div class="sub">${irow('高度',seg(['满铺','1.2m','防溅','淋浴'],1))}${irow('铺法',seg(['直缝','错缝 1/2'],1))}</div>
+  <div><div class="secH"><span>这个房间的墙（4）</span><span style="font-weight:400;font-size:11px">点一面 = 单独设置</span></div>
+  <div class="wallList"><div><i style="${tileT}"></i>下墙 · 610 cm · 墙砖满铺<span class="x" style="color:var(--accent)">单独 ✕</span></div><div style="color:var(--muted)">其他 3 面跟房间 ▸</div></div></div>
+  ${irow('窗帘','<span class="sel">卷帘 ▾</span><span class="swRow">'+sw('#f7f6f2',0,0,'窗帘颜色：纯白 ▸')+'</span><span class="unit">纯白 · 1 扇窗</span>')}
+  <div class="note info" style="font-size:11px">全屋地面：自然橡木 · 直铺 <button class="link">改 ▸</button></div>`;
+}
+if(S==='wall'){
+  H=`<button class="link">← 卧室 1（整个房间）</button>
+  <div><div class="kicker">墙面 · 卧室 1</div><h3>上墙 · 366 cm</h3></div>
+  ${mrow('墙面','background:#4f604f','墨绿','涂料 · 只这面墙',{t:'单独设置',own:1},true)}
+  ${mrow('墙砖','','无','跟房间（无）',{t:'跟房间'},false,'none')}
+  <div class="note info">房间其他墙：雾蓝。这面墙单独设置后，改房间的墙面不会影响它。</div>
+  <button class="btn sm" style="align-self:flex-start">清除单独设置（回到跟房间）</button>
+  <div class="note warn" style="font-size:11px">这面墙上有 1 扇窗：窗洞只刷窗台以下和窗顶以上。</div>`;
+}
+if(S==='floor'){
+  H=`<div><div class="kicker">房间 · 原有</div><h3>卧室 1 · 22.3 m²</h3></div>
+  ${mrow('地面',T('plank','#e2d3b8',19,null,3),'白蜡（预览中）','直铺 19 × 190',{t:'单独设置',own:1},true)}
+  <div class="sub">${irow('铺法',seg(['直铺','错缝 1/2','错缝 1/3'],1))}${irow('方向',seg(['0°','45°','90°','135°'],0))}</div>
+  ${mrow('墙面','background:#a9b8c2','雾蓝','涂料 · 整个房间',null)}
+  <div class="wallList"><div><i style="background:#4f604f"></i>上墙· 墨绿<span class="x">✕</span></div></div>
+  ${mrow('墙砖','','无','',null,false,'none')}
+  ${irow('窗帘','<span class="sel">落地帘 ▾</span><span class="swRow">'+sw('#d8cdb9')+'</span><span class="unit">亚麻 · 2 扇窗</span>')}`;
+}
+if(S==='paper'){
+  H=`<div><div class="kicker">房间 · 原有</div><h3>卧室 2 · 18.6 m²</h3></div>
+  ${mrow('地面',T('plank','#b28c60',19,null,3),'自然橡木','直铺 · 跟全屋',{t:'跟全屋'})}
+  ${mrow('墙面',T('wp-grid','#d8cdb9',0,'#a79a7d',1),'墙纸 · 细格纹','亚麻 · 幅宽 53 cm',{t:'整个房间',own:1},true)}
+  ${mrow('墙砖','','无','',null,false,'none')}
+  ${irow('窗帘','<span class="sel">帘 + 纱 ▾</span><span class="swRow">'+sw('#cfd1cd')+'</span><span class="unit">浅灰</span>')}`;
+}
+if(S==='custom'){
+  H=`<div><div class="kicker">门 · 原有</div><h3>平开门 · 宽 80 cm</h3></div>
+  <div class="secH"><span>门板样式</span><span style="font-weight:400">两格框</span></div>
+  <div class="icons c5">${ic('door1','平板')}${ic('door2','横线条')}${ic('door3','竖 V 槽')}${ic('door4','两格框',1)}${ic('door5','六格')}</div>
+  <div class="secH"><span>颜色</span><span style="font-weight:400">自定义 #6e5a8a</span></div>
+  <div class="swRow">${['#f7f6f2','#f2efe8','#cfd1cd','#8fa294','#2b2b2d'].map(c=>sw(c)).join('')}${sw(T('wood','#b48a5a',0,0,4))}${sw(T('wood','#5b3a24',0,0,5))}${sw('#6e5a8a',1,0,'自定义…')}</div>
+  <div class="note info" style="font-size:11px">选择器开着：在左栏调颜色，门在画布上实时变。</div>`;
+}
+if(S==='nosel'){
+  H=`<div><h3>全屋与房间</h3><div class="muted" style="font-size:12px;color:var(--muted);margin-top:4px;line-height:1.6">点平面图上的房间、墙边、门窗、洁具，或者在左边列表里选。</div></div>
+  ${mrow('全屋地面',T('plank','#b28c60',19,null,3),'自然橡木','直铺 19 × 190 · 一层',null)}
+  <div class="note info" style="font-size:11px">没单独设地面的房间都用它：卧室 2、客厅。</div>`;
+}
+if(S==='vanity'){
+  H=`<div><div class="kicker">洗手台 · 自己加的</div><h3>一体柜盆 · 80 cm</h3></div>
+  <div class="secH"><span>形式</span><span style="font-weight:400">一体柜盆</span></div>
+  <div class="icons c5">${ic('vanity1','一体柜盆',1)}${ic('vanity2','台上盆')}${ic('vanity3','台下盆')}${ic('vanity4','立柱盆')}${ic('vanity5','挂墙盆')}</div>
+  ${irow('宽度',seg(['60','80','100','120 双盆'],1))}
+  ${irow('安装',seg(['落地','悬挂'],1))}
+  ${mrow('柜色',T('wood','#b48a5a',0,0,4),'浅木','柜体',null)}
+  ${irow('旋转','<input class="num" value="0"><span class="unit">°</span>')}
+  <div class="note warn" style="font-size:11px">换成 80 cm 后：宽 60 → 80，离门的开启范围 6 cm（黄框）。</div>
+  <div class="actions"><button class="btn danger sm">删除这个洗手台 <span class="kbd">Del</span></button></div>`;
+}
+if(S==='toilet'){
+  H=`<div><div class="kicker">马桶 · 原有</div><h3>分体马桶</h3></div>
+  <div class="secH"><span>形式</span></div>
+  <div class="icons c3">${ic('toilet1','分体',1)}${ic('toilet2','连体')}${ic('toilet3','壁挂')}</div>
+  ${irow('尺寸','<span class="unit">70 × 38 cm · 高 78</span>')}
+  ${irow('旋转','<input class="num" value="0"><span class="unit">°</span>')}
+  <div class="note info" style="font-size:11px">选「壁挂」：水箱藏在墙前的假墙里（厚 12–20 cm），假墙要在 <button class="link">改户型</button> 里画。</div>
+  <div class="actions"><button class="btn danger sm" disabled>原有的洁具不能删</button></div>`;
+}
+if(S==='shower'){
+  H=`<div><div class="kicker">淋浴 · 原有</div><h3>钻石形淋浴房 · 90 × 90</h3></div>
+  <div class="secH"><span>形式</span><span style="font-weight:400">钻石形</span></div>
+  <div class="icons c5">${ic('shower1','方形')}${ic('shower2','矩形')}${ic('shower3','钻石形',1)}${ic('shower4','扇形')}${ic('shower5','一字隔断')}</div>
+  ${irow('尺寸',seg(['90 × 90','100 × 100'],0))}
+  ${irow('旋转','<input class="num" value="0"><span class="unit">°</span>')}
+  <div class="note info" style="font-size:11px">各形式的尺寸档：方形 90 / 100 · 矩形 120×80 / 120×90 · 钻石形、扇形 90 · 一字隔断玻璃宽 90 / 100 / 120。</div>`;
+}
+if(S==='tub'){
+  H=`<div><div class="kicker">浴缸 · 原有</div><h3>嵌入式浴缸 · 170 × 75</h3></div>
+  <div class="secH"><span>形式</span></div>
+  <div class="icons c2">${ic('tub1','嵌入式',1)}${ic('tub2','独立式')}</div>
+  ${irow('尺寸',seg(['150×70','160×70','170×75'],2))}
+  ${irow('旋转','<input class="num" value="0"><span class="unit">°</span>')}`;
+}
+if(S==='door'){
+  H=`<div><div class="kicker">门 · 原有</div><h3>平开门 · 宽 80 cm</h3></div>
+  <div class="secH"><span>门板样式</span><span style="font-weight:400">两格框</span></div>
+  <div class="icons c5">${ic('door1','平板')}${ic('door2','横线条')}${ic('door3','竖 V 槽')}${ic('door4','两格框',1)}${ic('door5','六格')}</div>
+  <div class="secH"><span>颜色</span><span style="font-weight:400">灰绿</span></div>
+  <div class="swRow">${['#f7f6f2','#f2efe8','#cfd1cd'].map(c=>sw(c)).join('')}${sw('#8fa294',1)}${sw('#2b2b2d')}${sw(T('wood','#b48a5a',0,0,4))}${sw(T('wood','#5b3a24',0,0,5))}${sw('',0,1,'自定义…')}</div>
+  ${irow('开启方式',seg(['平开','双开','推拉','折叠'],0))}
+  <button class="link">改门宽、开向 → 改户型</button>`;
+}
+if(S==='window'){
+  H=`<div><div class="kicker">窗 · 原有</div><h3>推拉窗（2 扇）· 宽 152 cm</h3></div>
+  ${irow('开启方式','<span class="sel">推拉（2 扇） ▾</span>')}
+  <div class="secH"><span>窗格</span><span style="font-weight:400">田字</span></div>
+  <div class="icons c4">${ic('mun1','无')}${ic('mun2','田字',1)}${ic('mun3','上部格')}${ic('mun4','殖民地式')}</div>
+  ${irow('窗框','<div class="swRow">'+['#f2f1ec','#17181b','#3a3f45','#b48a5a','#5b3a24'].map((c,i)=>sw(c,i===1)).join('')+'</div>')}
+  ${irow('玻璃',seg(['透明','磨砂'],0))}
+  <div class="secH"><span>窗帘 / 百叶（只改这一扇）</span><span style="font-weight:400">罗马帘</span></div>
+  <div class="icons c4">${ic('cur0','不挂')}${ic('cur1','落地帘')}${ic('cur2','纱帘')}${ic('cur3','帘 + 纱')}${ic('cur4','卷帘')}${ic('cur5','木百叶')}${ic('cur6','铝百叶')}${ic('cur7','罗马帘',1)}</div>
+  ${mrow('帘子颜色','background:#a9b8c2','雾蓝','布料 16 色',null)}
+  <button class="link">换到另一侧</button>`;
+}
+if(S==='cabinet'){
+  H=`<div><div class="kicker">台面 / 橱柜 · 原有</div><h3>台面 · 3 段 · 深 60</h3></div>
+  ${mrow('柜门颜色','background:#2f3e55','海军蓝','柜体常用 9 色',null)}
+  <div class="secH"><span>门板样式</span><span style="font-weight:400">两格框</span></div>
+  <div class="icons c3">${ic('cab1','平板')}${ic('cab2','两格框',1)}${ic('cab3','无把手')}</div>
+  <div class="secH"><span>台面</span><span style="font-weight:400">白色石英</span></div>
+  <div class="swRow big">${sw(T('noise','#efeeea',0,0,9),1,0,'白色石英')}${sw(T('marble','#ecebe6',0,0,3),0,0,'大理石纹')}${sw(T('noise','#2a2a2c',0,0,4),0,0,'黑色哑光')}${sw(T('concrete','#a3a19c',0,0,6),0,0,'水泥灰')}${sw(T('wood','#b48a5a',0,0,4),0,0,'实木')}${sw(T('steel','#ccc',0,0,2),0,0,'不锈钢')}</div>
+  ${irow('深度','<input class="num" value="60"><span class="unit">cm</span>')}
+  ${irow('台面高','<input class="num" value="90"><span class="unit">cm</span>')}
+  ${irow('放模块','<span class="sel">不放 ▾</span>')}`;
+}
+insp.innerHTML=H;
+
+/* ===== 选择器内容 ===== */
+const mp={tabs:document.getElementById('mpTabs'),body:document.getElementById('mpBody'),ro:document.getElementById('readout'),title:document.getElementById('mpTitle'),kick:document.getElementById('mpKicker'),scope:document.getElementById('mpScope'),tone:document.getElementById('mpTone')};
+const recent=(arr)=>`<div class="mpSec"><span>最近用过</span></div><div class="strip">${arr.map(s=>`<span class="t" style="${s}"></span>`).join('')}</div>`;
+const used=(arr)=>`<div class="mpSec"><span>这套房子已用</span><span style="font-weight:400">按次数</span></div><div class="strip">${arr.map(([s,n])=>`<span class="t" style="${s}"><b class="cnt">×${n}</b></span>`).join('')}</div>`;
+const tile=(st,nm,sp,on,hov)=>`<button class="tile${on?' on':''}${hov?' hov':''}"><span class="th" style="${st}"></span><span class="nm">${nm}</span><span class="sp">${sp||''}</span></button>`;
+const chips=(arr,on)=>arr.map((t,i)=>`<button class="chip${i===on?' on':''}">${t}</button>`).join('');
+const dens=(big)=>{ document.getElementById(big?'dBig':'dSmall').classList.add('on'); };
+if(S==='wall'||S==='custom'){
+  mp.kick.textContent= S==='wall' ? '卧室 1 · 上墙' : '卫生间门';
+  mp.title.textContent= S==='wall' ? '墙面 · 涂料' : '门的颜色';
+  if(S==='custom') mp.scope.style.display='none';
+  mp.tabs.innerHTML= S==='wall' ? chips(['涂料 42','墙纸 24'],0) : chips(['门常用 8','全部色板 42'],1);
+  dens(false);
+  let pal='<div class="pal">';
+  PAL.forEach(([fam,cs])=>{ pal+=`<span class="fam">${fam}</span>`; for(let i=0;i<6;i++){ const c=cs[i]; pal+= c ? `<i title="${c[0]}" style="background:${c[1]}" class="${S==='wall'&&c[0]==='雾蓝'?'on':''} ${S==='wall'&&c[0]==='墨绿'?'hov':''}"></i>` : (fam==='深色'&&i===2 ? '<i class="plus" title="自定义颜色…"></i>' : '<span></span>'); } });
+  pal+='</div>';
+  mp.body.innerHTML = recent(['background:#4f604f','background:#a9b8c2','background:#f2efe8','background:#d8cdb9','background:#2f3e55']) + used([['background:#f2efe8',3],['background:#a9b8c2',1],['background:#4f604f',1]]) + '<div class="mpSec"><span>公共色板 · 9 个色系</span><span style="font-weight:400">从浅到深</span></div>' + pal +
+    (S==='custom' ? `<div class="custom"><div class="lbl"><b style="color:var(--text)">自定义颜色</b><span>会进「最近用过」</span></div>
+      <div class="lbl"><span>色相</span><span>268°</span></div><div class="bar" style="background:linear-gradient(90deg,#e06c5a,#e0b341,#5cbf72,#5fc4d9,#5f7ad9,#a47ad9,#e06c5a)"><i style="left:74%;background:#7d5fb0"></i></div>
+      <div class="lbl"><span>浓淡</span><span>32%</span></div><div class="bar" style="background:linear-gradient(90deg,#8a858f,#6e3ab0)"><i style="left:32%;background:#6e5a8a"></i></div>
+      <div class="lbl"><span>明暗</span><span>45%</span></div><div class="bar" style="background:linear-gradient(90deg,#1a1520,#6e5a8a,#f4f0f8)"><i style="left:45%;background:#6e5a8a"></i></div>
+      <div class="row"><span class="mt" style="width:28px;height:28px;border-radius:6px;background:#6e5a8a;display:block;border:1px solid var(--sw-line)"></span><input value="#6E5A8A"><span style="flex:1"></span><button class="btn sm primary">用这个颜色</button></div></div>` : '');
+  mp.ro.innerHTML = S==='wall' ? `<i style="background:#4f604f"></i><span><b>墨绿</b> · 绿 · #4f604f</span><span class="tag">预览中</span>` : `<i style="background:#6e5a8a"></i><span><b>自定义</b> · #6e5a8a</span><span class="tag">预览中</span>`;
+}
+if(S==='floor'){
+  mp.kick.textContent='卧室 1'; mp.title.textContent='地面'; mp.scope.style.display='none';
+  mp.tabs.innerHTML=chips(['全部 45','木地板 16','SPC 4','瓷砖 13','石材 5','地毯 5','水泥 2'],1);
+  dens(true);
+  const F=FLOORS['木地板'];
+  mp.body.innerHTML= recent([T('plank','#d6c0a0',19,null,3),T('grid','#e2e0da',60,null,3),T('plank','#b28c60',19,null,3)]) + used([[T('plank','#b28c60',19,null,3),3],[T('grid','#e2e0da',60,null,3),1],[T('grid','#929290',60,120,3),1],[T('plank','#d6c0a0',19,null,3),1]]) +
+    '<div class="mpSec"><span>木地板 · 16</span><span style="font-weight:400">★ = 新增</span></div><div class="grid">'+F.slice(0,12).map((f,i)=>tile(T(f[2],f[3],f[4],null,3+i),f[0].replace('★ ',''),f[1],f[0]==='浅色白橡',f[0]==='★ 白蜡')).join('')+'</div>';
+  mp.ro.innerHTML=`<i style="${T('plank','#e2d3b8',19,null,10)}"></i><span><b>白蜡</b> · 直铺 19 × 190 cm</span><span class="tag">预览中</span>`;
+}
+if(S==='tile'){
+  mp.kick.textContent='卫生间 · 整个房间'; mp.title.textContent='墙砖'; mp.scope.innerHTML='应用到 <div class="seg sm"><button disabled>这面墙</button><button class="on">整个房间</button></div><span style="font-size:11px">（先选一面墙才能只贴那面）</span>';
+  mp.tabs.innerHTML=chips(['全部 8','地铁砖 4','方砖 2','六角 1','大板 1','不贴'],0);
+  dens(true);
+  const all=[]; Object.values(TILES).forEach(a=>a.forEach(t=>all.push(t)));
+  mp.body.innerHTML= recent([T('subway','#f2f1ec',7.5,15,2)]) + used([[T('subway','#f2f1ec',7.5,15,2),1],[T('subway','#2f3e55',10,20,2),1]]) +
+    '<div class="mpSec"><span>全部墙砖 · 8</span></div><div class="grid">'+all.map((t,i)=>tile(T(t[2],t[3],t[4],t[5],2+i),t[0],t[1],i===0,false)).join('')+'</div>'+
+    '<div class="note info" style="margin-top:10px;font-size:11px">高度、铺法在右边检视面板里设：满铺 / 1.2 m / 防溅区 / 淋浴区 · 直缝 / 错缝 1/2。</div>';
+  mp.ro.innerHTML=`<i style="${T('subway','#f2f1ec',7.5,15,2)}"></i><span><b>白色地铁砖</b> · 7.5 × 15 亮面</span>`;
+}
+if(S==='paper'){
+  mp.kick.textContent='卧室 2 · 整个房间'; mp.title.textContent='墙面 · 墙纸'; mp.scope.innerHTML='应用到 <div class="seg sm"><button disabled>这面墙</button><button class="on">整个房间</button></div>';
+  mp.tabs.innerHTML=chips(['涂料 42','墙纸 24'],1);
+  dens(true);
+  let g=''; PAPERS.forEach(([nm,k,cw],pi)=>{ g+=`<div class="mpSec" style="margin:8px 0 4px;font-weight:400"><span style="color:var(--text)">${nm}</span><span>3 组色</span></div><div class="grid small" style="grid-template-columns:repeat(3,1fr)">`; cw.forEach(([c1,c2],ci)=>{ g+=tile(T(k,c1,0,c2,pi*3+ci+1).replace('background-image','background-image'),'','', nm==='细格纹'&&ci===1, false).replace('class="th"','class="th" style="aspect-ratio:2/1;'+T(k,c1,0,c2,pi*3+ci+1)+'"'); }); g+='</div>'; });
+  mp.body.innerHTML= recent([T('wp-grid','#d8cdb9',0,'#a79a7d',4)]) + '<div class="mpSec"><span>墙纸 · 8 种图案 × 3 组色</span><span style="font-weight:400">每行一种图案</span></div>' + g;
+  mp.ro.innerHTML=`<i style="${T('wp-grid','#d8cdb9',0,'#a79a7d',4)}"></i><span><b>细格纹</b> · 亚麻 · 幅宽 53 cm</span>`;
+}
+
+/* 提示行 */
+const hints={room:'<b>卫生间</b> · 14.9 m² · 墙砖 1.2 m · 下墙单独满铺 ｜ 点墙边 = 只改那面墙',wall:'<b>上墙</b> · 卧室 1 · 预览：墨绿 ｜ 点 = 确定 · Esc = 撤回',floor:'<b>卧室 1</b> · 预览：白蜡 ｜ 移开鼠标 = 恢复浅色白橡',tile:'<b>卫生间</b> · 墙砖：白色地铁砖 · 1.2 m',paper:'<b>卧室 2</b> · 墙纸：细格纹 亚麻',custom:'<b>门</b> · 预览：自定义 #6e5a8a',vanity:'<b>洗手台</b> · 一体柜盆 80 · 悬挂 ｜ 拖 = 移动 · 方向键 = 微调',toilet:'<b>原有的马桶</b> · 分体 ｜ 拖 = 移动',shower:'<b>淋浴</b> · 钻石形 90 × 90 ｜ 拖 = 移动',tub:'<b>浴缸</b> · 嵌入式 170 × 75',door:'<b>门</b> · 两格框 · 灰绿',window:'<b>窗</b> · 田字格 · 罗马帘 雾蓝',cabinet:'<b>台面</b> · 海军蓝两格框 · 白色石英',nosel:'点房间 · 点墙边 · 点门窗洁具'};
+document.getElementById('hint').innerHTML=hints[S]||'';
+if(!['room','wall','tile','paper','floor','nosel'].includes(S)) document.getElementById('legend').style.display='none';
+</script>
+</body>
+</html>
