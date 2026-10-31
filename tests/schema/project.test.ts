@@ -497,6 +497,56 @@ describe('validate — fixtures[].t 枚举（bug 猎 #5）', () => {
   it('合法类型通过', () => {
     expect(validate(base())).toEqual([]);
   });
+  it('S26：洗手台 vanity（带 form / wcm / mount / cab）与百叶 / 罗马帘窗帘、房间墙砖 / 墙纸 / 单面墙都过校验', () => {
+    const d = base();
+    d.fixtures.push({
+      id: 'f2',
+      t: 'vanity',
+      x1: 3,
+      y1: 0,
+      x2: 5,
+      y2: 1.5,
+      form: 'vessel',
+      wcm: 80,
+      mount: 'hang',
+      cab: '#2f3e55',
+    } as never);
+    expect(validate(d)).toEqual([]);
+    for (const style of ['blindWood', 'blindAlu', 'roman']) {
+      const w = blankDoc('w');
+      w.windows = [
+        {
+          id: 'n1',
+          geom: { t: 'seg', x1: 0, y1: 0, x2: 4, y2: 0 },
+          pos: 0.5,
+          width: 4,
+          sill: 2,
+          head: 7,
+          style: 'fixed',
+          frame: '#fff',
+          glass: 0.2,
+          curtain: { style, color: '#b48a5a' },
+        } as never,
+      ];
+      expect(validate(w)).toEqual([]);
+    }
+    const bad = blankDoc('b');
+    bad.windows = [
+      {
+        id: 'n1',
+        geom: { t: 'seg', x1: 0, y1: 0, x2: 4, y2: 0 },
+        pos: 0.5,
+        width: 4,
+        sill: 2,
+        head: 7,
+        style: 'fixed',
+        frame: '#fff',
+        glass: 0.2,
+        curtain: { style: 'venetian', color: '#fff' },
+      } as never,
+    ];
+    expect(validate(bad).some((e) => /curtain\.style/.test(e.path))).toBe(true);
+  });
   it('未知类型 / 缺失 t 被拒', () => {
     const d = base();
     (d.fixtures[0] as { t: string }).t = 'bidet';

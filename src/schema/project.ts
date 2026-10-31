@@ -74,8 +74,17 @@ export interface Window {
 }
 
 /** S21 窗帘款式：drape 落地帘（两侧收拢的双幅）· sheer 纱帘（整幅半透）· drapeSheer 落地帘 + 纱帘 · roller 卷帘（盖住上半截玻璃） */
-export type CurtainStyle = 'drape' | 'sheer' | 'drapeSheer' | 'roller';
-export const CURTAIN_STYLES: CurtainStyle[] = ['drape', 'sheer', 'drapeSheer', 'roller'];
+/** S26e：+ blindWood 木百叶 · blindAlu 铝百叶 · roman 罗马帘 */
+export type CurtainStyle = 'drape' | 'sheer' | 'drapeSheer' | 'roller' | 'blindWood' | 'blindAlu' | 'roman';
+export const CURTAIN_STYLES: CurtainStyle[] = [
+  'drape',
+  'sheer',
+  'drapeSheer',
+  'roller',
+  'blindWood',
+  'blindAlu',
+  'roman',
+];
 export interface Curtain {
   style: CurtainStyle;
   color: string; // #hex
