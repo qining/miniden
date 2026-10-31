@@ -13565,6 +13565,31 @@ async function runPBTest() {
           ' · 浴缸图示不空=' +
           icons
       );
+      /* QA R3-1：3D → 2D 回来，色带图例要跟着回来（不等重画） */
+      for (const [a, b, c, d] of [
+        [40, 40, 50, 40],
+        [50, 40, 50, 48],
+        [50, 48, 40, 48],
+        [40, 48, 40, 40],
+      ])
+        pushUserWall(a, b, c, d, 'w', cmToWd(12));
+      geoChanged();
+      const lgRoom = pickRoomAt(45, 44);
+      if (lgRoom) lgRoom.wallColor = '#b9c2b2';
+      geoChanged();
+      await tick();
+      const lg = () => !!Q('#bandLegend') && Q('#bandLegend').style.display !== 'none';
+      const lg2a = lg();
+      setView('3d');
+      await tick();
+      const lg3 = lg();
+      setView('2d');
+      await tick();
+      T(
+        'pb-s26-qa3-legend-back-2d',
+        !!lgRoom && lg2a && !lg3 && lg(),
+        '房间=' + !!lgRoom + ' · 2D=' + lg2a + ' · 3D=' + lg3 + ' · 回 2D=' + lg()
+      );
       setWallEdit(false);
       await tick();
       Q('#btnPlanDel').click();
