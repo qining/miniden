@@ -7263,8 +7263,11 @@ async function runPBTest() {
       Q('#wWinCurtain').click();
       await tick();
       const s3 = winE().curtain.style;
-      Q('#wWinCurtain').click();
-      await tick();
+      for (let i = 0; i < 4; i++) {
+        // S26e：卷帘之后还有木百叶 / 铝百叶 / 罗马帘，再一下才回到无
+        Q('#wWinCurtain').click();
+        await tick();
+      }
       const none = !winE().curtain && Q('#wWinCurtain').textContent === '窗帘：无';
       T(
         'pb-wc-window-cycle',
@@ -7295,7 +7298,7 @@ async function runPBTest() {
       );
 
       /* 27.5 撤销回到「落地帘 + 墙色」那一步；导出再导入：窗帘与墙色原样带过去、过校验 */
-      for (let i = 0; i < 6; i++) undoStep();
+      for (let i = 0; i < 9; i++) undoStep(); // S26e：循环多了 3 种帘型（百叶 ×2、罗马帘）= 多 3 步
       await tick();
       const backOk = winE().curtain && winE().curtain.style === 'drape' && room().wallColor === '#b9c2b2';
       const json = exportDocJSON();
@@ -7305,7 +7308,7 @@ async function runPBTest() {
       T(
         'pb-wc-undo-export',
         backOk && imp.errs.length === 0 && !!iw && iw.curtain.color === '#3b4250' && !!ir && ir.wallColor === '#b9c2b2',
-        '撤销 6 步回到落地帘 + 墙色=' +
+        '撤销 9 步回到落地帘 + 墙色=' +
           !!backOk +
           ' · 导入校验错 ' +
           imp.errs.length +
@@ -13246,6 +13249,138 @@ async function runPBTest() {
         'pb-s26d-clean-exit',
         PLAN_ID !== p53Plan && PLAN_REG.plans.length === p53Plans,
         'plans ' + p53Plans + '→' + PLAN_REG.plans.length
+      );
+    }
+
+    /* ===== 54. S26e 门 / 窗 / 橱柜的外观：旧深木门 = 胡桃；门板 / 颜色写进门实体；窗格 / 百叶（颜色 3 格、布料行与换侧消失）；柜门色 / 门板 / 台面 ===== */
+    {
+      await pbReset();
+      if (wallEdit.on) setWallEdit(false);
+      await tick();
+      const p54Plans = PLAN_REG.plans.length;
+      Q('#btnPlanNew').click();
+      await tick();
+      const p54Plan = PLAN_ID;
+      const fp = floorPts();
+      const X =
+          Math.min.apply(
+            null,
+            fp.map((p) => p[0])
+          ) + 1,
+        Y =
+          Math.min.apply(
+            null,
+            fp.map((p) => p[1])
+          ) + 1;
+      const wd = cmToWd(15);
+      pushUserWall(X, Y, X + 4, Y, 'w', wd);
+      const win = pushUserWindow(X + 4, Y, X + 8, Y, wd);
+      pushUserWall(X + 8, Y, X + 12, Y, 'w', wd);
+      pushUserWall(X + 12, Y, X + 12, Y + 10, 'w', wd);
+      pushUserWall(X + 12, Y + 10, X + 7, Y + 10, 'w', wd);
+      pushUserWall(X + 7, Y + 10, X + 4, Y + 10, 'd', wd);
+      const door = pushUserDoor(X + 4, Y + 10, X + 7, Y + 10);
+      pushUserWall(X + 4, Y + 10, X, Y + 10, 'w', wd);
+      pushUserWall(X, Y + 10, X, Y, 'w', wd);
+      door.dark = true; // 旧档的深木色门
+      geoChanged();
+      fit2DToContent();
+      await tick();
+      enterArea('deco');
+      wallEdit.sel = { kind: 'door', id: door.id };
+      updateWallBarFromSel();
+      await tick();
+      const walnutSel = Q('#dColorRow .sw[data-v="wood:walnut"]').getAttribute('aria-checked') === 'true';
+      const u0 = undoRing.length;
+      Q('#dPanelIcons .ic[data-v="shaker"]').click();
+      await tick();
+      Q('#dColorRow .sw[data-v="#8fa294"]').click();
+      await tick();
+      const d1 = entById(door.id);
+      T(
+        'pb-s26e-door-look',
+        walnutSel && d1.panel === 'shaker' && d1.color === '#8fa294' && !d1.dark && undoRing.length === u0 + 2,
+        '旧深木门显示成胡桃=' +
+          walnutSel +
+          ' · 门板 ' +
+          d1.panel +
+          ' · 颜色 ' +
+          d1.color +
+          ' · 撤销 +' +
+          (undoRing.length - u0)
+      );
+      /* 54.2 窗：窗格；选木百叶 → 颜色一排 3 格、布料行和「换到另一侧」消失；颜色写进 curtain */
+      wallEdit.sel = { kind: 'w', id: win.id };
+      updateWallBarFromSel();
+      await tick();
+      Q('#wMuntinIcons .ic[data-v="cross"]').click();
+      await tick();
+      Q('#wCurtainIcons .ic[data-v="blindWood"]').click();
+      await tick();
+      const vis = (sel) => {
+        const e = Q(sel);
+        return !!e && e.offsetParent !== null && getComputedStyle(e).display !== 'none';
+      };
+      const w1 = entById(win.id);
+      const blindUI =
+        vis('#wBlindColor') &&
+        Q('#wBlindColor').querySelectorAll('.sw').length === 3 &&
+        !vis('#mrWinCurtainC') &&
+        !vis('#wWinCurtainSide');
+      Q('#wBlindColor .sw:nth-child(3)').click();
+      await tick();
+      const w2 = entById(win.id);
+      T(
+        'pb-s26e-window-muntin-blind',
+        w1.muntin === 'cross' &&
+          w2.curtain &&
+          w2.curtain.style === 'blindWood' &&
+          w2.curtain.color === '#5b3a24' &&
+          blindUI &&
+          SCHEMA.Project.validate(DOC).length === 0,
+        '窗格 ' + w1.muntin + ' · 帘 ' + JSON.stringify(w2.curtain) + ' · 百叶 3 格 / 布料行与换侧消失=' + blindUI
+      );
+      /* 54.3 橱柜：柜门色 / 门板 / 台面 */
+      DOC.runs = DOC.runs || [];
+      const run = {
+        id: 'rn54',
+        path: [
+          [X + 1, Y + 0.3],
+          [X + 4, Y + 0.3],
+        ],
+        depth: 2,
+        topH: 2.95,
+        src: 'user',
+      };
+      DOC.runs.push(run);
+      geoChanged();
+      wallEdit.sel = { kind: 'run', id: 'rn54' };
+      updateWallBarFromSel();
+      await tick();
+      Q('#runDoorIcons .ic[data-v="shaker"]').click();
+      await tick();
+      Q('#runTopRow .sw[data-v="marble"]').click();
+      await tick();
+      Q('#mrRunDoor').click();
+      await tick();
+      mpPick('#2f3e55');
+      mpClose();
+      const r1 = DOC.runs.find((q) => q.id === 'rn54');
+      T(
+        'pb-s26e-run-look',
+        r1.panel === 'shaker' && r1.top === 'marble' && r1.door === '#2f3e55',
+        '门板 ' + r1.panel + ' · 台面 ' + r1.top + ' · 柜门 ' + r1.door
+      );
+      setWallEdit(false);
+      await tick();
+      Q('#btnPlanDel').click();
+      await tick();
+      Q('#btnPlanDel').click();
+      await tick();
+      T(
+        'pb-s26e-clean-exit',
+        PLAN_ID !== p54Plan && PLAN_REG.plans.length === p54Plans,
+        'plans ' + p54Plans + '→' + PLAN_REG.plans.length
       );
     }
 
