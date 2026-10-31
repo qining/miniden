@@ -507,6 +507,8 @@ export interface ProjectDoc {
   runs?: Run[]; // S12：台面/柜体 run（纯增量可选字段，不进投影）
   outlets?: Outlet[]; // S14：电源插座（纯增量可选字段，不进投影）
   floorMat?: string; // S16：整层的缺省地板（预设 id；缺省 = 应用自己的默认木地板）
+  /** S26：户型自带的厨房（plan.kitchen + 中岛）的外观：柜门颜色 / 台面材质（缺省 = 原样） */
+  kitchenLook?: { door?: string; top?: string };
   stairs?: Stair[]; // S17：当前层的楼梯（纯增量可选字段，不进投影）
   levels?: Level[]; // S17（ADR-0007）：楼层表；缺 = 单层（与以前逐字节一致）
   level?: string; // S17：当前层 id（它的内容就是文档顶层这些数组）
