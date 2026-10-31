@@ -12996,7 +12996,7 @@ async function runPBTest() {
             fp.map((p) => p[1])
           ) + 1;
       const wd = cmToWd(15);
-      const top = pushUserWall(X, Y, X + 12, Y, 'w', wd);
+      pushUserWall(X, Y, X + 12, Y, 'w', wd);
       pushUserWall(X + 12, Y, X + 12, Y + 10, 'w', wd);
       pushUserWall(X + 12, Y + 10, X, Y + 10, 'w', wd);
       pushUserWall(X, Y + 10, X, Y, 'w', wd);
@@ -13121,6 +13121,131 @@ async function runPBTest() {
         'pb-s26b-clean-exit',
         PLAN_ID !== p52Plan && PLAN_REG.plans.length === p52Plans,
         'plans ' + p52Plans + '→' + PLAN_REG.plans.length
+      );
+    }
+
+    /* ===== 53. S26d 卫浴：洗手台贴墙（背 = 墙）、换宽度背面不动、换形式一步撤销、检视面板没有「类型」行、2D / 3D 各有形式 ===== */
+    {
+      await pbReset();
+      if (wallEdit.on) setWallEdit(false);
+      await tick();
+      const p53Plans = PLAN_REG.plans.length;
+      Q('#btnPlanNew').click();
+      await tick();
+      const p53Plan = PLAN_ID;
+      const fp = floorPts();
+      const X =
+          Math.min.apply(
+            null,
+            fp.map((p) => p[0])
+          ) + 1,
+        Y =
+          Math.min.apply(
+            null,
+            fp.map((p) => p[1])
+          ) + 1;
+      const wd = cmToWd(15);
+      pushUserWall(X, Y, X + 12, Y, 'w', wd);
+      pushUserWall(X + 12, Y, X + 12, Y + 10, 'w', wd);
+      pushUserWall(X + 12, Y + 10, X, Y + 10, 'w', wd);
+      pushUserWall(X, Y + 10, X, Y, 'w', wd);
+      geoChanged();
+      fit2DToContent();
+      await tick();
+      enterArea('deco');
+      Q('#decoToolSeg button[data-t="fx"]').click();
+      await tick();
+      const typeRowNext =
+        Q('#fxType').closest('.irow').style.display !== 'none' &&
+        Q('#fxType').options[0].value === 'vanity' &&
+        [...Q('#fxType').options].filter((o) => !o.hidden).every((o) => o.value !== 'counter' && o.value !== 'basin');
+      Q('#fxType').value = 'vanity'; // 前面的节可能把类型留在了别的上
+      /* 53.1 放在下墙（y = Y+10）内侧附近：贴墙、背朝墙（局部 −y 指向墙 = rot 180） */
+      const face = Y + 10 - wd / S / 2;
+      const [sx, sy] = SPT(X + 6, face - 0.6);
+      fire('pointerdown', sx, sy);
+      await tick();
+      fire('pointerup', sx, sy);
+      await tick();
+      const v = DOC.fixtures[DOC.fixtures.length - 1];
+      const backY = (v.y1 + v.y2) / 2 - ((v.y2 - v.y1) / 2) * Math.cos(((v.rot || 0) * Math.PI) / 180); // 局部 −y 那条边在世界里的 y
+      const snapOk =
+        v.t === 'vanity' && v.rot === 180 && Math.abs(backY - face) < 0.03 && Math.abs(v.x2 - v.x1 - 60 / 30.48) < 0.02;
+      const typeRowSel = Q('#fxType').closest('.irow').style.display === 'none';
+      T(
+        'pb-s26d-vanity-place',
+        typeRowNext && snapOk && typeRowSel,
+        '下一个卡片有类型且缺省洗手台=' +
+          typeRowNext +
+          ' · 贴墙 rot=' +
+          v.rot +
+          ' 背离墙皮 ' +
+          (backY - face).toFixed(3) +
+          'ft · 选中后没有类型行=' +
+          typeRowSel
+      );
+      /* 53.2 宽度 60 → 100：深 46 → 50，背面那一边不动；一步撤销 */
+      const u0 = undoRing.length;
+      [...Q('#fxSize').querySelectorAll('button')].find((b) => b.textContent === '100').click();
+      await tick();
+      const v2 = DOC.fixtures.find((f) => f.id === v.id);
+      const back2 = (v2.y1 + v2.y2) / 2 - ((v2.y2 - v2.y1) / 2) * Math.cos(((v2.rot || 0) * Math.PI) / 180);
+      const widenOk =
+        v2.wcm === 100 &&
+        Math.abs(v2.x2 - v2.x1 - 100 / 30.48) < 0.02 &&
+        Math.abs(v2.y2 - v2.y1 - 50 / 30.48) < 0.02 &&
+        Math.abs(back2 - face) < 0.03 &&
+        undoRing.length === u0 + 1;
+      /* 53.3 形式换成立柱盆：宽度变成固定 55 × 45、柜色行藏起来、安装灰掉 */
+      [...Q('#fxForm').querySelectorAll('.ic')].find((b) => b.dataset.v === 'pedestal').click();
+      await tick();
+      const v3 = DOC.fixtures.find((f) => f.id === v.id);
+      const pedOk =
+        v3.form === 'pedestal' &&
+        Math.abs(v3.x2 - v3.x1 - 55 / 30.48) < 0.02 &&
+        Q('#mrFxColor').style.display === 'none' &&
+        Q('#fxMount button').disabled;
+      T(
+        'pb-s26d-vanity-resize-form',
+        widenOk && pedOk,
+        '加宽背面不动且一步撤销=' + widenOk + ' · 立柱盆 55 cm、柜色藏、安装灰=' + pedOk
+      );
+      /* 53.4 马桶 / 淋浴 / 浴缸的形式：2D 有对应图例（路径 / 椭圆）、3D 建得出来；旧档的马桶不设 form = 原画法 */
+      const t1 = pushUserFixture('toilet', X + 2, Y + 3, 0);
+      setFxShape(t1, { form: 'wall' });
+      const s1 = pushUserFixture('shower', X + 9, Y + 3, 0);
+      setFxShape(s1, { form: 'quad', size: '90x90' });
+      const b1 = pushUserFixture('tub', X + 5, Y + 3, 0);
+      setFxShape(b1, { form: 'free', size: '170x80' });
+      await tick();
+      const g = (id) => pbSvg.querySelector('[data-fx="' + id + '"]');
+      const legend2D =
+        !!g(s1.id) &&
+        !!g(s1.id).querySelector('path') &&
+        !!g(b1.id).querySelector('ellipse') &&
+        !g(b1.id).querySelector('rect');
+      const sizeOk = Math.abs(b1.x2 - b1.x1 - 170 / 30.48) < 0.02 && Math.abs(b1.y2 - b1.y1 - 80 / 30.48) < 0.02;
+      setView('3d');
+      await tick();
+      await tick();
+      const has3D = !!three && !!three.staticGroup;
+      setView('2d');
+      await tick();
+      T(
+        'pb-s26d-forms-2d-3d',
+        legend2D && sizeOk && has3D,
+        '2D 图例=' + legend2D + ' · 浴缸 170 × 80=' + sizeOk + ' · 3D 建好=' + has3D
+      );
+      setWallEdit(false);
+      await tick();
+      Q('#btnPlanDel').click();
+      await tick();
+      Q('#btnPlanDel').click();
+      await tick();
+      T(
+        'pb-s26d-clean-exit',
+        PLAN_ID !== p53Plan && PLAN_REG.plans.length === p53Plans,
+        'plans ' + p53Plans + '→' + PLAN_REG.plans.length
       );
     }
 
