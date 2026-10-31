@@ -12975,6 +12975,155 @@ async function runPBTest() {
       );
     }
 
+    /* ===== 52. S26b 墙面：墙砖 / 墙纸 / 单面墙（按房间 + 墙线存，开窗不丢）/ 2D 色带只在装修 2D / 「整个房间」清掉单面设置 ===== */
+    {
+      await pbReset();
+      if (wallEdit.on) setWallEdit(false);
+      await tick();
+      const p52Plans = PLAN_REG.plans.length;
+      Q('#btnPlanNew').click();
+      await tick();
+      const p52Plan = PLAN_ID;
+      const fp = floorPts();
+      const X =
+          Math.min.apply(
+            null,
+            fp.map((p) => p[0])
+          ) + 1,
+        Y =
+          Math.min.apply(
+            null,
+            fp.map((p) => p[1])
+          ) + 1;
+      const wd = cmToWd(15);
+      const top = pushUserWall(X, Y, X + 12, Y, 'w', wd);
+      pushUserWall(X + 12, Y, X + 12, Y + 10, 'w', wd);
+      pushUserWall(X + 12, Y + 10, X, Y + 10, 'w', wd);
+      pushUserWall(X, Y + 10, X, Y, 'w', wd);
+      geoChanged();
+      fit2DToContent();
+      await tick();
+      const r = pickRoomAt(X + 6, Y + 5);
+      r.label = '卫生间';
+      enterArea('deco');
+      wallEdit.sel = { kind: 'room', id: r.id };
+      drawWallEdit();
+      updateWallBarFromSel();
+      await tick();
+      /* 52.1 墙砖：卫生间缺省高度 = 淋浴区；一步撤销；3D 里有墙砖材质 */
+      Q('#mrTile').click();
+      await tick();
+      const u0 = undoRing.length;
+      mpPick('subwayWhite');
+      mpClose();
+      const tileOk =
+        r.tile &&
+        r.tile.mat === 'subwayWhite' &&
+        r.tile.h === 'shower' &&
+        r.tile.lay === 'half' &&
+        undoRing.length === u0 + 1;
+      /* 52.2 单面墙：点上墙内侧 15cm = 选中这面墙（不是房间）；墨绿只写进这面 */
+      const face = r.poly ? faceAt(X + 6, Y + wd / S / 2 + 15 / 30.48) : null;
+      if (face) {
+        wallEdit.sel = { kind: 'face', id: 'f', room: face.r.id, a: face.a, b: face.b };
+        updateWallBarFromSel();
+      }
+      await tick();
+      const faceUI = !!face && Q('#faceCtl').classList.contains('on') && /上墙/.test(Q('#pTitle').textContent);
+      if (face) setFace(r, face.a, face.b, { wall: { color: '#4f604f' } });
+      const f0 = face && faceOf(r, face.a, face.b);
+      /* 52.3 在这面墙上开一扇窗（墙被拆成三段）：单独设置还在 */
+      pushUserWindow(X + 4, Y, X + 8, Y, wd);
+      geoChanged();
+      await tick();
+      const fin = finishOf(r, face ? face.a : null, face ? face.b : null);
+      const keepOk = !!f0 && !!fin.face && fin.wall && fin.wall.color === '#4f604f';
+      T(
+        'pb-s26b-tile-face-survives-window',
+        tileOk && faceUI && keepOk,
+        '墙砖=' + JSON.stringify(r.tile) + ' · 单面墙检视=' + faceUI + ' · 开窗后单面设置还在=' + keepOk
+      );
+      /* 52.4 2D 色带：装修 2D 有（设过的墙）、摆家具没有 */
+      drawWallEdit();
+      const inDeco = pbSvg.querySelectorAll('#wedit .wallBand').length;
+      setWallEdit(false);
+      await tick();
+      const inFurn = pbSvg.querySelectorAll('.wallBand').length;
+      T(
+        'pb-s26b-bands-deco-only',
+        inDeco >= 4 && inFurn === 0,
+        '装修 2D 色带 ' + inDeco + ' 条 · 摆家具 ' + inFurn + ' 条'
+      );
+      /* 52.5 在单面墙上切「整个房间」再选 = 写进房间并清掉这面墙的墙面单独设置（一步撤销） */
+      enterArea('deco');
+      wallEdit.sel = { kind: 'face', id: 'f', room: r.id, a: face.a, b: face.b };
+      updateWallBarFromSel();
+      await tick();
+      Q('#mrFaceWall').click();
+      await tick();
+      Q('#mpScope [data-s="room"]').click();
+      await tick();
+      const u1 = undoRing.length;
+      mpPick('#a9b8c2');
+      mpClose();
+      const scopeOk = r.wallColor === '#a9b8c2' && !faceOf(r, face.a, face.b) && undoRing.length === u1 + 1;
+      undoStep();
+      await tick();
+      const undoOk = (effRooms().find((q) => q.id === r.id) || {}).wallColor !== '#a9b8c2'; // 撤销换了整份文档：读新对象
+      const f1 = faceOf(
+        effRooms().find((q) => q.id === r.id),
+        face.a,
+        face.b
+      );
+      T(
+        'pb-s26b-scope-room-clears-face',
+        scopeOk && undoOk && !!f1,
+        '房间墙面 → 雾蓝且这面墙的单独设置清掉=' + scopeOk + ' · 撤销一步回来=' + (undoOk && !!f1)
+      );
+      /* 52.6 墙纸：写 wallPaper、清掉 wallColor；3D 里有墙纸 / 墙砖材质 */
+      const rr = effRooms().find((q) => q.id === r.id);
+      wallEdit.sel = { kind: 'room', id: rr.id };
+      updateWallBarFromSel();
+      Q('#mrWall').click();
+      await tick();
+      mpPick('paper:stripe:1');
+      mpClose();
+      setView('3d');
+      await tick();
+      await tick();
+      const mats = [];
+      if (three && three.staticGroup)
+        three.staticGroup.traverse((o) => {
+          if (o.material && o.material.userData) mats.push(o.material.userData);
+        });
+      setView('2d');
+      await tick();
+      T(
+        'pb-s26b-paper-and-3d',
+        rr.wallPaper === 'paper:stripe:1' &&
+          !rr.wallColor &&
+          mats.some((u) => u.roomPaper === 'paper:stripe:1') &&
+          mats.some((u) => u.roomTile === 'subwayWhite'),
+        'wallPaper=' +
+          rr.wallPaper +
+          ' · 3D 墙纸材质=' +
+          mats.some((u) => u.roomPaper) +
+          ' · 墙砖材质=' +
+          mats.some((u) => u.roomTile)
+      );
+      setWallEdit(false);
+      await tick();
+      Q('#btnPlanDel').click();
+      await tick();
+      Q('#btnPlanDel').click();
+      await tick();
+      T(
+        'pb-s26b-clean-exit',
+        PLAN_ID !== p52Plan && PLAN_REG.plans.length === p52Plans,
+        'plans ' + p52Plans + '→' + PLAN_REG.plans.length
+      );
+    }
+
     /* ===== 收尾：页面不得有未捕获异常 ===== */
     T('pb-no-page-errors', window.__ERRS.length === 0, window.__ERRS.slice(0, 3).join(' || '));
   } catch (e) {
