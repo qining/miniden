@@ -200,7 +200,7 @@ describe('地板用量（E19 轮㊲：界面上是同一张清单的最后一节
     const t = shoppingText(buildShoppingList([buy()]), { title: 'T', money, floors }).split('\n');
     expect(t.slice(-4)).toEqual([
       '',
-      '地板用量（按房间面积，不含损耗）',
+      '地面用量（按房间面积，不含损耗）',
       '· 自然橡木 · 人字拼 — 10.4 m²（客厅、卧室）',
       '· 白色哑光砖 60×60 — 5.9 m²（卫生间）',
     ]);

@@ -1765,9 +1765,9 @@ export const FLOWS = [
       t.assert(
         'wc-room-picked',
         (await t.eval(
-          `getComputedStyle(document.querySelector('#rmWallL')).display!=='none' && roomWindows(selRoom()).length===1`
+          `getComputedStyle(document.querySelector('#mrWall')).display!=='none' && roomWindows(selRoom()).length===1`
         )) === true,
-        '装修的检视面板里有「墙色」「窗帘」，这间房认出 1 扇窗'
+        '装修的检视面板里有「墙面」材质行和「窗帘」，这间房认出 1 扇窗'
       );
 
       await t.step('墙色选「鼠尾草绿」、窗帘选「落地帘 + 纱帘」');

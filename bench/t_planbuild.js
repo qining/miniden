@@ -7069,7 +7069,7 @@ async function runPBTest() {
       enterArea('deco');
       await tick();
       const shown =
-        getComputedStyle(Q('#rmWallL')).display !== 'none' && getComputedStyle(Q('#rmCurtainL')).display !== 'none';
+        getComputedStyle(Q('#mrWall')).display !== 'none' && getComputedStyle(Q('#rmCurtainL')).display !== 'none'; // S26a：墙面是材质行
       const wins = roomWindows(room());
       const r1 = undoRing.length;
       Q('#rmWall').value = '#b9c2b2';
@@ -8275,7 +8275,7 @@ async function runPBTest() {
           tot > fl &&
           +flArea === +uiArea[1] &&
           /用在：/.test(lines[fl]) &&
-          tl.indexOf('地板用量（按房间面积，不含损耗）') > tl.findIndex((l) => /^采购 1 件/.test(l)) &&
+          tl.indexOf('地面用量（按房间面积，不含损耗）') > tl.findIndex((l) => /^采购 1 件/.test(l)) &&
           /· 自然橡木.* — [\d.]+ m²（/.test(g2.copied),
         '界面 ' +
           JSON.stringify(rowTxt) +
@@ -12761,7 +12761,8 @@ async function runPBTest() {
         showPropsTab('list');
         enterArea('deco');
         await tick();
-        const nSw = Q('#lvFloorL').querySelectorAll('button').length;
+        const nSw =
+          Q('#mrLvFloor') && Q('#mrLvFloor').offsetParent !== null && Q('#mrLvFloor .mt').style.background ? 21 : 0; // S26a：全屋地面 = 一个材质行（缩略图画上了）
         T(
           'pb-f5-qa-deco-from-list-swatches',
           _propsTab === 'insp' && nSw > 5,
@@ -12853,6 +12854,124 @@ async function runPBTest() {
         'pb-f5-clean-exit',
         PLAN_ID !== p50Plan && PLAN_REG.plans.length === p50Plans,
         'plans ' + p50Plans + '→' + PLAN_REG.plans.length
+      );
+    }
+
+    /* ===== 51. S26a 材质行 + 左栏选择器：悬停 = 预览（不进撤销、不存档）、点 = 确定（一步撤销）、Esc = 撤回预览并关、↺ 还原 ===== */
+    {
+      await pbReset();
+      if (wallEdit.on) setWallEdit(false);
+      await tick();
+      const p51Plans = PLAN_REG.plans.length;
+      Q('#btnPlanNew').click();
+      await tick();
+      const p51Plan = PLAN_ID;
+      const fp = floorPts();
+      const X =
+          Math.min.apply(
+            null,
+            fp.map((p) => p[0])
+          ) + 1,
+        Y =
+          Math.min.apply(
+            null,
+            fp.map((p) => p[1])
+          ) + 1;
+      const wd = cmToWd(15);
+      pushUserWall(X, Y, X + 12, Y, 'w', wd);
+      pushUserWall(X + 12, Y, X + 12, Y + 10, 'w', wd);
+      pushUserWall(X + 12, Y + 10, X, Y + 10, 'w', wd);
+      pushUserWall(X, Y + 10, X, Y, 'w', wd);
+      geoChanged();
+      fit2DToContent();
+      await tick();
+      const r = pickRoomAt(X + 6, Y + 5);
+      enterArea('deco');
+      wallEdit.sel = { kind: 'room', id: r.id };
+      drawWallEdit();
+      updateWallBarFromSel();
+      await tick();
+      Q('#mrFloor').click();
+      await tick();
+      const open1 = Q('#matPicker').style.display !== 'none' && Q('#mrFloor').classList.contains('open');
+      const nTiles = Q('#mpBody').querySelectorAll('.mpGrid .mpTile').length;
+      const u0 = undoRing.length;
+      mpPreview('walnut');
+      const peekOk =
+        r.floor && r.floor.mat === 'walnut' && undoRing.length === u0 && /预览中/.test(Q('#mrFloor .nm').textContent);
+      mpUnpreview();
+      const backOk = !r.floor && undoRing.length === u0;
+      mpPreview('oakLight');
+      mpPick('oakLight');
+      const pickOk =
+        r.floor && r.floor.mat === 'oakLight' && undoRing.length === u0 + 1 && Q('#matPicker').style.display !== 'none';
+      mpPreview('marbleWhite');
+      key('Escape');
+      await tick();
+      const escOk = Q('#matPicker').style.display === 'none' && r.floor && r.floor.mat === 'oakLight';
+      T(
+        'pb-s26a-picker-preview-pick-esc',
+        open1 && nTiles >= FLOOR_PRESETS.length + 1 && peekOk && backOk && pickOk && escOk,
+        '打开=' +
+          open1 +
+          ' · 格子 ' +
+          nTiles +
+          ' · 预览不进撤销=' +
+          peekOk +
+          ' · 移开恢复=' +
+          backOk +
+          ' · 点 = +1 步且不关=' +
+          pickOk +
+          ' · Esc 撤回预览并关=' +
+          escOk
+      );
+      /* 51.2 ↺ 还原 = 回到打开之前；最近用过记住刚才那种 */
+      Q('#mrFloor').click();
+      await tick();
+      mpPick('walnut');
+      Q('#mpRevert').click();
+      await tick();
+      const recent = matRecent('floor');
+      T(
+        'pb-s26a-picker-revert-recent',
+        r.floor && r.floor.mat === 'oakLight' && recent[0] === 'walnut' && recent.includes('oakLight'),
+        '还原后 ' + (r.floor && r.floor.mat) + ' · 最近用过 ' + recent.slice(0, 3).join(',')
+      );
+      /* 51.3 墙面：色板矩阵 9 个色系；选「墨绿」= 写进 wallColor、一步撤销；自定义颜色面板不用系统取色器 */
+      mpClose();
+      Q('#mrWall').click();
+      await tick();
+      const fams = Q('#mpBody').querySelectorAll('.mpPal .fl').length;
+      const u1 = undoRing.length;
+      const sw = Q('#mpBody').querySelector('.mpPal .sw[data-id="#4f604f"]');
+      if (sw) sw.click();
+      await tick();
+      const colorPicker = [...document.querySelectorAll('input[type=color]')].filter(
+        (x) => x.offsetParent !== null
+      ).length;
+      T(
+        'pb-s26a-palette',
+        fams === PAINT_FAMS.length && r.wallColor === '#4f604f' && undoRing.length === u1 + 1 && colorPicker === 0,
+        '色系 ' +
+          fams +
+          ' 行 · 墙色 ' +
+          r.wallColor +
+          ' · 撤销 +' +
+          (undoRing.length - u1) +
+          ' · 看得见的系统取色器 ' +
+          colorPicker
+      );
+      mpClose();
+      setWallEdit(false);
+      await tick();
+      Q('#btnPlanDel').click();
+      await tick();
+      Q('#btnPlanDel').click();
+      await tick();
+      T(
+        'pb-s26a-clean-exit',
+        PLAN_ID !== p51Plan && PLAN_REG.plans.length === p51Plans,
+        'plans ' + p51Plans + '→' + PLAN_REG.plans.length
       );
     }
 
