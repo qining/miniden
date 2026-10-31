@@ -2917,7 +2917,8 @@ function makeFloorPattern(defs, id, p, ang){
   const w=p.unit[0]/30.48*S, L=p.unit[1]/30.48*S;
   if(p.pat==='plank'){
     for(let x=0;x<=W+0.01;x+=w) ln(x,0,x,H);
-    for(let i=0;i<8;i++){ const y=((i*0.37)%1)*L; ln(i*w, y, (i+1)*w, y); ln(i*w, y+L, (i+1)*w, y+L); }
+    const rows=Math.round(W/w);
+    for(let i=0;i<rows;i++){ const y=(p.bond ? (1-((i*p.bond)%1))%1 : ((i*0.37)%1))*L; ln(i*w, y, (i+1)*w, y); ln(i*w, y+L, (i+1)*w, y+L); }
   } else if(p.pat==='herring' || p.pat==='chevron'){
     const cw=W/2, step=p.unit[0]/30.48*Math.SQRT2*S;
     for(let y=-H;y<=2*H;y+=step){ ln(0,y,cw,y+cw); ln(cw,y+cw,W,y); }
@@ -2929,7 +2930,9 @@ function makeFloorPattern(defs, id, p, ang){
       const pts=[]; for(let k=0;k<6;k++){ const a=Math.PI/3*k; pts.push([cx+Math.cos(a)*r, cy+Math.sin(a)*r]); }
       el('polygon',{points:pts.map(q=>q.join(',')).join(' '), fill:'none', stroke:'rgba(0,0,0,0.3)','stroke-width':0.6}, pat);
     }
-  } else if(p.pat==='grid' || p.pat==='terrazzo' || p.pat==='marble' || p.pat==='checker'){
+  } else if(p.pat==='grid' || p.pat==='terrazzo' || p.pat==='marble' || p.pat==='checker' || p.pat==='encaustic' || p.pat==='travertine'){
+    if(p.pat==='encaustic'){ const c2=`rgba(${p.rgb2[0]},${p.rgb2[1]},${p.rgb2[2]},0.55)`;
+      for(const [ax,ay] of [[0,0],[w,0],[0,L],[w,L],[2*w,0],[0,2*L],[2*w,L],[w,2*L],[2*w,2*L]]) el('circle',{cx:ax,cy:ay,r:Math.min(w,L)*0.42,fill:'none',stroke:c2,'stroke-width':0.8},pat); }
     for(let x=0;x<=W+0.01;x+=w) ln(x,0,x,H);
     for(let y=0;y<=H+0.01;y+=L) ln(0,y,W,y);
     if(p.pat==='checker'){ el('rect',{x:0,y:0,width:w,height:L,fill:'rgba(0,0,0,0.28)'},pat); el('rect',{x:w,y:L,width:w,height:L,fill:'rgba(0,0,0,0.28)'},pat); }
@@ -6021,10 +6024,19 @@ function floorUsage(){
    homeowner 布置一间房，墙刷什么色、窗挂什么帘，跟摆家具一样决定「这间房最后长什么样」。不改硬装：
    墙色只是 3D 墙面上的一层「漆」（沿房间轮廓刷：窗洞只刷窗台以下与过梁以上、门洞只刷门头以上、开口不刷），
    窗帘挂在窗的室内一侧。数据：rooms[i].wallColor（#hex）、windows[i].curtain = {style, color, side?}。 */
+/* S26a（research/15 §2.1）：公共色板 12 → 42 色，9 个色系、组内由浅到深。墙、门、柜、窗帘都从这里取。
+   只取颜色值和通用名（不用任何品牌色号）。原来的 12 色全部保留（hex 就是 id，旧存档照读）。第三项 = 色系 */
+const PAINT_FAMS = [['white','白'],['beige','米 / 燕麦'],['grey','灰'],['green','绿'],['blue','蓝'],['pink','粉 / 陶 / 红'],['yellow','黄 / 赭'],['purple','紫'],['dark','深色']];
 const PAINT_PRESETS = [
-  ['#f2efe8','暖白'], ['#e9e4da','米白'], ['#dcd6cb','燕麦'], ['#cfd1cd','浅灰'], ['#b9c2b2','鼠尾草绿'],
-  ['#a9b8c2','雾蓝'], ['#e6d2ca','藕粉'], ['#e8d3a6','奶油黄'], ['#c98c6c','陶土'], ['#5f7486','石板蓝'],
-  ['#4f604f','墨绿'], ['#5a5c60','炭灰'],
+  ['#f7f6f2','纯白','white'], ['#f2efe8','暖白','white'], ['#f3ecdf','奶白','white'], ['#efe8da','象牙白','white'], ['#eef0ef','冷白','white'],
+  ['#e9e4da','米白','beige'], ['#dcd6cb','燕麦','beige'], ['#d8cdb9','亚麻','beige'], ['#c9c0b1','灰褐','beige'], ['#b9a68b','驼色','beige'], ['#a79a7d','卡其','beige'],
+  ['#cfd1cd','浅灰','grey'], ['#bfc2c1','云灰','grey'], ['#9ea2a1','中灰','grey'], ['#6d7072','石墨','grey'], ['#5a5c60','炭灰','grey'],
+  ['#cfe0d4','薄荷','green'], ['#b9c2b2','鼠尾草绿','green'], ['#8fa294','灰绿','green'], ['#8d8f6a','橄榄','green'], ['#4f604f','墨绿','green'], ['#2f3d35','深松绿','green'],
+  ['#d4e0e6','冰蓝','blue'], ['#a9b8c2','雾蓝','blue'], ['#8a9cab','灰蓝','blue'], ['#5f7a96','牛仔蓝','blue'], ['#5f7486','石板蓝','blue'], ['#2f3e55','海军蓝','blue'],
+  ['#e6d2ca','藕粉','pink'], ['#e3c4b6','裸粉','pink'], ['#c9a7a3','玫瑰灰','pink'], ['#c98c6c','陶土','pink'], ['#a65f4a','砖红','pink'], ['#6e3a3c','酒红','pink'],
+  ['#e8d3a6','奶油黄','yellow'], ['#c9a54a','芥末黄','yellow'], ['#b97a45','赭石','yellow'],
+  ['#cfc7d8','薰衣草','purple'], ['#8f8199','灰紫','purple'],
+  ['#2b2b2d','墨黑','dark'], ['#5a4637','巧克力','dark'],
 ];
 function paintName(hex){ const p=PAINT_PRESETS.find(q=>q[0]===String(hex).toLowerCase()); return p ? p[1] : '自定义 '+hex; }
 function syncPaintSelect(hex){
@@ -6910,6 +6922,7 @@ function updateWallBarFromSel_(){
     const f=selFixture();
     if(f){
       $('#fxRot').value = Math.round(((f.rot||0)%360+360)%360);
+      if(FX_DEFS[f.t]) $('#fxType').value = f.t;   // UX r15 §3.1：选中马桶时「类型」以前还显示上一次放的（台柜）
       const isU=f.src==='user';
       wMsg((isU?'自己加的':'原有的')+FX_DEFS[f.t].label+' ｜ 拖=移动 · 方向键=微调 · 输入框改旋转角(0=轴对齐)'+(isU?' · Delete=删除':'（原有的不能删）'));
     }
@@ -8188,16 +8201,40 @@ const FLOOR_PRESETS=[
   {id:'carpetGrey',    name:'满铺地毯 · 浅灰',        cat:'carpet',   pat:'noise',   unit:[100,100],rgb:[164,162,158], v:10, seed:3117, tint:'#a4a29e'},
   {id:'carpetBeige',   name:'满铺地毯 · 米色',        cat:'carpet',   pat:'noise',   unit:[100,100],rgb:[196,182,158], v:10, seed:3118, tint:'#c4b69e'},
   {id:'concrete',      name:'水泥自流平 / 微水泥',    cat:'concrete', pat:'concrete',unit:[150,150],rgb:[150,148,144], v:8,  seed:3119, tint:'#969490'},
+  /* S26c（research/15 §2.3）：20 → 42。宽板 / 窄板、规则错缝（bond = 端缝错开的比例：1/2 或 1/3）、木纹砖（带灰缝的板）、
+     赤陶、花砖（encaustic：每块砖上一个对称纹样）、洞石（travertine：横向纹 + 小孔）、板岩、更多地毯色 */
+  {id:'oakWide',       name:'自然橡木 · 宽板 24cm',   cat:'wood',     pat:'plank',   unit:[24,240], rgb:[184,148,104], v:11, seed:3120, tint:'#b89468'},
+  {id:'oakNarrow',     name:'蜂蜜橡木 · 窄板 12cm',   cat:'wood',     pat:'plank',   unit:[12,90],  rgb:[190,146,92],  v:13, seed:3121, tint:'#be925c'},
+  {id:'oakBond',       name:'浅色白橡 · 1/2 错缝',    cat:'wood',     pat:'plank',   unit:[19,120], rgb:[214,192,160], v:9,  seed:3122, tint:'#d6c0a0', bond:0.5},
+  {id:'ashWhite',      name:'白蜡木 · 白洗',          cat:'wood',     pat:'plank',   unit:[19,190], rgb:[226,214,196], v:8,  seed:3123, tint:'#e2d6c4'},
+  {id:'maple',         name:'枫木 · 直铺',            cat:'wood',     pat:'plank',   unit:[15,150], rgb:[222,196,150], v:9,  seed:3124, tint:'#dec496'},
+  {id:'teak',          name:'柚木 · 直铺',            cat:'wood',     pat:'plank',   unit:[15,150], rgb:[140,96,58],   v:13, seed:3125, tint:'#8c603a'},
+  {id:'walnutWide',    name:'胡桃木 · 宽板 24cm',     cat:'wood',     pat:'plank',   unit:[24,240], rgb:[96,66,44],    v:11, seed:3126, tint:'#60422c'},
+  {id:'oakSmokeHerring',name:'烟熏橡木 · 人字拼',     cat:'wood',     pat:'herring', unit:[9,54],   rgb:[96,84,74],    v:11, seed:3127, tint:'#60544a'},
+  {id:'lvpWhiteOak',   name:'白橡仿木 SPC · 直铺',    cat:'vinyl',    pat:'plank',   unit:[18,122], rgb:[210,190,160], v:6,  seed:3128, tint:'#d2bea0'},
+  {id:'lvpWalnut',     name:'胡桃仿木 SPC · 直铺',    cat:'vinyl',    pat:'plank',   unit:[18,122], rgb:[110,80,56],   v:6,  seed:3129, tint:'#6e5038'},
+  {id:'woodTileOak',   name:'木纹砖 20×120 · 1/3 错缝',cat:'tile',    pat:'plank',   unit:[20,120], rgb:[176,146,112], v:7,  seed:3130, tint:'#b09270', bond:1/3, grout:[120,104,88]},
+  {id:'woodTileGrey',  name:'灰木纹砖 20×120 · 1/2 错缝',cat:'tile',   pat:'plank',   unit:[20,120], rgb:[150,144,136], v:6,  seed:3131, tint:'#969088', bond:0.5, grout:[110,106,100]},
+  {id:'tileGreige60',  name:'暖灰哑光砖 60×60',       cat:'tile',     pat:'grid',    unit:[60,60],  rgb:[190,182,170], v:4,  seed:3132, tint:'#beb6aa', grout:[160,154,144]},
+  {id:'tileTerracotta',name:'赤陶砖 30×30',           cat:'tile',     pat:'grid',    unit:[30,30],  rgb:[176,98,64],   v:16, seed:3133, tint:'#b06240', grout:[200,180,160]},
+  {id:'terracottaHex', name:'赤陶六角砖',             cat:'tile',     pat:'hex',     unit:[25,25],  rgb:[172,94,62],   v:16, seed:3134, tint:'#ac5e3e', grout:[198,178,158]},
+  {id:'encausticBlue', name:'花砖 20×20 · 蓝白',      cat:'tile',     pat:'encaustic',unit:[20,20], rgb:[232,228,218], rgb2:[54,86,128], v:3, seed:3135, tint:'#9aa6b4', grout:[210,206,198]},
+  {id:'encausticBlack',name:'花砖 20×20 · 黑白',      cat:'tile',     pat:'encaustic',unit:[20,20], rgb:[234,230,222], rgb2:[40,40,42],  v:3, seed:3136, tint:'#8e8c88', grout:[210,206,198]},
+  {id:'slate',         name:'深色板岩 60×60',         cat:'stone',    pat:'grid',    unit:[60,60],  rgb:[76,80,84],    v:7,  seed:3137, tint:'#4c5054', grout:[60,62,64]},
+  {id:'travertine',    name:'米黄洞石 60×120',        cat:'stone',    pat:'travertine',unit:[60,120],rgb:[214,196,164], v:5, seed:3138, tint:'#d6c4a4', grout:[196,180,150]},
+  {id:'marbleGrey',    name:'灰色大理石 60×120',      cat:'stone',    pat:'marble',  unit:[60,120], rgb:[170,170,168], v:3,  seed:3139, tint:'#aaaaa8', grout:[150,150,148]},
+  {id:'carpetCharcoal',name:'满铺地毯 · 炭灰',        cat:'carpet',   pat:'noise',   unit:[100,100],rgb:[86,86,88],    v:9,  seed:3140, tint:'#565658'},
+  {id:'carpetBlue',    name:'满铺地毯 · 雾蓝',        cat:'carpet',   pat:'noise',   unit:[100,100],rgb:[126,142,158], v:9,  seed:3141, tint:'#7e8e9e'},
 ];
 const FLOOR_BY_ID=new Map(FLOOR_PRESETS.map(p=>[p.id,p]));
 function floorPreset(id){ return FLOOR_BY_ID.get(id) || null; }
 /* 贴图覆盖的世界尺寸（ft）：铺法的最小无缝周期（或它的整数倍） */
 function floorTileSize(p){
   const w=p.unit[0]/30.48, L=p.unit[1]/30.48;
-  if(p.pat==='plank') return [w*8, L*2];
+  if(p.pat==='plank') return [w*(p.bond && Math.abs(p.bond-1/3)<1e-6 ? 6 : 8), L*2];   // 1/3 错缝 6 排一个周期（6×⅓ = 2）
   if(p.pat==='herring' || p.pat==='chevron'){ const m=Math.max(1, Math.round(L/w)); return [L*Math.SQRT2, m*w*Math.SQRT2]; }
   if(p.pat==='hex'){ const r=w/2; return [3*r, Math.sqrt(3)*r*2]; }
-  if(p.pat==='checker' || p.pat==='grid' || p.pat==='terrazzo' || p.pat==='marble') return [w*2, L*2];
+  if(p.pat==='checker' || p.pat==='grid' || p.pat==='terrazzo' || p.pat==='marble' || p.pat==='encaustic' || p.pat==='travertine') return [w*2, L*2];
   return [w, L];
 }
 const _floorTexCache=new Map();
@@ -8235,14 +8272,26 @@ function floorTexture(id){
       g.save(); poly(q, fill); g.clip(); if(after) after(q); g.restore();
     }
   };
+  /* 木纹砖：灰缝本身就是缝，砖边不再描深色板缝 */
+  const wrapPolyNoSeam=(pts, fill, after)=>{
+    for(const ox of [-W,0,W]) for(const oy of [-H,0,H]){
+      const q=pts.map(([x,y])=>[x+ox,y+oy]);
+      if(Math.max(...q.map(v=>v[0]))<0 || Math.min(...q.map(v=>v[0]))>W || Math.max(...q.map(v=>v[1]))<0 || Math.min(...q.map(v=>v[1]))>H) continue;
+      g.save(); g.beginPath(); g.moveTo(q[0][0],q[0][1]); for(let i=1;i<q.length;i++) g.lineTo(q[i][0],q[i][1]); g.closePath();
+      g.fillStyle=fill; g.fill(); g.clip(); if(after) after(q); g.restore();
+    }
+  };
   if(p.pat==='plank'){
-    const pw=p.unit[0]/30.48*sx, pl=p.unit[1]/30.48*sy, rows=8;
+    const pw=p.unit[0]/30.48*sx, pl=p.unit[1]/30.48*sy, rows=Math.round(W/pw);
+    const gr = p.grout ? Math.max(1.2, 0.3/30.48*sx*3) : 0;   // S26c：木纹砖 = 带 3mm 灰缝的板
+    if(gr){ g.fillStyle=rgb(p.grout,0); g.fillRect(0,0,W,H); }
     for(let r=0;r<rows;r++){
-      // 每列（板宽方向）一串板，端缝错开（每列独立的随机起点）
-      let y=-rnd01()*pl;
+      // 每列（板宽方向）一串板，端缝错开：缺省每列独立的随机起点；S26c bond = 规则错缝（1/2、1/3）
+      let y = p.bond ? -(((r*p.bond)%1)*pl) : -rnd01()*pl;
       while(y<H){
-        const fill=rgb(p.rgb, vary()), x0=r*pw;
-        wrapPoly([[x0,y],[x0+pw,y],[x0+pw,y+pl],[x0,y+pl]], fill, (q)=>grain(q[0][0],q[0][1],q[1][0],q[2][1],false));
+        const fill=rgb(p.rgb, vary()), x0=r*pw+gr/2, x1=(r+1)*pw-gr/2, y0=y+gr/2, y1=y+pl-gr/2;
+        if(gr){ wrapPolyNoSeam([[x0,y0],[x1,y0],[x1,y1],[x0,y1]], fill, (q)=>grain(q[0][0],q[0][1],q[1][0],q[2][1],false)); }
+        else wrapPoly([[x0,y],[x0+pw,y],[x0+pw,y+pl],[x0,y+pl]], fill, (q)=>grain(q[0][0],q[0][1],q[1][0],q[2][1],false));
         y+=pl;
       }
     }
@@ -8275,7 +8324,7 @@ function floorTexture(id){
         }
       }
     }
-  } else if(p.pat==='grid' || p.pat==='terrazzo' || p.pat==='marble' || p.pat==='checker'){
+  } else if(p.pat==='grid' || p.pat==='terrazzo' || p.pat==='marble' || p.pat==='checker' || p.pat==='encaustic' || p.pat==='travertine'){
     const tw1=p.unit[0]/30.48*sx, th1=p.unit[1]/30.48*sy;
     g.fillStyle=rgb(p.grout||p.rgb,0); g.fillRect(0,0,W,H);
     const gap=Math.max(1.2, 0.3/30.48*sx*3);                 // 灰缝 ≈ 3mm
@@ -8283,7 +8332,25 @@ function floorTexture(id){
       const x0=q*tw1+gap/2, y0=r*th1+gap/2, ww=tw1-gap, hh=th1-gap;
       const base = p.pat==='checker' ? ((r+q)%2===0 ? p.rgb : p.rgb2) : p.rgb;
       g.fillStyle=rgb(base, vary()); g.fillRect(x0,y0,ww,hh);
-      if(p.pat==='terrazzo'){
+      if(p.pat==='encaustic'){
+        /* 花砖：四分之一圆 + 中心菱形 + 四角小花瓣，四块拼起来是一个完整的圆形纹样（经典水泥花砖的构图） */
+        const c2=`rgb(${p.rgb2[0]},${p.rgb2[1]},${p.rgb2[2]})`, cx=x0+ww/2, cy=y0+hh/2, m=Math.min(ww,hh);
+        g.save(); g.beginPath(); g.rect(x0,y0,ww,hh); g.clip();
+        g.strokeStyle=c2; g.fillStyle=c2; g.lineWidth=Math.max(1, m*0.05);
+        for(const [ax,ay] of [[x0,y0],[x0+ww,y0],[x0,y0+hh],[x0+ww,y0+hh]]){ g.beginPath(); g.arc(ax,ay,m*0.42,0,Math.PI*2); g.stroke();
+          g.beginPath(); g.arc(ax,ay,m*0.16,0,Math.PI*2); g.fill(); }
+        g.beginPath(); g.moveTo(cx,cy-m*0.22); g.lineTo(cx+m*0.22,cy); g.lineTo(cx,cy+m*0.22); g.lineTo(cx-m*0.22,cy); g.closePath(); g.fill();
+        g.fillStyle=rgb(p.rgb,0); g.beginPath(); g.arc(cx,cy,m*0.07,0,Math.PI*2); g.fill();
+        g.restore();
+      } else if(p.pat==='travertine'){
+        /* 洞石：横向的层理纹 + 散落的小孔 */
+        g.save(); g.beginPath(); g.rect(x0,y0,ww,hh); g.clip();
+        for(let i=0;i<14;i++){ const y=y0+rnd01()*hh; g.strokeStyle=`rgba(150,120,80,${(0.06+rnd01()*0.12).toFixed(2)})`; g.lineWidth=1+rnd01()*3;
+          g.beginPath(); g.moveTo(x0,y); g.bezierCurveTo(x0+ww*0.3,y+(rnd01()-0.5)*8,x0+ww*0.7,y+(rnd01()-0.5)*8,x0+ww,y+(rnd01()-0.5)*6); g.stroke(); }
+        for(let i=0;i<70;i++){ g.fillStyle=`rgba(110,90,62,${(0.25+rnd01()*0.35).toFixed(2)})`;
+          g.beginPath(); g.ellipse(x0+rnd01()*ww, y0+rnd01()*hh, 0.8+rnd01()*3.2, 0.5+rnd01()*1.2, 0, 0, Math.PI*2); g.fill(); }
+        g.restore();
+      } else if(p.pat==='terrazzo'){
         for(let i=0;i<260;i++){ const cx=x0+rnd01()*ww, cy=y0+rnd01()*hh, rr=0.6+rnd01()*2.6;
           const tone=[[120,118,112],[176,160,140],[90,96,104],[240,238,232]][Math.floor(rnd01()*4)];
           g.fillStyle=`rgba(${tone[0]},${tone[1]},${tone[2]},${(0.55+rnd01()*0.4).toFixed(2)})`;
