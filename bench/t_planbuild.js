@@ -13032,7 +13032,11 @@ async function runPBTest() {
         updateWallBarFromSel();
       }
       await tick();
-      const faceUI = !!face && Q('#faceCtl').classList.contains('on') && /上墙/.test(Q('#pTitle').textContent);
+      const faceUI =
+        !!face &&
+        Q('#faceCtl').classList.contains('on') &&
+        /上墙/.test(Q('#pTitle').textContent) &&
+        /^墙面 · /.test(Q('#wMsg').textContent); // UX M09：提示行说的是这面墙
       if (face) setFace(r, face.a, face.b, { wall: { color: '#4f604f' } });
       const f0 = face && faceOf(r, face.a, face.b);
       /* 52.3 在这面墙上开一扇窗（墙被拆成三段）：单独设置还在 */
@@ -13526,7 +13530,7 @@ async function runPBTest() {
       const p56Plan = PLAN_ID;
       enterArea('deco');
       await tick();
-      const sh = pushUserFixture('shower', 10, 10, 0);
+      pushUserFixture('shower', 10, 10, 0);
       const va = pushUserFixture('vanity', 10, 11.5, 0);
       geoChanged();
       wallEdit.sel = { kind: 'fx', id: va.id };

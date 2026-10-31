@@ -2502,7 +2502,9 @@ async function run3DTest() {
       );
       buildStatic3D();
       await wait(120);
-      T('s12-3d-cabinet-box', vByColor(CAB) - v0 === 24, '柜体顶点增量 ' + (vByColor(CAB) - v0) + '（BoxGeometry=24）');
+      // 示例户型的台面块（S26 counterSolids，非索引 ExtrudeGeometry）也用柜体材质 → 同桶合并后盒子变非索引 = 36
+      const dCab = vByColor(CAB) - v0;
+      T('s12-3d-cabinet-box', dCab === 24 || dCab === 36, '柜体顶点增量 ' + dCab + '（BoxGeometry=24，非索引合并=36）');
       // 按材质合并会把单成员桶也重排（顶点数不保证恰好 24），所以断言增量 ≥24 + 包围盒落在内侧
       T(
         's12-3d-countertop-slab',
@@ -2512,7 +2514,7 @@ async function run3DTest() {
       const bbT = bbByColor(TOP);
       const inRoom = [23, 2.975, 12 + 1.97 / 2],
         inWall = [23, 2.975, 12 - 1.97 / 2];
-      const noKitchen = !(planOf('kitchen') || []).length;
+      const noKitchen = !(planOf('kitchen') || []).length && !counterSolids().length; // S26 M02b：叫「台面」的结构块 3D 里也画成台面（同一个材质桶）
       T(
         's12-3d-band-on-room-side',
         has(bbT, inRoom) && (!noKitchen || !has(bbT, inWall)),
