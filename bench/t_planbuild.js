@@ -13226,7 +13226,7 @@ async function runPBTest() {
         !!g(s1.id) &&
         !!g(s1.id).querySelector('path') &&
         !!g(b1.id).querySelector('ellipse') &&
-        !g(b1.id).querySelector('rect');
+        !g(b1.id).querySelector('rect:not(.fxClashBox)');
       const sizeOk = Math.abs(b1.x2 - b1.x1 - 170 / 30.48) < 0.02 && Math.abs(b1.y2 - b1.y1 - 80 / 30.48) < 0.02;
       setView('3d');
       await tick();
@@ -13381,6 +13381,196 @@ async function runPBTest() {
         'pb-s26e-clean-exit',
         PLAN_ID !== p54Plan && PLAN_REG.plans.length === p54Plans,
         'plans ' + p54Plans + '→' + PLAN_REG.plans.length
+      );
+    }
+
+    /* ===== 55. S26 QA / UX 第 1 轮：预览中撤销不被抵消；点了不重排；原有台柜换成洗手台；户型自带厨房换外观 ===== */
+    {
+      await pbReset();
+      if (wallEdit.on) setWallEdit(false);
+      await tick();
+      const p55Plans = PLAN_REG.plans.length;
+      Q('#btnPlanNew').click();
+      await tick();
+      const p55Plan = PLAN_ID;
+      const fp = floorPts();
+      const X =
+          Math.min.apply(
+            null,
+            fp.map((p) => p[0])
+          ) + 1,
+        Y =
+          Math.min.apply(
+            null,
+            fp.map((p) => p[1])
+          ) + 1;
+      const wd = cmToWd(15);
+      pushUserWall(X, Y, X + 12, Y, 'w', wd);
+      pushUserWall(X + 12, Y, X + 12, Y + 10, 'w', wd);
+      pushUserWall(X + 12, Y + 10, X, Y + 10, 'w', wd);
+      pushUserWall(X, Y + 10, X, Y, 'w', wd);
+      geoChanged();
+      fit2DToContent();
+      await tick();
+      const r = pickRoomAt(X + 6, Y + 5);
+      enterArea('deco');
+      wallEdit.sel = { kind: 'room', id: r.id };
+      updateWallBarFromSel();
+      await tick();
+      /* 55.1 QA：选中浅橡 → 悬停胡桃预览 → ⌘Z → 移开 → ⌘⇧Z：撤销不被抵消、胡桃不会被写进文档 */
+      Q('#mrFloor').click();
+      await tick();
+      mpPick('oakLight');
+      mpPreview('walnut');
+      undoStep();
+      await tick();
+      mpUnpreview();
+      const afterUndo = effRooms().find((q) => q.id === r.id);
+      const undoKept = !afterUndo.floor;
+      redoStep();
+      await tick();
+      mpUnpreview();
+      const afterRedo = effRooms().find((q) => q.id === r.id);
+      T(
+        'pb-s26-qa-undo-during-preview',
+        undoKept && afterRedo.floor && afterRedo.floor.mat === 'oakLight',
+        '撤销后=' + JSON.stringify(afterUndo.floor || null) + ' · 重做后=' + JSON.stringify(afterRedo.floor || null)
+      );
+      mpClose();
+      /* 55.2 UX M03：点了一格之后网格不重排（第一格还是同一个元素） */
+      wallEdit.sel = { kind: 'room', id: r.id };
+      updateWallBarFromSel();
+      Q('#mrWall').click();
+      await tick();
+      const firstBefore = Q('#mpBody').firstElementChild;
+      const sw = Q('#mpBody').querySelector('.mpPal .sw[data-id="#4f604f"]');
+      sw.click();
+      await tick();
+      T(
+        'pb-s26-ux-no-reflow',
+        Q('#mpBody').firstElementChild === firstBefore && sw.isConnected,
+        '点了以后网格还是原来那一份=' + (Q('#mpBody').firstElementChild === firstBefore)
+      );
+      mpClose();
+      /* 55.3 UX M01：原有的台柜（这里造一件 builtin 台柜贴着上墙）→ 换成洗手台：占地不变、背朝墙、一步撤销 */
+      const face = Y + wd / S / 2;
+      const ctr = { id: 'fb99', t: 'counter', x1: X + 2, y1: face, x2: X + 4, y2: face + 1.6 };
+      DOC.fixtures.push(ctr);
+      geoChanged();
+      wallEdit.sel = { kind: 'fx', id: 'fb99' };
+      updateWallBarFromSel();
+      await tick();
+      const u0 = undoRing.length;
+      const btn = Q('#fxConvert');
+      if (btn) btn.click();
+      await tick();
+      const v = DOC.fixtures.find((f) => f.id === 'fb99');
+      T(
+        'pb-s26-ux-convert-legacy',
+        !!btn &&
+          v.t === 'vanity' &&
+          (v.rot || 0) === 0 &&
+          Math.abs(v.y1 - face) < 0.01 &&
+          Math.abs(v.x2 - v.x1 - 2) < 0.01 &&
+          undoRing.length === u0 + 1 &&
+          !!Q('#fxForm .ic'),
+        '按钮=' + !!btn + ' · ' + JSON.stringify(v) + ' · 撤销 +' + (undoRing.length - u0)
+      );
+      setWallEdit(false);
+      await tick();
+      Q('#btnPlanDel').click();
+      await tick();
+      Q('#btnPlanDel').click();
+      await tick();
+      /* 55.4 UX M02：户型自带的厨房（内置户型有 plan.kitchen / 中岛时）能选中、换台面 */
+      if (!docImported() && kitchenPolys().length) {
+        const P = kitchenPolys()[0];
+        const cx = P.reduce((a, q) => a + q[0], 0) / P.length,
+          cy = P.reduce((a, q) => a + q[1], 0) / P.length;
+        enterArea('deco');
+        await tick();
+        const [kx, ky] = SPT(cx, cy);
+        fire('pointerdown', kx, ky);
+        await tick();
+        fire('pointerup', kx, ky);
+        await tick();
+        const selK = wallEdit.sel && wallEdit.sel.kind === 'kitchen';
+        if (selK) Q('#kitTopRow .sw[data-v="blackMatte"]').click();
+        await tick();
+        const ok = selK && DOC.kitchenLook && DOC.kitchenLook.top === 'blackMatte';
+        undoStep();
+        await tick();
+        T(
+          'pb-s26-ux-kitchen-look',
+          ok && !DOC.kitchenLook,
+          '选中自带厨房=' + selK + ' · 台面写进 kitchenLook=' + ok + ' · 撤销回去=' + !DOC.kitchenLook
+        );
+        setWallEdit(false);
+        await tick();
+      } else T('pb-s26-ux-kitchen-look', true, '这份户型没有自带厨房（不适用）');
+      T(
+        'pb-s26-qa-clean-exit',
+        PLAN_ID !== p55Plan && PLAN_REG.plans.length === p55Plans,
+        'plans ' + p55Plans + '→' + PLAN_REG.plans.length
+      );
+    }
+
+    /* ===== 56. S26 QA 第 1 轮：洁具重叠 = 红框 + danger 说明；旧档淋浴点回方形回到原尺寸；浴缸形式图示不空 ===== */
+    {
+      await pbReset();
+      if (wallEdit.on) setWallEdit(false);
+      await tick();
+      const p56Plans = PLAN_REG.plans.length;
+      Q('#btnPlanNew').click();
+      await tick();
+      const p56Plan = PLAN_ID;
+      enterArea('deco');
+      await tick();
+      const sh = pushUserFixture('shower', 10, 10, 0);
+      const va = pushUserFixture('vanity', 10, 11.5, 0);
+      geoChanged();
+      wallEdit.sel = { kind: 'fx', id: va.id };
+      updateWallBarFromSel();
+      setFxShape(va, { wcm: 120 });
+      await tick();
+      const clash =
+        !!pbSvg.querySelector('[data-fx="' + va.id + '"] .fxClashBox') &&
+        Q('#fxSizeNote').classList.contains('danger') &&
+        /重叠/.test(Q('#fxSizeNote').textContent);
+      /* 旧档的淋浴（152 × 152，不设 form）→ 扇形 → 方形：回到 152 × 152 */
+      const old = { id: 'f560', t: 'shower', x1: 2, y1: 2, x2: 7, y2: 7 };
+      DOC.fixtures.push(old);
+      setFxShape(old, { form: 'quad', size: '90x90' });
+      const small = Math.abs(old.x2 - old.x1 - 90 / 30.48) < 0.02;
+      setFxShape(old, { form: 'square', size: '90x90' });
+      const back = Math.abs(old.x2 - old.x1 - 5) < 0.02 && !old.form;
+      const tub = pushUserFixture('tub', 20, 20, 0);
+      wallEdit.sel = { kind: 'fx', id: tub.id };
+      updateWallBarFromSel();
+      await tick();
+      const icons = [...Q('#fxForm').querySelectorAll('svg')].every((g) => g.childElementCount > 0);
+      T(
+        'pb-s26-qa-overlap-legacy-icons',
+        clash && small && back && icons,
+        '重叠红框 + danger=' +
+          clash +
+          ' · 旧淋浴变小=' +
+          small +
+          ' · 点回方形回原尺寸=' +
+          back +
+          ' · 浴缸图示不空=' +
+          icons
+      );
+      setWallEdit(false);
+      await tick();
+      Q('#btnPlanDel').click();
+      await tick();
+      Q('#btnPlanDel').click();
+      await tick();
+      T(
+        'pb-s26-qa2-clean-exit',
+        PLAN_ID !== p56Plan && PLAN_REG.plans.length === p56Plans,
+        'plans ' + p56Plans + '→' + PLAN_REG.plans.length
       );
     }
 
