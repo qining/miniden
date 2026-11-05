@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   buildShoppingList,
   csvCell,
+  DECO_USAGE_TITLE,
   shoppingCSV,
   shoppingTail,
   shoppingText,
@@ -209,5 +210,30 @@ describe('地板用量（E19 轮㊲：界面上是同一张清单的最后一节
     const l = buildShoppingList([buy()]);
     expect(shoppingCSV(l, { currency: 'US$', floors: [] })).toBe(shoppingCSV(l, { currency: 'US$' }));
     expect(shoppingText(l, { title: 'T', money, floors: [] })).toBe(shoppingText(l, { title: 'T', money }));
+  });
+});
+
+describe('S27d 装修用量：纯文本 / CSV 带上这一节，不进合计', () => {
+  const deco = [
+    { cat: '涂料', name: '雾蓝', qty: 9, unit: 'L', approx: true, basis: '2 遍 · 41.6 m²', where: '卧室1' },
+    { cat: '墙纸', name: '细格纹 · 亚麻', qty: 8, unit: '卷', basis: '42.1 m² · 5.3 m²/卷', where: '卧室2' },
+  ];
+  it('纯文本：最后一节标题 + 每行「约」/ 数量 / 依据', () => {
+    const list = buildShoppingList([buy()]);
+    const t = shoppingText(list, { title: 'T', money: (v) => '$' + v, deco }).split('\n');
+    const i = t.indexOf(DECO_USAGE_TITLE);
+    expect(i).toBeGreaterThan(0);
+    expect(t[i + 1]).toBe('· 涂料 · 雾蓝 — 约 9 L（2 遍 · 41.6 m²；卧室1）');
+    expect(t[i + 2]).toBe('· 墙纸 · 细格纹 · 亚麻 — 8 卷（42.1 m² · 5.3 m²/卷；卧室2）');
+  });
+  it('CSV：类别列 = 涂料 / 墙纸，在合计行之前；合计金额不变', () => {
+    const list = buildShoppingList([buy()]);
+    const rows = shoppingCSV(list, { currency: 'US$', deco }).trim().split('\r\n');
+    const last = rows[rows.length - 1];
+    expect(rows.some((r) => r.startsWith('"","涂料","雾蓝","9",'))).toBe(true);
+    expect(rows.findIndex((r) => r.startsWith('"","墙纸",'))).toBeGreaterThan(0);
+    expect(rows.findIndex((r) => r.startsWith('"","墙纸",'))).toBeLessThan(rows.length - 1);
+    expect(last).toContain('合计');
+    expect(last.split(',')[5]).toBe('"' + String(+list.total.toFixed(2)) + '"');
   });
 });

@@ -14043,6 +14043,310 @@ async function runPBTest() {
       );
     }
 
+    /* ===== 59. S27d 整屋配色 / 填缝 / 装修用量 / 吸管 ===== */
+    {
+      await pbReset();
+      if (wallEdit.on) setWallEdit(false);
+      await tick();
+      const p59Plans = PLAN_REG.plans.length;
+      Q('#btnPlanNew').click();
+      await tick();
+      const p59Plan = PLAN_ID;
+      const fp = floorPts();
+      const X =
+          Math.min.apply(
+            null,
+            fp.map((p) => p[0])
+          ) + 1,
+        Y =
+          Math.min.apply(
+            null,
+            fp.map((p) => p[1])
+          ) + 1;
+      const T0 = 0.5,
+        wd = cmToWd(T0 * 30.48);
+      // 两间：左 卧室（12 × 10）、右 书房（8 × 10），中间一道实墙
+      pushUserWall(X, Y, X + 20, Y, 'w', wd);
+      pushUserWall(X + 20, Y, X + 20, Y + 10, 'w', wd);
+      pushUserWall(X + 20, Y + 10, X, Y + 10, 'w', wd);
+      pushUserWall(X, Y + 10, X, Y, 'w', wd);
+      pushUserWall(X + 12, Y, X + 12, Y + 10, 'w', wd);
+      geoChanged();
+      fit2DToContent();
+      await tick();
+      const rA = pickRoomAt(X + 6, Y + 5);
+      rA.label = '卧室';
+      const rB = pickRoomAt(X + 16, Y + 5);
+      rB.label = '书房';
+      enterArea('deco');
+      wallEdit.sel = null;
+      updateWallBarFromSel();
+      await tick();
+      // ① 整屋配色：卡片打开方案选择器（6 张）；悬停 = 预览不进撤销；套用 = 一步；⌘Z 一下全回去；卧室最长的墙是强调墙
+      Q('#schemeCard').click();
+      await tick();
+      const open = MP.slot && MP.slot.key === 'scheme' && document.querySelectorAll('#mpBody .schemeCard').length === 6;
+      const snap0 = schemeSnap(),
+        u0 = undoRing.length;
+      mpPreview('vintage');
+      await tick();
+      const prevOk = DOC.floorMat === 'oakSmokeHerring' && rA.wallColor === '#dcd6cb' && undoRing.length === u0;
+      mpUnpreview();
+      await tick();
+      const back = schemeSnap() === snap0;
+      Q('#mpBody .schemeCard[data-id="vintage"]').click();
+      await tick();
+      Q('#schemeApply').click();
+      await tick();
+      const longest = roomFaceRuns(rA)
+        .slice()
+        .sort((p, q) => Math.hypot(q.b[0] - q.a[0], q.b[1] - q.a[1]) - Math.hypot(p.b[0] - p.a[0], p.b[1] - p.a[1]))[0];
+      const acc = finishOf(rA, longest.ea, longest.eb).wall;
+      const applied =
+        undoRing.length === u0 + 1 &&
+        rA.wallColor === '#dcd6cb' &&
+        rB.wallColor === '#dcd6cb' &&
+        rA.hw === 'brass' &&
+        rA.base &&
+        rA.base.c === 'door' &&
+        acc &&
+        acc.color === '#4f604f' &&
+        !finishOf(rB, roomFaceRuns(rB)[0].ea, roomFaceRuns(rB)[0].eb).face;
+      undoStep();
+      await tick();
+      const undone = !rA.wallColor || effRooms().every((r) => !r.wallColor);
+      T(
+        'pb-s27d-scheme-preview-apply-undo',
+        open && prevOk && back && applied && undone,
+        '6 卡=' +
+          open +
+          ' 预览=' +
+          prevOk +
+          ' 移开恢复=' +
+          back +
+          ' 套用（含卧室强调墙）=' +
+          applied +
+          ' 撤销=' +
+          undone
+      );
+      // ② 「只填没设过的」：书房先自己刷了墙 → 套用不动它；全设过 → 套用禁用、写「已经都设过了」
+      mpClose();
+      const rB2 = effRooms().find((r) => r.label === '书房');
+      setRoomWallColor(rB2, '#a9b8c2');
+      await tick();
+      Q('#schemeCard').click();
+      await tick();
+      Q('#mpBody .schemeCard[data-id="nordic"]').click();
+      await tick();
+      Q('#schemeMode button[data-v="fill"]').click();
+      await tick();
+      Q('#schemeApply').click();
+      await tick();
+      const kept = rB2.wallColor === '#a9b8c2' && effRooms().find((r) => r.label === '卧室').wallColor === '#f2efe8';
+      Q('#mpBody .schemeCard[data-id="nordic"]').click();
+      await tick();
+      const zero = Q('#schemeApply').disabled && /都设过了/.test(Q('#mpBody .asN').textContent);
+      mpClose();
+      T('pb-s27d-scheme-fill-only', kept && zero, '没设过的才填=' + kept + ' 0 项禁用=' + zero);
+      // ③ 填缝：墙砖展开区 [白|灰|黑]；规格那一行写「黑缝」
+      const ra = effRooms().find((r) => r.label === '卧室');
+      wallEdit.sel = { kind: 'room', id: ra.id };
+      updateWallBarFromSel();
+      await tick();
+      MAT_SLOTS.roomTile(ra).set('subwayWhite');
+      await tick();
+      Q('#mrTile').click();
+      await tick();
+      mpClose();
+      Q('#tileGrout button[data-v="black"]').click();
+      await tick();
+      const grout = ra.tile.grout === 'black' && /黑缝/.test(Q('#mrTile .sp').textContent);
+      T('pb-s27d-tile-grout', grout, 'grout=' + ra.tile.grout + ' 规格=' + Q('#mrTile .sp').textContent);
+      // ④ 装修用量：涂料 L = ⌈墙面面积 ÷ 10 × 2⌉（独立量：内周长 × (层高 − 墙砖带高)）；CSV 有「涂料」一行
+      ra.faces && delete ra.faces;
+      setRoomFinish(ra, { wallColor: '#4f604f', base: null }, 'x');
+      await tick();
+      const P = 2 * (12 - T0 + 10 - T0),
+        band = 120 / 30.48,
+        top = CEIL_H - 0.005;
+      const paintM2 = P * (top - band) * 0.092903,
+        tileM2 = P * band * 0.092903;
+      const rows = decoUsage();
+      const pr = rows.find((u) => u.cat === '涂料' && u.name === '墨绿'),
+        tr = rows.find((u) => u.cat === '墙砖');
+      const wantL = Math.ceil((paintM2 / 10) * 2);
+      const csv = CATPACK.shoppingCSV(shoppingListNow(), { currency: 'US$', deco: shoppingDeco() });
+      const useOk =
+        pr && pr.qty === wantL && pr.unit === 'L' && tr && Math.abs(tr.qty - tileM2) < 0.6 && /"涂料","墨绿"/.test(csv);
+      T(
+        'pb-s27d-usage-paint-tile',
+        !!useOk,
+        '涂料 ' +
+          (pr && pr.qty) +
+          ' L（期望 ' +
+          wantL +
+          '）· 墙砖 ' +
+          (tr && tr.qty) +
+          ' m²（期望 ' +
+          tileM2.toFixed(1) +
+          '）'
+      );
+      // ⑤ 吸管：吸卧室的墙 → 点书房的墙 = 粘贴（一步撤销）；点地面 = 只能粘到同类；Esc 两下退出
+      const rb = effRooms().find((r) => r.label === '书房');
+      Q('#decoToolSeg button[data-t="pipette"]').click();
+      await tick();
+      const on = PIP.on && document.body.classList.contains('pipette');
+      await tap(X + 6, Y + T0 / 2 + 0.3);
+      const got = PIP.src && PIP.src.cat === 'wall';
+      const u5 = undoRing.length;
+      await tap(X + 16, Y + T0 / 2 + 0.3);
+      const fb = faceAt(X + 16, Y + T0 / 2 + 0.3);
+      const pasted =
+        fb &&
+        finishOf(rb, fb.a, fb.b).wall &&
+        finishOf(rb, fb.a, fb.b).wall.color === '#4f604f' &&
+        undoRing.length === u5 + 1;
+      await tap(X + 16, Y + 5);
+      const refused = /只能粘到同类/.test(Q('#wMsg').textContent) && undoRing.length === u5 + 1;
+      key('Escape');
+      await tick();
+      const cleared = PIP.on && !PIP.src;
+      key('Escape');
+      await tick();
+      T(
+        'pb-s27d-pipette',
+        on && got && pasted && refused && cleared && !PIP.on,
+        '开=' + on + ' 吸=' + got + ' 粘=' + pasted + ' 拒异类=' + refused + ' Esc 分两步=' + cleared + '/' + !PIP.on
+      );
+      setWallEdit(false);
+      await tick();
+      Q('#btnPlanDel').click();
+      await tick();
+      Q('#btnPlanDel').click();
+      await tick();
+      T(
+        'pb-s27d-clean-exit',
+        PLAN_ID !== p59Plan && PLAN_REG.plans.length === p59Plans,
+        'plans ' + p59Plans + '→' + PLAN_REG.plans.length
+      );
+    }
+
+    /* ===== 60. S27e 吊柜 + 双色柜：缺省不装；装 70 → 2D 虚线框；窗前那一段不装并说明；双色芯片；壁挂电视碰吊柜标红 ===== */
+    {
+      await pbReset();
+      if (wallEdit.on) setWallEdit(false);
+      await tick();
+      const p60Plans = PLAN_REG.plans.length;
+      Q('#btnPlanNew').click();
+      await tick();
+      const p60Plan = PLAN_ID;
+      const fp = floorPts();
+      const X =
+          Math.min.apply(
+            null,
+            fp.map((p) => p[0])
+          ) + 1,
+        Y =
+          Math.min.apply(
+            null,
+            fp.map((p) => p[1])
+          ) + 1;
+      const wd = cmToWd(15);
+      // 上墙中间开一扇窗（x 5–10）；台面沿上墙从 x 1 画到 x 13
+      pushUserWall(X, Y, X + 5, Y, 'w', wd);
+      pushUserWindow(X + 5, Y, X + 10, Y, wd); // 5ft 宽：55 寸电视（约 4ft）挂在窗前碰不到两边的吊柜
+      pushUserWall(X + 10, Y, X + 14, Y, 'w', wd);
+      pushUserWall(X + 14, Y, X + 14, Y + 10, 'w', wd);
+      pushUserWall(X + 14, Y + 10, X, Y + 10, 'w', wd);
+      pushUserWall(X, Y + 10, X, Y, 'w', wd);
+      geoChanged();
+      fit2DToContent();
+      await tick();
+      const half = wd / S / 2;
+      const run = pushUserRun(
+        [
+          [X + 1, Y + half],
+          [X + 13, Y + half],
+        ],
+        1.97,
+        2.95
+      );
+      geoChanged();
+      enterArea('deco');
+      wallEdit.sel = { kind: 'run', id: run.id };
+      updateWallBarFromSel();
+      await tick();
+      const none0 = !run.upper && /不装/.test(Q('#mrUpper .nm').textContent) && !document.querySelector('.upperRun');
+      Q('#mrUpper').click();
+      await tick();
+      const u0 = undoRing.length;
+      Q('#upH button[data-v="70"]').click();
+      await tick();
+      const UP = upperPieces(run);
+      const two = UP.pieces.length === 2 && undoRing.length === u0 + 1;
+      const warn = Q('#upperWarn').style.display !== 'none' && /挡住了窗/.test(Q('#upperWarn').textContent);
+      const dashed = document.querySelectorAll('.upperRun').length === 2;
+      const gapOk = Math.abs(UP.y0 - (2.95 + 50 / 30.48)) < 0.01 && Math.abs(UP.y1 - UP.y0 - 70 / 30.48) < 0.01;
+      const renamed = Q('#mrRunDoor .lb').textContent === '地柜色';
+      T(
+        'pb-s27e-upper-skip-window',
+        none0 && two && warn && dashed && gapOk && renamed,
+        '缺省不装=' +
+          none0 +
+          ' 两段=' +
+          two +
+          ' 说明=' +
+          warn +
+          ' 2D 虚线=' +
+          dashed +
+          ' 高度区间=' +
+          gapOk +
+          ' 改名=' +
+          renamed
+      );
+      // 双色：选暖白 → 芯片「双色」；选回「同」→ 芯片消失
+      Q('#upColor button[data-v="#f2efe8"]').click();
+      await tick();
+      const chip1 = Q('#mrUpper .st').style.display !== 'none' && /双色/.test(Q('#mrUpper .st').textContent);
+      Q('#upColor button[data-v="same"]').click();
+      await tick();
+      const chip0 = Q('#mrUpper .st').style.display === 'none';
+      T('pb-s27e-two-tone-chip', chip1 && chip0, '双色=' + chip1 + ' 同 → 没有芯片=' + chip0);
+      // 壁挂电视（离地 150cm）挂在吊柜那段的高度上 → 与吊柜的高度区间重叠 → 标红；挂到 230cm 以上的窗前段落（没吊柜）不红
+      setWallEdit(false);
+      await tick();
+      addItem('tv-55');
+      const tv = state.items[state.items.length - 1];
+      tv.x = X + 3;
+      tv.y = Y + half + 0.4;
+      tv.rot = 0;
+      tv.z = 150 / 30.48;
+      drawFurniture();
+      await tick();
+      const red = furnWhy.has(tv.uid);
+      tv.x = X + 7.5;
+      drawFurniture();
+      await tick();
+      const notRed = !furnWhy.has(tv.uid),
+        why2 = JSON.stringify(furnWhy.get(tv.uid) || null);
+      state.items = state.items.filter((i) => i !== tv);
+      drawFurniture();
+      T(
+        'pb-s27e-upper-height-collision',
+        red && notRed,
+        '吊柜那段标红=' + red + ' 窗前（没吊柜）不红=' + notRed + ' ' + why2
+      );
+      Q('#btnPlanDel').click();
+      await tick();
+      Q('#btnPlanDel').click();
+      await tick();
+      T(
+        'pb-s27e-clean-exit',
+        PLAN_ID !== p60Plan && PLAN_REG.plans.length === p60Plans,
+        'plans ' + p60Plans + '→' + PLAN_REG.plans.length
+      );
+    }
+
     /* ===== 收尾：页面不得有未捕获异常 ===== */
     T('pb-no-page-errors', window.__ERRS.length === 0, window.__ERRS.slice(0, 3).join(' || '));
   } catch (e) {
