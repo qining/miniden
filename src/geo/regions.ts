@@ -127,6 +127,50 @@ export function refineToFaces(poly: readonly Pt2[], lines: readonly FaceLine[], 
   return out;
 }
 
+/* S27 M04：斜墙的栅格台阶拉直。RDP 的容差只有 0.75 格，斜墙上的台阶（每级 1 格）在角度不是 45° 时偏差会超过它，
+   于是留下一串短边；这些短边的方向和斜墙差得远，refineToFaces 的「平行 < 4°」也接不住 —— 一面斜墙读成几十面「墙」。
+   这里先把「连续若干顶点都离同一条墙皮线 < tol、且沿线单调前进」的一段收成首尾两点，留下的那条边与墙皮平行，
+   再交给 refineToFaces 精修到墙皮上。单调这一条防的是绕过细墙端头又折回来的那种 U 形（两侧墙皮可能都在容差里）。 */
+export function straightenRuns(poly: readonly Pt2[], lines: readonly FaceLine[], tol: number): Pt2[] {
+  let pts = poly.slice();
+  if (pts.length < 4 || !lines.length) return pts;
+  const near = (q: Pt2, ln: FaceLine) => Math.abs(ln.ux * (q[1] - ln.py) - ln.uy * (q[0] - ln.px)) < tol;
+  const along = (q: Pt2, ln: FaceLine) => (q[0] - ln.px) * ln.ux + (q[1] - ln.py) * ln.uy;
+  const pass = (arr: Pt2[]): Pt2[] => {
+    const out: Pt2[] = [];
+    let i = 0;
+    while (i < arr.length) {
+      let bestJ = i;
+      for (const ln of lines) {
+        if (!near(arr[i], ln)) continue;
+        let j = i,
+          dir = 0;
+        while (j + 1 < arr.length && near(arr[j + 1], ln)) {
+          const d = along(arr[j + 1], ln) - along(arr[j], ln);
+          if (Math.abs(d) > 1e-9) {
+            const sg = Math.sign(d);
+            if (dir && sg !== dir) break;
+            dir = sg;
+          }
+          j++;
+        }
+        if (j > bestJ) bestJ = j;
+      }
+      out.push(arr[i]);
+      if (bestJ > i + 1) {
+        out.push(arr[bestJ]);
+        i = bestJ + 1;
+      } else i++;
+    }
+    return out;
+  };
+  // 闭合环：一遍从 0 开始，再把起点挪到中间走一遍，接住跨过数组首尾的那一段
+  pts = pass(pts);
+  const h = Math.floor(pts.length / 2);
+  pts = pass(pts.slice(h).concat(pts.slice(0, h)));
+  return pts.length >= 3 ? pts : poly.slice();
+}
+
 export interface Region {
   /** 外轮廓（简化后，世界坐标 ft，逆时针） */
   poly: Pt2[];
@@ -264,7 +308,16 @@ export function buildGrid(inp: RegionInput): Grid | null {
       }
     }
   }
-  return { x0, y0, cell, w, h, block, lines: faceLines(inp.segs, inp.bounds) };
+  // S27 M04：柱子 / 台面这类障碍多边形的边也是墙皮 —— 斜着的那几条边同样要能拉直、精修
+  const lines = faceLines(inp.segs, inp.bounds);
+  for (const P of inp.polys || [])
+    for (let i = 0; i < P.length; i++) {
+      const a = P[i],
+        b = P[(i + 1) % P.length],
+        L = Math.hypot(b[0] - a[0], b[1] - a[1]);
+      if (L > 1e-6) lines.push({ px: a[0], py: a[1], ux: (b[0] - a[0]) / L, uy: (b[1] - a[1]) / L });
+    }
+  return { x0, y0, cell, w, h, block, lines };
 }
 
 export function cellAt(g: Grid, x: number, y: number): number {
@@ -479,7 +532,8 @@ function regionFromMask(g: Grid, mask: Uint8Array, count: number): Region | null
     const a = polyArea(l);
     if (a > oa) ((oa = a), (outer = l));
   }
-  const raw = simplifyClosed(outer, g.cell * 0.75);
+  const raw0 = simplifyClosed(outer, g.cell * 0.75);
+  const raw = g.lines && g.lines.length ? straightenRuns(raw0, g.lines, g.cell * 1.2) : raw0;
   const poly = g.lines && g.lines.length ? refineToFaces(raw, g.lines, g.cell * 1.6) : raw;
   if (signedArea(poly) < 0) poly.reverse();
   // 面积 = 精修后外轮廓的面积 − 洞（柱子）占的格：外环围住的格数 − 区域格数
