@@ -226,6 +226,12 @@
   .mrow.c .nm, .mrow.c .sp{white-space:normal; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;} .mrow.c .nm{line-height:16px;} .mrow.c .sp{line-height:14px;}   /* UX N06 / QA r2：名字和规格都最多折两行，不省略 */
   .mrow .chev{width:12px; flex:none; color:var(--muted); font-size:11px; text-align:center;}
   .exp{display:flex; flex-direction:column; gap:6px; margin:-4px 0 2px 8px; padding-left:8px; border-left:2px solid var(--line);}
+  /* QA r3 / UX N06：笔记本宽度（≤1600）下右栏只有 255–290px —— 紧凑行的状态芯片缩成一个点（单独设置 = 琥珀实心，悬停看文字），行名列收窄、可折两行 */
+  @media (max-width:1600px){
+    .mrow.c .st{font-size:0; width:8px; height:8px; min-width:8px; padding:0; border-radius:50%; background:transparent;}
+    .mrow.c .st.own{background:var(--accent); border-color:var(--accent);}
+    .mrow.c .rl{width:52px; white-space:normal; line-height:14px;}
+  }
   .exp .irow > .il{width:36px;}
   .swRow.lab{display:flex; flex-wrap:wrap; gap:3px;}
   .swRow.lab > span{display:flex; flex-direction:column; align-items:center; gap:2px; width:30px; font-size:10px; color:var(--muted); white-space:nowrap;}
@@ -419,8 +425,8 @@
   }
   button.btn:hover{border-color:var(--accent);}
   button.btn.primary{background:var(--accent); border-color:var(--accent); color:var(--on-fg);}
-  button.btn.primary:disabled{background:var(--panel2); border-color:var(--line); color:var(--muted); cursor:not-allowed;}   /* UX O03 */
-  .applySheet .asT.prev{color:#7fb8ff;}
+  button.btn.primary:disabled{background:var(--panel2) !important; border-color:var(--line) !important; color:var(--muted) !important; opacity:1 !important; cursor:not-allowed;}   /* UX O03 / P02 */
+  .applySheet .asT.prev{color:#7fb8ff;} .applySheet .asT.done{color:var(--accent);}
   button.btn.danger{color:var(--danger);}
   /* ---------- F0（facelift §5.3 / §5.4）：按钮层级与选中态 ----------
      选中态（视图、单位、币种、灯开、白天、窗外、工具、楼层、方案行）= 中性亮底 + 琥珀细描边；实心琥珀只留给主动作（.primary）。
@@ -25140,7 +25146,7 @@ function mrowPaint(b){
   b.querySelector('.nm').textContent = it.name + (isPrev ? '（预览中）' : '');
   b.querySelector('.sp').textContent = b._spec ? b._spec(it, s) : (it===s.first ? (s.first.spec||'') : (it.spec||''));   // S27b：子行的值写进规格那一行
   const st=b.querySelector('.st'); const chip = s.chip ? s.chip() : null;
-  st.style.display = chip ? '' : 'none'; if(chip){ st.textContent=chip[0]; st.classList.toggle('own', !!chip[1]); }
+  st.style.display = chip ? '' : 'none'; if(chip){ st.textContent=chip[0]; st.title=chip[0]; st.classList.toggle('own', !!chip[1]); }
   b.classList.toggle('open', MP.row===b && !!MP.slot); { const ar=b.querySelector('.ar'); if(ar) ar.textContent = (MP.row===b && MP.slot) ? '◂' : '▸'; }
   mrowChev(b);
 }
@@ -25660,7 +25666,7 @@ function wainsItems(hex){ return WAINS_STYLES_UI.map(([st,name,spec])=>({id:'wai
   mrowCompact(tr, texp);
   tr._spec=(it)=>{ const r=selRoom(); if(!r) return it.spec||'';
     if(r.wains) return (state.unit==='cm' ? r.wains.h+' cm' : Math.round(r.wains.h/2.54)+'″')+' · '+(r.wains.c==='#efe9df' ? '暖白' : paintName(r.wains.c));   // 旧档（S27 第 1 轮前）的缺省色也叫暖白   // QA Q11：样式名已经在名字里
-    if(r.tile){ const h=(TILE_HEIGHTS.find(x=>x[0]===r.tile.h)||[0,''])[1]; return [it.spec, h, r.tile.lay==='half' ? '错缝 1/2' : ((wallTile(r.tile.mat)||{}).lay ? '直缝' : ''), ({white:'白缝', black:'黑缝'})[r.tile.grout]||'灰缝'].filter(Boolean).join(' · '); }
+    if(r.tile){ const h=(TILE_HEIGHTS.find(x=>x[0]===r.tile.h)||[0,''])[1]; return [String(it.spec||'').split(' · ')[0].replace(/\s*×\s*/,'×'), h, r.tile.lay==='half' ? '错缝' : ((wallTile(r.tile.mat)||{}).lay ? '直缝' : ''), ({white:'白缝', black:'黑缝'})[r.tile.grout]||'灰缝'].filter(Boolean).join(' · '); }   // QA r3：紧凑写法，两行内放得下
     return '墙面一直到地'; };
   // 踢脚线（新）：展开区 = 颜色 7 格 + 高度 + 样式
   const br=document.createElement('button'); br.className='mrow decoOnly'; br.id='mrBase'; br.type='button'; br.innerHTML='<span class="lb">踢脚线</span>';
@@ -26340,8 +26346,9 @@ function schemeApplyNow(){
   const res=applyScheme(sc, SCHEME_UI.scope, SCHEME_UI.mode, false);
   geoChanged(); updateWallBarFromSel(); decoPanelUI();
   const z = /Mac|iPhone|iPad/.test(navigator.platform||'') ? '⌘Z' : 'Ctrl+Z';
-  toast('已套用「'+sc.name+'」到 '+(SCHEME_UI.scope==='room' ? '这个房间' : res.rooms+' 个房间')+(res.accent ? ' · 强调墙放在了各卧室最长的墙上' : '')+' · '+z+' 撤回', 8000);
+  const msg='已套用「'+sc.name+'」到 '+(SCHEME_UI.scope==='room' ? '这个房间' : res.rooms+' 个房间')+(res.accent ? ' · 强调墙放在了各卧室最长的墙上' : '')+' · '+z+' 撤回';
   schemeRender($('#mpBody'));
+  wMsg(msg); { const at=$('#mpBody .asT'); if(at){ at.textContent=msg; at.classList.add('done'); } }   // UX P01：不弹 toast（会盖住提示行），写在套用区标题和提示行里
 }
 function schemeRender(body){
   body.innerHTML='';
