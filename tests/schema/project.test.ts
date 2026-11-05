@@ -1270,3 +1270,30 @@ describe('S22b 窗的款式与外观（提拉 / 内开内倒 / 推拉扇数 / �
     expect(Object.keys(proj)).toEqual(['walls', 'fixed', 'doors']);
   });
 });
+
+/* ---- S27b：踢脚线 / 天花 / 墙裙 / 地面铺法（全部可选；旧档没有这些字段照样过） ---- */
+describe('validate — S27b 房间收边', () => {
+  const room = (extra: Record<string, unknown>) => {
+    const d = blankDoc('t');
+    d.rooms = [{ id: 'r1', label: '卧室', pos: [1, 1], ...extra } as never];
+    return d;
+  };
+  it('合法：踢脚线（关键字色 / #hex）、天花（wall / #hex）、墙裙、铺法', () => {
+    expect(validate(room({ base: { c: 'white', h: 8, st: 'flat' } }))).toEqual([]);
+    expect(validate(room({ base: { c: '#3a3a3a', h: 12, st: 'profile' } }))).toEqual([]);
+    expect(validate(room({ ceil: 'wall' }))).toEqual([]);
+    expect(validate(room({ ceil: '#f4f2ee' }))).toEqual([]);
+    expect(validate(room({ wains: { st: 'bead', h: 90, c: '#efe9df' } }))).toEqual([]);
+    expect(validate(room({ floor: { mat: 'oakBond', lay: 's' } }))).toEqual([]);
+  });
+  it('非法值逐项被拒（路径指到那个字段）', () => {
+    const paths = (d: ReturnType<typeof room>) => validate(d).map((e) => e.path);
+    expect(paths(room({ base: { c: 'pink', h: 8 } }))).toContain('rooms[0].base.c');
+    expect(paths(room({ base: { c: 'white', h: 80 } }))).toContain('rooms[0].base.h');
+    expect(paths(room({ base: { c: 'white', h: 8, st: 'ogee' } }))).toContain('rooms[0].base.st');
+    expect(paths(room({ ceil: 'blue' }))).toContain('rooms[0].ceil');
+    expect(paths(room({ wains: { st: 'stone', h: 90, c: '#ffffff' } }))).toContain('rooms[0].wains.st');
+    expect(paths(room({ wains: { st: 'panel', h: 10, c: '#ffffff' } }))).toContain('rooms[0].wains.h');
+    expect(paths(room({ floor: { mat: 'oakBond', lay: 'b4' } }))).toContain('rooms[0].floor.lay');
+  });
+});

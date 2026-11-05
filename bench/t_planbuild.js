@@ -13603,6 +13603,264 @@ async function runPBTest() {
       );
     }
 
+    /* ===== 57. S27b 房间收边：地面铺法 / 踢脚线 / 天花 / 墙裙（与墙砖二选一）/ 紧凑行手风琴 / 单面墙踢脚线 / 旧档不变 / S13 ===== */
+    {
+      await pbReset();
+      if (wallEdit.on) setWallEdit(false);
+      await tick();
+      const p57Plans = PLAN_REG.plans.length;
+      Q('#btnPlanNew').click();
+      await tick();
+      const p57Plan = PLAN_ID;
+      const fp = floorPts();
+      const X =
+          Math.min.apply(
+            null,
+            fp.map((p) => p[0])
+          ) + 1,
+        Y =
+          Math.min.apply(
+            null,
+            fp.map((p) => p[1])
+          ) + 1;
+      const wd = cmToWd(15);
+      pushUserWall(X, Y, X + 12, Y, 'w', wd);
+      pushUserWall(X + 12, Y, X + 12, Y + 10, 'w', wd);
+      pushUserWall(X + 12, Y + 10, X, Y + 10, 'w', wd);
+      pushUserWall(X, Y + 10, X, Y, 'w', wd);
+      geoChanged();
+      fit2DToContent();
+      await tick();
+      const r = pickRoomAt(X + 6, Y + 5);
+      r.label = '卧室';
+      enterArea('deco');
+      await tick();
+      wallEdit.sel = { kind: 'room', id: r.id };
+      updateWallBarFromSel();
+      await tick();
+      // ① 旧档：没有新字段 → 踢脚线「无」、天花白、finishOf 不带踢脚线 / 墙裙
+      const fin0 = finishOf(r, null, null);
+      const old0 =
+        /无/.test(Q('#mrBase .nm').textContent) &&
+        /白（缺省）/.test(Q('#mrCeil .nm').textContent) &&
+        fin0.base === null &&
+        fin0.wains === null &&
+        ceilHex(r) === null;
+      T(
+        'pb-s27b-old-doc-unchanged',
+        old0,
+        '踢脚线=' + Q('#mrBase .nm').textContent + ' 天花=' + Q('#mrCeil .nm').textContent
+      );
+      // ② 地面铺法：浅色白橡（预设 1/2 错缝）→ 直铺 = 一步撤销、2D 底纹换成派生 id、名字里没有「错缝」
+      Q('#rmFloor').value = 'oakBond';
+      Q('#rmFloor').dispatchEvent(new Event('change'));
+      await tick();
+      Q('#mrFloor').click();
+      await tick();
+      const layShown =
+        Q('#rmLay').closest('.irow').style.display !== 'none' &&
+        Q('#rmLay button[data-v="b2"]').classList.contains('on');
+      mpClose();
+      const u0 = undoRing.length;
+      Q('#rmLay button[data-v="s"]').click();
+      await tick();
+      const layOk =
+        r.floor.lay === 's' &&
+        undoRing.length === u0 + 1 &&
+        !floorPreset('oakBond~s').bond &&
+        !!document.querySelector('pattern[id^="flp-oakBond~s"]');
+      const noBondNames = !FLOOR_PRESETS.some((p) => /错缝/.test(p.name));
+      Q('#rmLay button[data-v="b2"]').click();
+      await tick();
+      const backToDefault = r.floor.lay === undefined;
+      Q('#rmFloor').value = 'carpetGrey';
+      Q('#rmFloor').dispatchEvent(new Event('change'));
+      await tick();
+      const carpetHides =
+        Q('#rmLay').closest('.irow').style.display === 'none' &&
+        Q('#rmAngle').closest('.irow').style.display === 'none';
+      T(
+        'pb-s27b-floor-lay',
+        layShown && layOk && noBondNames && backToDefault && carpetHides,
+        '铺法行=' +
+          layShown +
+          ' 直铺=' +
+          layOk +
+          ' 名字无错缝=' +
+          noBondNames +
+          ' 回预设=' +
+          backToDefault +
+          ' 地毯不显示铺法 / 方向=' +
+          carpetHides
+      );
+      // ③ 手风琴：展开踢脚线 → 再点地面：踢脚线收起、地面展开 + 选择器打开
+      Q('#mrBase').click();
+      await tick();
+      const baseOpen = Q('#mrBase').getAttribute('aria-expanded') === 'true' && Q('#baseExp').style.display !== 'none';
+      Q('#mrFloor').click();
+      await tick();
+      const acc =
+        baseOpen &&
+        Q('#mrBase').getAttribute('aria-expanded') === 'false' &&
+        Q('#baseExp').style.display === 'none' &&
+        Q('#floorExp').style.display !== 'none' &&
+        Q('#matPicker').style.display !== 'none';
+      mpClose();
+      T('pb-s27b-accordion-one-open', acc, '踢脚线先展开=' + baseOpen + ' 地面展开 + 选择器=' + acc);
+      // ④ 踢脚线：白 → 一步撤销；高 12、带线条；3D 墙脚有一条踢脚线材质；「无」= 删字段
+      Q('#mrBase').click();
+      await tick();
+      const u1 = undoRing.length;
+      Q('#baseColor button[data-v="white"]').click();
+      await tick();
+      const set1 = r.base && r.base.c === 'white' && r.base.h === 8 && undoRing.length === u1 + 1;
+      Q('#baseH button[data-v="12"]').click();
+      await tick();
+      Q('#baseStyle button[data-v="profile"]').click();
+      await tick();
+      const set2 = r.base.h === 12 && r.base.st === 'profile' && /白 · 12/.test(Q('#mrBase .nm').textContent);
+      setView('doll');
+      await wait3D();
+      await tick();
+      // 独立量：从房间中央朝上墙打水平射线 —— 踢脚线高度（3cm）打到的面比墙面高度（1m）近约 4.6cm（踢脚线凸出墙皮）
+      const hitD = (y) => {
+        three.staticGroup.updateMatrixWorld(true);
+        const rc = new THREE.Raycaster(new THREE.Vector3(X + 6, curElev() + y, Y + 5), new THREE.Vector3(0, 0, -1));
+        const h = rc.intersectObjects(three.staticGroup.children, true)[0];
+        return h ? h.distance : null;
+      };
+      const dBase = hitD(0.1),
+        dWall = hitD(3.3);
+      const base3D = dBase != null && dWall != null && dWall - dBase > 0.03 && dWall - dBase < 0.08;
+      setView('2d');
+      await tick();
+      Q('#baseColor button[data-v="none"]').click();
+      await tick();
+      const none = r.base === undefined && /无/.test(Q('#mrBase .nm').textContent);
+      T(
+        'pb-s27b-baseboard',
+        set1 && set2 && base3D && none,
+        '设白=' + set1 + ' 12cm 带线条=' + set2 + ' 3D 墙脚 ' + dBase + ' / 墙面 ' + dWall + ' 无=' + none
+      );
+      // ⑤ 天花：选择器「跟墙」→ 3D 房间天花的颜色 = 墙色；改墙色天花跟着变
+      setRoomWallColor(r, '#8fa294');
+      await tick();
+      Q('#mrCeil').click();
+      await tick();
+      const ceilPicker = MP.slot && MP.slot.key === 'roomCeil';
+      mpPick('wall');
+      await tick();
+      mpClose();
+      const ceilCol = () => {
+        let c = null;
+        three.staticGroup.traverse((o) => {
+          if (o.isMesh && o.material && o.material.userData && o.material.userData.roomCeil === r.id)
+            c = '#' + o.material.color.clone().convertLinearToSRGB().getHexString();
+        });
+        return c;
+      };
+      setView('doll');
+      await wait3D();
+      await tick();
+      const c1 = ceilCol();
+      setView('2d');
+      await tick();
+      setRoomWallColor(r, '#2f3e55');
+      await tick();
+      setView('doll');
+      await wait3D();
+      await tick();
+      const c2 = ceilCol();
+      setView('2d');
+      await tick();
+      T(
+        'pb-s27b-ceiling-follows-wall',
+        ceilPicker && r.ceil === 'wall' && c1 === '#8fa294' && c2 === '#2f3e55',
+        '选择器=' + ceilPicker + ' 天花=' + c1 + ' → 改墙色后 ' + c2
+      );
+      // ⑥ 墙裙：选择器「护墙板」页签 → 替换墙砖、踢脚线跟墙裙；再选墙砖 → 墙裙去掉、踢脚线回白
+      MAT_SLOTS.roomTile(r).set('subwayWhite');
+      await tick();
+      Q('#mrTile').click();
+      await tick();
+      mpPick('wains:bead');
+      await tick();
+      mpClose();
+      const w1 =
+        r.wains &&
+        r.wains.st === 'bead' &&
+        !r.tile &&
+        r.base &&
+        r.base.c === 'wains' &&
+        Q('#mrTile .rl').textContent === '墙裙';
+      Q('#wainH button[data-v="120"]').click();
+      await tick();
+      const w2 = r.wains.h === 120 && /120/.test(Q('#mrTile .sp').textContent);
+      Q('#mrTile').click();
+      await tick();
+      mpPick('subwayWhite');
+      await tick();
+      mpClose();
+      const w3 =
+        !r.wains &&
+        r.tile &&
+        r.tile.mat === 'subwayWhite' &&
+        r.base &&
+        r.base.c === 'white' &&
+        Q('#mrTile .rl').textContent === '墙砖';
+      T('pb-s27b-wainscot-replaces-tile', w1 && w2 && w3, '设墙裙=' + w1 + ' 高 120=' + w2 + ' 换回墙砖=' + w3);
+      // ⑦ 单面墙：踢脚线「这面不装」= null；「跟房间」= 去掉单独设置
+      setRoomBase(r, { c: 'black' });
+      await tick();
+      const c0 = roomFaceRuns(r)[0];
+      wallEdit.sel = {
+        kind: 'face',
+        id: r.id + '#' + c0.ea.join() + '|' + c0.eb.join(),
+        room: r.id,
+        a: c0.ea,
+        b: c0.eb,
+      };
+      updateWallBarFromSel();
+      await tick();
+      Q('#mrFaceBase').click();
+      await tick();
+      Q('#faceBaseColor button[data-v="none"]').click();
+      await tick();
+      const fNone = finishOf(r, c0.ea, c0.eb).base === null && /这面不装/.test(Q('#mrFaceBase .nm').textContent);
+      Q('#faceBaseColor button[data-v="room"]').click();
+      await tick();
+      const fRoom =
+        finishOf(r, c0.ea, c0.eb).base && finishOf(r, c0.ea, c0.eb).base.c === 'black' && !(r.faces || []).length;
+      T('pb-s27b-face-baseboard', fNone && fRoom, '这面不装=' + fNone + ' 跟房间=' + fRoom);
+      // ⑧ S13：左栏收起时打开选择器，竖条不占位（选择器贴左边缘）
+      wallEdit.sel = { kind: 'room', id: r.id };
+      updateWallBarFromSel();
+      await tick();
+      Q('#catalog').classList.add('collapsed');
+      Q('#mrWall').click();
+      await tick();
+      const hid = Q('#catTab') ? Q('#catTab').style.visibility === 'hidden' : true;
+      mpClose();
+      const back = Q('#catTab') ? Q('#catTab').style.visibility === '' : true;
+      Q('#catalog').classList.remove('collapsed');
+      T(
+        'pb-s27b-s13-picker-left-edge',
+        hid && back && Q('#catalog').classList.contains('collapsed') === false,
+        '打开时竖条隐藏=' + hid + ' 关掉恢复=' + back
+      );
+      setWallEdit(false);
+      await tick();
+      Q('#btnPlanDel').click();
+      await tick();
+      Q('#btnPlanDel').click();
+      await tick();
+      T(
+        'pb-s27b-clean-exit',
+        PLAN_ID !== p57Plan && PLAN_REG.plans.length === p57Plans,
+        'plans ' + p57Plans + '→' + PLAN_REG.plans.length
+      );
+    }
+
     /* ===== 收尾：页面不得有未捕获异常 ===== */
     T('pb-no-page-errors', window.__ERRS.length === 0, window.__ERRS.slice(0, 3).join(' || '));
   } catch (e) {
