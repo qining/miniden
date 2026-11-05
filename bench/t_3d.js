@@ -4703,6 +4703,36 @@ async function run3DTest() {
           ' 提示=' +
           document.querySelector('#wMsg').textContent
       );
+      // ⑥b QA Q06：吸管在 3D 里——吸地面；之后悬停照样有标签，悬停到不同类（家具 / 洁具）= 禁止光标 + 「只能粘到同类」；吸管点击不改选中
+      state.items = state.items.filter((i) => i !== it);
+      drawFurniture();
+      sync3D();
+      await wait(300);
+      await look([rm.pos[0], e0 + 18, rm.pos[1] + 0.01], [rm.pos[0], e0, rm.pos[1]]);
+      wallEdit.sel = null;
+      document.querySelector('#decoToolSeg button[data-t="pipette"]').click();
+      await click(rm.pos[0], e0 + 0.005, rm.pos[1]);
+      const gotFloor = PIP.src && PIP.src.cat === 'floor' && wallEdit.sel === null;
+      let pipHover = 'no-fixture';
+      if (fx) {
+        const cx = (fx.x1 + fx.x2) / 2,
+          cz = (fx.y1 + fx.y2) / 2;
+        await look([cx, e0 + 18, cz + 0.01], [cx, e0, cz]);
+        fire('pointermove', scr(cx, e0 + FX_SPAN[fx.t][1] * 0.5, cz));
+        await wait(260);
+        pipHover =
+          cv.style.cursor === 'not-allowed' && /只能粘到同类/.test(document.querySelector('#pick3dTip').textContent)
+            ? 'ok'
+            : cv.style.cursor + ' / ' + document.querySelector('#pick3dTip').textContent;
+      }
+      document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      await wait(60);
+      T(
+        's27-qa1-pipette-3d-hover',
+        gotFloor && (pipHover === 'ok' || pipHover === 'no-fixture') && !PIP.on,
+        '吸地面=' + gotFloor + ' 悬停异类=' + pipHover + ' 退出=' + !PIP.on
+      );
       // ⑦ 不在装修里：3D 点击不改编辑层的选中
       enterArea('furn');
       await wait(100);

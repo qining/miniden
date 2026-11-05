@@ -13805,8 +13805,7 @@ async function runPBTest() {
         !r.wains &&
         r.tile &&
         r.tile.mat === 'subwayWhite' &&
-        r.base &&
-        r.base.c === 'white' &&
+        !r.base && // QA Q09：墙裙带出来的踢脚线跟着去掉
         Q('#mrTile .rl').textContent === '墙砖';
       T('pb-s27b-wainscot-replaces-tile', w1 && w2 && w3, '设墙裙=' + w1 + ' 高 120=' + w2 + ' 换回墙砖=' + w3);
       // ⑦ 单面墙：踢脚线「这面不装」= null；「跟房间」= 去掉单独设置
@@ -13839,9 +13838,9 @@ async function runPBTest() {
       Q('#catalog').classList.add('collapsed');
       Q('#mrWall').click();
       await tick();
-      const hid = Q('#catTab') ? Q('#catTab').style.visibility === 'hidden' : true;
+      const hid = Q('#catTab') ? Q('#catTab').style.display === 'none' : true; // UX N05：不占位（visibility 还占 24px）
       mpClose();
-      const back = Q('#catTab') ? Q('#catTab').style.visibility === '' : true;
+      const back = Q('#catTab') ? Q('#catTab').style.display !== 'none' : true;
       Q('#catalog').classList.remove('collapsed');
       T(
         'pb-s27b-s13-picker-left-edge',
@@ -14090,11 +14089,16 @@ async function runPBTest() {
         u0 = undoRing.length;
       mpPreview('vintage');
       await tick();
-      const prevOk = DOC.floorMat === 'oakSmokeHerring' && rA.wallColor === '#dcd6cb' && undoRing.length === u0;
+      const prevOk = DOC.floorMat === 'walnutHerring' && rA.wallColor === '#dcd6cb' && undoRing.length === u0;
       mpUnpreview();
       await tick();
       const back = schemeSnap() === snap0;
+      mpPreview('vintage'); // UX N01：先悬停预览，再点这张卡片
+      await tick();
       Q('#mpBody .schemeCard[data-id="vintage"]').click();
+      await tick();
+      const n01 = !Q('#schemeApply').disabled && /会改/.test(Q('#mpBody .asN').textContent);
+      mpUnpreview();
       await tick();
       Q('#schemeApply').click();
       await tick();
@@ -14112,6 +14116,10 @@ async function runPBTest() {
         acc &&
         acc.color === '#4f604f' &&
         !finishOf(rB, roomFaceRuns(rB)[0].ea, roomFaceRuns(rB)[0].eb).face;
+      const fu = floorUsage().get('walnutHerring'); // UX N03：跟全屋的房间在地板用量里
+      const n03 = !!fu && fu.rooms.length === 2 && fu.area > 100;
+      const names = roomFaceList(rA).map((e) => e.name); // UX N04：墙名不重复、都 ≥ 30cm
+      const n04 = new Set(names).size === names.length && roomFaceList(rA).every((e) => e.len >= FACE_MIN);
       undoStep();
       await tick();
       const undone = !rA.wallColor || effRooms().every((r) => !r.wallColor);
@@ -14129,6 +14137,13 @@ async function runPBTest() {
           ' 撤销=' +
           undone
       );
+      T('pb-s27-ux1-hover-then-click-apply', n01, '先悬停再点：套用可用=' + n01);
+      T(
+        'pb-s27-ux1-floor-usage-whole-house',
+        n03,
+        '跟全屋的房间算进地板用量=' + n03 + ' ' + JSON.stringify(fu || null)
+      );
+      T('pb-s27-ux1-face-names-unique', n04, '墙名=' + names.join('、'));
       // ② 「只填没设过的」：书房先自己刷了墙 → 套用不动它；全设过 → 套用禁用、写「已经都设过了」
       mpClose();
       const rB2 = effRooms().find((r) => r.label === '书房');
@@ -14345,6 +14360,46 @@ async function runPBTest() {
         PLAN_ID !== p60Plan && PLAN_REG.plans.length === p60Plans,
         'plans ' + p60Plans + '→' + PLAN_REG.plans.length
       );
+    }
+
+    /* ===== 61. S27 UX 第 1 轮 N02：户型自带的厨房也能装吊柜（避开窗 / 冰箱、2D 虚线、双色、一步撤销） ===== */
+    {
+      await pbReset();
+      if (wallEdit.on) setWallEdit(false);
+      await tick();
+      if (kitchenPolys().length) {
+        enterArea('deco');
+        wallEdit.sel = { kind: 'kitchen', id: 'kitchen' };
+        updateWallBarFromSel();
+        await tick();
+        const u0 = undoRing.length;
+        Q('#kitUpH button[data-v="70"]').click();
+        await tick();
+        const n = kitchenPseudoRuns().reduce((a, pr) => a + upperPieces(pr).pieces.length, 0);
+        const ok =
+          DOC.kitchenLook &&
+          DOC.kitchenLook.upper &&
+          DOC.kitchenLook.upper.h === 70 &&
+          undoRing.length === u0 + 1 &&
+          n > 0 &&
+          document.querySelectorAll('.kitUpper .upperRun').length === n &&
+          Q('#kitUpColorRow').style.display !== 'none' &&
+          Q('#mrKitDoor .lb').textContent === '地柜色';
+        Q('#kitUpColor button[data-v="#f2efe8"]').click();
+        await tick();
+        const two = DOC.kitchenLook.upper.c === '#f2efe8';
+        undoStep();
+        undoStep();
+        await tick();
+        const back = !DOC.kitchenLook || !DOC.kitchenLook.upper;
+        T(
+          'pb-s27-ux1-builtin-kitchen-upper',
+          ok && two && back,
+          '装 70=' + ok + '（' + n + ' 段）双色=' + two + ' 撤销两步回去=' + back
+        );
+        setWallEdit(false);
+        await tick();
+      } else T('pb-s27-ux1-builtin-kitchen-upper', true, '这个户型没有自带厨房（跳过）');
     }
 
     /* ===== 收尾：页面不得有未捕获异常 ===== */
