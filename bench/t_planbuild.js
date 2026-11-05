@@ -14233,6 +14233,21 @@ async function runPBTest() {
         on && got && pasted && refused && cleared && !PIP.on,
         '开=' + on + ' 吸=' + got + ' 粘=' + pasted + ' 拒异类=' + refused + ' Esc 分两步=' + cleared + '/' + !PIP.on
       );
+      // UX O01：卫生间套整屋配色 = 方案的砖地面 + 墙砖到淋浴高度（不铺木地板）
+      rb.label = '卫生间';
+      wallEdit.sel = { kind: 'room', id: rb.id };
+      applyScheme(schemeById('vintage'), 'room', 'over', false);
+      const wet =
+        rb.floor &&
+        rb.floor.mat === 'encausticBlack' &&
+        rb.tile &&
+        rb.tile.mat === 'subwaySage' &&
+        rb.tile.h === 'shower';
+      T(
+        'pb-s27-ux2-wet-room-scheme',
+        !!wet,
+        '卫生间 地面=' + (rb.floor && rb.floor.mat) + ' 墙砖=' + JSON.stringify(rb.tile || null)
+      );
       setWallEdit(false);
       await tick();
       Q('#btnPlanDel').click();
