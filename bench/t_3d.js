@@ -4548,6 +4548,173 @@ async function run3DTest() {
       await wait(300);
     }
 
+    // ===== S27a：装修里 3D 点选（research/16 §3.1）=====
+    // 相机摆到已知位置 → 把世界点投影成屏幕点 → 真实派发 pointerdown / pointerup；断言选中对象 = 平面图语义上的那个对象。
+    // 「看得见」用一条独立的射线判（命中距离 ≈ 到目标点的距离），不靠被测的分类逻辑。
+    {
+      const cv = three.canvas;
+      const scr = (x, y, z) => {
+        three.cam.updateMatrixWorld(true);
+        const v = new THREE.Vector3(x, y, z).project(three.cam),
+          r = cv.getBoundingClientRect();
+        return [r.left + ((v.x + 1) / 2) * r.width, r.top + ((1 - v.y) / 2) * r.height];
+      };
+      const fire = (type, xy, extra) =>
+        cv.dispatchEvent(
+          new PointerEvent(
+            type,
+            Object.assign({ clientX: xy[0], clientY: xy[1], button: 0, bubbles: true, pointerId: 7 }, extra || {})
+          )
+        );
+      const click = async (x, y, z) => {
+        const xy = scr(x, y, z);
+        fire('pointerdown', xy);
+        fire('pointerup', xy);
+        await wait(80);
+        return xy;
+      };
+      const look = async (from, to) => {
+        three.controls.target.set(to[0], to[1], to[2]);
+        three.cam.position.set(from[0], from[1], from[2]);
+        three.cam.updateProjectionMatrix();
+        three.controls.update();
+        await wait(150);
+      };
+      const visible = (x, y, z) => {
+        three.cam.updateMatrixWorld(true);
+        const tgt = new THREE.Vector3(x, y, z),
+          dir = tgt.clone().sub(three.cam.position),
+          dist = dir.length();
+        const rc = new THREE.Raycaster(three.cam.position.clone(), dir.normalize());
+        const h = rc
+          .intersectObjects([three.staticGroup, three.furnGroup], true)
+          .filter((q) => q.object.isMesh && q.object.visible)[0];
+        return !!h && Math.abs(h.distance - dist) < 0.15;
+      };
+      const keepItems = state.items.slice();
+      state.items = [];
+      drawFurniture();
+      enterArea('deco');
+      setView('doll');
+      await wait(900);
+      setCamMode('doll');
+      const e0 = curElev();
+      // ① 地面 → 房间（与 2D 在同一处 pickRoomAt 得到的是同一间）
+      const rm = effRooms().find((r) => r.pos && !effFixtures().some((f) => inFxFoot(f, r.pos, 0.3)));
+      await look([rm.pos[0], e0 + 18, rm.pos[1] + 0.01], [rm.pos[0], e0, rm.pos[1]]);
+      wallEdit.sel = null;
+      const floorVis = visible(rm.pos[0], e0 + 0.005, rm.pos[1]);
+      await click(rm.pos[0], e0 + 0.005, rm.pos[1]);
+      const s1 = wallEdit.sel;
+      T(
+        's27a-3d-pick-floor-room',
+        floorVis && !!s1 && s1.kind === 'room' && s1.id === rm.id,
+        '看得见=' + floorVis + ' sel=' + JSON.stringify(s1) + ' 期望 ' + rm.id
+      );
+      // ② 悬停：描边层有东西、光标旁标签写房间名；离开画布 = 都收掉
+      const hv = scr(rm.pos[0], e0 + 0.005, rm.pos[1]);
+      fire('pointermove', hv);
+      await wait(260); // 标签停 150ms 才出现（materials §a.3）
+      const tip = document.querySelector('#pick3dTip');
+      const tipOk =
+        !!tip && tip.style.display !== 'none' && tip.textContent.indexOf(roomFallbackName(rm) + ' · 地面') >= 0; // 地板是双面材质：法线要翻到迎着射线那侧，不然读成天花
+      const hiN = three.pickHi ? three.pickHi.children.length : 0;
+      fire('pointerleave', hv);
+      await wait(60);
+      T(
+        's27a-3d-hover-outline-tip',
+        tipOk && hiN >= 2 && tip.style.display === 'none',
+        '标签=' + (tip && tip.textContent) + ' 描边件数=' + hiN + ' 离开后标签=' + (tip && tip.style.display)
+      );
+      // ③ 拖（≥5px）= 转视角，不改选中
+      wallEdit.sel = null;
+      fire('pointerdown', hv);
+      fire('pointermove', [hv[0] + 40, hv[1] + 10]);
+      fire('pointerup', [hv[0] + 40, hv[1] + 10]);
+      await wait(80);
+      T('s27a-3d-drag-not-pick', wallEdit.sel === null, 'sel=' + JSON.stringify(wallEdit.sel));
+      // ④ 墙面 → 单面墙（a / b 与 roomFaceRuns 的那一面一致）。相机站在房间里、正对这面墙
+      const runs = roomFaceRuns(rm)
+        .slice()
+        .sort((p, q) => Math.hypot(q.b[0] - q.a[0], q.b[1] - q.a[1]) - Math.hypot(p.b[0] - p.a[0], p.b[1] - p.a[1]));
+      let faceOk = false,
+        faceInfo = 'no-visible-face';
+      for (const c of runs) {
+        const m = [(c.a[0] + c.b[0]) / 2, (c.a[1] + c.b[1]) / 2],
+          y = e0 + 3;
+        const eye = [m[0] + c.n[0] * 2.5, y + 0.6, m[1] + c.n[1] * 2.5];
+        if (!ptInPoly([eye[0], eye[2]], rm.poly)) continue;
+        await look(eye, [m[0], y, m[1]]);
+        if (!visible(m[0] + c.n[0] * 0.002, y, m[1] + c.n[1] * 0.002)) continue;
+        wallEdit.sel = null;
+        await click(m[0] + c.n[0] * 0.002, y, m[1] + c.n[1] * 0.002);
+        const s = wallEdit.sel;
+        faceOk =
+          !!s && s.kind === 'face' && s.room === rm.id && s.a.join() === c.ea.join() && s.b.join() === c.eb.join();
+        faceInfo =
+          JSON.stringify(s && { kind: s.kind, room: s.room, a: s.a, b: s.b }) + ' 期望 ' + JSON.stringify([c.ea, c.eb]);
+        break;
+      }
+      T('s27a-3d-pick-wall-face', faceOk, faceInfo);
+      // ⑤ 洁具：从正上方点它的顶面 → 选中这件洁具
+      const fx = effFixtures().find((f) => f.t === 'toilet' || f.t === 'tub' || f.t === 'vanity');
+      if (fx) {
+        const cx = (fx.x1 + fx.x2) / 2,
+          cz = (fx.y1 + fx.y2) / 2,
+          top = e0 + FX_SPAN[fx.t][1] * 0.5;
+        await look([cx, e0 + 18, cz + 0.01], [cx, e0, cz]);
+        wallEdit.sel = null;
+        const hits = pick3DRay({ clientX: scr(cx, top, cz)[0], clientY: scr(cx, top, cz)[1] });
+        await click(cx, top, cz);
+        const s = wallEdit.sel;
+        T(
+          's27a-3d-pick-fixture',
+          !!s && s.kind === 'fx' && s.id === fx.id,
+          fx.t + ' sel=' + JSON.stringify(s) + ' 首个命中高=' + (hits[0] ? (hits[0].point.y - e0).toFixed(2) : '-')
+        );
+      } else T('s27a-3d-pick-fixture', true, '这个户型没有洁具（跳过）');
+      // ⑥ 家具看得见、点不到：选中不变、提示指去「摆家具」
+      addItem('tv-55');
+      const it = state.items[state.items.length - 1];
+      it.x = rm.pos[0];
+      it.y = rm.pos[1];
+      drawFurniture();
+      sync3D();
+      await wait(300);
+      await look([rm.pos[0], e0 + 18, rm.pos[1] + 0.01], [rm.pos[0], e0, rm.pos[1]]);
+      wallEdit.sel = { kind: 'room', id: rm.id };
+      const ray = pick3DRay({
+        clientX: scr(rm.pos[0], e0 + 1, rm.pos[1])[0],
+        clientY: scr(rm.pos[0], e0 + 1, rm.pos[1])[1],
+      });
+      let onFurn = false;
+      if (ray[0]) for (let o = ray[0].object; o; o = o.parent) if (o === three.furnGroup) onFurn = true;
+      await click(rm.pos[0], e0 + 1, rm.pos[1]);
+      T(
+        's27a-3d-furniture-not-pickable',
+        onFurn &&
+          wallEdit.sel &&
+          wallEdit.sel.kind === 'room' &&
+          /摆家具/.test(document.querySelector('#wMsg').textContent),
+        '射线先打到家具=' +
+          onFurn +
+          ' sel=' +
+          JSON.stringify(wallEdit.sel) +
+          ' 提示=' +
+          document.querySelector('#wMsg').textContent
+      );
+      // ⑦ 不在装修里：3D 点击不改编辑层的选中
+      enterArea('furn');
+      await wait(100);
+      wallEdit.sel = null;
+      await click(rm.pos[0], e0 + 0.005, rm.pos[1] + 2);
+      T('s27a-3d-pick-only-in-deco', wallEdit.sel === null, 'sel=' + JSON.stringify(wallEdit.sel));
+      state.items = keepItems;
+      drawFurniture();
+      setView('2d');
+      await wait(300);
+    }
+
     T('t3d-bench-done', true, __E3.length + ' tests', 'done');
   } catch (e) {
     log.push('EXC ' + e.message + ' | ' + (e.stack || '').split('\n')[1]);
