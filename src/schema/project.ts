@@ -139,11 +139,37 @@ export interface Room {
   src?: 'user';
   /** S21：墙面颜色（#hex；只影响 3D：这个房间围合的墙面刷这个色）；缺省 = 原来的白墙 */
   wallColor?: string;
+  /** S27b：踢脚线；缺省 = 没有（旧档外观不变） */
+  base?: RoomBase;
+  /** S27b：天花颜色：#hex 或 'wall'（跟墙色走）；缺省 = 原来的白天花 */
+  ceil?: string;
+  /** S27b：墙裙（护墙板），与墙砖二选一 */
+  wains?: Wainscot;
 }
+
+/** S27b 踢脚线：c = 'wall' | 'white' | 'door' | 'black' | 'floor' | 'wains' | #hex；h = 高（cm）；st = 样式 */
+export interface RoomBase {
+  c: string;
+  h: number;
+  st?: 'flat' | 'profile';
+}
+
+/** S27b 墙裙：st = 平板方框 / 竖条 V 缝 / 竖条压条；h = 高（cm）；c = 颜色 */
+export interface Wainscot {
+  st: 'panel' | 'bead' | 'batten';
+  h: number;
+  c: string;
+}
+
+export const BASE_KEYS = ['wall', 'white', 'door', 'black', 'floor', 'wains'] as const;
+export const WAINS_STYLES = ['panel', 'bead', 'batten'] as const;
+export const FLOOR_LAYS = ['s', 'b2', 'b3'] as const;
 
 export interface RoomFloor {
   mat: string;
   angle?: number;
+  /** S27b（S09 改口径）：铺法 s = 直铺、b2 = 1/2 错缝、b3 = 1/3 错缝；缺省 = 预设自带的铺法 */
+  lay?: (typeof FLOOR_LAYS)[number];
 }
 
 export interface Fixture {
@@ -673,9 +699,12 @@ export function validate(doc: unknown): ValidationError[] {
         else {
           if (!matOk(f.mat)) fail(`rooms[${i}].floor.mat`, '地板预设名必须是 1–40 字符的文本');
           if (f.angle !== undefined && !isNum(f.angle)) fail(`rooms[${i}].floor.angle`, '铺贴方向必须是数（度）');
+          if (f.lay !== undefined && !(FLOOR_LAYS as readonly unknown[]).includes(f.lay))
+            fail(`rooms[${i}].floor.lay`, '铺法必须是 s / b2 / b3');
         }
       }
       if (e.wallColor !== undefined && !hexOk(e.wallColor)) fail(`rooms[${i}].wallColor`, '墙色必须是 #rgb / #rrggbb');
+      checkRoomFinishS27(e, `rooms[${i}]`, fail, hexOk);
     });
   }
   if (d.floorMat !== undefined && !matOk(d.floorMat)) fail('floorMat', '整层地板预设名必须是 1–40 字符的文本');
@@ -1557,4 +1586,36 @@ export function projectSchema(): object {
       },
     },
   };
+}
+
+/** S27b：踢脚线 / 天花 / 墙裙的校验（房间与单面墙共用：单面墙的 base / wains 还可以是 null = 这面不装） */
+export function checkRoomFinishS27(
+  e: Record<string, unknown>,
+  at: string,
+  fail: (path: string, msg: string) => void,
+  hexOk: (v: unknown) => boolean
+): void {
+  const isNum = (v: unknown) => typeof v === 'number' && Number.isFinite(v);
+  if (e.base !== undefined && e.base !== null) {
+    const b = e.base as Record<string, unknown>;
+    if (typeof b !== 'object') fail(`${at}.base`, '踢脚线必须是 {c, h, st?}');
+    else {
+      if (!((BASE_KEYS as readonly unknown[]).includes(b.c) || hexOk(b.c)))
+        fail(`${at}.base.c`, '踢脚线颜色必须是 wall / white / door / black / floor / wains 或 #hex');
+      if (!isNum(b.h) || (b.h as number) < 2 || (b.h as number) > 30) fail(`${at}.base.h`, '踢脚线高必须是 2–30 cm');
+      if (b.st !== undefined && b.st !== 'flat' && b.st !== 'profile')
+        fail(`${at}.base.st`, '踢脚线样式必须是 flat / profile');
+    }
+  }
+  if (e.ceil !== undefined && !(e.ceil === 'wall' || hexOk(e.ceil))) fail(`${at}.ceil`, '天花颜色必须是 wall 或 #hex');
+  if (e.wains !== undefined && e.wains !== null) {
+    const w = e.wains as Record<string, unknown>;
+    if (typeof w !== 'object') fail(`${at}.wains`, '墙裙必须是 {st, h, c}');
+    else {
+      if (!(WAINS_STYLES as readonly unknown[]).includes(w.st))
+        fail(`${at}.wains.st`, '墙裙样式必须是 panel / bead / batten');
+      if (!isNum(w.h) || (w.h as number) < 30 || (w.h as number) > 200) fail(`${at}.wains.h`, '墙裙高必须是 30–200 cm');
+      if (!hexOk(w.c)) fail(`${at}.wains.c`, '墙裙颜色必须是 #hex');
+    }
+  }
 }
