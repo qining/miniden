@@ -378,3 +378,76 @@ describe('traceLoops：鞍点（两格只在对角相接）按 4 邻接分开', 
     }
   });
 });
+
+describe('斜墙：栅格台阶拉直到墙皮（S27 M04：斜墙房间读出上百面「墙」）', () => {
+  // 梯形房间：左墙斜 30° 左右，其余三面正交
+  const segs = [wall(0, 0, 12, 0), wall(12, 0, 12, 10), wall(12, 10, 5, 10), wall(5, 10, 0, 0)];
+  const r = regionAt({ segs }, 7, 5);
+  const p = r.region!.poly;
+
+  it('轮廓 = 4 个角（不是一串台阶）', () => {
+    expect(r.leaked).toBe(false);
+    expect(p.length).toBe(4);
+  });
+
+  it('斜边落在斜墙的墙皮上（顶点离墙皮线 < 1 英寸）', () => {
+    // 斜墙轴线 (5,10)→(0,0)；朝房间那侧的墙皮 = 轴线向房间内平移 T/2
+    const L = Math.hypot(5, 10),
+      ux = -5 / L,
+      uy = -10 / L;
+    const off = (q: Pt2) => (q[0] - 5) * uy - (q[1] - 10) * ux; // 到轴线的有向距离
+    const slant = p.filter((q) => Math.abs(Math.abs(off(q)) - T / 2) < 1 / 12);
+    expect(slant.length).toBe(2);
+  });
+
+  it('面积 = 四条墙皮线围出的净面积（误差 < 1%）', () => {
+    // 独立量：每段墙轴线向房间内平移 T/2，相邻两条求交 = 净角点
+    const axes: [Pt2, Pt2][] = [
+      [
+        [0, 0],
+        [12, 0],
+      ],
+      [
+        [12, 0],
+        [12, 10],
+      ],
+      [
+        [12, 10],
+        [5, 10],
+      ],
+      [
+        [5, 10],
+        [0, 0],
+      ],
+    ];
+    const inward = axes.map(([a, b]) => {
+      const L = Math.hypot(b[0] - a[0], b[1] - a[1]),
+        nx = -(b[1] - a[1]) / L,
+        ny = (b[0] - a[0]) / L; // 走向 (0,0)→(12,0)→(12,10)→(5,10)：法线 (−dy, dx) 指向房间里
+      return { px: a[0] + nx * (T / 2), py: a[1] + ny * (T / 2), ux: (b[0] - a[0]) / L, uy: (b[1] - a[1]) / L };
+    });
+    const X = (A: (typeof inward)[0], B: (typeof inward)[0]): Pt2 => {
+      const den = A.ux * B.uy - A.uy * B.ux,
+        t = ((B.px - A.px) * B.uy - (B.py - A.py) * B.ux) / den;
+      return [A.px + A.ux * t, A.py + A.uy * t];
+    };
+    const net = inward.map((_, i) => X(inward[(i + 3) % 4], inward[i]));
+    const want = Math.abs(polyArea(net));
+    expect(Math.abs(r.region!.area - want) / want).toBeLessThan(0.01);
+  });
+});
+
+describe('斜边障碍多边形：轮廓沿它的斜边也拉直', () => {
+  // 方房间里贴着下墙放一个梯形台面块（斜边约 35°）
+  const segs = box(0, 0, 14, 10);
+  const blockPoly: Pt2[] = [
+    [4, 9.8],
+    [10, 9.8],
+    [8, 7],
+    [6, 7],
+  ];
+  const r = regionAt({ segs, polys: [blockPoly] }, 7, 3);
+  it('轮廓 = 外框 4 角 + 梯形 4 角 = 8 个角', () => {
+    expect(r.region!.poly.length).toBe(8);
+  });
+});
