@@ -13861,6 +13861,188 @@ async function runPBTest() {
       );
     }
 
+    /* ===== 58. S27c 五金色 / 卫浴细节 / 门把手：房间设一次 → 3D 金属换色；单件例外；马桶加长 +5cm 背面不动；镜柜深 14cm；淋浴边框 / 磨砂；浴缸半屏；S14 说明 ===== */
+    {
+      await pbReset();
+      if (wallEdit.on) setWallEdit(false);
+      await tick();
+      const p58Plans = PLAN_REG.plans.length;
+      Q('#btnPlanNew').click();
+      await tick();
+      const p58Plan = PLAN_ID;
+      const fp = floorPts();
+      const X =
+          Math.min.apply(
+            null,
+            fp.map((p) => p[0])
+          ) + 1,
+        Y =
+          Math.min.apply(
+            null,
+            fp.map((p) => p[1])
+          ) + 1;
+      const wd = cmToWd(15);
+      pushUserWall(X, Y, X + 14, Y, 'w', wd);
+      pushUserWall(X + 14, Y, X + 14, Y + 4, 'w', wd);
+      pushUserWall(X + 14, Y + 4, X + 14, Y + 7, 'd', wd);
+      pushUserWall(X + 14, Y + 7, X + 14, Y + 10, 'w', wd);
+      pushUserWall(X + 14, Y + 10, X, Y + 10, 'w', wd);
+      pushUserWall(X, Y + 10, X, Y, 'w', wd);
+      const door = pushUserDoor(X + 14, Y + 4, X + 14, Y + 7);
+      geoChanged();
+      fit2DToContent();
+      await tick();
+      const r = pickRoomAt(X + 6, Y + 5);
+      r.label = '卫生间';
+      enterArea('deco');
+      await tick();
+      const va = pushUserFixture('vanity', X + 3, Y + 1.2, 0);
+      const wc = pushUserFixture('toilet', X + 6, Y + 1.4, 0);
+      const sh = pushUserFixture('shower', X + 11, Y + 2, 0);
+      const tb = pushUserFixture('tub', X + 4, Y + 8.5, 180);
+      const mi = pushUserFixture('mirror', X + 3, Y + 0.3, 0);
+      geoChanged();
+      await tick();
+      // ① 房间五金：有洁具 → 行出现；设拉丝金 = 一步撤销；3D 里出现拉丝金材质
+      wallEdit.sel = { kind: 'room', id: r.id };
+      updateWallBarFromSel();
+      await tick();
+      const rowShown = Q('#mrHw').style.display !== 'none';
+      Q('#mrHw').click();
+      await tick();
+      const u0 = undoRing.length;
+      Q('#roomHwRow button[data-v="brass"]').click();
+      await tick();
+      const setOk = r.hw === 'brass' && undoRing.length === u0 + 1 && /拉丝金/.test(Q('#mrHw .nm').textContent);
+      const mats3D = async () => {
+        setView('doll');
+        await wait3D();
+        await tick();
+        const ks = new Set();
+        three.staticGroup.traverse((o) => {
+          if (o.isMesh && o.material && o.material.userData && o.material.userData.hw) ks.add(o.material.userData.hw);
+        });
+        setView('2d');
+        await tick();
+        return ks;
+      };
+      const k1 = await mats3D();
+      T(
+        'pb-s27c-room-hardware',
+        rowShown && setOk && k1.has('brass') && !k1.has('black'),
+        '行=' + rowShown + ' 设=' + setOk + ' 3D 五金=' + [...k1].join(',')
+      );
+      // ② 单件例外：洗手台单独哑光黑 → 3D 两种都有；点「跟房间」回去
+      wallEdit.sel = { kind: 'fx', id: va.id };
+      updateWallBarFromSel();
+      await tick();
+      Q('#fxHw button[data-v="black"]').click();
+      await tick();
+      const own = va.hw === 'black' && Q('#fxHwNote').style.display !== 'none';
+      const k2 = await mats3D();
+      wallEdit.sel = { kind: 'fx', id: va.id };
+      updateWallBarFromSel();
+      await tick();
+      Q('#fxHw button[data-v=""]').click();
+      await tick();
+      T(
+        'pb-s27c-item-override',
+        own && k2.has('black') && k2.has('brass') && va.hw === undefined,
+        '单独=' + own + ' 3D=' + [...k2].join(',') + ' 跟房间后=' + va.hw
+      );
+      // ③ 马桶加长：深 +5cm，背面（y1）不动，一步撤销
+      wallEdit.sel = { kind: 'fx', id: wc.id };
+      updateWallBarFromSel();
+      await tick();
+      const e0 = [wc.x1, wc.y1, wc.x2, wc.y2],
+        dep0 = Math.max(wc.x2 - wc.x1, wc.y2 - wc.y1),
+        u1 = undoRing.length;
+      Q('#wcBowl button[data-v="elong"]').click();
+      await tick();
+      const dd = (Math.max(wc.x2 - wc.x1, wc.y2 - wc.y1) - dep0) * 30.48;
+      const moved = [wc.x1, wc.y1, wc.x2, wc.y2].filter((v, i) => Math.abs(v - e0[i]) > 0.005).length;
+      const bowlOk =
+        wc.bowl === 'elong' &&
+        Math.abs(dd - 5) < 0.3 &&
+        moved === 1 &&
+        undoRing.length === u1 + 1 &&
+        /→/.test(Q('#wcBowlNote').textContent);
+      T(
+        'pb-s27c-toilet-elongated',
+        bowlOk,
+        '深度 +' + dd.toFixed(2) + 'cm · 动了 ' + moved + ' 条边（背面不动） · 说明 ' + Q('#wcBowlNote').textContent
+      );
+      // ④ 淋浴：磨砂 + 黑框；S14：壁挂马桶的说明是蓝灰色（info）
+      wallEdit.sel = { kind: 'fx', id: sh.id };
+      updateWallBarFromSel();
+      await tick();
+      Q('#shGlass button[data-v="frost"]').click();
+      await tick();
+      Q('#shFrame button[data-v="black"]').click();
+      await tick();
+      const shOk =
+        sh.glass === 'frost' && sh.frame === 'black' && Q('#shFrame button[data-v="black"]').classList.contains('on');
+      wallEdit.sel = { kind: 'fx', id: wc.id };
+      updateWallBarFromSel();
+      await tick();
+      setFxShape(wc, { form: 'wall' });
+      await tick();
+      const wn = Q('#fxWallNote');
+      const s14 =
+        wn.style.display !== 'none' &&
+        wn.classList.contains('info') &&
+        !wn.classList.contains('warn') &&
+        /假墙/.test(wn.textContent);
+      T('pb-s27c-shower-frame-s14', shOk && s14, '淋浴=' + shOk + ' 壁挂说明=' + s14);
+      // ⑤ 镜子：镜柜 → 深 14cm（背面不动）、宽 80；离地 130
+      wallEdit.sel = { kind: 'fx', id: mi.id };
+      updateWallBarFromSel();
+      await tick();
+      const my1 = mi.y1;
+      Q('#mirShape button[data-v="cab"]').click();
+      await tick();
+      const cab1 = mi.shape === 'cab' && Math.abs((mi.y2 - mi.y1) * 30.48 - 14) < 0.3 && Math.abs(mi.y1 - my1) < 0.01;
+      Q('#mirSize button:last-child').click();
+      await tick();
+      const cab2 = Math.abs((mi.x2 - mi.x1) * 30.48 - 80) < 0.3;
+      Q('#mirZ').value = '130';
+      Q('#mirZ').dispatchEvent(new Event('change'));
+      await tick();
+      T('pb-s27c-mirror-cabinet', cab1 && cab2 && mi.mz === 130, '深 14=' + cab1 + ' 宽 80=' + cab2 + ' 离地=' + mi.mz);
+      // ⑥ 浴缸半屏 + 门把手 / 门五金（门跟开向那一侧的房间）
+      wallEdit.sel = { kind: 'fx', id: tb.id };
+      updateWallBarFromSel();
+      await tick();
+      Q('#tubScreen button[data-v="half"]').click();
+      await tick();
+      const tubOk = tb.screen === 'half' && Q('#tubGlassRow').style.display !== 'none';
+      wallEdit.sel = { kind: 'door', id: door.id };
+      updateWallBarFromSel();
+      await tick();
+      Q('#dHandle button[data-v="knob"]').click();
+      await tick();
+      const dEnt = entById(door.id);
+      const knob = dEnt.handle === 'knob';
+      Q('#dHw button[data-v="black"]').click();
+      await tick();
+      T(
+        'pb-s27c-tub-screen-door-handle',
+        tubOk && knob && dEnt.hw === 'black' && /单独/.test(Q('#dHwNote').textContent),
+        '半屏=' + tubOk + ' 圆球=' + knob + ' 门五金=' + dEnt.hw
+      );
+      setWallEdit(false);
+      await tick();
+      Q('#btnPlanDel').click();
+      await tick();
+      Q('#btnPlanDel').click();
+      await tick();
+      T(
+        'pb-s27c-clean-exit',
+        PLAN_ID !== p58Plan && PLAN_REG.plans.length === p58Plans,
+        'plans ' + p58Plans + '→' + PLAN_REG.plans.length
+      );
+    }
+
     /* ===== 收尾：页面不得有未捕获异常 ===== */
     T('pb-no-page-errors', window.__ERRS.length === 0, window.__ERRS.slice(0, 3).join(' || '));
   } catch (e) {

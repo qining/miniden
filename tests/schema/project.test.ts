@@ -1297,3 +1297,18 @@ describe('validate — S27b 房间收边', () => {
     expect(paths(room({ floor: { mat: 'oakBond', lay: 'b4' } }))).toContain('rooms[0].floor.lay');
   });
 });
+
+/* ---- S27c：五金色 / 卫浴细节 / 门把手 —— 新字段全部可选，带上也过校验 ---- */
+describe('validate — S27c 可选字段', () => {
+  it('洁具 hw / glass / frame / bowl / screen / shape / msize / mz、房间 hw 都过校验', () => {
+    const d = blankDoc('t');
+    d.rooms = [{ id: 'r1', label: '卫生间', pos: [1, 1], hw: 'brass' } as never];
+    d.fixtures = [
+      { id: 'f1', t: 'toilet', x1: 0, y1: 0, x2: 1.3, y2: 2.5, form: 'two', bowl: 'elong', hw: 'black' } as never,
+      { id: 'f2', t: 'shower', x1: 3, y1: 0, x2: 6, y2: 3, form: 'square', glass: 'frost', frame: 'black' } as never,
+      { id: 'f3', t: 'tub', x1: 0, y1: 5, x2: 5.6, y2: 7.5, screen: 'half', glass: 'frost' } as never,
+      { id: 'f4', t: 'mirror', x1: 7, y1: 0, x2: 9.6, y2: 0.46, shape: 'cab', msize: '80', mz: 120 } as never,
+    ];
+    expect(validate(d)).toEqual([]);
+  });
+});
