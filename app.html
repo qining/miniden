@@ -223,7 +223,7 @@
   .mrow.c.open{background:var(--sel-bg); border-color:var(--accent-line); box-shadow:inset 3px 0 0 var(--accent);}
   .mrow.c .rl{width:74px; flex:none; padding-left:8px; font-size:12px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
   .mrow.c .mt{width:28px; height:28px;}
-  .mrow.c .nm{white-space:normal; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; line-height:16px;}   /* UX N06 */
+  .mrow.c .nm, .mrow.c .sp{white-space:normal; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;} .mrow.c .nm{line-height:16px;} .mrow.c .sp{line-height:14px;}   /* UX N06 / QA r2：名字和规格都最多折两行，不省略 */
   .mrow .chev{width:12px; flex:none; color:var(--muted); font-size:11px; text-align:center;}
   .exp{display:flex; flex-direction:column; gap:6px; margin:-4px 0 2px 8px; padding-left:8px; border-left:2px solid var(--line);}
   .exp .irow > .il{width:36px;}
@@ -419,6 +419,8 @@
   }
   button.btn:hover{border-color:var(--accent);}
   button.btn.primary{background:var(--accent); border-color:var(--accent); color:var(--on-fg);}
+  button.btn.primary:disabled{background:var(--panel2); border-color:var(--line); color:var(--muted); cursor:not-allowed;}   /* UX O03 */
+  .applySheet .asT.prev{color:#7fb8ff;}
   button.btn.danger{color:var(--danger);}
   /* ---------- F0（facelift §5.3 / §5.4）：按钮层级与选中态 ----------
      选中态（视图、单位、币种、灯开、白天、窗外、工具、楼层、方案行）= 中性亮底 + 琥珀细描边；实心琥珀只留给主动作（.primary）。
@@ -8467,8 +8469,8 @@ function floorPreset(id){
 var BASE_HEIGHTS=[[6,'6','2½″'],[8,'8','3¼″'],[10,'10','4″'],[12,'12','4¾″']];
 var BASE_KEYS_UI=[['wall','跟墙','墙'],['white','白',''],['door','跟门','门'],['black','黑',''],['floor','跟地面','地'],['none','无',''],['*','自定义…','']];
 var WAINS_STYLES_UI=[['panel','平板方框','方框线脚'],['bead','竖条 V 缝','beadboard'],['batten','竖条压条','board & batten']];
-var WAINS_COLORS=[['#f7f6f2','纯白'],['#efe9df','暖白'],['#cfd1cd','浅灰'],['#8fa294','灰绿'],['#2f3e55','海军蓝']];
-var BASE_DEFAULT={c:'white', h:8, st:'flat'}, WAINS_DEFAULT={h:90, c:'#efe9df'};
+var WAINS_COLORS=[['#f7f6f2','纯白'],['#f2efe8','暖白'],['#cfd1cd','浅灰'],['#8fa294','灰绿'],['#2f3e55','海军蓝']];
+var BASE_DEFAULT={c:'white', h:8, st:'flat'}, WAINS_DEFAULT={h:90, c:'#f2efe8'};   // QA R2-1：缺省 = 色板里的暖白
 function wallHexOf(r, fin){ const w=fin ? fin.wall : (r.wallPaper ? {paper:r.wallPaper} : r.wallColor ? {color:r.wallColor} : null);
   return !w ? '#f4f2ee' : w.color ? w.color : ((paperParse(w.paper)||{}).bg || '#f4f2ee'); }
 function roomDoorHex(r){
@@ -23497,13 +23499,14 @@ function drawWallBands(g){
       const isSel = sf && sf.r.id===r.id && Math.hypot(sf.a[0]-c.ea[0],sf.a[1]-c.ea[1])<0.05 && Math.hypot(sf.b[0]-c.eb[0],sf.b[1]-c.eb[1])<0.05;
       const isHov = !isSel && hv && hv.r.id===r.id && Math.hypot(hv.a[0]-c.ea[0],hv.a[1]-c.ea[1])<0.05 && Math.hypot(hv.b[0]-c.eb[0],hv.b[1]-c.eb[1])<0.05;
       if(!fill && !isSel && !isHov) continue;
-      const nx=c.n[0]*w/S, ny=c.n[1]*w/S;
+      const own = !!(fin.face && (fin.face.wall || fin.face.tile!==undefined || fin.face.wains!==undefined)), ww = (own || isSel || isHov) ? w : w*0.45;   // UX O04：整间刷的只画一条细淡的边，单独设的墙才画满宽 —— 套完整屋配色不再像双线墙
+      const nx=c.n[0]*ww/S, ny=c.n[1]*ww/S;
       const pts=[c.a, c.b, [c.b[0]+nx, c.b[1]+ny], [c.a[0]+nx, c.a[1]+ny]].map(q=>(q[0]*S)+','+(q[1]*S)).join(' ');
       const prev = isSel && MP.slot && MP.previewing!=null;
       if(prev){ const it=mpItemById(MP.previewing); const mx=(c.a[0]+c.b[0])/2+c.n[0]*w/S*3, my=(c.a[1]+c.b[1])/2+c.n[1]*w/S*3;   // QA S07：预览中的墙旁边写「预览：墨绿」
         const tx=el('text',{x:mx*S, y:my*S, 'font-size':11*k*S, 'text-anchor':'middle', fill:'#7fb8ff', class:'bandPrev', 'paint-order':'stroke', stroke:'rgba(18,16,13,.85)', 'stroke-width':3*k*S, 'pointer-events':'none'}, g); tx.textContent='预览：'+(it ? it.name : ''); }
       el('polygon',{points:pts, fill:fill||'none', stroke: isSel ? (prev ? '#7fb8ff' : '#e8b93c') : isHov ? '#e8b93c' : 'rgba(0,0,0,.35)',
-        'stroke-width':(isSel||isHov ? 2 : 0.6)*k*S, 'stroke-dasharray': isHov ? `${4*k*S} ${3*k*S}` : 'none', 'pointer-events':'none', class:'wallBand'+(isSel?' sel':'')}, g);
+        'stroke-width':(isSel||isHov ? 2 : own ? 0.6 : 0)*k*S, 'stroke-dasharray': isHov ? `${4*k*S} ${3*k*S}` : 'none', 'fill-opacity': (own||isSel||isHov) ? 1 : 0.6, 'pointer-events':'none', class:'wallBand'+(isSel?' sel':'')}, g);
     }
   }
 }
@@ -23662,7 +23665,7 @@ function wainsItems(hex){ return WAINS_STYLES_UI.map(([st,name,spec])=>({id:'wai
   texp.appendChild(wsub);
   mrowCompact(tr, texp);
   tr._spec=(it)=>{ const r=selRoom(); if(!r) return it.spec||'';
-    if(r.wains) return (state.unit==='cm' ? r.wains.h+' cm' : Math.round(r.wains.h/2.54)+'″')+' · '+paintName(r.wains.c);   // QA Q11：样式名已经在名字里
+    if(r.wains) return (state.unit==='cm' ? r.wains.h+' cm' : Math.round(r.wains.h/2.54)+'″')+' · '+(r.wains.c==='#efe9df' ? '暖白' : paintName(r.wains.c));   // 旧档（S27 第 1 轮前）的缺省色也叫暖白   // QA Q11：样式名已经在名字里
     if(r.tile){ const h=(TILE_HEIGHTS.find(x=>x[0]===r.tile.h)||[0,''])[1]; return [it.spec, h, r.tile.lay==='half' ? '错缝 1/2' : ((wallTile(r.tile.mat)||{}).lay ? '直缝' : ''), ({white:'白缝', black:'黑缝'})[r.tile.grout]||'灰缝'].filter(Boolean).join(' · '); }
     return '墙面一直到地'; };
   // 踢脚线（新）：展开区 = 颜色 7 格 + 高度 + 样式
@@ -24166,7 +24169,7 @@ function roomHasHardware(r){
   mrowCompact(hr, hexp, {label:'五金', noPicker:true});
   hr._paint=(b)=>{ const r=selRoom(); if(!r) return; const k=r.hw, mt=b.querySelector('.mt');
     mt.style.background = k ? HW_KEYS.find(x=>x[0]===k)[2] : 'linear-gradient(135deg,rgba(246,248,250,.55),rgba(141,148,154,.55))';
-    b.querySelector('.nm').textContent = k ? hwName(k) : '缺省（铬）'; b.querySelector('.sp').textContent='龙头 · 门把手 · 拉手 · 淋浴边框'; };
+    b.querySelector('.nm').textContent = k ? hwName(k) : '缺省（铬）'; b.querySelector('.sp').textContent='龙头 · 把手 · 拉手 · 边框'; };
   // 洁具：五金 / 淋浴玻璃与边框 / 马桶座圈 / 浴缸淋浴屏 / 镜子形状与尺寸与离地
   const host=$('#fxCtl'); if(!host) return;
   const mk=(id, label, inner)=>{ const row=document.createElement('div'); row.className='irow'+(inner ? '' : ' col'); row.id=id+'Row';
@@ -24259,16 +24262,17 @@ function lookS27cUI(){
    一套 = 地面、墙、强调墙、门（色 + 门板）、柜（色 + 门板 + 台面）、五金、踢脚线、天花。套完每一项都是普通设置，不留「绑定」。
    悬停 = 整套预览（走选择器的 peek / restore，不进撤销）；点卡片 = 选中；「套用」= 一步撤销。 */
 var SCHEMES=[
-  {id:'nordic',  name:'北欧浅木', desc:'浅木地板 · 暖白墙 · 拉丝镍', floor:'oakBond', lay:'s', wall:'#f2efe8', accent:null,      door:['', 'flat'],          cab:['#f7f6f2','flat','quartzWhite'], hw:'nickel', base:{c:'white',h:8},  ceil:null},
-  {id:'japan',   name:'日式原木', desc:'原木门 · 米白墙 · 哑光黑',   floor:'oakNatural', lay:null, wall:'#e9e4da', accent:null,  door:['wood:oak','vgroove'], cab:['#c9a77c','flat','wood'],        hw:'black',  base:{c:'floor',h:6},  ceil:null},
-  {id:'modern',  name:'现代灰',   desc:'大板砖 · 云灰墙 · 无把手柜', floor:'tileGrey60x120', lay:null, wall:'#bfc2c1', accent:null, door:['#cfd1cd','flat'], cab:['#5a5c60','handleless','concrete'], hw:'black', base:{c:'wall',h:6}, ceil:null},
-  {id:'cream',   name:'奶油风',   desc:'白蜡木 · 象牙白 · 拉丝金',   floor:'ashWhite', lay:null, wall:'#efe8da', accent:null,    door:['#f2efe8','shaker'],   cab:['#f2efe8','shaker','marble'],    hw:'brass',  base:{c:'wall',h:10},  ceil:'wall'},
-  {id:'vintage', name:'深色复古', desc:'人字拼 · 燕麦墙 · 墨绿强调墙', floor:'walnutHerring', lay:null, wall:'#dcd6cb', accent:'#4f604f', door:['wood:walnut','six'], cab:['#4f604f','shaker','marble'], hw:'brass', base:{c:'door',h:12}, ceil:null},
-  {id:'coastal', name:'海岸蓝白', desc:'灰木地板 · 纯白墙 · 雾蓝强调墙', floor:'oakGreyWash', lay:null, wall:'#f7f6f2', accent:'#a9b8c2', door:['', 'shaker'],     cab:['#2f3e55','shaker','quartzWhite'], hw:'chrome', base:{c:'white',h:10}, ceil:null},
+  {id:'nordic', wetFloor:'tileWhite60', wetTile:'subwayWhite',  name:'北欧浅木', desc:'浅木地板 · 暖白墙 · 拉丝镍', floor:'oakBond', lay:'s', wall:'#f2efe8', accent:null,      door:['', 'flat'],          cab:['#f7f6f2','flat','quartzWhite'], hw:'nickel', base:{c:'white',h:8},  ceil:null},
+  {id:'japan', wetFloor:'tileGreige60', wetTile:'subwayMatte',   name:'日式原木', desc:'原木门 · 米白墙 · 哑光黑',   floor:'oakNatural', lay:null, wall:'#e9e4da', accent:null,  door:['wood:oak','vgroove'], cab:['#c9a77c','flat','wood'],        hw:'black',  base:{c:'floor',h:6},  ceil:null},
+  {id:'modern', wetFloor:'tileGrey60x120', wetTile:'slabMarble',  name:'现代灰',   desc:'大板砖 · 云灰墙 · 无把手柜', floor:'tileGrey60x120', lay:null, wall:'#bfc2c1', accent:null, door:['#cfd1cd','flat'], cab:['#5a5c60','handleless','concrete'], hw:'black', base:{c:'wall',h:6}, ceil:null},
+  {id:'cream', wetFloor:'tileBeige30', wetTile:'squareWhite',   name:'奶油风',   desc:'白蜡木 · 象牙白 · 拉丝金',   floor:'ashWhite', lay:null, wall:'#efe8da', accent:null,    door:['#f2efe8','shaker'],   cab:['#f2efe8','shaker','marble'],    hw:'brass',  base:{c:'wall',h:10},  ceil:'wall'},
+  {id:'vintage', wetFloor:'encausticBlack', wetTile:'subwaySage', name:'深色复古', desc:'人字拼 · 燕麦墙 · 墨绿强调墙', floor:'walnutHerring', lay:null, wall:'#dcd6cb', accent:'#4f604f', door:['wood:walnut','six'], cab:['#4f604f','shaker','marble'], hw:'brass', base:{c:'door',h:12}, ceil:null},
+  {id:'coastal', wetFloor:'tileWhite60', wetTile:'subwayNavy', name:'海岸蓝白', desc:'灰木地板 · 纯白墙 · 雾蓝强调墙', floor:'oakGreyWash', lay:null, wall:'#f7f6f2', accent:'#a9b8c2', door:['', 'shaker'],     cab:['#2f3e55','shaker','quartzWhite'], hw:'chrome', base:{c:'white',h:10}, ceil:null},
 ];
 var SCHEME_UI={sel:null, scope:'all', mode:'over'};
 function schemeById(id){ return SCHEMES.find(x=>x.id===id) || null; }
 function isBedroom(r){ return /卧|bed/i.test(String(r.label||'')); }
+function isWetRoom(r){ return /卫|浴|bath|toilet|洗手间/i.test(String(r.label||'')); }   // UX O01：卫生间用方案的砖地面 + 墙砖，不铺木地板
 /* 套用（dry=true 只数会改几项、不写）。返回 {rooms, doors, runs, items, accent} */
 function applyScheme(sc, scope, mode, dry){
   const over = mode!=='fill', R0 = scope==='room' && selRoom() ? [selRoom()] : effRooms();
@@ -24282,11 +24286,13 @@ function applyScheme(sc, scope, mode, dry){
     if(!dry) for(const r of effRooms()) if(!r.poly && r.pos){ try{ const res=roomRegionAt(r.pos[0], r.pos[1]); if(res.region && !res.leaked && roomForRegion(res.region)===r) r.poly=res.region.poly.map(p=>[FT4(p[0]), FT4(p[1])]); }catch(e){} }   // QA：开放空间（客厅 + 厨房一块）只归第一个房间，不然用量算两遍
     const want = sc.lay ? {mat:sc.floor, lay:sc.lay} : null;   // 带铺法的方案：每个房间写一份（整层地面只有材质）
     for(const r of effRooms()){ if(!r.poly) continue;
-      if(want) set(r, 'floor', want); else if(over && r.floor){ out.items++; if(!dry) delete r.floor; } }
+      const w = isWetRoom(r) && sc.wetFloor ? {mat:sc.wetFloor} : want;
+      if(w) set(r, 'floor', w); else if(over && r.floor){ out.items++; if(!dry) delete r.floor; } }
   }
   for(const r of R0){
     let n=0;
-    if(scope==='room') n+=+set(r, 'floor', sc.lay ? {mat:sc.floor, lay:sc.lay} : {mat:sc.floor});
+    if(scope==='room') n+=+set(r, 'floor', isWetRoom(r) && sc.wetFloor ? {mat:sc.wetFloor} : sc.lay ? {mat:sc.floor, lay:sc.lay} : {mat:sc.floor});
+    if(isWetRoom(r) && sc.wetTile && !r.wains) n+=+set(r, 'tile', Object.assign({mat:sc.wetTile, h:'shower'}, (wallTile(sc.wetTile)||{}).cat==='subway' ? {lay:'half'} : {}));   // UX O01：湿区墙砖到淋浴高度
     if(over && r.wallPaper){ n++; if(!dry) delete r.wallPaper; }
     n+=+set(r, 'wallColor', sc.wall);
     n+=+set(r, 'base', Object.assign({st:'flat'}, sc.base));
@@ -24350,10 +24356,10 @@ function schemeRender(body){
   const grid=document.createElement('div'); grid.className='schemeGrid';
   for(const sc of SCHEMES){ const b=document.createElement('button'); b.type='button'; b.className='schemeCard'+(SCHEME_UI.sel===sc.id ? ' on' : '')+(MP.previewing===sc.id ? ' prev' : ''); b.dataset.id=sc.id;
     b.innerHTML=schemeSvg(sc)+'<b></b><small></small>'; b.querySelector('b').textContent=sc.name; b.querySelector('small').textContent=sc.desc;
-    b.onmouseenter=()=>{ clearTimeout(MP.hoverT); MP.hoverT=setTimeout(()=>{ mpPreview(sc.id); grid.querySelectorAll('.schemeCard').forEach(x=>x.classList.toggle('prev', x.dataset.id===sc.id)); toast('预览：'+sc.name+'（'+(SCHEME_UI.scope==='room' ? '这个房间' : '整套房子')+'）· 移开鼠标 = 恢复', 2500); }, 150); };   // QA Q10
+    b.onmouseenter=()=>{ clearTimeout(MP.hoverT); MP.hoverT=setTimeout(()=>{ mpPreview(sc.id); grid.querySelectorAll('.schemeCard').forEach(x=>x.classList.toggle('prev', x.dataset.id===sc.id)); { const at=body.querySelector('.asT'); if(at){ at.textContent='预览中：'+sc.name+'（'+(SCHEME_UI.scope==='room' ? '这个房间' : '整套房子')+'）· 移开鼠标 = 恢复'; at.classList.add('prev'); } } }, 150); };   // QA Q10 / UX O02：预览说明写在套用区（toast 会盖住提示行）
     b.onclick=()=>{ b.blur(); clearTimeout(MP.hoverT); SCHEME_UI.sel=sc.id; schemeRender(body); };
     grid.appendChild(b); }
-  grid.onmouseleave=()=>{ clearTimeout(MP.hoverT); mpUnpreview(); grid.querySelectorAll('.schemeCard').forEach(x=>x.classList.remove('prev')); };
+  grid.onmouseleave=()=>{ clearTimeout(MP.hoverT); mpUnpreview(); grid.querySelectorAll('.schemeCard').forEach(x=>x.classList.remove('prev')); const at=body.querySelector('.asT'), sc0=schemeById(SCHEME_UI.sel); if(at){ at.classList.remove('prev'); at.textContent = sc0 ? sc0.name+' · '+sc0.desc : '先点一张卡片选方案'; } };
   body.appendChild(grid);
   const n=document.createElement('div'); n.className='note info'; n.textContent='每套包含：地面、墙面、强调墙、门、柜、台面、五金、踢脚线、天花。套完以后每一项都能单独再改。'; body.appendChild(n);
   const sh=document.createElement('div'); sh.className='applySheet'; body.appendChild(sh);
@@ -24674,7 +24680,7 @@ MAT_SLOTS.kitDoor=()=>({ key:'kitDoor', kind:'color', kicker:'厨房 · 户型�
   const kc=document.createElement('span'); kc.id='kitchenCtl';
   kc.appendChild(mrowMake('mrKitDoor', '柜门颜色', ()=>MAT_SLOTS.kitDoor()));
   const row=document.createElement('div'); row.className='irow col'; row.innerHTML='<span class="il">台面</span><div id="kitTopRow"></div>'; kc.appendChild(row);
-  const n=document.createElement('div'); n.className='note info'; n.textContent='户型自带的厨房（含中岛）：能换柜门颜色和台面，装吊柜；柜体的位置和尺寸是户型本身的。'; kc.appendChild(n);
+  const n=document.createElement('div'); n.className='note info'; n.textContent='户型自带的厨房（含中岛）：能换柜门颜色和台面，装吊柜；吊柜门板和拉手只作用在吊柜上，户型原有的地柜外观不变。';   /* UX N02 */ kc.appendChild(n);
   // UX N02：吊柜 / 吊柜颜色（双色）/ 吊柜门板 / 拉手五金
   const mk=(id, label, inner)=>{ const r=document.createElement('div'); r.className='irow'+(inner ? '' : ' col'); r.id=id+'Row'; r.innerHTML='<span class="il"></span>'+(inner||'<div id="'+id+'"></div>'); r.querySelector('.il').textContent=label; return r; };
   const seg=(id, opts)=>'<div class="seg sm" id="'+id+'">'+opts.map(([v,t])=>'<button type="button" data-v="'+v+'">'+t+'</button>').join('')+'</div>';
@@ -24682,7 +24688,7 @@ MAT_SLOTS.kitDoor=()=>({ key:'kitDoor', kind:'color', kicker:'厨房 · 户型�
   kc.insertBefore(mk('kitUpGap', '离台面', seg('kitUpGap', UPPER_GAP.map(([v,c])=>[v,c])), n), n);
   kc.insertBefore(mk('kitUpColor', '吊柜色'), n);
   kc.insertBefore(mk('kitPanel', '吊柜门板'), n);
-  kc.insertBefore(mk('kitHw', '拉手'), n);
+  kc.insertBefore(mk('kitHw', '吊柜拉手'), n);
   const w=document.createElement('div'); w.className='note warn'; w.id='kitUpperWarn'; kc.insertBefore(w, n);
   ib.appendChild(kc);
   for(const b of $('#kitUpH').querySelectorAll('button')) b.onclick=()=>{ b.blur(); const v=+b.dataset.v, kl=DOC.kitchenLook||{}, cur=(kl.upper && kl.upper.h)||0; if(cur===v) return;
