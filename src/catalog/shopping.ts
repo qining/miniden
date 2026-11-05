@@ -192,11 +192,31 @@ export interface ShopFloor {
   rooms: string[];
 }
 
+/** S27d：装修用量的一行（涂料 / 墙纸 / 墙砖 / 护墙板 / 踢脚线）——估算、不含损耗、不计价 */
+export interface ShopDeco {
+  /** 类别（「涂料」「墙纸」「墙砖」「护墙板」「踢脚线」） */
+  cat: string;
+  name: string;
+  /** 数量（数）+ 单位（L / gal / 卷 / m² / ft² / m / ft） */
+  qty: number;
+  unit: string;
+  /** 涂料是「约」 */
+  approx?: boolean;
+  /** 计算依据（「2 遍 · 41.6 m²」） */
+  basis: string;
+  /** 用在哪（房间 / 墙） */
+  where: string;
+}
+
+export const DECO_USAGE_TITLE = '装修用量（估算，不含损耗、不计价）';
+
 export interface CsvOpts {
   /** 单价列的币种标签（'US$' / 'CA$'） */
   currency: string;
   /** 地板用量（可选）：排在合计行之前，分类 =「地板」、数量 = 面积 */
   floors?: readonly ShopFloor[];
+  /** S27d 装修用量（可选）：排在地板之后、合计行之前；不进合计 */
+  deco?: readonly ShopDeco[];
 }
 
 /** CSV：带 BOM（Excel 打开中文不乱码）、CRLF 行尾；最后一行是合计（备注列 = 合计尾巴） */
@@ -225,6 +245,22 @@ export function shoppingCSV(list: ShopList, opts: CsvOpts): string {
         .map(csvCell)
         .join(',')
     );
+  for (const d of opts.deco || [])
+    lines.push(
+      [
+        '',
+        d.cat,
+        d.name,
+        d.qty,
+        '',
+        '',
+        '',
+        '',
+        `${d.approx ? '约 ' : ''}${d.qty} ${d.unit}；${d.basis}；不含损耗、不计价；用在：${d.where}`,
+      ]
+        .map(csvCell)
+        .join(',')
+    );
   lines.push(['', '', '合计', list.buy, '', list.total, '', '', shoppingTail(list).join('；')].map(csvCell).join(','));
   return '\uFEFF' + lines.join('\r\n') + '\r\n';
 }
@@ -235,6 +271,8 @@ export interface TextOpts {
   money: (v: number) => string;
   /** 地板用量（可选）：合计行之后单独一节，与界面同一个标题 */
   floors?: readonly ShopFloor[];
+  /** S27d 装修用量（可选）：地板之后再一节 */
+  deco?: readonly ShopDeco[];
 }
 
 /** 纯文本（贴进聊天 / 备忘录）：一件一行，多层时按楼层分组；≈ / * 的含义写在合计尾巴里 */
@@ -265,6 +303,11 @@ export function shoppingText(list: ShopList, opts: TextOpts): string {
   if (opts.floors && opts.floors.length) {
     L.push('', '地面用量（按房间面积，不含损耗）');
     for (const f of opts.floors) L.push(`· ${f.name} — ${f.areaText}（${f.rooms.join('、')}）`);
+  }
+  if (opts.deco && opts.deco.length) {
+    L.push('', DECO_USAGE_TITLE);
+    for (const d of opts.deco)
+      L.push(`· ${d.cat} · ${d.name} — ${d.approx ? '约 ' : ''}${d.qty} ${d.unit}（${d.basis}；${d.where}）`);
   }
   return L.join('\n');
 }
