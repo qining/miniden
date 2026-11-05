@@ -205,24 +205,25 @@
   /* S27b：紧凑材质行 + 展开区（materials §S27 共用一） */
   /* S27d：整屋配色 */
   #matPicker.scheme .mpTools, #matPicker.scheme #mpTone, #matPicker.scheme #mpTabs, #matPicker.scheme #mpReadout, #matPicker.scheme #mpScope{display:none !important;}
-  .schemeGrid{display:grid; grid-template-columns:1fr 1fr; gap:8px; padding:4px 0 8px;}
-  .schemeCard{display:flex; flex-direction:column; gap:2px; padding:4px; border-radius:8px; border:1px solid var(--line); background:var(--panel2); text-align:left;}
+  .schemeGrid{display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:8px; padding:4px 0 8px;}   /* QA Q04：minmax(0,…)，长描述不撑宽 */
+  .schemeCard{display:flex; flex-direction:column; gap:2px; padding:4px; min-width:0; border-radius:8px; border:1px solid var(--line); background:var(--panel2); text-align:left;}
   .schemeCard svg{width:100%; height:auto; border-radius:5px; display:block;}
   .schemeCard b{font-size:12px; font-weight:600;} .schemeCard small{font-size:10.5px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
   .schemeCard.on{border-color:var(--accent); box-shadow:0 0 0 1px var(--accent);} .schemeCard.prev{border-color:#7fb8ff;}
-  .applySheet{position:sticky; bottom:0; display:flex; flex-direction:column; gap:6px; padding:8px; margin-top:8px; border-top:1px solid var(--line); background:var(--menu-bg);}
+  .applySheet .seg{flex-wrap:wrap;} .applySheet{position:sticky; bottom:0; display:flex; flex-direction:column; gap:6px; padding:8px; margin-top:8px; border-top:1px solid var(--line); background:var(--menu-bg);}
   .applySheet .asT{font-size:12px; font-weight:600;} .applySheet .asF{display:flex; align-items:center; gap:8px;} .applySheet .asN{flex:1; font-size:11px; color:var(--muted);}
   #schemeCard{display:flex; align-items:center; gap:10px; width:100%; padding:8px; margin:0 0 10px; border-radius:8px; border:1px solid var(--line); background:var(--panel2); text-align:left;}
   #schemeCard .bars{display:flex; gap:2px; flex:none;} #schemeCard .bars i{width:6px; height:22px; border-radius:2px;}
   #schemeCard b{display:block; font-size:13px;} #schemeCard small{display:block; font-size:11px; color:var(--muted);} #schemeCard .ar{margin-left:auto; color:var(--muted);}
   body.calib #schemeCard{display:none !important;}
   body.pipette #svg2d, body.pipette #c3d{cursor:crosshair;}
-  .plFixedHead small{font-weight:400; color:var(--muted);}
+  .plFixedHead small{font-weight:400; color:var(--muted);} .decoUse .useBasis{display:block; font-size:10.5px; color:var(--muted);}
   .mrow.c{min-height:40px; padding:4px 8px 4px 0; gap:8px; background:none; border-color:transparent; border-radius:6px;}
   .mrow.c:hover, .mrow.c[aria-expanded=true]{background:var(--panel2); border-color:var(--line);}
   .mrow.c.open{background:var(--sel-bg); border-color:var(--accent-line); box-shadow:inset 3px 0 0 var(--accent);}
-  .mrow.c .rl{width:66px; flex:none; padding-left:8px; font-size:12px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .mrow.c .rl{width:74px; flex:none; padding-left:8px; font-size:12px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
   .mrow.c .mt{width:28px; height:28px;}
+  .mrow.c .nm{white-space:normal; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; line-height:16px;}   /* UX N06 */
   .mrow .chev{width:12px; flex:none; color:var(--muted); font-size:11px; text-align:center;}
   .exp{display:flex; flex-direction:column; gap:6px; margin:-4px 0 2px 8px; padding-left:8px; border-left:2px solid var(--line);}
   .exp .irow > .il{width:36px;}
@@ -3307,6 +3308,9 @@ function drawRuns(root){
   const K=(x,y)=>[x*S, y*S];   // run 坐标是 ft（与洁具的图纸 px 不同），直接乘 S
   const LN='#aab0b8', CAB='#33383f', EDGE='#6b7480', MOD='#4d545c';
   const c=floorCentroid();
+  if(!CALIB){ const kg=el('g',{class:'kitUpper'},root);   // UX N02：户型自带厨房的吊柜（虚线外框）
+    for(const pr of kitchenPseudoRuns()) for(const pc of upperPieces(pr).pieces){ const p1=[pc.a[0]+pc.n[0]*UPPER_D, pc.a[1]+pc.n[1]*UPPER_D], p2=[pc.b[0]+pc.n[0]*UPPER_D, pc.b[1]+pc.n[1]*UPPER_D];
+      el('polygon',{points:[pc.a,pc.b,p2,p1].map(p=>K(p[0],p[1]).join(',')).join(' '), fill:'none', stroke:'#e8e4dc', 'stroke-width':1.2, 'stroke-dasharray':'4 3', 'pointer-events':'none', class:'upperRun'}, kg); } }
   for(const r of effRuns()){
     const g=el('g',{'data-run':r.id},root);
     if(!CALIB) for(const pc of upperPieces(r).pieces){   // S27e：吊柜 = 虚线外框（头顶上的东西用虚线），画在柜体之上
@@ -4573,7 +4577,7 @@ const FX_SPAN={vanity:[0,2.79], counter:[0,2.59], basin:[0,2.63], toilet:[0,2.55
 let _fixObs=null, _fixObsKey='';
 function fixedObstacles(){
   if(CALIB) return [];
-  let key=''; try{ key=JSON.stringify([DOC.fixtures, DOC.runs, DOC.level||'', PLAN_ID]); }catch(e){ return []; }
+  let key=''; try{ key=JSON.stringify([DOC.fixtures, DOC.runs, DOC.level||'', PLAN_ID, DOC.kitchenLook||null, CEIL_H]); }catch(e){ return []; }
   if(_fixObs && key===_fixObsKey) return _fixObs;
   const out=[];
   for(const f of effFixtures()){
@@ -4581,6 +4585,7 @@ function fixedObstacles(){
     const w=f.x2-f.x1, d=f.y2-f.y1; if(!(w>0.01 && d>0.01)) continue;
     out.push({poly:GEO_PTS.obbCorners((f.x1+f.x2)/2, (f.y1+f.y2)/2, w, d, f.rot||0), z0:sp[0], z1:sp[1], counter:f.t==='counter'||f.t==='basin'||f.t==='vanity'});
   }
+  for(const pr of kitchenPseudoRuns()){ const UP=upperPieces(pr); for(const pc of UP.pieces) out.push({poly:[pc.a, pc.b, [pc.b[0]+pc.n[0]*UPPER_D, pc.b[1]+pc.n[1]*UPPER_D], [pc.a[0]+pc.n[0]*UPPER_D, pc.a[1]+pc.n[1]*UPPER_D]], z0:UP.y0, z1:UP.y1, counter:false}); }   // UX N02
   for(const r of effRuns()){
     const z1=Math.max(r.h||0, (r.topH||2.95)+0.05), path=r.path||[];
     for(let i=0;i<path.length-1;i++){
@@ -6196,10 +6201,20 @@ function floorUsage(){
      别的楼层直接读它的内容（levelContentOf），不切层 */
   const m=new Map(), multi=hasLevelsNow();
   const levels = multi ? LV.sortedLevels(DOC).map(l=>[l, LV.levelContentOf(DOC, l.id)]) : [[null, DOC]];
-  for(const [lv, c] of levels) for(const r of ((c && c.rooms) || [])){
-    if(!r.poly || !r.floor || !floorPreset(r.floor.mat)) continue;
-    const e=m.get(r.floor.mat)||{area:0, rooms:[]};
-    e.area+=roomArea(r); e.rooms.push((multi && lv ? lv.name+' ' : '')+(r.label||roomFallbackName(r))); m.set(r.floor.mat, e);
+  m.missing=0;
+  for(const [lv, c] of levels){
+    // UX N03：用户设过全屋地面（手选或套用整屋配色）时，跟全屋的房间也算进去；没设过 = 缺省地板，照旧不列（旧档输出不变）
+    const lvMat = c && c.floorMat && floorPreset(c.floorMat) ? c.floorMat : null;
+    const seenPoly=new Set();
+    for(const r of ((c && c.rooms) || [])){
+      const own = r.floor && floorPreset(r.floor.mat) ? r.floor.mat : null, mat = own || lvMat; if(!mat) continue;
+      let area = r.poly ? roomArea(r) : null, pk = r.poly ? JSON.stringify(r.poly) : null;
+      if(area==null && !own && c===DOC && r.pos){ try{ const res=roomRegionAt(r.pos[0], r.pos[1]); if(res.region && !res.leaked){ if(roomForRegion(res.region)!==r) continue; area=GEO_PTS.polyArea(res.region.poly); pk=JSON.stringify(res.region.poly); } }catch(e){} }   // 没识别范围：按名字位置只读算一次（开放空间只归第一个房间）
+      if(pk && seenPoly.has(pk)) continue; if(pk) seenPoly.add(pk);
+      if(area==null){ if(!own) m.missing++; continue; }
+      const e=m.get(mat)||{area:0, rooms:[]};
+      e.area+=area; e.rooms.push((multi && lv ? lv.name+' ' : '')+(r.label||roomFallbackName(r))); m.set(mat, e);
+    }
   }
   return m;
 }
@@ -8431,6 +8446,8 @@ const FLOOR_PRESETS=[
   {id:'encausticBlack',name:'花砖 20×20 · 黑白',      cat:'tile',     pat:'encaustic',unit:[20,20], rgb:[234,230,222], rgb2:[40,40,42],  v:3, seed:3136, tint:'#8e8c88', grout:[210,206,198]},
   {id:'slate',         name:'深色板岩 60×60',         cat:'stone',    pat:'grid',    unit:[60,60],  rgb:[76,80,84],    v:7,  seed:3137, tint:'#4c5054', grout:[60,62,64]},
   {id:'travertine',    name:'米黄洞石 60×120',        cat:'stone',    pat:'travertine',unit:[60,120],rgb:[214,196,164], v:5, seed:3138, tint:'#d6c4a4', grout:[196,180,150]},
+  {id:'walnutHerring', name:'胡桃木 · 人字拼',        cat:'wood',     pat:'herring', unit:[9,54],   rgb:[98,68,46],    v:11, seed:3142, tint:'#62442e'},   // S27d：整屋配色「深色复古」
+  {id:'oakGreyWash',   name:'灰洗橡木 · 直铺',        cat:'wood',     pat:'plank',   unit:[19,190], rgb:[172,166,156], v:9,  seed:3143, tint:'#aca69c'},   // S27d：整屋配色「海岸蓝白」
   {id:'marbleGrey',    name:'灰色大理石 60×120',      cat:'stone',    pat:'marble',  unit:[60,120], rgb:[170,170,168], v:3,  seed:3139, tint:'#aaaaa8', grout:[150,150,148]},
   {id:'carpetCharcoal',name:'满铺地毯 · 炭灰',        cat:'carpet',   pat:'noise',   unit:[100,100],rgb:[86,86,88],    v:9,  seed:3140, tint:'#565658'},
   {id:'carpetBlue',    name:'满铺地毯 · 雾蓝',        cat:'carpet',   pat:'noise',   unit:[100,100],rgb:[126,142,158], v:9,  seed:3141, tint:'#7e8e9e'},
@@ -8456,9 +8473,8 @@ function wallHexOf(r, fin){ const w=fin ? fin.wall : (r.wallPaper ? {paper:r.wal
   return !w ? '#f4f2ee' : w.color ? w.color : ((paperParse(w.paper)||{}).bg || '#f4f2ee'); }
 function roomDoorHex(r){
   if(!r || !r.poly) return null;
-  for(const d of effDoors()){ const m=[(d.x1+d.x2)/2, (d.y1+d.y2)/2], dx=d.x2-d.x1, dy=d.y2-d.y1, L=Math.hypot(dx,dy)||1;
-    const near=[1,-1].some(k=>ptInPoly([m[0]-dy/L*0.6*k, m[1]+dx/L*0.6*k], r.poly)); if(!near) continue;
-    const e=entById(d._id), c=e && e.color; return !c ? '#f7f6f2' : c==='wood:oak' ? '#b48a5a' : c==='wood:walnut' ? '#5b3a24' : c; }
+  for(const d of effDoors()){ const R=doorRooms(d); if(R.open!==r && R.other!==r) continue;   // QA Q05：两侧都看（往外开的门也算这个房间的门）
+    const e=entById(d._id), c=e && e.color; return e && e.dark ? '#5b3a24' : !c ? '#f7f6f2' : c==='wood:oak' ? '#b48a5a' : c==='wood:walnut' ? '#5b3a24' : c; }
   return null;
 }
 function floorHexOf(r){ const p=floorPreset(r && r.floor && floorPreset(r.floor.mat) ? r.floor.mat : lvMatNow()); return p ? p.tint : '#6e655f'; }
@@ -8522,7 +8538,7 @@ function wainsThumb(st, w, h, hex){ const k=st+'@'+w+'x'+h+(hex||''); if(_wainsT
   x.fillStyle='#d8d4cc'; x.fillRect(0, h-6, w, 6);                               // 踢脚线
   const u=c.toDataURL('image/png'); _wainsThumb.set(k,u); return u; }
 /* ---- 写入：一步撤销 ---- */
-function setRoomBase(r, patch, key){ const nb = patch===null ? null : Object.assign({}, r.base||BASE_DEFAULT, patch); setRoomFinish(r, {base:nb}, key||('rmBase:'+r.id)); }
+function setRoomBase(r, patch, key){ const nb = patch===null ? null : Object.assign({}, r.base||BASE_DEFAULT, patch); if(nb){ delete nb.auto; delete nb.was; } setRoomFinish(r, {base:nb}, key||('rmBase:'+r.id)); }   // 用户自己改过 = 不再是墙裙带出来的
 function setFaceBase(F, patch, key){ const f=faceOf(F.r,F.a,F.b), cur = f && f.base!==undefined ? f.base : F.r.base;
   setFace(F.r, F.a, F.b, {base: patch==='__drop' ? '__drop' : patch===null ? null : Object.assign({}, cur||BASE_DEFAULT, patch)}, key||('faceBase:'+F.r.id)); }
 /* ---------- S27c：五金色（房间设一次 + 单件例外）· 镜子形状 / 镜柜 · 淋浴玻璃与边框 · 马桶座圈 · 浴缸淋浴屏 · 门把手（materials §S27c）----------
@@ -8572,10 +8588,10 @@ function upperPieces(r){
   const pieces=[], skipped=[], P=r.path||[];
   for(let i=0;i<P.length-1;i++){
     const a=P[i], b=P[i+1], dx=b[0]-a[0], dy=b[1]-a[1], L=Math.hypot(dx,dy); if(L<0.3) continue;
-    const u=[dx/L, dy/L], n=runNormal(dx,dy,a[0],a[1]), blocked=[];
+    const u=[dx/L, dy/L], n = r.normals ? r.normals[i] : runNormal(dx,dy,a[0],a[1]), blocked=[];
     for(const s of effWalls()){ if(s.t!=='g' && s.t!=='d' && s.t!=='o') continue;
       const half=((s.wd!=null?s.wd:6.5)/S)/2, d1=(s.x1-a[0])*n[0]+(s.y1-a[1])*n[1], d2=(s.x2-a[0])*n[0]+(s.y2-a[1])*n[1];
-      if(Math.abs(d1)>half+0.35 || Math.abs(d2)>half+0.35) continue;                     // 不在这段台面靠的那面墙上
+      if(d1>half+0.35 || d2>half+0.35 || d1<-(half+1.35) || d2<-(half+1.35)) continue;   // 不在这段台面靠的那面墙上（QA Q08：台面离墙 ≤ 30cm 画的也算）
       let t0=(s.x1-a[0])*u[0]+(s.y1-a[1])*u[1], t1=(s.x2-a[0])*u[0]+(s.y2-a[1])*u[1]; if(t0>t1) [t0,t1]=[t1,t0];
       if(t1<0.02 || t0>L-0.02) continue;
       let z0=0, z1=CEIL_H, what='通道';
@@ -8586,6 +8602,9 @@ function upperPieces(r){
     for(const m of (r.modules||[])){ if(m.type!=='fridge') continue; const q=runPointAt(r, m.at); if(!q) continue;
       const s0=(q.p[0]-a[0])*u[0]+(q.p[1]-a[1])*u[1], w=m.w||2.0; if(s0<-w/2 || s0>L+w/2) continue; if(Math.abs((q.p[0]-a[0])*n[0]+(q.p[1]-a[1])*n[1])>0.3) continue;
       blocked.push([Math.max(0,s0-w/2), Math.min(L,s0+w/2), '冰箱']); }
+    for(const B of (r.blocks||[])){ const ds=B.map(p=>(p[0]-a[0])*n[0]+(p[1]-a[1])*n[1]); if(Math.min(...ds)>3 || Math.max(...ds)<-0.3) continue;   // UX N02：自带厨房的冰箱
+      const ts=B.map(p=>(p[0]-a[0])*u[0]+(p[1]-a[1])*u[1]), t0=Math.min(...ts), t1=Math.max(...ts); if(t1<0.02 || t0>L-0.02) continue;
+      blocked.push([Math.max(0,t0-0.05), Math.min(L,t1+0.05), '冰箱']); }
     blocked.sort((p,q)=>p[0]-q[0]);
     let t=0; const side=['上','右','下','左'][Math.abs(n[0])>Math.abs(n[1]) ? (n[0]>0 ? 3 : 1) : (n[1]>0 ? 0 : 2)]+'墙';
     for(const [b0,b1,what] of blocked){ if(b0-t>=0.6) pieces.push({a:[a[0]+u[0]*t, a[1]+u[1]*t], b:[a[0]+u[0]*b0, a[1]+u[1]*b0], n});
@@ -10306,13 +10325,12 @@ function buildLevelStatic(scene, lv, holes, lowest){
     const body=new THREE.Mesh(new THREE.ExtrudeGeometry(sh,{depth:2.83, bevelEnabled:false}), matKCab); body.rotation.x=Math.PI/2; body.position.y=2.83; body.castShadow=body.receiveShadow=true; scene.add(body);
     const top=new THREE.Mesh(new THREE.ExtrudeGeometry(sh,{depth:0.12, bevelEnabled:false}), matKTop); top.rotation.x=Math.PI/2; top.position.y=2.95; top.castShadow=top.receiveShadow=true; scene.add(top);
   }
-  // S12：用户画的台面/柜体 run（文档实体，随 ProjectDoc 走）。
-  // 柜体从 path（靠墙前沿）向户型内侧伸 depth；台面石板等厚外挑。
-  for(const r of effRuns()){
-    const mPull = hwMat(runHwKey(r)) || mPull0;   // S27c：拉手跟房间 / 单独的五金色
-    const matCabR=runCabMat(r), matTopR=runTopMat(r);
-    { const UP=upperPieces(r); if(UP.pieces.length){   // S27e：吊柜
-      const U=r.upper, mU = (!U.c || U.c==='same') ? matCabR : runCabMat({door:U.c}), hh=UP.y1-UP.y0;
+  // UX N02：户型自带厨房的吊柜（DOC.kitchenLook.upper；门板 / 拉手也写在 kitchenLook）
+  { const kl=DOC.kitchenLook||{}; if(kl.upper && kl.upper.h){ const kr=roomAtPt((kitchenPolys()[0]||[[0,0]])[0]);
+      const mPk=hwMat(kl.hw || (kr && kr.hw)) || mPull0, mUk=(!kl.upper.c || kl.upper.c==='same') ? matKCab : runCabMat({door:kl.upper.c});
+      for(const pr of kitchenPseudoRuns()) buildUpper3D(upperPieces(pr), mUk, mPk, kl.panel); } }
+  function buildUpper3D(UP, mU, mPull, panel){
+    if(!UP.pieces.length) return; const hh=UP.y1-UP.y0;
       for(const pc of UP.pieces){
         const L=Math.hypot(pc.b[0]-pc.a[0], pc.b[1]-pc.a[1]), th=Math.atan2(pc.b[1]-pc.a[1], pc.b[0]-pc.a[0]);
         const cx=(pc.a[0]+pc.b[0])/2+pc.n[0]*UPPER_D/2, cz=(pc.a[1]+pc.b[1])/2+pc.n[1]*UPPER_D/2;
@@ -10320,8 +10338,15 @@ function buildLevelStatic(scene, lv, holes, lowest){
         const fr=new THREE.Group(); fr.position.set((pc.a[0]+pc.b[0])/2+pc.n[0]*(UPPER_D+0.004), 0, (pc.a[1]+pc.b[1])/2+pc.n[1]*(UPPER_D+0.004)); fr.rotation.y=-th; scene.add(fr);
         const nd=Math.max(1, Math.round(L/1.3));
         for(let k=1;k<nd;k++){ const sm=new THREE.Mesh(new THREE.BoxGeometry(0.015, hh-0.06, 0.005), mSeamR); sm.position.set(-L/2+L*k/nd, UP.y0+hh/2, 0); fr.add(sm); }
-        if(r.panel!=='handleless') for(let k=0;k<nd;k++){ const pl=new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.36, 0.04), mPull); pl.position.set(-L/2+L*(k+0.5)/nd+(k%2 ? -1 : 1)*Math.min(0.5, L/nd/2-0.12), UP.y0+0.3, 0.02); fr.add(pl); }
-      } } }
+        if(panel!=='handleless') for(let k=0;k<nd;k++){ const pl=new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.36, 0.04), mPull); pl.position.set(-L/2+L*(k+0.5)/nd+(k%2 ? -1 : 1)*Math.min(0.5, L/nd/2-0.12), UP.y0+0.3, 0.02); fr.add(pl); }
+      }
+  }
+  // S12：用户画的台面/柜体 run（文档实体，随 ProjectDoc 走）。
+  // 柜体从 path（靠墙前沿）向户型内侧伸 depth；台面石板等厚外挑。
+  for(const r of effRuns()){
+    const mPull = hwMat(runHwKey(r)) || mPull0;   // S27c：拉手跟房间 / 单独的五金色
+    const matCabR=runCabMat(r), matTopR=runTopMat(r);
+    { const U=r.upper; if(U && U.h) buildUpper3D(upperPieces(r), (!U.c || U.c==='same') ? matCabR : runCabMat({door:U.c}), mPull, r.panel); }
     for(let i=0;i<r.path.length-1;i++){
       const a=r.path[i], b=r.path[i+1];
       const dx=b[0]-a[0], dy=b[1]-a[1], L=Math.hypot(dx,dy); if(L<1e-6) continue;
@@ -21489,6 +21514,7 @@ function updatePlacedList(){
   const fu=floorUsage();
   if(fu.size){
     const h=document.createElement('div'); h.className='plFixedHead'; h.textContent='地板用量（按房间面积，不含损耗）';
+    if(fu.missing){ const sm=document.createElement('small'); sm.textContent=' · 有 '+fu.missing+' 个房间还没识别范围，没算进去'; h.appendChild(sm); }
     el2.appendChild(h);
     for(const [mat, e] of fu){
       const row=document.createElement('div'); row.className='plRow floorRow';
@@ -22915,7 +22941,7 @@ function mpOpen(slot, rowEl){
   if(!same){ MP.orig=slot.get(); MP.tab=slot.tabs[0][0]; MP.q=''; MP.tone.clear(); $('#mpSearch').value=''; MP.faceSlot=null; }
   document.querySelectorAll('.mrow.open').forEach(x=>x.classList.remove('open')); if(rowEl) rowEl.classList.add('open');
   if(rowEl && rowEl.classList.contains('c') && typeof mrowExpand==='function') mrowExpand(rowEl, !!rowEl._exp);   // S27b：选择器的目标行展开、别的行收起
-  { const ct=$('#catTab'); if(ct) ct.style.visibility='hidden'; }   // S13：左栏收起时的竖条不占位，选择器贴着左边缘
+  { const ct=$('#catTab'); if(ct){ ct.dataset.mpHid=ct.style.display; ct.style.display='none'; } }   // S13 / UX N05：左栏收起时的竖条不占位（visibility 还占 24px），选择器贴着左边缘
   const cat=$('#catalog'); MP.collapsedBefore = cat.classList.contains('collapsed');
   if(MP.collapsedBefore) cat.classList.remove('collapsed');          // 左栏收起时临时展开（不写进面板状态）
   $('#matPicker').style.display='flex';
@@ -22927,7 +22953,7 @@ function mpClose(){
   $('#matPicker').style.display='none'; $('#mpCustom').style.display='none';
   document.querySelectorAll('.mrow.open').forEach(x=>x.classList.remove('open'));
   if(MP.collapsedBefore) $('#catalog').classList.add('collapsed');
-  { const ct=$('#catTab'); if(ct) ct.style.visibility=''; }
+  { const ct=$('#catTab'); if(ct && ct.dataset.mpHid!==undefined){ ct.style.display=ct.dataset.mpHid; delete ct.dataset.mpHid; } }
   MP.slot=null; MP.row=null;
 }
 function mpPreview(id){
@@ -23020,7 +23046,7 @@ function mpRender(){
   // 页签（带数）
   const all=s.items(), filt=mpFiltered(), tabs=$('#mpTabs'); tabs.innerHTML='';
   for(const [id,label] of s.tabs){
-    const n = id==='all' ? filt.length : filt.filter(x=>mpInTab(s,x,id)).length;
+    const n = (id==='all' ? filt.length : filt.filter(x=>mpInTab(s,x,id)).length) + (s.firstInCount && id===s.tabs[0][0] ? 1 : 0);   // QA Q11：天花「常用」页签把缺省那格也算上
     const b=document.createElement('button'); b.className='chip'+(MP.tab===id ? ' on' : ''); b.textContent=label.replace(/\s*\d+$/,'')+' '+n;
     b.onclick=()=>{ b.blur(); MP.tab=id; mpRender(); }; tabs.appendChild(b); }
   // 色调
@@ -23130,7 +23156,7 @@ function mrowsPaint(){ document.querySelectorAll('.mrow').forEach(mrowPaint);
 function matSync(){
   mrowsPaint();
   if(!MP.slot) return;
-  if(MP.slot.key==='scheme') return;   // S27d：整屋配色不跟着选中走（没有材质行）
+  if(MP.slot.key==='scheme'){ wMsg('整屋配色：悬停卡片 = 整套预览 · 点卡片选方案 · 套用 = 一步撤销 · Esc = 关闭'); return; }   // S27d：整屋配色不跟着选中走（没有材质行）；UX N10 提示行
   if(!wallEdit.on){ mpClose(); return; }
   let row=MP.row;
   if(row && !row.isConnected && row.id && document.getElementById(row.id)){ const nr=document.getElementById(row.id); if(!nr._slot && row._slot) nr._slot=row._slot; MP.row=row=nr; row.classList.add('open'); }   // QA S12：那一格被重画了（门色一排）—— 换成新的那个元素，选择器不关
@@ -23391,19 +23417,27 @@ function roomFaceRuns(r){
   const top=CEIL_H-0.005, runs=roomPaintRuns(r).filter(c=>c.z.length===1 && c.z[0][0]<0.01 && c.z[0][1]>top-0.02 && Math.hypot(c.b[0]-c.a[0], c.b[1]-c.a[1])>0.15 && onWall(c));
   _faceRunCache.set(r.id, runs); return runs;
 }
-/* 墙的叫法：按平面图方位「上 / 右 / 下 / 左墙」（法线指向房间里：墙在法线的反方向）；同一侧有几面就编号 */
+/* 墙的叫法：按平面图方位「上 / 右 / 下 / 左墙」（法线指向房间里：墙在法线的反方向）；同一侧有几面就编号。
+   UX N04：编号只数「这个房间的墙」列表里的那些（≥ 30 cm 的真墙面，同一条边被窗切成几段也只算一面），按位置排，名字不重复 */
+var FACE_MIN=30/30.48;
+function faceSide(P, A, B){ const dx=B[0]-A[0], dy=B[1]-A[1], L=Math.hypot(dx,dy)||1; let nx=-dy/L, ny=dx/L;
+  if(!ptInPoly([A[0]+dx/2+nx*0.05, A[1]+dy/2+ny*0.05], P)){ nx=-nx; ny=-ny; }
+  return Math.abs(nx)>Math.abs(ny) ? (nx>0 ? '左' : '右') : (ny>0 ? '上' : '下'); }
+function roomFaceList(r){
+  const P=r.poly||[], m=new Map();
+  for(const c of roomFaceRuns(r)){ const k=c.ea.join()+'|'+c.eb.join(); const e=m.get(k)||{a:c.ea, b:c.eb, len:0}; e.len+=Math.hypot(c.b[0]-c.a[0], c.b[1]-c.a[1]); m.set(k, e); }
+  const order={上:0, 右:1, 下:2, 左:3};
+  const out=[...m.values()].filter(e=>e.len>=FACE_MIN).map(e=>Object.assign(e, {side:faceSide(P, e.a, e.b)}));
+  const key=e=> (e.side==='上'||e.side==='下') ? Math.min(e.a[0],e.b[0])*1000+Math.min(e.a[1],e.b[1]) : Math.min(e.a[1],e.b[1])*1000+Math.min(e.a[0],e.b[0]);
+  out.sort((p,q)=>order[p.side]-order[q.side] || key(p)-key(q));
+  const cnt={}; for(const e of out) cnt[e.side]=(cnt[e.side]||0)+1;
+  const idx={}; for(const e of out){ idx[e.side]=(idx[e.side]||0)+1; e.name = e.side+'墙'+(cnt[e.side]>1 ? ' '+idx[e.side] : ''); }
+  return out;
+}
 function faceName(r, a, b){
-  const P=r.poly||[], edges=[];
-  for(let i=0;i<P.length;i++){ const A=P[i], B=P[(i+1)%P.length]; if(Math.hypot(B[0]-A[0],B[1]-A[1])<0.05) continue; edges.push([A,B]); }
-  const side=(A,B)=>{ const dx=B[0]-A[0], dy=B[1]-A[1], L=Math.hypot(dx,dy); let nx=-dy/L, ny=dx/L;
-    if(!ptInPoly([A[0]+dx/2+nx*0.05, A[1]+dy/2+ny*0.05], P)){ nx=-nx; ny=-ny; }
-    return Math.abs(nx)>Math.abs(ny) ? (nx>0 ? '左' : '右') : (ny>0 ? '上' : '下'); };
-  const me=side(a,b), same=edges.filter(e=>side(e[0],e[1])===me);
   const L=Math.hypot(b[0]-a[0], b[1]-a[1]);
-  let nm=me+'墙';
-  if(same.length>1){ const key=e=> (me==='上'||me==='下') ? Math.min(e[0][0],e[1][0]) : Math.min(e[0][1],e[1][1]);
-    same.sort((p,q)=>key(p)-key(q)); const i=same.findIndex(e=>Math.hypot(e[0][0]-a[0],e[0][1]-a[1])<0.05 || Math.hypot(e[1][0]-a[0],e[1][1]-a[1])<0.05); nm+=' '+(i+1); }
-  return nm+' · '+lenLabel(L);
+  const e=roomFaceList(r).find(q=>Math.hypot(q.a[0]-a[0],q.a[1]-a[1])<0.05 && Math.hypot(q.b[0]-b[0],q.b[1]-b[1])<0.05);
+  return (e ? e.name : faceSide(r.poly||[], a, b)+'墙')+' · '+lenLabel(L);
 }
 /* 点在某个房间里、离它某面墙的内皮 ≤ max(30cm, 10 屏幕像素) → 这面墙 */
 function faceAt(x, y){
@@ -23552,14 +23586,14 @@ const BASE_NAME={wall:'跟墙', white:'白', door:'跟门', black:'黑', floor:'
 function baseLabel(b){ if(!b) return '无'; return (BASE_NAME[b.c] || paintName(b.c))+' · '+(state.unit==='cm' ? b.h+' cm' : (BASE_HEIGHTS.find(x=>x[0]===b.h)||[0,'',b.h+' cm'])[2]); }
 function wainsLabel(w){ return (WAINS_STYLES_UI.find(x=>x[0]===w.st)||[0,'墙裙'])[1]+' · '+(state.unit==='cm' ? w.h+' cm' : Math.round(w.h/2.54)+'″'); }
 /* ---- 槽位：天花 / 踢脚线自定义色 / 墙裙自定义色；墙砖槽位加护墙板页签 ---- */
-MAT_SLOTS.roomCeil=(r)=>({ key:'roomCeil', kind:'paint', kicker:roomFallbackName(r), title:'天花', palette:true, palTab:'paint',
+MAT_SLOTS.roomCeil=(r)=>({ key:'roomCeil', kind:'paint', kicker:roomFallbackName(r), title:'天花', palette:true, palTab:'paint', firstInCount:true,
   tabs:[['common','常用 2'],['paint','全部色板 41']], tabOf:it=>it.cat,
   first:{id:'', name:'白（缺省）', spec:'原来的白天花', color:'#e4e2de', badge:'缺省'},
   items:()=>[{id:'wall', name:'跟墙', spec:'整间同色 · 改墙色时跟着变', color:wallHexOf(r), cat:'common'}].concat(paintItems().map(x=>Object.assign(x,{cat:'paint'}))),
   get:()=> r.ceil || '', set:(id)=>setRoomFinish(r, {ceil:id||null}, 'rmCeil:'+r.id),
   peek:(id)=>{ if(id) r.ceil=id; else delete r.ceil; },
   snap:()=>JSON.stringify(r.ceil||null), restore:(v)=>{ const o=JSON.parse(v); if(o) r.ceil=o; else delete r.ceil; },
-  chip:()=> r.ceil ? ['这个房间',1] : null, custom:true, scope:{cur:'room'} });
+  chip:()=> r.ceil ? ['这个房间',1] : null, custom:true });
 MAT_SLOTS.roomBaseColor=(r)=>({ key:'roomBaseColor', kind:'paint', kicker:roomFallbackName(r), title:'踢脚线颜色', palette:true, palTab:'paint', noFirst:true,
   tabs:[['paint','全部色板 41']], tabOf:()=> 'paint', first:{id:'', name:'白', color:'#f4f2ee'}, items:paintItems,
   get:()=> r.base && /^#/.test(r.base.c) ? r.base.c : '', set:(id)=>{ if(id) setRoomBase(r, {c:id}); },
@@ -23581,8 +23615,8 @@ function wainsItems(hex){ return WAINS_STYLES_UI.map(([st,name,spec])=>({id:'wai
       set:(id)=>{ wallEdit.sel={kind:'room', id:r.id}; updateWallBarFromSel();
         if(/^wains:/.test(id)){ const st=id.slice(6), w=Object.assign({}, WAINS_DEFAULT, r.wains||{}, {st});
           // 新设墙裙：墙砖让位；踢脚线跟墙裙（真实做法里两者同色）
-          setRoomFinish(r, {wains:w, tile:null, base: Object.assign({}, r.base||BASE_DEFAULT, {c:'wains'})}, 'rmTile:'+r.id); return; }
-        if(r.wains){ const nb = r.base && r.base.c==='wains' ? Object.assign({}, r.base, {c:'white'}) : r.base;
+          setRoomFinish(r, {wains:w, tile:null, base: r.base ? Object.assign({}, r.base, {c:'wains', was:r.base.was||r.base.c}) : Object.assign({}, BASE_DEFAULT, {c:'wains', auto:true})}, 'rmTile:'+r.id); return; }
+        if(r.wains){ let nb=r.base; if(nb && nb.c==='wains'){ if(nb.auto) nb=null; else { nb=Object.assign({}, nb, {c:nb.was||'white'}); delete nb.was; } }   // QA Q09：墙裙带出来的踢脚线跟着走 / 回到原来的颜色
           if(!id){ setRoomFinish(r, {wains:null, base:nb||null}, 'rmTile:'+r.id); return; }
           setRoomFinish(r, {wains:null, base:nb||null, tile:Object.assign({mat:id, h:tileDefaultH(r)}, wallTile(id) && wallTile(id).cat==='subway' ? {lay:'half'} : {})}, 'rmTile:'+r.id); return; }
         s.set(id); },
@@ -23611,7 +23645,7 @@ function wainsItems(hex){ return WAINS_STYLES_UI.map(([st,name,spec])=>({id:'wai
   const ar=$('#rmAngle').closest('.irow'); if(ar){ fexp.appendChild(ar); const il=ar.querySelector('.il'); if(il) il.textContent='方向'; }
   mrowCompact(fr, fexp);
   fr._spec=(it, s)=>{ const r=selRoom(); if(!r) return it.spec||''; const id=r.floor && floorPreset(r.floor.mat) ? r.floor.mat : lvMatNow();
-    const parts=[(it.spec||'').replace(/\s*·\s*直铺$/,'')].filter(Boolean);
+    const parts=String(it.spec||'').split(/\s*·\s*/).filter(x=>x && x!=='直铺' && String(it.name||'').indexOf(x)<0);   // UX N09：名字里已经有的规格不再写
     if(floorLayable(id)) parts.push((FLOOR_LAYS_UI.find(x=>x[0]===floorLayOf(r.floor||{mat:id}))||[0,''])[1]);
     if(floorDirectional(id) && r.floor && r.floor.angle) parts.push(Math.round(r.floor.angle)+'°');
     return parts.join(' · '); };
@@ -23628,7 +23662,7 @@ function wainsItems(hex){ return WAINS_STYLES_UI.map(([st,name,spec])=>({id:'wai
   texp.appendChild(wsub);
   mrowCompact(tr, texp);
   tr._spec=(it)=>{ const r=selRoom(); if(!r) return it.spec||'';
-    if(r.wains) return wainsLabel(r.wains);
+    if(r.wains) return (state.unit==='cm' ? r.wains.h+' cm' : Math.round(r.wains.h/2.54)+'″')+' · '+paintName(r.wains.c);   // QA Q11：样式名已经在名字里
     if(r.tile){ const h=(TILE_HEIGHTS.find(x=>x[0]===r.tile.h)||[0,''])[1]; return [it.spec, h, r.tile.lay==='half' ? '错缝 1/2' : ((wallTile(r.tile.mat)||{}).lay ? '直缝' : ''), ({white:'白缝', black:'黑缝'})[r.tile.grout]||'灰缝'].filter(Boolean).join(' · '); }
     return '墙面一直到地'; };
   // 踢脚线（新）：展开区 = 颜色 7 格 + 高度 + 样式
@@ -23723,8 +23757,7 @@ function wallPanelsUI(){
   const rw=$('#roomWalls');
   if(rw){ rw.innerHTML=''; rw.style.display = r && r.poly && deco ? '' : 'none';
     if(r && r.poly && deco){
-      const edges=[]; const seen=new Set();
-      for(const c of roomFaceRuns(r)){ const k=c.ea.join()+'|'+c.eb.join(); if(seen.has(k)) continue; seen.add(k); edges.push([c.ea,c.eb]); }
+      const edges=roomFaceList(r).map(e=>[e.a, e.b]);   // UX N04：≥ 30 cm、按方位排、名字不重复
       const own=edges.filter(e=>faceOf(r,e[0],e[1]));
       const h=document.createElement('div'); h.className='rwH'; h.innerHTML='<span>这个房间的墙（'+edges.length+'）</span><small>点一面 = 单独设置</small>'; rw.appendChild(h);
       const row=(e, ownF)=>{ const b=document.createElement('button'); b.type='button'; b.className='rwRow';
@@ -24214,7 +24247,7 @@ function lookS27cUI(){
     const dd=selDoor(), R=dd ? doorRooms(dd) : {open:null}, rk=R.open && R.open.hw;
     hwSwRow($('#dHw'), d.hw||'', v=>{ if((d.hw||'')!==v) setEntProp(d, {hw:v||null}, 'doorHw:'+d.id); }, {roomKey:rk});
     const n=$('#dHwNote'); n.style.display='';
-    n.textContent = d.hw ? '这扇门单独用'+hwName(d.hw)+'。点「跟房间」回去。' : (R.open ? '跟'+roomFallbackName(R.open)+'（门往'+roomFallbackName(R.open)+'开）：'+hwName(rk||'chrome') : '门两侧都还没识别房间：缺省铬色');
+    n.textContent = d.hw ? '这扇门单独用'+hwName(d.hw)+'。点「跟房间」回去。' : (R.open ? '跟'+roomFallbackName(R.open)+'（门往'+roomFallbackName(R.open)+'开）：'+hwName(rk||'chrome') : '门两边的房间都没设五金色，现在是铬色');
   }
   const r = s && s.kind==='run' ? selRun() : null;
   if(r && $('#runHw')){ const rm=runRoom(r);
@@ -24230,8 +24263,8 @@ var SCHEMES=[
   {id:'japan',   name:'日式原木', desc:'原木门 · 米白墙 · 哑光黑',   floor:'oakNatural', lay:null, wall:'#e9e4da', accent:null,  door:['wood:oak','vgroove'], cab:['#c9a77c','flat','wood'],        hw:'black',  base:{c:'floor',h:6},  ceil:null},
   {id:'modern',  name:'现代灰',   desc:'大板砖 · 云灰墙 · 无把手柜', floor:'tileGrey60x120', lay:null, wall:'#bfc2c1', accent:null, door:['#cfd1cd','flat'], cab:['#5a5c60','handleless','concrete'], hw:'black', base:{c:'wall',h:6}, ceil:null},
   {id:'cream',   name:'奶油风',   desc:'白蜡木 · 象牙白 · 拉丝金',   floor:'ashWhite', lay:null, wall:'#efe8da', accent:null,    door:['#f2efe8','shaker'],   cab:['#f2efe8','shaker','marble'],    hw:'brass',  base:{c:'wall',h:10},  ceil:'wall'},
-  {id:'vintage', name:'深色复古', desc:'人字拼 · 燕麦墙 · 墨绿强调墙', floor:'oakSmokeHerring', lay:null, wall:'#dcd6cb', accent:'#4f604f', door:['wood:walnut','six'], cab:['#4f604f','shaker','marble'], hw:'brass', base:{c:'door',h:12}, ceil:null},
-  {id:'coastal', name:'海岸蓝白', desc:'灰木地板 · 纯白墙 · 雾蓝强调墙', floor:'lvpGrey', lay:null, wall:'#f7f6f2', accent:'#a9b8c2', door:['', 'shaker'],     cab:['#2f3e55','shaker','quartzWhite'], hw:'chrome', base:{c:'white',h:10}, ceil:null},
+  {id:'vintage', name:'深色复古', desc:'人字拼 · 燕麦墙 · 墨绿强调墙', floor:'walnutHerring', lay:null, wall:'#dcd6cb', accent:'#4f604f', door:['wood:walnut','six'], cab:['#4f604f','shaker','marble'], hw:'brass', base:{c:'door',h:12}, ceil:null},
+  {id:'coastal', name:'海岸蓝白', desc:'灰木地板 · 纯白墙 · 雾蓝强调墙', floor:'oakGreyWash', lay:null, wall:'#f7f6f2', accent:'#a9b8c2', door:['', 'shaker'],     cab:['#2f3e55','shaker','quartzWhite'], hw:'chrome', base:{c:'white',h:10}, ceil:null},
 ];
 var SCHEME_UI={sel:null, scope:'all', mode:'over'};
 function schemeById(id){ return SCHEMES.find(x=>x.id===id) || null; }
@@ -24246,7 +24279,7 @@ function applyScheme(sc, scope, mode, dry){
   // 全屋：整层地面；房间还没识别范围的，按标签点识别（墙面 / 踢脚线要用到范围）
   if(scope!=='room'){
     set(DOC, 'floorMat', sc.floor);
-    if(!dry) for(const r of effRooms()) if(!r.poly && r.pos){ try{ const res=roomRegionAt(r.pos[0], r.pos[1]); if(res.region && !res.leaked) r.poly=res.region.poly.map(p=>[FT4(p[0]), FT4(p[1])]); }catch(e){} }
+    if(!dry) for(const r of effRooms()) if(!r.poly && r.pos){ try{ const res=roomRegionAt(r.pos[0], r.pos[1]); if(res.region && !res.leaked && roomForRegion(res.region)===r) r.poly=res.region.poly.map(p=>[FT4(p[0]), FT4(p[1])]); }catch(e){} }   // QA：开放空间（客厅 + 厨房一块）只归第一个房间，不然用量算两遍
     const want = sc.lay ? {mat:sc.floor, lay:sc.lay} : null;   // 带铺法的方案：每个房间写一份（整层地面只有材质）
     for(const r of effRooms()){ if(!r.poly) continue;
       if(want) set(r, 'floor', want); else if(over && r.floor){ out.items++; if(!dry) delete r.floor; } }
@@ -24312,11 +24345,12 @@ function schemeApplyNow(){
 }
 function schemeRender(body){
   body.innerHTML='';
+  wMsg('整屋配色：悬停卡片 = 整套预览 · 点卡片选方案 · 套用 = 一步撤销 · Esc = 关闭');   // UX N10
   const h=document.createElement('div'); h.className='mpH'; h.innerHTML='6 套方案 <small style="float:right">悬停 = 整套预览</small>'; body.appendChild(h);
   const grid=document.createElement('div'); grid.className='schemeGrid';
   for(const sc of SCHEMES){ const b=document.createElement('button'); b.type='button'; b.className='schemeCard'+(SCHEME_UI.sel===sc.id ? ' on' : '')+(MP.previewing===sc.id ? ' prev' : ''); b.dataset.id=sc.id;
     b.innerHTML=schemeSvg(sc)+'<b></b><small></small>'; b.querySelector('b').textContent=sc.name; b.querySelector('small').textContent=sc.desc;
-    b.onmouseenter=()=>{ clearTimeout(MP.hoverT); MP.hoverT=setTimeout(()=>{ mpPreview(sc.id); grid.querySelectorAll('.schemeCard').forEach(x=>x.classList.toggle('prev', x.dataset.id===sc.id)); }, 150); };
+    b.onmouseenter=()=>{ clearTimeout(MP.hoverT); MP.hoverT=setTimeout(()=>{ mpPreview(sc.id); grid.querySelectorAll('.schemeCard').forEach(x=>x.classList.toggle('prev', x.dataset.id===sc.id)); toast('预览：'+sc.name+'（'+(SCHEME_UI.scope==='room' ? '这个房间' : '整套房子')+'）· 移开鼠标 = 恢复', 2500); }, 150); };   // QA Q10
     b.onclick=()=>{ b.blur(); clearTimeout(MP.hoverT); SCHEME_UI.sel=sc.id; schemeRender(body); };
     grid.appendChild(b); }
   grid.onmouseleave=()=>{ clearTimeout(MP.hoverT); mpUnpreview(); grid.querySelectorAll('.schemeCard').forEach(x=>x.classList.remove('prev')); };
@@ -24332,7 +24366,9 @@ function schemeRender(body){
   sh.appendChild(seg('schemeMode', {label:'方式', items:[['over','覆盖所有设置'],['fill','只填没设过的']]}, SCHEME_UI.mode, v=>{ SCHEME_UI.mode=v; schemeRender(body); }));
   const foot=document.createElement('div'); foot.className='asF';
   const cnt=document.createElement('span'); cnt.className='asN';
-  const d = sc ? applyScheme(sc, SCHEME_UI.scope, SCHEME_UI.mode, true) : null;
+  // UX N01：「会改几项」按预览之前的文档算（悬停预览中点卡片时，文档已经是这套方案的样子，按它算就成了「都设过了」）
+  let d=null; if(sc){ const live = MP.prevSnap!==null ? schemeSnap() : null; if(live) schemeRestore(MP.prevSnap);
+    d=applyScheme(sc, SCHEME_UI.scope, SCHEME_UI.mode, true); if(live) schemeRestore(live); }
   cnt.textContent = !sc ? '' : d.items ? '会改 '+d.rooms+' 个房间、'+d.doors+' 扇门、'+d.runs+' 组橱柜（共 '+d.items+' 项）' : '这套房子已经都设过了';
   const ap=document.createElement('button'); ap.type='button'; ap.className='btn primary'; ap.id='schemeApply'; ap.textContent='套用'; ap.disabled=!sc || !d.items; ap.onclick=()=>{ ap.blur(); schemeApplyNow(); };
   foot.appendChild(cnt); foot.appendChild(ap); sh.appendChild(foot);
@@ -24344,8 +24380,10 @@ function decoUsage(){
   const acc=new Map();   // key → {cat, name, sw, area(ft²)|len(ft), rooms:Set, faces:[], first:{room, a, b}}
   const add=(key, cat, name, sw, v, where, first)=>{ let e=acc.get(key); if(!e){ e={cat, name, sw, v:0, rooms:new Set(), first}; acc.set(key, e); } e.v+=v; e.rooms.add(where); };
   const top=CEIL_H-0.005;
+  const seenPoly=new Set();
   for(const r of effRooms()){
     if(!r.poly || r.poly.length<3 || !(roomHasFinish(r) || r.base)) continue;
+    { const pk=JSON.stringify(r.poly); if(seenPoly.has(pk)) continue; seenPoly.add(pk); }   // QA：两个房间共用一个轮廓（旧档里可能已经这样）只算一次
     const nm=roomFallbackName(r);
     for(const c of roomPaintRuns(r)){
       const L=Math.hypot(c.b[0]-c.a[0], c.b[1]-c.a[1]); if(L<0.05) continue;
@@ -24368,7 +24406,7 @@ function decoUsage(){
   }
   const order=['涂料','墙纸','墙砖','护墙板','踢脚线'], m2=state.unit==='cm', out=[];
   for(const e of acc.values()){
-    const rooms=[...e.rooms], where = rooms.length===1 ? rooms[0] : rooms.length+' 处';
+    const rooms=[...e.rooms], where = rooms.length<=3 ? rooms.join('、') : rooms.slice(0,2).join('、')+' 等 '+rooms.length+' 处';   // QA Q11
     let qty, unit, basis;
     if(e.cat==='踢脚线'){ qty = m2 ? Math.round(e.v*0.3048*10)/10 : Math.round(e.v*10)/10; unit = m2 ? 'm' : 'ft'; basis='按落地墙段的长度（门洞已扣）'; }
     else { const am=e.v*0.092903, af=e.v;
@@ -24385,7 +24423,7 @@ function decoUsageUI(host){
   const rows=decoUsage(); if(!rows.length) return;
   const h=document.createElement('div'); h.className='plFixedHead'; h.id='decoUsageHead'; h.innerHTML='装修用量<small> · 按面积估算 · 不含损耗 · 不计价</small>'; host.appendChild(h);
   for(const u of rows){ const row=document.createElement('div'); row.className='plRow floorRow decoUse'; row.title=u.basis;
-    row.innerHTML=`<div class="dot" style="background:${u.sw}"></div><span>${escHtml(u.cat)} · ${escHtml(u.name)} · ${escHtml(u.where)}</span><span class="plPrice">${u.approx ? '约 ' : ''}${u.qty} ${u.unit}</span>`;
+    row.innerHTML=`<div class="dot" style="background:${u.sw}"></div><span>${escHtml(u.cat)} · ${escHtml(u.name)} · ${escHtml(u.where)}<small class="useBasis">${escHtml(u.basis)}</small></span><span class="plPrice">${u.approx ? '约 ' : ''}${u.qty} ${u.unit}</span>`;
     row.onclick=()=>{ const r=effRooms().find(q=>q.id===u.first.room); if(!r) return; if(!wallEdit.on || wallEdit.area!=='deco') enterArea('deco');
       wallEdit.sel={kind:'face', id:r.id+'#'+u.first.a.join()+'|'+u.first.b.join(), room:r.id, a:u.first.a, b:u.first.b}; drawWallEdit(); updateWallBarFromSel(); };
     host.appendChild(row); }
@@ -24452,6 +24490,7 @@ function pipClick(T){
   if(!T){ wMsg('这里没有能吸的材质（墙面 · 地面 · 墙砖 · 门 · 柜 · 天花 · 踢脚线）', true); return; }
   if(!PIP.src){ const r=pipRead(T); if(!r) return; PIP.src=Object.assign({cat:T.cat}, r); pipSet(true, PIP.temp); return; }
   if(PIP.src.cat!==T.cat){ wMsg('只能粘到同类（'+PIP_CAT[PIP.src.cat]+'）', true); return; }
+  { const cur=pipRead(T); if(cur && JSON.stringify(cur.v)===JSON.stringify(PIP.src.v)){ wMsg('这里已经是'+PIP.src.name+'了'); return; } }   // QA Q06：同样的材质不占撤销步
   pipWrite(T, PIP.src.v); wMsg('已粘贴：'+PIP.src.name+' ｜ 接着点同类的东西继续粘 · Esc = 清掉吸到的');
 }
 function pipHoverLabel(T){
@@ -24487,7 +24526,7 @@ function pip2DTarget(ev, p0){
     if(h){ let furn=false; for(let o=h.object; o; o=o.parent) if(o===three.furnGroup) furn=true;
       if(!furn){ const n = h.face ? h.face.normal.clone().transformDirection(h.object.matrixWorld) : null; if(n){ const dir=h.point.clone().sub(three.cam.position); if(n.dot(dir)>0) n.negate(); }
         const y=h.point.y-curElev(); T=pipTargetOf(decoTargetAt([h.point.x, h.point.z], y, n), y); } }
-    ev.stopImmediatePropagation(); pipClick(T);
+    pipClick(T);   // QA Q06：不拦后面的 pointerup —— 3D 点选要靠它清掉「按下中」，不然之后的悬停全当成在拖（它自己遇到吸管会直接返回）
   }, true);
   window.addEventListener('keydown', e=>{
     if(!wallEdit.on || wallEdit.area!=='deco' || CALIB) return;
@@ -24594,6 +24633,26 @@ function kitchenPolys(){
   if(isl){ const pts=[isl.a, isl.b, isl.e]; for(let k=1;k<=16;k++){ const t=k/16, m1=1-t; pts.push([m1*m1*isl.e[0]+2*m1*t*isl.cp2[0]+t*t*isl.d[0], m1*m1*isl.e[1]+2*m1*t*isl.cp2[1]+t*t*isl.d[1]]); } out.push(pts); }
   return out;
 }
+/* UX N02：户型自带的厨房也能装吊柜 —— 柜体（plan.kitchen 的柜盒 / 叫「台面」的结构块）贴着墙的那条边 = 一段「伪台面」，
+   复用 upperPieces（同样避开窗 / 门洞 / 冰箱），2D 虚线、3D、碰撞、点选都走同一套 */
+function kitchenPseudoRuns(){
+  const kl=DOC.kitchenLook||{}; if(!kl.upper || !kl.upper.h || docImported()) return [];
+  const polys=[], blocks=[];
+  for(const kp of (planOf('kitchen')||[])){ if(!kp.box) continue; const [bx,by,bz]=kp.box, [px,,pz]=kp.p; if(bx*bz<0.1) continue;
+    const P=[[px-bx/2,pz-bz/2],[px+bx/2,pz-bz/2],[px+bx/2,pz+bz/2],[px-bx/2,pz+bz/2]];
+    if(kp.m==='cab') polys.push(P); else if(kp.m==='steel' && by>4) blocks.push(P); }
+  for(const f of counterSolids()) polys.push(f.poly);
+  const walls=effWalls().filter(q=>['w','i','g','d','o'].includes(q.t)), out=[];
+  for(const P of polys){ const c=[P.reduce((a,p)=>a+p[0],0)/P.length, P.reduce((a,p)=>a+p[1],0)/P.length];
+    for(let i=0;i<P.length;i++){ const a=P[i], b=P[(i+1)%P.length], dx=b[0]-a[0], dy=b[1]-a[1], L=Math.hypot(dx,dy); if(L<1) continue;
+      let nx=-dy/L, ny=dx/L; if((c[0]-a[0])*nx+(c[1]-a[1])*ny<0){ nx=-nx; ny=-ny; }   // n 指向柜体里（离开墙）
+      const m=[(a[0]+b[0])/2, (a[1]+b[1])/2];
+      const onWall=walls.some(q=>{ const qx=q.x2-q.x1, qy=q.y2-q.y1, QL=Math.hypot(qx,qy); if(QL<0.3 || Math.abs(dx/L*qy/QL-dy/L*qx/QL)>0.05) return false;
+        const t=((m[0]-q.x1)*qx+(m[1]-q.y1)*qy)/(QL*QL); if(t<-0.1 || t>1.1) return false;
+        return Math.abs((m[0]-q.x1)*qy-(m[1]-q.y1)*qx)/QL <= ((q.wd!=null?q.wd:6.5)/S)/2+0.4; });
+      if(onWall) out.push({id:'kitchen', path:[a,b], normals:[[nx,ny]], depth:2, topH:2.95, upper:kl.upper, modules:[], blocks}); } }
+  return out;
+}
 function kitchenAt(x, y){ return !docImported() && kitchenPolys().some(P=>ptInPoly([x,y], P)); }
 /* UX M02b：示例户型的厨房是两块叫「台面」的结构块（不是 plan.kitchen）—— 也算户型自带的厨房：能选、3D 里按柜体 + 台面画出来 */
 function counterSolids(){ return effFixed().filter(f=>f.name==='台面' && f.poly && f.poly.length>=3); }
@@ -24615,14 +24674,38 @@ MAT_SLOTS.kitDoor=()=>({ key:'kitDoor', kind:'color', kicker:'厨房 · 户型�
   const kc=document.createElement('span'); kc.id='kitchenCtl';
   kc.appendChild(mrowMake('mrKitDoor', '柜门颜色', ()=>MAT_SLOTS.kitDoor()));
   const row=document.createElement('div'); row.className='irow col'; row.innerHTML='<span class="il">台面</span><div id="kitTopRow"></div>'; kc.appendChild(row);
-  const n=document.createElement('div'); n.className='note info'; n.textContent='户型自带的厨房（含中岛）：能换柜门颜色和台面；柜体的位置和尺寸是户型本身的。'; kc.appendChild(n);
+  const n=document.createElement('div'); n.className='note info'; n.textContent='户型自带的厨房（含中岛）：能换柜门颜色和台面，装吊柜；柜体的位置和尺寸是户型本身的。'; kc.appendChild(n);
+  // UX N02：吊柜 / 吊柜颜色（双色）/ 吊柜门板 / 拉手五金
+  const mk=(id, label, inner)=>{ const r=document.createElement('div'); r.className='irow'+(inner ? '' : ' col'); r.id=id+'Row'; r.innerHTML='<span class="il"></span>'+(inner||'<div id="'+id+'"></div>'); r.querySelector('.il').textContent=label; return r; };
+  const seg=(id, opts)=>'<div class="seg sm" id="'+id+'">'+opts.map(([v,t])=>'<button type="button" data-v="'+v+'">'+t+'</button>').join('')+'</div>';
+  kc.insertBefore(mk('kitUpH', '吊柜', seg('kitUpH', UPPER_H)), n);
+  kc.insertBefore(mk('kitUpGap', '离台面', seg('kitUpGap', UPPER_GAP.map(([v,c])=>[v,c])), n), n);
+  kc.insertBefore(mk('kitUpColor', '吊柜色'), n);
+  kc.insertBefore(mk('kitPanel', '吊柜门板'), n);
+  kc.insertBefore(mk('kitHw', '拉手'), n);
+  const w=document.createElement('div'); w.className='note warn'; w.id='kitUpperWarn'; kc.insertBefore(w, n);
   ib.appendChild(kc);
+  for(const b of $('#kitUpH').querySelectorAll('button')) b.onclick=()=>{ b.blur(); const v=+b.dataset.v, kl=DOC.kitchenLook||{}, cur=(kl.upper && kl.upper.h)||0; if(cur===v) return;
+    setKitchenLook({upper: v ? Object.assign({gap:50, c:'same'}, kl.upper||{}, {h:v}) : null}); };
+  for(const b of $('#kitUpGap').querySelectorAll('button')) b.onclick=()=>{ b.blur(); const v=+b.dataset.v, kl=DOC.kitchenLook||{}; if(kl.upper && kl.upper.gap!==v) setKitchenLook({upper:Object.assign({}, kl.upper, {gap:v})}); };
 })();
 function kitchenPanelUI(){
   const on = wallEdit.on && wallEdit.sel && wallEdit.sel.kind==='kitchen';
   ctxOn('#kitchenCtl', on); if(!on) return;
   swatchRow('kitTopRow', RUN_TOPS.map(([v,n,c])=>[v,n, v==='wood' ? woodSwatch('oak') : c]), (DOC.kitchenLook||{}).top||'', v=>setKitchenLook({top:v}), {big:true});
   mrowPaint($('#mrKitDoor'));
+  const kl=DOC.kitchenLook||{}, U=kl.upper, up=!!(U && U.h);
+  segOn('kitUpH', String(up ? U.h : 0));
+  for(const id of ['kitUpGap','kitUpColor','kitPanel']) $('#'+id+'Row').style.display = up ? '' : 'none';
+  { const lb=$('#mrKitDoor .lb'); if(lb) lb.textContent = up ? '地柜色' : '柜门颜色'; }
+  const w=$('#kitUpperWarn'); w.style.display='none';
+  if(up){ segOn('kitUpGap', String(U.gap||50));
+    labSwRow($('#kitUpColor'), [{v:'same', name:'同', bg:kl.door||'#a59a8b', mark:'同'}].concat(UPPER_COLORS.map(([v,n])=>({v, name:n, bg:v}))), U.c||'same', v=>{ if((U.c||'same')!==v) setKitchenLook({upper:Object.assign({}, U, {c:v})}); });
+    iconGroup('kitPanel', RUN_PANELS.map(([v,n])=>[v,n, v==='flat' ? 'flat' : v==='shaker' ? 'shaker' : 'handleless']), kl.panel||'flat', v=>setKitchenLook({panel: v==='flat' ? null : v}), 3);
+    const sk=[]; for(const pr of kitchenPseudoRuns()) sk.push(...upperPieces(pr).skipped);
+    if(sk.length){ w.style.display=''; w.textContent='⚠ 吊柜在'+[...new Set(sk)].join('；')+'：那一段不装，2D 里也不画。'; } }
+  const kr=roomAtPt((kitchenPolys()[0]||[[0,0]])[0]);
+  hwSwRow($('#kitHw'), kl.hw||'', v=>{ if((kl.hw||'')!==v) setKitchenLook({hw:v||null}); }, {roomKey:kr && kr.hw});
 }
 
 /* 检视面板在改户型 / 装修里：标题 = 选中的东西（或「下一个要画的」），删除按钮跟着对象变 */
@@ -24919,7 +25002,9 @@ function groundAt(ev, y){
    墙外侧 / 墙头 / 空白 = 不选（单击空白不取消选中，取消用 Esc）；家具看得见、点不到（与 2D 装修一致）。
    单击 = 按下到松开 ≤ 5px 且 < 500ms（AGENTS §8.2）。 */
 /* 不透明度比 materials §a.1 的建议高：实测 0.10 / 0.16 在深色地板上看不出来（1px 线也太弱），选中 0.26、悬停 0.34；边线画两遍（§a.1 的「可选」） */
-const HL3={color:0xd9a05b, preview:0x7fb8ff, hover:{fill:.34, edge:.85}, sel:{fill:.26, edge:1.0}, off:0.01 /* ft ≈ 3mm */};
+const HL3={color:0xd9a05b, preview:0x7fb8ff, hover:{fill:.34, fillLight:.20, edge:.85}, sel:{fill:.26, fillLight:.14, edge:1.0}, off:0.01 /* ft ≈ 3mm */};   // 浅色表面（相对亮度 > 0.6）面片减弱：白墙叠 0.34 琥珀看着像刷成了米黄
+function hexLum(hex){ const m=/^#?([0-9a-f]{6})$/i.exec(String(hex||'')); if(!m) return 0; const n=parseInt(m[1],16), f=c=>{ c/=255; return c<=0.03928 ? c/12.92 : Math.pow((c+0.055)/1.055, 2.4); };
+  return 0.2126*f((n>>16)&255)+0.7152*f((n>>8)&255)+0.0722*f(n&255); }
 function decoPick3DOn(){ return !!three && is3D() && wallEdit.on && wallEdit.area==='deco' && !CALIB; }
 function pick3DRay(ev){
   const cv=three.canvas, r=cv.getBoundingClientRect();
@@ -24953,6 +25038,9 @@ function decoTargetAt(p, y, n){
     for(const rr of effRuns()){ const UP=upperPieces(rr); if(!UP.pieces.length || y<UP.y0-0.1 || y>UP.y1+0.1) continue;   // S27e：吊柜
       for(const pc of UP.pieces){ const dx=pc.b[0]-pc.a[0], dy=pc.b[1]-pc.a[1], L2=dx*dx+dy*dy, t=((q[0]-pc.a[0])*dx+(q[1]-pc.a[1])*dy)/L2, d=(q[0]-pc.a[0])*pc.n[0]+(q[1]-pc.a[1])*pc.n[1];
         if(t>=-0.02 && t<=1.02 && d>=-0.1 && d<=UPPER_D+0.1) return {kind:'run', id:rr.id, upper:true}; } }
+    for(const pr of kitchenPseudoRuns()){ const UP=upperPieces(pr); if(y<UP.y0-0.1 || y>UP.y1+0.1) continue;   // UX N02：自带厨房的吊柜
+      for(const pc of UP.pieces){ const dx=pc.b[0]-pc.a[0], dy=pc.b[1]-pc.a[1], L2=dx*dx+dy*dy, t=((q[0]-pc.a[0])*dx+(q[1]-pc.a[1])*dy)/L2, d=(q[0]-pc.a[0])*pc.n[0]+(q[1]-pc.a[1])*pc.n[1];
+        if(t>=-0.02 && t<=1.02 && d>=-0.1 && d<=UPPER_D+0.1) return {kind:'kitchen', id:'kitchen', upper:true}; } }
   }
   if(hz>0.7){
     for(const s of effWalls()){ if(s.t!=='g' && s.t!=='d') continue;
@@ -24993,7 +25081,7 @@ function pick3DLabel(t){
   if(t.kind==='fx'){ const f=effFixtures().find(q=>q.id===t.id); if(!f) return null; const nm=FX_DEFS[f.t] ? FX_DEFS[f.t].label : '洁具';
     return {l1:nm, l2: Math.round((f.x2-f.x1)*30.48)+' × '+Math.round((f.y2-f.y1)*30.48)}; }
   if(t.kind==='run') return {l1: t.upper ? '吊柜' : '台面 / 橱柜'};
-  if(t.kind==='kitchen') return {l1:'厨房（户型自带）'};
+  if(t.kind==='kitchen') return {l1: t.upper ? '吊柜（户型自带的厨房）' : '厨房（户型自带）'};
   if(t.kind==='door'){ const d=effDoors().find(q=>q._id===t.id); if(!d) return {l1:'门'};
     const dx=d.x2-d.x1, dy=d.y2-d.y1, L=Math.hypot(dx,dy)||1, nx=-dy/L, ny=dx/L, m=[(d.x1+d.x2)/2, (d.y1+d.y2)/2];
     const nm=k=>{ const r=pick3DRoomOf([m[0]+nx*k, m[1]+ny*k]); return r ? roomFallbackName(r) : ''; }, A=nm(1.2), B=nm(-1.2);
@@ -25035,6 +25123,8 @@ function decoApplyPick3D(t){
   }
   else wallEdit.sel={kind:t.kind, id:t.id};
   drawWallEdit(); updateWallBarFromSel(); decoPanelUI(); pick3DHiSync();
+  if(t.upper){ const row = t.kind==='run' ? $('#mrUpper') : null; if(row) mrowExpand(row, true); }   // QA Q08：点到吊柜 = 展开吊柜那一行
+  if(t.kind==='fx' || t.kind==='run'){ const L=pick3DLabel(t); wMsg((L ? L.l1 : '')+' ｜ 右边换外观 · 要挪动 / 改尺寸回 2D 平面'); }   // QA Q11：3D 里不显示 2D 的拖动说明
 }
 /* 叠加几何：面 = 面片 + 边线；物件 = 盒子边线 + 地上的占地面片。深度照常（被挡住的不画），polygonOffset 防 z-fighting */
 function pick3DShapes(t){
@@ -25047,12 +25137,15 @@ function pick3DShapes(t){
   if(t.kind==='room'){ const r = t.id ? effRooms().find(q=>q.id===t.id) : pick3DRoomOf(t.at);
     // 还没识别范围的房间：悬停时按同一个判据（regionAt）现算一块来描，不写进文档
     let P = r && r.poly; if(!P && t.at){ try{ const res=roomRegionAt(t.at[0], t.at[1]); if(res.region) P=res.region.poly; }catch(e){} }
-    if(P) out.push(flat(P, e0 + (t.part==='ceiling' ? CEIL_H-o : o))); }
+    if(P){ const sh=flat(P, e0 + (t.part==='ceiling' ? CEIL_H-o : o));
+      sh.light = hexLum(t.part==='ceiling' ? (r && ceilHex(r) || '#e4e2de') : floorHexOf(r)) > 0.6;   // materials §a.1：浅色表面面片减弱
+      out.push(sh); } }
   else if(t.kind==='face' || t.kind==='wallAt'){
     const F = t.kind==='face' ? {r:effRooms().find(q=>q.id===t.room), a:t.a, b:t.b} : faceAt(t.at[0], t.at[1]);
     if(F && F.r){ const c=roomFaceRuns(F.r).find(c=>Math.hypot(c.ea[0]-F.a[0], c.ea[1]-F.a[1])<1e-3 && Math.hypot(c.eb[0]-F.b[0], c.eb[1]-F.b[1])<1e-3);
       if(c){ const A=[c.a[0]+c.n[0]*o, c.a[1]+c.n[1]*o], B=[c.b[0]+c.n[0]*o, c.b[1]+c.n[1]*o], top=CEIL_H-0.02;
-        out.push({line:[V(A[0],e0+0.02,A[1]), V(B[0],e0+0.02,B[1]), V(B[0],e0+top,B[1]), V(A[0],e0+top,A[1])], quad:true}); } } }
+        out.push({line:[V(A[0],e0+0.02,A[1]), V(B[0],e0+0.02,B[1]), V(B[0],e0+top,B[1]), V(A[0],e0+top,A[1])], quad:true,
+          light: hexLum(wallHexOf(F.r, finishOf(F.r, F.a, F.b))) > 0.6}); } } }
   else if(t.kind==='fx'){ const f=effFixtures().find(q=>q.id===t.id); if(f){ const sp=FX_SPAN[f.t]||[0,3];
       box(GEO_PTS.obbCorners((f.x1+f.x2)/2, (f.y1+f.y2)/2, f.x2-f.x1, f.y2-f.y1, f.rot||0), e0+sp[0]+0.01, e0+sp[1]+0.01); } }
   else if(t.kind==='run' || t.kind==='kitchen'){
@@ -25092,7 +25185,7 @@ function pick3DHiSync(){
           let geo;
           if(sh.quad){ geo=new THREE.BufferGeometry().setFromPoints([sh.line[0], sh.line[1], sh.line[2], sh.line[0], sh.line[2], sh.line[3]]); }
           else { const shp=new THREE.Shape(sh.fill.map(p=>new THREE.Vector2(p[0], -p[1]))); geo=new THREE.ShapeGeometry(shp); geo.rotateX(-Math.PI/2); geo.translate(0, sh.y, 0); }
-          const m=new THREE.Mesh(geo, new THREE.MeshBasicMaterial({color:col, transparent:true, opacity:st.fill, side:THREE.DoubleSide, depthWrite:false, toneMapped:false,
+          const m=new THREE.Mesh(geo, new THREE.MeshBasicMaterial({color:col, transparent:true, opacity: sh.light ? st.fillLight : st.fill, side:THREE.DoubleSide, depthWrite:false, toneMapped:false,
             polygonOffset:true, polygonOffsetFactor:-2, polygonOffsetUnits:-2}));
           m.renderOrder=10; m.userData.noPick=true; g.add(m);
         } } };
